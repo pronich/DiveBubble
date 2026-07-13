@@ -21,7 +21,7 @@ Go-to-market: start by running trips personally (partnering with dive center **K
 
 Bottom nav (v1): **Explore — Trips — Profile**. Key decision: **a joined trip *is* its chat** — no separate chat entity. "Explore" is the discovery list (all open trips); "Trips" lists only trips the current user has joined, ordered by conversation activity, and each row opens directly into that trip's chat. Tapping the chat header from there opens the same Trip Page (Overview/Transport/Dives tabs) — one shared screen/route, not a separate "joined trip" view, so the marketplace framing (a trip is always a trip, joined or not) doesn't get buried under a messaging mental model. `Trips` tab and its empty state are deferred until join (step 6) exists.
 
-Build order being followed: Discovery list (done) → Trip Page detail (done) → stub auth + join (done) → Trips tab (= chats) + chat screen (done, REST-only) → realtime via Centrifugo → real Apple/Google auth → transport board → richer Discovery/profile fields. Logbook, Dives sub-tab, and the dive-center web admin are explicitly deferred past all of this.
+Build order being followed: Discovery list (done) → Trip Page detail (done) → stub auth + join (done) → Trips tab (= chats) + chat screen (done) → realtime via Centrifugo (done) → real Apple/Google auth → transport board → richer Discovery/profile fields. Logbook, Dives sub-tab, and the dive-center web admin are explicitly deferred past all of this.
 
 ## Stack
 
@@ -30,7 +30,7 @@ Build order being followed: Discovery list (done) → Trip Page detail (done) �
 | App (mobile + web) | Flutter — single codebase, mobile-first design, builds to iOS/Android/Web |
 | Admin (future, for dive centers) | Flutter, same codebase family |
 | Backend | Go, PostgreSQL |
-| Chat | REST for persistence now; realtime delivery via **Centrifugo** (self-hosted, open-source pub/sub) planned as a follow-up step |
+| Chat | REST for persistence; realtime delivery via **Centrifugo** (self-hosted, open-source pub/sub) |
 | Deploy | DigitalOcean |
 
 ## Repo structure
@@ -77,11 +77,17 @@ make migrate-down     # roll back one migration
 
 Migrations live in `backend/migrations/`. In compose mode, the `migrate` service runs automatically before you'd run the API.
 
+#### Centrifugo (realtime chat)
+
+Runs as a compose service (`centrifugo/centrifugo:v5`) on `127.0.0.1:8000`, config at `backend/centrifugo/config.json` (non-secret: just the `trip` namespace with `allow_subscribe_for_client: true`, so any authenticated connection can subscribe to any `trip:*` channel — fine since trip chat isn't sensitive across participants; tighten later with a subscribe proxy if needed). Secrets (`CENTRIFUGO_API_KEY`, `CENTRIFUGO_TOKEN_SECRET`) come from `.env`, same values the Go backend uses to publish/mint tokens.
+
+**v5 vs v6 config gotcha (already hit once)**: most current Centrifugo docs describe v6's nested config schema (e.g. `channel.namespaces`, `http_api_key`). This project pins **v5** (`centrifugo/centrifugo:v5`), which uses a flatter schema: top-level `namespaces` array, and `api_key` (not `http_api_key`) for the HTTP API key env var. Check Centrifugo's version-tagged source (`internal/config` / `main.go` in the matching git tag) rather than trusting the latest docs if something's rejected as an "unknown key" — Centrifugo logs those at startup (`docker compose logs centrifugo`), which is how this got caught.
+
 ### Stub auth
 
 No real auth yet — every route except `POST /trips`, `GET /trips`, and `GET /health` requires an `X-User-Id: <uuid>` header (`withUser` middleware; 401 if missing/invalid). The server upserts a `users` row for that id on first sight (`user.Service.GetOrCreate`). The client generates and persists this id locally (see `UserIdentityService` below) — swap for a real JWT-derived user id once Apple/Google Sign-In lands, no schema change needed since `users.id` is already the join key everywhere.
 
-Endpoints so far: `POST/GET /trips`, `GET /trips/{id}` (includes `joined` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant).
+Endpoints so far: `POST/GET /trips`, `GET /trips/{id}` (includes `joined` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant), `GET /realtime/token` (mints a Centrifugo connection JWT for the caller).
 
 ### Packages (`backend/internal/`)
 
@@ -93,6 +99,7 @@ Endpoints so far: `POST/GET /trips`, `GET /trips/{id}` (includes `joined` for th
 | `trip` | Trip domain: model, repository, service (create/list/get/join/isJoined/listJoinedByUser) |
 | `user` | Stub identity: `GetOrCreate` upserts by client-supplied `X-User-Id` |
 | `message` | Chat messages: model, repository, service (send/list per trip) |
+| `realtime` | `Publisher` (POST to Centrifugo `/api/publish`), `TokenIssuer` (mints connection JWTs, HS256) |
 
 ### App (`app/`)
 
@@ -114,10 +121,10 @@ Features: `ui/features/trips/` (Explore list, Trip Page detail + join), `ui/feat
 | Domain | `domain/entities/` | `Trip`, `ChatMessage` (freezed) |
 | Data | `data/models/` | `TripApiModel`, `ChatMessageApiModel` (freezed + json_serializable) |
 | Data | `data/mappers/` | `*ApiMapper.toDomain()` extensions |
-| Data | `data/services/` | `TripApiService`, `ChatApiService` (attach `X-User-Id` header), `UserIdentityService` (persists a client-generated uuid via `shared_preferences`) |
-| Data | `data/repositories/` | `TripRepository`, `ChatRepository` |
+| Data | `data/services/` | `TripApiService`, `ChatApiService` (attach `X-User-Id` header), `UserIdentityService` (persists a client-generated uuid via `shared_preferences`), `RealtimeService` (wraps a single shared `centrifuge.Client`, `subscribe`/`unsubscribe` per channel) |
+| Data | `data/repositories/` | `TripRepository`, `ChatRepository` (incl. `getRealtimeToken()`) |
 | UI | `ui/features/trips/view_models/` `/views/` | `TripsListViewModel`/`TripsListView` (Explore), `TripViewModel`/`TripPage` (detail + join) |
-| UI | `ui/features/chats/view_models/` `/views/` | `MyTripsViewModel`/`MyTripsView` (Trips tab), `ChatViewModel`/`ChatView` |
+| UI | `ui/features/chats/view_models/` `/views/` | `MyTripsViewModel`/`MyTripsView` (Trips tab), `ChatViewModel`/`ChatView` — subscribes to `trip:$tripId` on `load()`, dedupes incoming publications by message id (own sent messages already arrive via the post-send REST reload), unsubscribes in `dispose()` (called explicitly from `ChatView.dispose()`, ChangeNotifier's `dispose` isn't auto-invoked by Flutter) |
 | UI | `ui/features/profile/views/` | `ProfileView` (placeholder) |
 
 DI is manual (constructed in `main.dart` / `RootShell.initState`) — no `get_it`/`provider` yet, added only if wiring gets unwieldy across more features.

@@ -8,15 +8,16 @@ import (
 	"time"
 
 	"divebuddy_be/internal/message"
+	"divebuddy_be/internal/realtime"
 	"divebuddy_be/internal/trip"
 	"divebuddy_be/internal/user"
 
 	"github.com/google/uuid"
 )
 
-func registerMessageRoutes(mux *http.ServeMux, svc *message.Service, tripSvc *trip.Service, userSvc *user.Service) {
+func registerMessageRoutes(mux *http.ServeMux, svc *message.Service, tripSvc *trip.Service, userSvc *user.Service, publisher *realtime.Publisher) {
 	mux.HandleFunc("GET /trips/{id}/messages", withUser(userSvc, handleListMessages(svc, tripSvc)))
-	mux.HandleFunc("POST /trips/{id}/messages", withUser(userSvc, handleSendMessage(svc, tripSvc)))
+	mux.HandleFunc("POST /trips/{id}/messages", withUser(userSvc, handleSendMessage(svc, tripSvc, publisher)))
 }
 
 type messageResponse struct {
@@ -81,7 +82,7 @@ type sendMessageRequest struct {
 	Body string `json:"body"`
 }
 
-func handleSendMessage(svc *message.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleSendMessage(svc *message.Service, tripSvc *trip.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
 		if !ok {
@@ -105,6 +106,10 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service) func(http.Re
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, toMessageResponse(m))
+		resp := toMessageResponse(m)
+		// Best-effort — REST already persisted the message, realtime push is not required for correctness.
+		_ = publisher.Publish(r.Context(), "trip:"+tripID.String(), resp)
+
+		writeJSON(w, http.StatusCreated, resp)
 	}
 }

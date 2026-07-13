@@ -25,6 +25,14 @@ class ChatApiService {
         .toList();
   }
 
+  Future<String> fetchRealtimeToken() async {
+    final res = await _client.get(Uri.parse('$baseUrl/realtime/token'), headers: _headers);
+    if (res.statusCode != 200) {
+      throw Exception('fetchRealtimeToken failed: ${res.statusCode} ${res.body}');
+    }
+    return (jsonDecode(res.body) as Map<String, dynamic>)['token'] as String;
+  }
+
   Future<void> sendMessage(String tripId, String body) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/trips/$tripId/messages'),

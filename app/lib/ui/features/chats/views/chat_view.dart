@@ -34,6 +34,7 @@ class _ChatViewState extends State<ChatView> {
   @override
   void dispose() {
     _textController.dispose();
+    widget.viewModel.dispose();
     super.dispose();
   }
 

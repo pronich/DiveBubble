@@ -30,5 +30,17 @@ services:
         condition: service_healthy
     restart: "no"
 
+  centrifugo:
+    image: centrifugo/centrifugo:v5
+    command: centrifugo --config=/centrifugo/config.json
+    volumes:
+      - ./centrifugo/config.json:/centrifugo/config.json:ro
+    ports:
+      - "127.0.0.1:${CENTRIFUGO_PORT:-8000}:8000"
+    environment:
+      CENTRIFUGO_API_KEY: "${CENTRIFUGO_API_KEY:-devkey}"
+      CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: "${CENTRIFUGO_TOKEN_SECRET:-devsecret}"
+    restart: unless-stopped
+
 volumes:
   postgres_data:

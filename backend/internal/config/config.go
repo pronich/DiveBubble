@@ -9,8 +9,11 @@ import (
 )
 
 type Config struct {
-	Port        string
-	DatabaseURL string
+	Port                  string
+	DatabaseURL           string
+	CentrifugoURL         string
+	CentrifugoAPIKey      string
+	CentrifugoTokenSecret string
 }
 
 func Load() Config {
@@ -22,10 +25,24 @@ func Load() Config {
 		port = "8080"
 	}
 
-	databaseURL := os.Getenv("DATABASE_URL")
-	if strings.TrimSpace(databaseURL) == "" {
-		log.Fatal("config: DATABASE_URL is required")
-	}
+	databaseURL := require("DATABASE_URL")
+	centrifugoURL := require("CENTRIFUGO_URL")
+	centrifugoAPIKey := require("CENTRIFUGO_API_KEY")
+	centrifugoTokenSecret := require("CENTRIFUGO_TOKEN_SECRET")
 
-	return Config{Port: port, DatabaseURL: databaseURL}
+	return Config{
+		Port:                  port,
+		DatabaseURL:           databaseURL,
+		CentrifugoURL:         centrifugoURL,
+		CentrifugoAPIKey:      centrifugoAPIKey,
+		CentrifugoTokenSecret: centrifugoTokenSecret,
+	}
+}
+
+func require(key string) string {
+	v := os.Getenv(key)
+	if strings.TrimSpace(v) == "" {
+		log.Fatalf("config: %s is required", key)
+	}
+	return v
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
+import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/trip.dart';
 import '../view_models/chat_view_model.dart';
 import '../view_models/my_trips_view_model.dart';
@@ -13,6 +14,7 @@ class MyTripsView extends StatefulWidget {
     required this.viewModel,
     required this.chatRepository,
     required this.tripRepository,
+    required this.realtimeService,
     required this.currentUserId,
     required this.onGoToExplore,
   });
@@ -20,6 +22,7 @@ class MyTripsView extends StatefulWidget {
   final MyTripsViewModel viewModel;
   final ChatRepository chatRepository;
   final TripRepository tripRepository;
+  final RealtimeService realtimeService;
   final String currentUserId;
   final VoidCallback onGoToExplore;
 
@@ -77,6 +80,7 @@ class _MyTripsViewState extends State<MyTripsView> {
         builder: (_) => ChatView(
           viewModel: ChatViewModel(
             repository: widget.chatRepository,
+            realtimeService: widget.realtimeService,
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),

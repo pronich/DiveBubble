@@ -13,4 +13,6 @@ class ChatRepository {
   }
 
   Future<void> sendMessage(String tripId, String body) => _service.sendMessage(tripId, body);
+
+  Future<String> getRealtimeToken() => _service.fetchRealtimeToken();
 }

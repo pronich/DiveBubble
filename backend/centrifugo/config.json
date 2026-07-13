@@ -1,0 +1,5 @@
+{
+  "namespaces": [
+    { "name": "trip", "allow_subscribe_for_client": true }
+  ]
+}
