@@ -31,7 +31,7 @@ Go-to-market: start by running trips personally (partnering with dive center **K
 
 ```
 DiveBuddy/
-  app/        # Flutter app — iOS, Android, Web (not yet scaffolded)
+  app/        # Flutter app — iOS, Android, Web (default counter app, verified on iOS simulator)
   admin/      # Flutter admin panel for dive centers (future phase)
   backend/    # Go API — GET /health, POST/GET /trips (Postgres-backed)
 ```
@@ -82,7 +82,11 @@ Migrations live in `backend/migrations/`. In compose mode, the `migrate` service
 
 ### App (`app/`)
 
-Not yet scaffolded. Will run independently via `flutter run` from `app/` — no dependency on the backend Makefile above.
+```bash
+cd app && flutter run     # pick a device/simulator interactively, or -d <id>
+```
+
+Runs independently of the backend — no shared tooling with the `backend/` Makefile above. Currently the unmodified `flutter create` skeleton (default counter app), just confirming the toolchain (Xcode/iOS simulator) works end to end. `org` is `io.divebuddy`.
 
 ## Architecture
 

@@ -4,7 +4,6 @@ app/.flutter-plugin-dependencies
 app/build/
 app/.pub-cache/
 app/.pub/
-app/pubspec.lock
 **/ios/Pods/
 **/ios/.symlinks/
 **/ios/Flutter/Flutter.framework
