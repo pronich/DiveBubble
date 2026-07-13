@@ -33,7 +33,7 @@ Go-to-market: start by running trips personally (partnering with dive center **K
 DiveBuddy/
   app/        # Flutter app — iOS, Android, Web (not yet scaffolded)
   admin/      # Flutter admin panel for dive centers (future phase)
-  backend/    # Go API — scaffolded, no DB yet (GET /health only)
+  backend/    # Go API — GET /health, POST/GET /trips (Postgres-backed)
 ```
 
 ## Build & Development
@@ -48,7 +48,37 @@ make dev-stop         # stop background process
 make dev-logs         # tail ./bin/app.log
 ```
 
-Local server runs on `http://localhost:8080` by default (`PORT` env var overrides). No Postgres/docker-compose/migrations yet — added when the first table lands.
+Local server runs on `http://localhost:8080` by default (`PORT` env var overrides). Requires `DATABASE_URL` (see `.env.example` → copy to `.env`).
+
+#### Docker Compose (Postgres + migrations)
+
+```bash
+make compose-up       # starts postgres, applies migrations automatically
+make compose-down
+make compose-logs
+```
+
+Postgres is exposed on `127.0.0.1:5433` for local `make dev`/`make dev-run`.
+
+#### Database Migrations
+
+Requires `golang-migrate` CLI (`brew install golang-migrate`). `DATABASE_URL` must be set in `.env`.
+
+```bash
+make migrate-up       # apply all pending migrations
+make migrate-down     # roll back one migration
+```
+
+Migrations live in `backend/migrations/`. In compose mode, the `migrate` service runs automatically before you'd run the API.
+
+### Packages (`backend/internal/`)
+
+| Package | Responsibility |
+|---|---|
+| `server` | HTTP router, route registration, handlers |
+| `config` | Env-var loading (`.env` via godotenv) |
+| `db` | Database connection pool (pgx) |
+| `trip` | Trip domain: model, repository, service |
 
 ### App (`app/`)
 

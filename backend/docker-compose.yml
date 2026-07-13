@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-divebuddy}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-divebuddy}"
+      POSTGRES_DB: "${POSTGRES_DB:-divebuddy}"
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-divebuddy} -d ${POSTGRES_DB:-divebuddy}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  migrate:
+    image: migrate/migrate:v4.18.3
+    volumes:
+      - ./migrations:/migrations:ro
+    command:
+      - "-path=/migrations"
+      - "-database=${DATABASE_URL_COMPOSE:-postgres://${POSTGRES_USER:-divebuddy}:${POSTGRES_PASSWORD:-divebuddy}@postgres:5432/${POSTGRES_DB:-divebuddy}?sslmode=disable}"
+      - "up"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  postgres_data:
