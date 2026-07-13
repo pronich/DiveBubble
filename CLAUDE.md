@@ -29,14 +29,30 @@ Go-to-market: start by running trips personally (partnering with dive center **K
 
 ## Repo structure
 
-Repo is freshly initialized; layout below is the plan, not yet scaffolded:
-
 ```
 DiveBuddy/
-  app/        # Flutter app — iOS, Android, Web
+  app/        # Flutter app — iOS, Android, Web (not yet scaffolded)
   admin/      # Flutter admin panel for dive centers (future phase)
-  backend/    # Go API + PostgreSQL
+  backend/    # Go API — scaffolded, no DB yet (GET /health only)
 ```
+
+## Build & Development
+
+### Backend (`backend/`)
+
+```bash
+make dev              # go run . — hot-reload not included, restart manually
+make dev-build        # compile to ./bin/app
+make dev-run          # build + run in background, logs to ./bin/app.log
+make dev-stop         # stop background process
+make dev-logs         # tail ./bin/app.log
+```
+
+Local server runs on `http://localhost:8080` by default (`PORT` env var overrides). No Postgres/docker-compose/migrations yet — added when the first table lands.
+
+### App (`app/`)
+
+Not yet scaffolded. Will run independently via `flutter run` from `app/` — no dependency on the backend Makefile above.
 
 ## Architecture
 
