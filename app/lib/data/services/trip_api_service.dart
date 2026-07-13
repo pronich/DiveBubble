@@ -21,4 +21,12 @@ class TripApiService {
         .map((e) => TripApiModel.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  Future<TripApiModel> fetchTrip(String id) async {
+    final res = await _client.get(Uri.parse('$baseUrl/trips/$id'));
+    if (res.statusCode != 200) {
+      throw Exception('fetchTrip failed: ${res.statusCode} ${res.body}');
+    }
+    return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
 }

@@ -24,7 +24,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'DiveBuddy',
       theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
-      home: TripsListView(viewModel: tripsListViewModel),
+      home: TripsListView(
+        viewModel: tripsListViewModel,
+        tripRepository: tripRepository,
+      ),
     );
   }
 }

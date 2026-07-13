@@ -15,6 +15,7 @@ import (
 func registerTripRoutes(mux *http.ServeMux, svc *trip.Service) {
 	mux.HandleFunc("POST /trips", handleCreateTrip(svc))
 	mux.HandleFunc("GET /trips", handleListTrips(svc))
+	mux.HandleFunc("GET /trips/{id}", handleGetTrip(svc))
 }
 
 type tripResponse struct {
@@ -61,6 +62,26 @@ func handleCreateTrip(svc *trip.Service) http.HandlerFunc {
 		}
 
 		writeJSON(w, http.StatusCreated, toTripResponse(t))
+	}
+}
+
+func handleGetTrip(svc *trip.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		t, err := svc.GetTrip(r.Context(), r.PathValue("id"))
+		if err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			if errors.Is(err, trip.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "trip not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not get trip")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, toTripResponse(t))
 	}
 }
 

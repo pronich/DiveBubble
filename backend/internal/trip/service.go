@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 var ErrInvalidArgument = errors.New("invalid argument")
@@ -28,4 +30,12 @@ func (s *Service) CreateTrip(ctx context.Context, title, location string, startT
 
 func (s *Service) ListTrips(ctx context.Context) ([]Trip, error) {
 	return s.Repo.List(ctx)
+}
+
+func (s *Service) GetTrip(ctx context.Context, id string) (Trip, error) {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return Trip{}, ErrInvalidArgument
+	}
+	return s.Repo.GetByID(ctx, tripID)
 }

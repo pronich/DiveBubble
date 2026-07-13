@@ -17,6 +17,12 @@ MVP scope (deliberately small — logbook and dive-center self-service publishin
 
 Go-to-market: start by running trips personally (partnering with dive center **KingFish** for promotion) rather than waiting for a two-sided marketplace to bootstrap itself. Once there's an active user base, invite KingFish (then other dive centers) to publish their own trips directly.
 
+## Navigation / IA
+
+Bottom nav (v1): **Explore — Trips — Profile**. Key decision: **a joined trip *is* its chat** — no separate chat entity. "Explore" is the discovery list (all open trips); "Trips" lists only trips the current user has joined, ordered by conversation activity, and each row opens directly into that trip's chat. Tapping the chat header from there opens the same Trip Page (Overview/Transport/Dives tabs) — one shared screen/route, not a separate "joined trip" view, so the marketplace framing (a trip is always a trip, joined or not) doesn't get buried under a messaging mental model. `Trips` tab and its empty state are deferred until join (step 6) exists.
+
+Build order being followed: Discovery list (done) → Trip Page detail (done) → stub auth + join → Trips tab (= chats) + chat screen → real Apple/Google auth → transport board → richer Discovery/profile fields. Logbook, Dives sub-tab, and the dive-center web admin are explicitly deferred past all of this.
+
 ## Stack
 
 | Layer | Tech |
@@ -31,9 +37,9 @@ Go-to-market: start by running trips personally (partnering with dive center **K
 
 ```
 DiveBuddy/
-  app/        # Flutter app — iOS, Android, Web (trips list screen, MVVM, verified on iOS simulator)
+  app/        # Flutter app — iOS, Android, Web (Explore list + Trip Page detail, MVVM, verified on iOS simulator)
   admin/      # Flutter admin panel for dive centers (future phase)
-  backend/    # Go API — GET /health, POST/GET /trips (Postgres-backed)
+  backend/    # Go API — GET /health, POST/GET /trips, GET /trips/{id} (Postgres-backed)
 ```
 
 ## Build & Development
@@ -89,7 +95,7 @@ dart run build_runner build --delete-conflicting-outputs   # regenerate freezed/
 
 Runs independently of the backend — no shared tooling with the `backend/` Makefile above. Points at `http://localhost:8080` (hardcoded `_apiBaseUrl` in `main.dart` for now — works on iOS simulator/web since they share the host's localhost; Android emulator will need `10.0.2.2` once that's exercised). `org` is `io.divebuddy`.
 
-First feature: trips list (`ui/features/trips/`), fetching `GET /trips` from the backend in step 2.
+First feature: `ui/features/trips/` — Explore list (`TripsListView`, `GET /trips`) and Trip Page detail (`TripPage`, `GET /trips/{id}`), tap-to-navigate wired between them.
 
 ### App layers (`app/lib/`)
 
@@ -98,10 +104,10 @@ First feature: trips list (`ui/features/trips/`), fetching `GET /trips` from the
 | Domain | `domain/entities/` | `Trip` (freezed) |
 | Data | `data/models/` | `TripApiModel` (freezed + json_serializable) |
 | Data | `data/mappers/` | `TripApiMapper.toDomain()` |
-| Data | `data/services/` | `TripApiService` (http GET /trips) |
+| Data | `data/services/` | `TripApiService` (http GET /trips, GET /trips/{id}) |
 | Data | `data/repositories/` | `TripRepository` |
-| UI | `ui/features/trips/view_models/` | `TripsListViewModel` (ChangeNotifier) |
-| UI | `ui/features/trips/views/` | `TripsListView` |
+| UI | `ui/features/trips/view_models/` | `TripsListViewModel`, `TripViewModel` (ChangeNotifier) |
+| UI | `ui/features/trips/views/` | `TripsListView` (Explore), `TripPage` (detail) |
 
 DI is manual (constructed directly in `main.dart`) — no `get_it`/`provider` yet, added only if wiring gets unwieldy across more features.
 

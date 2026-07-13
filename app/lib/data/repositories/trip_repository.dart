@@ -11,4 +11,9 @@ class TripRepository {
     final apiModels = await _service.fetchTrips();
     return apiModels.map((m) => m.toDomain()).toList();
   }
+
+  Future<Trip> getTrip(String id) async {
+    final apiModel = await _service.fetchTrip(id);
+    return apiModel.toDomain();
+  }
 }

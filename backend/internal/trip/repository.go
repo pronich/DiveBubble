@@ -3,8 +3,13 @@ package trip
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
+
+	"github.com/google/uuid"
 )
+
+var ErrNotFound = errors.New("trip not found")
 
 type Repository struct {
 	DB *sql.DB
@@ -12,6 +17,22 @@ type Repository struct {
 
 func NewRepository(db *sql.DB) *Repository {
 	return &Repository{DB: db}
+}
+
+func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Trip, error) {
+	var t Trip
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT id, title, location, start_time, created_at
+		FROM trips
+		WHERE id = $1
+	`, id).Scan(&t.ID, &t.Title, &t.Location, &t.StartTime, &t.CreatedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Trip{}, ErrNotFound
+		}
+		return Trip{}, err
+	}
+	return t, nil
 }
 
 func (r *Repository) Create(ctx context.Context, title, location string, startTime time.Time) (Trip, error) {
