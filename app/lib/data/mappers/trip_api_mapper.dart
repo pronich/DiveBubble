@@ -7,5 +7,6 @@ extension TripApiMapper on TripApiModel {
         title: title,
         location: location,
         startTime: startTime,
+        joined: joined,
       );
 }

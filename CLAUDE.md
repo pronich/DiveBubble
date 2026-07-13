@@ -136,5 +136,7 @@ Only a light theme exists — Figma's Colors page doesn't specify a dark variant
 ## Git workflow
 
 - Final branch: **develop**
-- Push `develop` to remote directly, then open a PR manually via the GitHub UI. Do not merge locally into any branch beyond `develop`.
-- Feature work branches off `develop`.
+- New work happens on a feature branch off `develop`, not directly on `develop`.
+- Merge the feature branch into `develop` locally (no PR), then push `develop`.
+- Commit messages: short, e.g. "Added design system" — not multi-paragraph bodies.
+- Code comments: one line max — what it is and why, not a paragraph.

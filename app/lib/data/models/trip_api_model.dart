@@ -11,6 +11,7 @@ abstract class TripApiModel with _$TripApiModel {
     required String location,
     required DateTime startTime,
     required DateTime createdAt,
+    required bool joined,
   }) = _TripApiModel;
 
   factory TripApiModel.fromJson(Map<String, dynamic> json) =>

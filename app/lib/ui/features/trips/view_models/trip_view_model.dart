@@ -20,6 +20,9 @@ class TripViewModel extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  bool _isJoining = false;
+  bool get isJoining => _isJoining;
+
   Future<void> load() async {
     _isLoading = true;
     _error = null;
@@ -31,6 +34,21 @@ class TripViewModel extends ChangeNotifier {
       _error = e.toString();
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> join() async {
+    _isJoining = true;
+    notifyListeners();
+
+    try {
+      await _repository.joinTrip(_tripId);
+      _trip = await _repository.getTrip(_tripId);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isJoining = false;
       notifyListeners();
     }
   }

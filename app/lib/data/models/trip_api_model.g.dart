@@ -13,6 +13,7 @@ _TripApiModel _$TripApiModelFromJson(Map<String, dynamic> json) =>
       location: json['location'] as String,
       startTime: DateTime.parse(json['startTime'] as String),
       createdAt: DateTime.parse(json['createdAt'] as String),
+      joined: json['joined'] as bool,
     );
 
 Map<String, dynamic> _$TripApiModelToJson(_TripApiModel instance) =>
@@ -22,4 +23,5 @@ Map<String, dynamic> _$TripApiModelToJson(_TripApiModel instance) =>
       'location': instance.location,
       'startTime': instance.startTime.toIso8601String(),
       'createdAt': instance.createdAt.toIso8601String(),
+      'joined': instance.joined,
     };

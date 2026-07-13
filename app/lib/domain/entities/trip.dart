@@ -9,5 +9,6 @@ abstract class Trip with _$Trip {
     required String title,
     required String location,
     required DateTime startTime,
+    required bool joined,
   }) = _Trip;
 }

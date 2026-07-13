@@ -2,23 +2,28 @@ import 'package:flutter/material.dart';
 
 import 'data/repositories/trip_repository.dart';
 import 'data/services/trip_api_service.dart';
+import 'data/services/user_identity_service.dart';
 import 'ui/core/theme/app_theme.dart';
 import 'ui/features/trips/view_models/trips_list_view_model.dart';
 import 'ui/features/trips/views/trips_list_view.dart';
 
 const _apiBaseUrl = 'http://localhost:8080';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final userId = await UserIdentityService().getOrCreateId();
+  runApp(MyApp(userId: userId));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.userId});
+
+  final String userId;
 
   @override
   Widget build(BuildContext context) {
     final tripRepository = TripRepository(
-      service: TripApiService(baseUrl: _apiBaseUrl),
+      service: TripApiService(baseUrl: _apiBaseUrl, userId: userId),
     );
     final tripsListViewModel = TripsListViewModel(repository: tripRepository);
 

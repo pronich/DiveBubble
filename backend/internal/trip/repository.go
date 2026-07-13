@@ -72,3 +72,21 @@ func (r *Repository) List(ctx context.Context) ([]Trip, error) {
 	}
 	return trips, rows.Err()
 }
+
+// Join is idempotent — re-joining an already-joined trip is a no-op.
+func (r *Repository) Join(ctx context.Context, tripID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `
+		INSERT INTO trip_participants (trip_id, user_id)
+		VALUES ($1, $2)
+		ON CONFLICT (trip_id, user_id) DO NOTHING
+	`, tripID, userID)
+	return err
+}
+
+func (r *Repository) IsJoined(ctx context.Context, tripID, userID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM trip_participants WHERE trip_id = $1 AND user_id = $2)
+	`, tripID, userID).Scan(&exists)
+	return exists, err
+}

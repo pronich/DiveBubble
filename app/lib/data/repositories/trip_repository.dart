@@ -16,4 +16,6 @@ class TripRepository {
     final apiModel = await _service.fetchTrip(id);
     return apiModel.toDomain();
   }
+
+  Future<void> joinTrip(String id) => _service.joinTrip(id);
 }

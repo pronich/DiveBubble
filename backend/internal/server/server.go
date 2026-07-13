@@ -6,15 +6,17 @@ import (
 
 	"divebuddy_be/internal/config"
 	"divebuddy_be/internal/trip"
+	"divebuddy_be/internal/user"
 )
 
 func New(cfg config.Config, db *sql.DB) http.Handler {
 	tripRepo := trip.NewRepository(db)
 	tripSvc := trip.NewService(tripRepo)
+	userSvc := user.NewService(user.NewRepository(db))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)
-	registerTripRoutes(mux, tripSvc)
+	registerTripRoutes(mux, tripSvc, userSvc)
 	return mux
 }
 

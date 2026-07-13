@@ -39,3 +39,22 @@ func (s *Service) GetTrip(ctx context.Context, id string) (Trip, error) {
 	}
 	return s.Repo.GetByID(ctx, tripID)
 }
+
+func (s *Service) Join(ctx context.Context, id string, userID uuid.UUID) error {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return ErrInvalidArgument
+	}
+	if _, err := s.Repo.GetByID(ctx, tripID); err != nil {
+		return err
+	}
+	return s.Repo.Join(ctx, tripID, userID)
+}
+
+func (s *Service) IsJoined(ctx context.Context, id string, userID uuid.UUID) (bool, error) {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return false, ErrInvalidArgument
+	}
+	return s.Repo.IsJoined(ctx, tripID, userID)
+}

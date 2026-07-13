@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Trip {
 
- String get id; String get title; String get location; DateTime get startTime;
+ String get id; String get title; String get location; DateTime get startTime; bool get joined;
 /// Create a copy of Trip
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $TripCopyWith<Trip> get copyWith => _$TripCopyWithImpl<Trip>(this as Trip, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Trip&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Trip&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.joined, joined) || other.joined == joined));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,title,location,startTime);
+int get hashCode => Object.hash(runtimeType,id,title,location,startTime,joined);
 
 @override
 String toString() {
-  return 'Trip(id: $id, title: $title, location: $location, startTime: $startTime)';
+  return 'Trip(id: $id, title: $title, location: $location, startTime: $startTime, joined: $joined)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $TripCopyWith<$Res>  {
   factory $TripCopyWith(Trip value, $Res Function(Trip) _then) = _$TripCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, String location, DateTime startTime
+ String id, String title, String location, DateTime startTime, bool joined
 });
 
 
@@ -62,13 +62,14 @@ class _$TripCopyWithImpl<$Res>
 
 /// Create a copy of Trip
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? joined = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
 as String,startTime: null == startTime ? _self.startTime : startTime // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,joined: null == joined ? _self.joined : joined // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -153,10 +154,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  bool joined)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Trip() when $default != null:
-return $default(_that.id,_that.title,_that.location,_that.startTime);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined);case _:
   return orElse();
 
 }
@@ -174,10 +175,10 @@ return $default(_that.id,_that.title,_that.location,_that.startTime);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  bool joined)  $default,) {final _that = this;
 switch (_that) {
 case _Trip():
-return $default(_that.id,_that.title,_that.location,_that.startTime);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -194,10 +195,10 @@ return $default(_that.id,_that.title,_that.location,_that.startTime);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String location,  DateTime startTime)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String location,  DateTime startTime,  bool joined)?  $default,) {final _that = this;
 switch (_that) {
 case _Trip() when $default != null:
-return $default(_that.id,_that.title,_that.location,_that.startTime);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined);case _:
   return null;
 
 }
@@ -209,13 +210,14 @@ return $default(_that.id,_that.title,_that.location,_that.startTime);case _:
 
 
 class _Trip implements Trip {
-  const _Trip({required this.id, required this.title, required this.location, required this.startTime});
+  const _Trip({required this.id, required this.title, required this.location, required this.startTime, required this.joined});
   
 
 @override final  String id;
 @override final  String title;
 @override final  String location;
 @override final  DateTime startTime;
+@override final  bool joined;
 
 /// Create a copy of Trip
 /// with the given fields replaced by the non-null parameter values.
@@ -227,16 +229,16 @@ _$TripCopyWith<_Trip> get copyWith => __$TripCopyWithImpl<_Trip>(this, _$identit
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Trip&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Trip&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.joined, joined) || other.joined == joined));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,title,location,startTime);
+int get hashCode => Object.hash(runtimeType,id,title,location,startTime,joined);
 
 @override
 String toString() {
-  return 'Trip(id: $id, title: $title, location: $location, startTime: $startTime)';
+  return 'Trip(id: $id, title: $title, location: $location, startTime: $startTime, joined: $joined)';
 }
 
 
@@ -247,7 +249,7 @@ abstract mixin class _$TripCopyWith<$Res> implements $TripCopyWith<$Res> {
   factory _$TripCopyWith(_Trip value, $Res Function(_Trip) _then) = __$TripCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, String location, DateTime startTime
+ String id, String title, String location, DateTime startTime, bool joined
 });
 
 
@@ -264,13 +266,14 @@ class __$TripCopyWithImpl<$Res>
 
 /// Create a copy of Trip
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? joined = null,}) {
   return _then(_Trip(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
 as String,startTime: null == startTime ? _self.startTime : startTime // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,joined: null == joined ? _self.joined : joined // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

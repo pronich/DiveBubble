@@ -47,6 +47,20 @@ class _TripPageState extends State<TripPage> {
               Text(trip.location, style: Theme.of(context).textTheme.bodyLarge),
               const SizedBox(height: 4),
               Text('${trip.startTime.toLocal()}'),
+              const SizedBox(height: 24),
+              if (trip.joined)
+                const Chip(label: Text('Joined'))
+              else
+                ElevatedButton(
+                  onPressed: widget.viewModel.isJoining ? null : widget.viewModel.join,
+                  child: widget.viewModel.isJoining
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Join'),
+                ),
             ],
           );
         },

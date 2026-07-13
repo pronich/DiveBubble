@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TripApiModel {
 
- String get id; String get title; String get location; DateTime get startTime; DateTime get createdAt;
+ String get id; String get title; String get location; DateTime get startTime; DateTime get createdAt; bool get joined;
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $TripApiModelCopyWith<TripApiModel> get copyWith => _$TripApiModelCopyWithImpl<T
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joined, joined) || other.joined == joined));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,title,location,startTime,createdAt);
+int get hashCode => Object.hash(runtimeType,id,title,location,startTime,createdAt,joined);
 
 @override
 String toString() {
-  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt)';
+  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt, joined: $joined)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $TripApiModelCopyWith<$Res>  {
   factory $TripApiModelCopyWith(TripApiModel value, $Res Function(TripApiModel) _then) = _$TripApiModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, String location, DateTime startTime, DateTime createdAt
+ String id, String title, String location, DateTime startTime, DateTime createdAt, bool joined
 });
 
 
@@ -65,14 +65,15 @@ class _$TripApiModelCopyWithImpl<$Res>
 
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,Object? joined = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
 as String,startTime: null == startTime ? _self.startTime : startTime // ignore: cast_nullable_to_non_nullable
 as DateTime,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,joined: null == joined ? _self.joined : joined // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -157,10 +158,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TripApiModel() when $default != null:
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined);case _:
   return orElse();
 
 }
@@ -178,10 +179,10 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.create
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined)  $default,) {final _that = this;
 switch (_that) {
 case _TripApiModel():
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -198,10 +199,10 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.create
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined)?  $default,) {final _that = this;
 switch (_that) {
 case _TripApiModel() when $default != null:
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined);case _:
   return null;
 
 }
@@ -213,7 +214,7 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.create
 @JsonSerializable()
 
 class _TripApiModel implements TripApiModel {
-  const _TripApiModel({required this.id, required this.title, required this.location, required this.startTime, required this.createdAt});
+  const _TripApiModel({required this.id, required this.title, required this.location, required this.startTime, required this.createdAt, required this.joined});
   factory _TripApiModel.fromJson(Map<String, dynamic> json) => _$TripApiModelFromJson(json);
 
 @override final  String id;
@@ -221,6 +222,7 @@ class _TripApiModel implements TripApiModel {
 @override final  String location;
 @override final  DateTime startTime;
 @override final  DateTime createdAt;
+@override final  bool joined;
 
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
@@ -235,16 +237,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joined, joined) || other.joined == joined));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,title,location,startTime,createdAt);
+int get hashCode => Object.hash(runtimeType,id,title,location,startTime,createdAt,joined);
 
 @override
 String toString() {
-  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt)';
+  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt, joined: $joined)';
 }
 
 
@@ -255,7 +257,7 @@ abstract mixin class _$TripApiModelCopyWith<$Res> implements $TripApiModelCopyWi
   factory _$TripApiModelCopyWith(_TripApiModel value, $Res Function(_TripApiModel) _then) = __$TripApiModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, String location, DateTime startTime, DateTime createdAt
+ String id, String title, String location, DateTime startTime, DateTime createdAt, bool joined
 });
 
 
@@ -272,14 +274,15 @@ class __$TripApiModelCopyWithImpl<$Res>
 
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,Object? joined = null,}) {
   return _then(_TripApiModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
 as String,location: null == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
 as String,startTime: null == startTime ? _self.startTime : startTime // ignore: cast_nullable_to_non_nullable
 as DateTime,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,joined: null == joined ? _self.joined : joined // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
