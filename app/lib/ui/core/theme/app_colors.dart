@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Raw design tokens, 1:1 with the Figma "Colors" page
-/// (file jgNXK7udS3SrZJkqjcmwss, node 1:191). This is the source of truth —
-/// [ThemeData]/[ColorScheme] in `app_theme.dart` is a derived mapping of
-/// these values onto Material 3 roles, not the other way around. Reach for
-/// these constants directly when a widget needs a token that has no clean
-/// Material role (e.g. `textTertiary`, `textOnLightBlue`).
+/// Design tokens from Figma (jgNXK7udS3SrZJkqjcmwss, node 1:191) — source of truth for app_theme.dart's ColorScheme.
 abstract final class AppColors {
   // Backgrounds / surfaces
   static const bgBase = Color(0xFFF4F7FC);

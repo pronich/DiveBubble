@@ -116,8 +116,7 @@ abstract final class AppTheme {
   }
 }
 
-/// Destructive action button style (e.g. "Leave group") — not a distinct
-/// Material widget type, applied on top of ElevatedButton/TextButton as needed.
+/// Destructive/ghost button styles — no dedicated Material widget for these.
 abstract final class AppButtonStyles {
   static final destructive = ElevatedButton.styleFrom(
     backgroundColor: AppColors.buttonDestructive,

@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Fraunces (warm, characterful serif) for display/headline moments —
-/// splash, trip titles, empty states. Inter (clean, high x-height grotesk)
-/// for everything else — dense lists, dates, chat — where legibility at
-/// small sizes matters more than character.
+/// Fraunces for display/headline (brand warmth), Inter for the rest (legibility at small sizes).
 abstract final class AppTextTheme {
   static TextTheme build(Color onSurface) {
     final base = GoogleFonts.interTextTheme();

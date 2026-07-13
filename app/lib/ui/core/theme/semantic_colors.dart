@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'app_colors.dart';
 
-/// Success/warning/info/neutral tokens — Material 3's [ColorScheme] has no
-/// slots for these, so they're exposed as a [ThemeExtension] instead.
-/// Access via `Theme.of(context).extension<SemanticColors>()!`.
+/// success/warning/info/neutral tokens — ColorScheme has no roles for these.
 @immutable
 class SemanticColors extends ThemeExtension<SemanticColors> {
   const SemanticColors({
