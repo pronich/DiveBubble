@@ -31,7 +31,7 @@ Go-to-market: start by running trips personally (partnering with dive center **K
 
 ```
 DiveBuddy/
-  app/        # Flutter app — iOS, Android, Web (default counter app, verified on iOS simulator)
+  app/        # Flutter app — iOS, Android, Web (trips list screen, MVVM, verified on iOS simulator)
   admin/      # Flutter admin panel for dive centers (future phase)
   backend/    # Go API — GET /health, POST/GET /trips (Postgres-backed)
 ```
@@ -83,10 +83,29 @@ Migrations live in `backend/migrations/`. In compose mode, the `migrate` service
 ### App (`app/`)
 
 ```bash
-cd app && flutter run     # pick a device/simulator interactively, or -d <id>
+cd app && flutter run                          # pick a device/simulator interactively, or -d <id>
+dart run build_runner build --delete-conflicting-outputs   # regenerate freezed/json_serializable code after editing models/entities
 ```
 
-Runs independently of the backend — no shared tooling with the `backend/` Makefile above. Currently the unmodified `flutter create` skeleton (default counter app), just confirming the toolchain (Xcode/iOS simulator) works end to end. `org` is `io.divebuddy`.
+Runs independently of the backend — no shared tooling with the `backend/` Makefile above. Points at `http://localhost:8080` (hardcoded `_apiBaseUrl` in `main.dart` for now — works on iOS simulator/web since they share the host's localhost; Android emulator will need `10.0.2.2` once that's exercised). `org` is `io.divebuddy`.
+
+First feature: trips list (`ui/features/trips/`), fetching `GET /trips` from the backend in step 2.
+
+### App layers (`app/lib/`)
+
+| Layer | Path | Contents |
+|---|---|---|
+| Domain | `domain/entities/` | `Trip` (freezed) |
+| Data | `data/models/` | `TripApiModel` (freezed + json_serializable) |
+| Data | `data/mappers/` | `TripApiMapper.toDomain()` |
+| Data | `data/services/` | `TripApiService` (http GET /trips) |
+| Data | `data/repositories/` | `TripRepository` |
+| UI | `ui/features/trips/view_models/` | `TripsListViewModel` (ChangeNotifier) |
+| UI | `ui/features/trips/views/` | `TripsListView` |
+
+DI is manual (constructed directly in `main.dart`) — no `get_it`/`provider` yet, added only if wiring gets unwieldy across more features.
+
+Generated `*.freezed.dart`/`*.g.dart` files are committed (not gitignored) so a fresh clone can `flutter run` without a `build_runner` step first. Re-run `dart run build_runner build --delete-conflicting-outputs` and commit the diff whenever a `@freezed`/`fromJson` model changes.
 
 ## Architecture
 

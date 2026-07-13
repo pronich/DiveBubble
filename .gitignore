@@ -10,8 +10,6 @@ app/.pub/
 **/ios/Flutter/Flutter.podspec
 **/android/.gradle/
 **/android/local.properties
-*.g.dart
-*.freezed.dart
 
 # Go
 backend/bin/
