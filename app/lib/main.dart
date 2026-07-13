@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'data/repositories/trip_repository.dart';
 import 'data/services/trip_api_service.dart';
+import 'ui/core/theme/app_theme.dart';
 import 'ui/features/trips/view_models/trips_list_view_model.dart';
 import 'ui/features/trips/views/trips_list_view.dart';
 
@@ -23,7 +24,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       title: 'DiveBuddy',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)),
+      theme: AppTheme.light,
       home: TripsListView(
         viewModel: tripsListViewModel,
         tripRepository: tripRepository,
