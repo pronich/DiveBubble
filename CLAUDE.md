@@ -21,7 +21,7 @@ Go-to-market: start by running trips personally (partnering with dive center **K
 
 Bottom nav (v1): **Explore — Trips — Profile**. Key decision: **a joined trip *is* its chat** — no separate chat entity. "Explore" is the discovery list (all open trips); "Trips" lists only trips the current user has joined, ordered by conversation activity, and each row opens directly into that trip's chat. Tapping the chat header from there opens the same Trip Page (Overview/Transport/Dives tabs) — one shared screen/route, not a separate "joined trip" view, so the marketplace framing (a trip is always a trip, joined or not) doesn't get buried under a messaging mental model. `Trips` tab and its empty state are deferred until join (step 6) exists.
 
-Build order being followed: Discovery list (done) → Trip Page detail (done) → stub auth + join → Trips tab (= chats) + chat screen → real Apple/Google auth → transport board → richer Discovery/profile fields. Logbook, Dives sub-tab, and the dive-center web admin are explicitly deferred past all of this.
+Build order being followed: Discovery list (done) → Trip Page detail (done) → stub auth + join (done) → Trips tab (= chats) + chat screen (done, REST-only) → realtime via Centrifugo → real Apple/Google auth → transport board → richer Discovery/profile fields. Logbook, Dives sub-tab, and the dive-center web admin are explicitly deferred past all of this.
 
 ## Stack
 
@@ -30,16 +30,16 @@ Build order being followed: Discovery list (done) → Trip Page detail (done) �
 | App (mobile + web) | Flutter — single codebase, mobile-first design, builds to iOS/Android/Web |
 | Admin (future, for dive centers) | Flutter, same codebase family |
 | Backend | Go, PostgreSQL |
-| Chat | Managed/off-the-shelf WebSocket library — do not build chat infra from scratch |
+| Chat | REST for persistence now; realtime delivery via **Centrifugo** (self-hosted, open-source pub/sub) planned as a follow-up step |
 | Deploy | DigitalOcean |
 
 ## Repo structure
 
 ```
 DiveBuddy/
-  app/        # Flutter app — iOS, Android, Web (Explore list + Trip Page detail, MVVM, verified on iOS simulator)
+  app/        # Flutter app — Explore/Trips/Profile bottom nav, chat, MVVM, verified on iOS simulator
   admin/      # Flutter admin panel for dive centers (future phase)
-  backend/    # Go API — GET /health, POST/GET /trips, GET /trips/{id} (Postgres-backed)
+  backend/    # Go API — trips, join, chat messages (Postgres-backed)
 ```
 
 ## Build & Development
@@ -77,14 +77,22 @@ make migrate-down     # roll back one migration
 
 Migrations live in `backend/migrations/`. In compose mode, the `migrate` service runs automatically before you'd run the API.
 
+### Stub auth
+
+No real auth yet — every route except `POST /trips`, `GET /trips`, and `GET /health` requires an `X-User-Id: <uuid>` header (`withUser` middleware; 401 if missing/invalid). The server upserts a `users` row for that id on first sight (`user.Service.GetOrCreate`). The client generates and persists this id locally (see `UserIdentityService` below) — swap for a real JWT-derived user id once Apple/Google Sign-In lands, no schema change needed since `users.id` is already the join key everywhere.
+
+Endpoints so far: `POST/GET /trips`, `GET /trips/{id}` (includes `joined` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant).
+
 ### Packages (`backend/internal/`)
 
 | Package | Responsibility |
 |---|---|
-| `server` | HTTP router, route registration, handlers |
+| `server` | HTTP router, route registration, handlers, `withUser` stub-auth middleware |
 | `config` | Env-var loading (`.env` via godotenv) |
 | `db` | Database connection pool (pgx) |
-| `trip` | Trip domain: model, repository, service |
+| `trip` | Trip domain: model, repository, service (create/list/get/join/isJoined/listJoinedByUser) |
+| `user` | Stub identity: `GetOrCreate` upserts by client-supplied `X-User-Id` |
+| `message` | Chat messages: model, repository, service (send/list per trip) |
 
 ### App (`app/`)
 
@@ -95,21 +103,24 @@ dart run build_runner build --delete-conflicting-outputs   # regenerate freezed/
 
 Runs independently of the backend — no shared tooling with the `backend/` Makefile above. Points at `http://localhost:8080` (hardcoded `_apiBaseUrl` in `main.dart` for now — works on iOS simulator/web since they share the host's localhost; Android emulator will need `10.0.2.2` once that's exercised). `org` is `io.divebuddy`.
 
-First feature: `ui/features/trips/` — Explore list (`TripsListView`, `GET /trips`) and Trip Page detail (`TripPage`, `GET /trips/{id}`), tap-to-navigate wired between them.
+Top-level shell: `ui/core/navigation/root_shell.dart` — `RootShell` holds the Explore/Trips/Profile `NavigationBar` + an `IndexedStack`. **Gotcha already hit once**: construct each tab's ViewModel exactly once (as a `late final` field on `_RootShellState`, e.g. via `initState` or field initializer) — building them inline inside `build()` hands the tab a fresh, unloaded ViewModel on every rebuild (any `setState`, including switching tabs), silently wiping already-loaded data. `TripsListView`/`MyTripsView` etc. don't re-run `initState` on rebuild, so a swapped-out `widget.viewModel` is never reloaded.
+
+Features: `ui/features/trips/` (Explore list, Trip Page detail + join), `ui/features/chats/` (Trips tab = joined-trips list, chat screen), `ui/features/profile/` (placeholder).
 
 ### App layers (`app/lib/`)
 
 | Layer | Path | Contents |
 |---|---|---|
-| Domain | `domain/entities/` | `Trip` (freezed) |
-| Data | `data/models/` | `TripApiModel` (freezed + json_serializable) |
-| Data | `data/mappers/` | `TripApiMapper.toDomain()` |
-| Data | `data/services/` | `TripApiService` (http GET /trips, GET /trips/{id}) |
-| Data | `data/repositories/` | `TripRepository` |
-| UI | `ui/features/trips/view_models/` | `TripsListViewModel`, `TripViewModel` (ChangeNotifier) |
-| UI | `ui/features/trips/views/` | `TripsListView` (Explore), `TripPage` (detail) |
+| Domain | `domain/entities/` | `Trip`, `ChatMessage` (freezed) |
+| Data | `data/models/` | `TripApiModel`, `ChatMessageApiModel` (freezed + json_serializable) |
+| Data | `data/mappers/` | `*ApiMapper.toDomain()` extensions |
+| Data | `data/services/` | `TripApiService`, `ChatApiService` (attach `X-User-Id` header), `UserIdentityService` (persists a client-generated uuid via `shared_preferences`) |
+| Data | `data/repositories/` | `TripRepository`, `ChatRepository` |
+| UI | `ui/features/trips/view_models/` `/views/` | `TripsListViewModel`/`TripsListView` (Explore), `TripViewModel`/`TripPage` (detail + join) |
+| UI | `ui/features/chats/view_models/` `/views/` | `MyTripsViewModel`/`MyTripsView` (Trips tab), `ChatViewModel`/`ChatView` |
+| UI | `ui/features/profile/views/` | `ProfileView` (placeholder) |
 
-DI is manual (constructed directly in `main.dart`) — no `get_it`/`provider` yet, added only if wiring gets unwieldy across more features.
+DI is manual (constructed in `main.dart` / `RootShell.initState`) — no `get_it`/`provider` yet, added only if wiring gets unwieldy across more features.
 
 Generated `*.freezed.dart`/`*.g.dart` files are committed (not gitignored) so a fresh clone can `flutter run` without a `build_runner` step first. Re-run `dart run build_runner build --delete-conflicting-outputs` and commit the diff whenever a `@freezed`/`fromJson` model changes.
 

@@ -16,6 +16,7 @@ import (
 func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, userSvc *user.Service) {
 	mux.HandleFunc("POST /trips", handleCreateTrip(svc))
 	mux.HandleFunc("GET /trips", handleListTrips(svc))
+	mux.HandleFunc("GET /trips/mine", withUser(userSvc, handleListMyTrips(svc)))
 	mux.HandleFunc("GET /trips/{id}", withUser(userSvc, handleGetTrip(svc)))
 	mux.HandleFunc("POST /trips/{id}/join", withUser(userSvc, handleJoinTrip(svc)))
 }
@@ -113,6 +114,22 @@ func handleJoinTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, 
 		}
 
 		writeJSON(w, http.StatusOK, map[string]bool{"joined": true})
+	}
+}
+
+func handleListMyTrips(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		trips, err := svc.ListJoinedByUser(r.Context(), userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not list trips")
+			return
+		}
+
+		out := make([]tripResponse, 0, len(trips))
+		for _, t := range trips {
+			out = append(out, toTripResponse(t, true))
+		}
+		writeJSON(w, http.StatusOK, out)
 	}
 }
 

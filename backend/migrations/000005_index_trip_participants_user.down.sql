@@ -1,0 +1,1 @@
+DROP INDEX idx_trip_participants_user;

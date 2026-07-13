@@ -18,4 +18,9 @@ class TripRepository {
   }
 
   Future<void> joinTrip(String id) => _service.joinTrip(id);
+
+  Future<List<Trip>> getMyTrips() async {
+    final apiModels = await _service.fetchMyTrips();
+    return apiModels.map((m) => m.toDomain()).toList();
+  }
 }

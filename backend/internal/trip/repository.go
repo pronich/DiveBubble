@@ -90,3 +90,28 @@ func (r *Repository) IsJoined(ctx context.Context, tripID, userID uuid.UUID) (bo
 	`, tripID, userID).Scan(&exists)
 	return exists, err
 }
+
+// ListJoinedByUser orders by joined_at until real "last message" ordering exists.
+func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]Trip, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT t.id, t.title, t.location, t.start_time, t.created_at
+		FROM trips t
+		JOIN trip_participants tp ON tp.trip_id = t.id
+		WHERE tp.user_id = $1
+		ORDER BY tp.joined_at DESC
+	`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	trips := []Trip{}
+	for rows.Next() {
+		var t Trip
+		if err := rows.Scan(&t.ID, &t.Title, &t.Location, &t.StartTime, &t.CreatedAt); err != nil {
+			return nil, err
+		}
+		trips = append(trips, t)
+	}
+	return trips, rows.Err()
+}

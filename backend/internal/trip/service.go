@@ -58,3 +58,7 @@ func (s *Service) IsJoined(ctx context.Context, id string, userID uuid.UUID) (bo
 	}
 	return s.Repo.IsJoined(ctx, tripID, userID)
 }
+
+func (s *Service) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]Trip, error) {
+	return s.Repo.ListJoinedByUser(ctx, userID)
+}

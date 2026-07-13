@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'data/repositories/chat_repository.dart';
 import 'data/repositories/trip_repository.dart';
+import 'data/services/chat_api_service.dart';
 import 'data/services/trip_api_service.dart';
 import 'data/services/user_identity_service.dart';
+import 'ui/core/navigation/root_shell.dart';
 import 'ui/core/theme/app_theme.dart';
-import 'ui/features/trips/view_models/trips_list_view_model.dart';
-import 'ui/features/trips/views/trips_list_view.dart';
 
 const _apiBaseUrl = 'http://localhost:8080';
 
@@ -25,14 +26,17 @@ class MyApp extends StatelessWidget {
     final tripRepository = TripRepository(
       service: TripApiService(baseUrl: _apiBaseUrl, userId: userId),
     );
-    final tripsListViewModel = TripsListViewModel(repository: tripRepository);
+    final chatRepository = ChatRepository(
+      service: ChatApiService(baseUrl: _apiBaseUrl, userId: userId),
+    );
 
     return MaterialApp(
       title: 'DiveBuddy',
       theme: AppTheme.light,
-      home: TripsListView(
-        viewModel: tripsListViewModel,
+      home: RootShell(
         tripRepository: tripRepository,
+        chatRepository: chatRepository,
+        currentUserId: userId,
       ),
     );
   }

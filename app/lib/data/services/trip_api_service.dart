@@ -33,6 +33,17 @@ class TripApiService {
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
+  Future<List<TripApiModel>> fetchMyTrips() async {
+    final res = await _client.get(Uri.parse('$baseUrl/trips/mine'), headers: _headers);
+    if (res.statusCode != 200) {
+      throw Exception('fetchMyTrips failed: ${res.statusCode} ${res.body}');
+    }
+    final decoded = jsonDecode(res.body) as List<dynamic>;
+    return decoded
+        .map((e) => TripApiModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<void> joinTrip(String id) async {
     final res = await _client.post(Uri.parse('$baseUrl/trips/$id/join'), headers: _headers);
     if (res.statusCode != 200) {
