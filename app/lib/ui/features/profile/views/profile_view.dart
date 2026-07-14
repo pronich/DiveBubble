@@ -7,7 +7,7 @@ class ProfileView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(title: Text('Profile', style: Theme.of(context).textTheme.headlineSmall)),
       body: const Center(child: Text('Coming soon')),
     );
   }

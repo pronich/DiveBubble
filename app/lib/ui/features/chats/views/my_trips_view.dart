@@ -47,7 +47,7 @@ class _MyTripsViewState extends State<MyTripsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Trips')),
+      appBar: AppBar(title: Text('Trips', style: Theme.of(context).textTheme.headlineSmall)),
       body: ListenableBuilder(
         listenable: widget.viewModel,
         builder: (context, _) {
