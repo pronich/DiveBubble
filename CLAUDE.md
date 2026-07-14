@@ -126,7 +126,7 @@ Endpoints so far: `POST /trips` (auth required), `GET /trips` (open), `GET /trip
 
 SQL `CHECK` constraints enforce `dive_count_max >= dive_count_min`, `depth_max_m >= depth_min_m`, and `max_participants > 0` at the DB level (all nullable-safe).
 
-Trip Page renders these as: a MEET/LEVEL/DEPTH/SEATS info grid (DEPTH tile omitted entirely when both depth fields are null, rather than shown empty — the grid is a manually-built `Row`/`Column`, not `GridView.count`, after a shrinkWrap sizing bug left a phantom empty row above the tiles), a dive-count line, an "About this dive" block, and a Join button that becomes a disabled "Trip full"/"Trip cancelled" chip when `bookingStatus` isn't `open`.
+Trip Page layout, top to bottom: title, location, date (`formatDateRange`, date only — no time here), a **Meeting point** section (own block, not a grid tile, since the address text can be long: shows meeting *time* + `meetingPoint` falling back to `location`), then an info grid — **LEVEL / DEPTH / DIVES / DURATION** (DEPTH and DIVES tiles omitted entirely when their fields are null rather than shown empty; DURATION is computed client-side from `startTime`/`endDate`, always shown; the grid is a manually-built `Row`/`Column`, not `GridView.count`, after a shrinkWrap sizing bug left a phantom empty row above the tiles) — then "About this dive", the Organizer card, a participants line ("`N` people out of `M` joined" when `maxParticipants` is set, else "`N` people joined"), and a Join button that becomes a disabled "Trip full"/"Trip cancelled" chip when `bookingStatus` isn't `open`. Seats/capacity deliberately isn't a grid tile — it lives in that participants line instead, per product decision.
 
 ### Packages (`backend/internal/`)
 

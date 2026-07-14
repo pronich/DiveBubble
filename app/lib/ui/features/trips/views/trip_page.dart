@@ -50,7 +50,6 @@ class _TripPageState extends State<TripPage> {
 
           final theme = Theme.of(context);
           final isOrganizer = trip.creatorUserId == widget.viewModel.currentUserId;
-          final diveCountText = _diveCountText(trip);
 
           return ListView(
             padding: EdgeInsets.zero,
@@ -87,23 +86,20 @@ class _TripPageState extends State<TripPage> {
                         Icon(Icons.calendar_today_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
                         const SizedBox(width: 4),
                         Text(
-                          '${formatDateRange(trip.startTime, trip.endDate)} · ${formatTime(trip.startTime)}',
+                          formatDateRange(trip.startTime, trip.endDate),
                           style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
+                    Text('MEETING POINT', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
+                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 16),
                     _InfoGrid(trip: trip),
-                    if (diveCountText != null) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(Icons.scuba_diving_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
-                          const SizedBox(width: 4),
-                          Text(diveCountText, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                        ],
-                      ),
-                    ],
                     if (trip.description != null) ...[
                       const SizedBox(height: 20),
                       Text('About this dive', style: theme.textTheme.labelLarge),
@@ -112,6 +108,17 @@ class _TripPageState extends State<TripPage> {
                     ],
                     const SizedBox(height: 20),
                     _OrganizerCard(isOrganizer: isOrganizer),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.groups_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Text(
+                          _participantsText(trip),
+                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 24),
                     _JoinButton(trip: trip, viewModel: widget.viewModel),
                   ],
@@ -124,16 +131,13 @@ class _TripPageState extends State<TripPage> {
     );
   }
 
-  String? _diveCountText(Trip trip) {
-    final min = trip.diveCountMin;
-    final max = trip.diveCountMax;
-    if (min == null && max == null) return null;
-    if (min != null && max != null) {
-      if (min == max) return min == 1 ? '1 dive' : '$min dives';
-      return '$min–$max dives';
+  String _participantsText(Trip trip) {
+    final count = trip.participantCount;
+    final people = count == 1 ? 'person' : 'people';
+    if (trip.maxParticipants != null) {
+      return '$count $people out of ${trip.maxParticipants} joined';
     }
-    if (max != null) return 'Up to $max dives';
-    return '$min+ dives';
+    return '$count $people joined';
   }
 }
 
@@ -145,18 +149,10 @@ class _InfoGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = <Widget>[
-      _InfoTile(
-        label: 'MEET',
-        value: '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
-      ),
       _InfoTile(label: 'LEVEL', value: trip.minCertification ?? 'Open to all'),
       if (_depthText(trip) != null) _InfoTile(label: 'DEPTH', value: _depthText(trip)!),
-      _InfoTile(
-        label: 'SEATS',
-        value: trip.maxParticipants != null
-            ? '${trip.participantCount} of ${trip.maxParticipants}'
-            : '${trip.participantCount} joined',
-      ),
+      if (_diveCountText(trip) != null) _InfoTile(label: 'DIVES', value: _diveCountText(trip)!),
+      _InfoTile(label: 'DURATION', value: _durationText(trip)),
     ];
 
     final rows = <Widget>[];
@@ -185,6 +181,29 @@ class _InfoGrid extends StatelessWidget {
     }
     if (max != null) return 'Up to $max m';
     return '$min+ m';
+  }
+
+  static String? _diveCountText(Trip trip) {
+    final min = trip.diveCountMin;
+    final max = trip.diveCountMax;
+    if (min == null && max == null) return null;
+    if (min != null && max != null) {
+      if (min == max) return min == 1 ? '1 dive' : '$min dives';
+      return '$min–$max dives';
+    }
+    if (max != null) return 'Up to $max dives';
+    return '$min+ dives';
+  }
+
+  static String _durationText(Trip trip) {
+    final end = trip.endDate;
+    if (end == null) return '1 day';
+    final start = trip.startTime.toLocal();
+    final endLocal = end.toLocal();
+    final startDate = DateTime(start.year, start.month, start.day);
+    final endDateOnly = DateTime(endLocal.year, endLocal.month, endLocal.day);
+    final days = endDateOnly.difference(startDate).inDays + 1;
+    return days == 1 ? '1 day' : '$days days';
   }
 }
 
