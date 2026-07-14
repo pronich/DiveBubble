@@ -1,20 +1,28 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/profile_repository.dart';
+import '../../profile/view_models/profile_view_model.dart';
+import '../../profile/views/edit_profile_page.dart';
 
-/// Google/Apple sign-in choice sheet, opened from the intro screen's "Dive in" button.
+/// Google/Apple sign-in choice sheet, opened from anywhere a gated action needs a signed-in user.
 /// Apple is a UI-only stub until App Store Connect registration lands.
 class LoginSheet extends StatefulWidget {
-  const LoginSheet({super.key, required this.authRepository});
+  const LoginSheet({super.key, required this.authRepository, required this.profileRepository});
 
   final AuthRepository authRepository;
+  final ProfileRepository profileRepository;
 
   /// Returns true if the user completed sign-in, false if they dismissed the sheet.
-  static Future<bool> show(BuildContext context, {required AuthRepository authRepository}) async {
+  static Future<bool> show(
+    BuildContext context, {
+    required AuthRepository authRepository,
+    required ProfileRepository profileRepository,
+  }) async {
     final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => LoginSheet(authRepository: authRepository),
+      builder: (_) => LoginSheet(authRepository: authRepository, profileRepository: profileRepository),
     );
     return result ?? false;
   }
@@ -33,7 +41,25 @@ class _LoginSheetState extends State<LoginSheet> {
       _error = null;
     });
     try {
-      await widget.authRepository.signInWithGoogle();
+      final result = await widget.authRepository.signInWithGoogle();
+      if (!mounted) return;
+
+      if (result.isNewUser) {
+        // Quick onboarding: a brand-new account has nothing filled in yet, so go
+        // straight to Edit Profile instead of leaving them on an empty screen.
+        final profile = await widget.profileRepository.getProfile();
+        if (mounted) {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => EditProfilePage(
+                viewModel: ProfileViewModel(repository: widget.profileRepository),
+                profile: profile,
+              ),
+            ),
+          );
+        }
+      }
+
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;

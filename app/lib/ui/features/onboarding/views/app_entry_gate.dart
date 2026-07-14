@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/services/onboarding_state_service.dart';
 import '../../../core/theme/app_gradients.dart';
 import 'intro_view.dart';
@@ -11,9 +12,15 @@ enum _Phase { loading, intro, staticSplash, app }
 /// Root gate: first-ever launch gets the animated bubble intro; returning users (already past
 /// intro) get a quick static "B" splash instead, then either way land on [rootShellBuilder].
 class AppEntryGate extends StatefulWidget {
-  const AppEntryGate({super.key, required this.authRepository, required this.rootShellBuilder});
+  const AppEntryGate({
+    super.key,
+    required this.authRepository,
+    required this.profileRepository,
+    required this.rootShellBuilder,
+  });
 
   final AuthRepository authRepository;
+  final ProfileRepository profileRepository;
 
   /// currentUserId is the real signed-in user's id if logged in, or '' for an anonymous/browsing
   /// session — resolved fresh right before entering the app, not fixed at app startup, since
@@ -62,7 +69,11 @@ class _AppEntryGateState extends State<AppEntryGate> {
       case _Phase.loading:
         return const Scaffold(body: DecoratedBox(decoration: BoxDecoration(gradient: AppGradients.brand)));
       case _Phase.intro:
-        return IntroView(authRepository: widget.authRepository, onDone: _completeIntro);
+        return IntroView(
+          authRepository: widget.authRepository,
+          profileRepository: widget.profileRepository,
+          onDone: _completeIntro,
+        );
       case _Phase.staticSplash:
         return StaticSplashView(onDone: _completeStaticSplash);
       case _Phase.app:

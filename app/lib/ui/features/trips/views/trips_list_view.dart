@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
@@ -20,12 +21,14 @@ class TripsListView extends StatefulWidget {
     required this.viewModel,
     required this.tripRepository,
     required this.authRepository,
+    required this.profileRepository,
     required this.currentUserId,
   });
 
   final TripsListViewModel viewModel;
   final TripRepository tripRepository;
   final AuthRepository authRepository;
+  final ProfileRepository profileRepository;
   final String currentUserId;
 
   @override
@@ -155,6 +158,7 @@ class _TripsListViewState extends State<TripsListView> {
           viewModel: TripViewModel(
             repository: widget.tripRepository,
             authRepository: widget.authRepository,
+            profileRepository: widget.profileRepository,
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),
@@ -164,7 +168,7 @@ class _TripsListViewState extends State<TripsListView> {
   }
 
   Future<void> _openCreateTrip(BuildContext context) async {
-    final userId = await ensureSignedIn(context, widget.authRepository);
+    final userId = await ensureSignedIn(context, widget.authRepository, widget.profileRepository);
     if (userId == null || !context.mounted) return;
 
     Navigator.of(context).push(
@@ -179,6 +183,7 @@ class _TripsListViewState extends State<TripsListView> {
                   viewModel: TripViewModel(
                     repository: widget.tripRepository,
                     authRepository: widget.authRepository,
+                    profileRepository: widget.profileRepository,
                     tripId: trip.id,
                     currentUserId: userId,
                   ),

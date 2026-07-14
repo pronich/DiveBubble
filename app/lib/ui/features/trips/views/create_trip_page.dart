@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/formatting/date_format.dart';
 import '../view_models/create_trip_view_model.dart';
@@ -20,7 +21,6 @@ class _CreateTripPageState extends State<CreateTripPage> {
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _meetingPointController = TextEditingController();
-  final _minCertificationController = TextEditingController();
   final _depthMinController = TextEditingController();
   final _depthMaxController = TextEditingController();
   final _diveCountMinController = TextEditingController();
@@ -30,6 +30,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
   DateTime? _startDate;
   TimeOfDay? _startTimeOfDay;
   DateTime? _endDate;
+  String? _minCertification;
 
   @override
   void dispose() {
@@ -37,7 +38,6 @@ class _CreateTripPageState extends State<CreateTripPage> {
     _locationController.dispose();
     _descriptionController.dispose();
     _meetingPointController.dispose();
-    _minCertificationController.dispose();
     _depthMinController.dispose();
     _depthMaxController.dispose();
     _diveCountMinController.dispose();
@@ -97,9 +97,16 @@ class _CreateTripPageState extends State<CreateTripPage> {
                 maxLines: 3,
               ),
               const SizedBox(height: 12),
-              TextField(
-                controller: _minCertificationController,
-                decoration: const InputDecoration(labelText: 'Required level (optional)'),
+              DropdownButtonFormField<String?>(
+                initialValue: _minCertification,
+                decoration: const InputDecoration(labelText: 'Required level'),
+                style: Theme.of(context).textTheme.bodyLarge,
+                hint: const Text('Open to all'),
+                items: [
+                  const DropdownMenuItem<String?>(value: null, child: Text('Open to all')),
+                  ...kCertificationLevels.map((level) => DropdownMenuItem<String?>(value: level, child: Text(level))),
+                ],
+                onChanged: (value) => setState(() => _minCertification = value),
               ),
               const SizedBox(height: 12),
               Row(
@@ -190,7 +197,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
       endDate: _endDate,
       description: _textOrNull(_descriptionController),
       meetingPoint: _textOrNull(_meetingPointController),
-      minCertification: _textOrNull(_minCertificationController),
+      minCertification: _minCertification,
       depthMinM: _intOrNull(_depthMinController),
       depthMaxM: _intOrNull(_depthMaxController),
       diveCountMin: _intOrNull(_diveCountMinController),

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/chat_repository.dart';
+import 'data/repositories/profile_repository.dart';
 import 'data/repositories/transport_repository.dart';
 import 'data/repositories/trip_repository.dart';
 import 'data/services/auth_api_service.dart';
 import 'data/services/chat_api_service.dart';
+import 'data/services/profile_api_service.dart';
 import 'data/services/realtime_service.dart';
 import 'data/services/token_storage_service.dart';
 import 'data/services/transport_api_service.dart';
@@ -51,18 +53,23 @@ class MyApp extends StatelessWidget {
       wsUrl: _centrifugoWsUrl,
       getToken: chatRepository.getRealtimeToken,
     );
+    final profileRepository = ProfileRepository(
+      service: ProfileApiService(baseUrl: _apiBaseUrl, getAccessToken: authRepository.getValidAccessToken),
+    );
 
     return MaterialApp(
       title: 'DiveBubble',
       theme: AppTheme.light,
       home: AppEntryGate(
         authRepository: authRepository,
+        profileRepository: profileRepository,
         rootShellBuilder: (context, currentUserId) => RootShell(
           tripRepository: tripRepository,
           chatRepository: chatRepository,
           transportRepository: transportRepository,
           realtimeService: realtimeService,
           authRepository: authRepository,
+          profileRepository: profileRepository,
           currentUserId: currentUserId,
         ),
       ),

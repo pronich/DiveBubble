@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../../transport/views/transport_view.dart';
@@ -20,6 +21,7 @@ class TripConversationPage extends StatelessWidget {
     required this.tripTitle,
     required this.tripRepository,
     required this.authRepository,
+    required this.profileRepository,
   });
 
   final ChatViewModel chatViewModel;
@@ -27,6 +29,7 @@ class TripConversationPage extends StatelessWidget {
   final String tripTitle;
   final TripRepository tripRepository;
   final AuthRepository authRepository;
+  final ProfileRepository profileRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +62,7 @@ class TripConversationPage extends StatelessWidget {
           viewModel: TripViewModel(
             repository: tripRepository,
             authRepository: authRepository,
+            profileRepository: profileRepository,
             tripId: chatViewModel.tripId,
             currentUserId: chatViewModel.currentUserId,
           ),

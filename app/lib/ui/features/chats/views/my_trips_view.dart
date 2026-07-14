@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
@@ -25,6 +26,7 @@ class MyTripsView extends StatefulWidget {
     required this.transportRepository,
     required this.realtimeService,
     required this.authRepository,
+    required this.profileRepository,
     required this.currentUserId,
     required this.onGoToExplore,
   });
@@ -35,6 +37,7 @@ class MyTripsView extends StatefulWidget {
   final TransportRepository transportRepository;
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
+  final ProfileRepository profileRepository;
   final String currentUserId;
   final VoidCallback onGoToExplore;
 
@@ -80,9 +83,13 @@ class _MyTripsViewState extends State<MyTripsView> {
               icon: Icons.login,
               title: 'Sign in to see your trips',
               subtitle: 'Log in to view the trips you\'ve joined and their group chats.',
-              ctaLabel: 'Login',
+              ctaLabel: 'Dive in',
               onCtaPressed: () async {
-                final signedIn = await LoginSheet.show(context, authRepository: widget.authRepository);
+                final signedIn = await LoginSheet.show(
+                  context,
+                  authRepository: widget.authRepository,
+                  profileRepository: widget.profileRepository,
+                );
                 if (signedIn) widget.viewModel.load();
               },
             );
@@ -134,12 +141,14 @@ class _MyTripsViewState extends State<MyTripsView> {
           transportViewModel: TransportViewModel(
             repository: widget.transportRepository,
             authRepository: widget.authRepository,
+            profileRepository: widget.profileRepository,
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),
           tripTitle: trip.title,
           tripRepository: widget.tripRepository,
           authRepository: widget.authRepository,
+          profileRepository: widget.profileRepository,
         ),
       ),
     );

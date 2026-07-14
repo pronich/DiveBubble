@@ -29,6 +29,7 @@ type authLoginResponse struct {
 	AccessTokenExpiresAt time.Time `json:"accessTokenExpiresAt"`
 	RefreshToken         string    `json:"refreshToken"`
 	UserID               uuid.UUID `json:"userId"`
+	IsNewUser            bool      `json:"isNewUser"`
 }
 
 type refreshRequest struct {
@@ -64,7 +65,7 @@ func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, se
 			return
 		}
 
-		userID, err := identities.LoginOrRegister(r.Context(), "google", identity.Sub, identity.Email)
+		userID, isNewUser, err := identities.LoginOrRegister(r.Context(), "google", identity.Sub, identity.Email, identity.Name, identity.Picture)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not resolve user")
 			return
@@ -94,6 +95,7 @@ func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, se
 			AccessTokenExpiresAt: accessExp,
 			RefreshToken:         rawRefresh,
 			UserID:               userID,
+			IsNewUser:            isNewUser,
 		})
 	}
 }

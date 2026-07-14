@@ -8,12 +8,14 @@ class GoogleSignInResult {
     required this.accessTokenExpiresAt,
     required this.refreshToken,
     required this.userId,
+    required this.isNewUser,
   });
 
   final String accessToken;
   final DateTime accessTokenExpiresAt;
   final String refreshToken;
   final String userId;
+  final bool isNewUser;
 }
 
 class RefreshResult {
@@ -49,6 +51,7 @@ class AuthApiService {
       accessTokenExpiresAt: DateTime.parse(decoded['accessTokenExpiresAt'] as String),
       refreshToken: decoded['refreshToken'] as String,
       userId: decoded['userId'] as String,
+      isNewUser: decoded['isNewUser'] as bool? ?? false,
     );
   }
 

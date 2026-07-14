@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/profile_repository.dart';
 import '../../../core/branding/bubble_logo_painter.dart';
 import '../../../core/branding/logo_bubbles.dart';
 import '../../../core/branding/logo_layout.dart';
@@ -13,9 +14,15 @@ import 'login_sheet.dart';
 /// Animated first-run intro: bubbles rise from the bottom of the screen and assemble into the
 /// brand "B" mark, then the title/description/CTA fade in underneath. Tap anywhere to skip ahead.
 class IntroView extends StatefulWidget {
-  const IntroView({super.key, required this.authRepository, required this.onDone});
+  const IntroView({
+    super.key,
+    required this.authRepository,
+    required this.profileRepository,
+    required this.onDone,
+  });
 
   final AuthRepository authRepository;
+  final ProfileRepository profileRepository;
 
   /// Called once the user picks Dive in (after login) or Skip — either way, onboarding is over.
   final VoidCallback onDone;
@@ -59,7 +66,11 @@ class _IntroViewState extends State<IntroView> with TickerProviderStateMixin {
   }
 
   Future<void> _diveIn(BuildContext context) async {
-    final signedIn = await LoginSheet.show(context, authRepository: widget.authRepository);
+    final signedIn = await LoginSheet.show(
+      context,
+      authRepository: widget.authRepository,
+      profileRepository: widget.profileRepository,
+    );
     if (signedIn) widget.onDone();
   }
 

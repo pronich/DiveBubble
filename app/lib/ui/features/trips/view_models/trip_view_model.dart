@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
 
@@ -8,6 +9,7 @@ class TripViewModel extends ChangeNotifier {
   TripViewModel({
     required TripRepository repository,
     required this.authRepository,
+    required this.profileRepository,
     required String tripId,
     required this.currentUserId,
   })  : _repository = repository,
@@ -16,6 +18,7 @@ class TripViewModel extends ChangeNotifier {
   final TripRepository _repository;
   final String _tripId;
   final AuthRepository authRepository;
+  final ProfileRepository profileRepository;
   final String currentUserId;
 
   Trip? _trip;

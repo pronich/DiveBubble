@@ -310,7 +310,7 @@ class _JoinButton extends StatelessWidget {
   }
 
   Future<void> _handleJoin(BuildContext context) async {
-    final userId = await ensureSignedIn(context, viewModel.authRepository);
+    final userId = await ensureSignedIn(context, viewModel.authRepository, viewModel.profileRepository);
     if (userId == null) return;
     await viewModel.join();
   }
