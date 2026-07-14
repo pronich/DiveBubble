@@ -53,13 +53,29 @@ class _TripsListViewState extends State<TripsListView> {
 
           return RefreshIndicator(
             onRefresh: widget.viewModel.loadTrips,
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: trips.length,
-              itemBuilder: (context, index) => _TripCard(
-                trip: trips[index],
-                onTap: () => _openTrip(context, trips[index]),
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const spacing = 12.0;
+                const horizontalPadding = 16.0;
+                const textBlockHeight = 76.0; // title (2 lines) + location + paddings, kept fixed so the grid's childAspectRatio is predictable
+                final cardWidth = (constraints.maxWidth - horizontalPadding * 2 - spacing) / 2;
+                final aspectRatio = cardWidth / (cardWidth + textBlockHeight);
+
+                return GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(horizontalPadding, 8, horizontalPadding, 8),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: spacing,
+                    mainAxisSpacing: spacing,
+                    childAspectRatio: aspectRatio,
+                  ),
+                  itemCount: trips.length,
+                  itemBuilder: (context, index) => _TripCard(
+                    trip: trips[index],
+                    onTap: () => _openTrip(context, trips[index]),
+                  ),
+                );
+              },
             ),
           );
         },
@@ -92,14 +108,14 @@ class _TripCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       clipBehavior: Clip.antiAlias,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: EdgeInsets.zero,
       child: InkWell(
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AspectRatio(
-              aspectRatio: 16 / 10,
+              aspectRatio: 1,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -108,37 +124,38 @@ class _TripCard extends StatelessWidget {
                     decoration: BoxDecoration(gradient: AppGradients.imageScrim),
                   ),
                   Positioned(
-                    right: 12,
-                    bottom: 12,
+                    right: 8,
+                    bottom: 8,
                     child: _DatePill(date: trip.startTime),
                   ),
                 ],
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(trip.title, style: theme.textTheme.headlineSmall),
+                  Text(
+                    trip.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.headlineSmall?.copyWith(fontSize: 16, height: 1.15),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.location_on_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                      Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
                       const SizedBox(width: 4),
-                      Text(trip.location, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                      Expanded(
+                        child: Text(
+                          trip.location,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Details', style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.primary)),
-                        Icon(Icons.arrow_forward, size: 16, color: theme.colorScheme.primary),
-                      ],
-                    ),
                   ),
                 ],
               ),
@@ -158,14 +175,14 @@ class _DatePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.inverseSurface,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         formatShortDate(date),
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onInverseSurface),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onInverseSurface),
       ),
     );
   }
