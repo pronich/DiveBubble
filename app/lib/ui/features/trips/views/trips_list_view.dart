@@ -28,79 +28,97 @@ class TripsListView extends StatefulWidget {
 }
 
 class _TripsListViewState extends State<TripsListView> {
+  bool _isScrolled = false;
+
   @override
   void initState() {
     super.initState();
     widget.viewModel.loadTrips();
   }
 
+  bool _handleScroll(ScrollNotification notification) {
+    final isScrolled = notification.metrics.pixels > 0;
+    if (isScrolled != _isScrolled) {
+      setState(() => _isScrolled = isScrolled);
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: Text('Explore', style: Theme.of(context).textTheme.headlineSmall),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: ElevatedButton.icon(
-              onPressed: () => _openCreateTrip(context),
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Create trip'),
-              style: ElevatedButton.styleFrom(
-                shape: const StadiumBorder(),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                visualDensity: VisualDensity.compact,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _ExploreHeader(
+              onCreateTrip: () => _openCreateTrip(context),
+              showShadow: _isScrolled,
+            ),
+            Expanded(
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _handleScroll,
+                child: ListenableBuilder(
+                  listenable: widget.viewModel,
+                  builder: (context, _) {
+                    if (widget.viewModel.isLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final error = widget.viewModel.error;
+                    if (error != null) {
+                      return Center(child: Text('Error: $error'));
+                    }
+
+                    final trips = widget.viewModel.trips;
+                    if (trips.isEmpty) {
+                      return const Center(child: Text('No trips yet'));
+                    }
+
+                    return RefreshIndicator(
+                      onRefresh: widget.viewModel.loadTrips,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          const spacing = 12.0;
+                          const horizontalPadding = 16.0;
+                          const textBlockHeight =
+                              64.0; // title (1 line) + location + 2 fixed badge rows + paddings, kept fixed so the grid's childAspectRatio is predictable
+                          final cardWidth =
+                              (constraints.maxWidth -
+                                  horizontalPadding * 2 -
+                                  spacing) /
+                              2;
+                          final aspectRatio =
+                              cardWidth / (cardWidth + textBlockHeight);
+
+                          return GridView.builder(
+                            padding: const EdgeInsets.fromLTRB(
+                              horizontalPadding,
+                              8,
+                              horizontalPadding,
+                              8,
+                            ),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: spacing,
+                                  mainAxisSpacing: spacing,
+                                  childAspectRatio: aspectRatio,
+                                ),
+                            itemCount: trips.length,
+                            itemBuilder: (context, index) => _TripCard(
+                              trip: trips[index],
+                              onTap: () => _openTrip(context, trips[index]),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: ListenableBuilder(
-        listenable: widget.viewModel,
-        builder: (context, _) {
-          if (widget.viewModel.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final error = widget.viewModel.error;
-          if (error != null) {
-            return Center(child: Text('Error: $error'));
-          }
-
-          final trips = widget.viewModel.trips;
-          if (trips.isEmpty) {
-            return const Center(child: Text('No trips yet'));
-          }
-
-          return RefreshIndicator(
-            onRefresh: widget.viewModel.loadTrips,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                const spacing = 12.0;
-                const horizontalPadding = 16.0;
-                const textBlockHeight = 64.0; // title (1 line) + location + 2 fixed badge rows + paddings, kept fixed so the grid's childAspectRatio is predictable
-                final cardWidth = (constraints.maxWidth - horizontalPadding * 2 - spacing) / 2;
-                final aspectRatio = cardWidth / (cardWidth + textBlockHeight);
-
-                return GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(horizontalPadding, 8, horizontalPadding, 8),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: spacing,
-                    mainAxisSpacing: spacing,
-                    childAspectRatio: aspectRatio,
-                  ),
-                  itemCount: trips.length,
-                  itemBuilder: (context, index) => _TripCard(
-                    trip: trips[index],
-                    onTap: () => _openTrip(context, trips[index]),
-                  ),
-                );
-              },
-            ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
@@ -144,6 +162,113 @@ class _TripsListViewState extends State<TripsListView> {
   }
 }
 
+// Search is a visual mock only (no query/filter logic exists yet) — the two quick actions below
+// deliberately reuse the calm FilledButton (light-fill) theme rather than the bold primary
+// ElevatedButton style, since Create/Join are secondary entry points most divers will ignore
+// in favor of just browsing, the same way Airbnb's category chips stay quiet under its search bar.
+class _ExploreHeader extends StatelessWidget {
+  const _ExploreHeader({required this.onCreateTrip, required this.showShadow});
+
+  final VoidCallback onCreateTrip;
+  final bool showShadow;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        boxShadow: showShadow
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : [],
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Material(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(999),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () => _showComingSoon(context),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 11,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.search,
+                      size: 20,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Search trips',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onCreateTrip,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Create trip'),
+                  style: FilledButton.styleFrom(
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => _showComingSoon(context),
+                  icon: const Icon(
+                    Icons.confirmation_number_outlined,
+                    size: 18,
+                  ),
+                  label: const Text('Join trip'),
+                  style: FilledButton.styleFrom(
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showComingSoon(BuildContext context) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Coming soon')));
+  }
+}
+
 class _TripCard extends StatelessWidget {
   const _TripCard({required this.trip, required this.onTap});
 
@@ -168,7 +293,9 @@ class _TripCard extends StatelessWidget {
                 children: [
                   Image.asset(AppAssets.tripPlaceholder, fit: BoxFit.cover),
                   const DecoratedBox(
-                    decoration: BoxDecoration(gradient: AppGradients.imageScrim),
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.imageScrim,
+                    ),
                   ),
                   Positioned(
                     right: 8,
@@ -187,19 +314,28 @@ class _TripCard extends StatelessWidget {
                     trip.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.headlineSmall?.copyWith(fontSize: 16, height: 1.15),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontSize: 16,
+                      height: 1.15,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 14,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           trip.location,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     ],
@@ -231,15 +367,37 @@ class _TripCardBadges extends StatelessWidget {
     // badge-area height regardless of which optional fields a trip actually has.
     // Level is always populated (falls back to "Open to all"), so it anchors row 1.
     final secondRow = <Widget>[
-      if (_depthText != null) _Badge(icon: Icons.waves, text: _depthText!, color: color, style: style),
-      _Badge(icon: Icons.schedule, text: _durationText, color: color, style: style),
-      if (_diveCountText != null) _Badge(icon: Icons.scuba_diving_outlined, text: _diveCountText!, color: color, style: style),
+      if (_depthText != null)
+        _Badge(
+          icon: Icons.waves,
+          text: _depthText!,
+          color: color,
+          style: style,
+        ),
+      _Badge(
+        icon: Icons.schedule,
+        text: _durationText,
+        color: color,
+        style: style,
+      ),
+      if (_diveCountText != null)
+        _Badge(
+          icon: Icons.scuba_diving_outlined,
+          text: _diveCountText!,
+          color: color,
+          style: style,
+        ),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _Badge(icon: Icons.badge_outlined, text: trip.minCertification ?? 'Open to all', color: color, style: style),
+        _Badge(
+          icon: Icons.badge_outlined,
+          text: trip.minCertification ?? 'Open to all',
+          color: color,
+          style: style,
+        ),
         const SizedBox(height: 4),
         Wrap(spacing: 8, children: secondRow),
       ],
@@ -250,7 +408,8 @@ class _TripCardBadges extends StatelessWidget {
     final min = trip.depthMinM;
     final max = trip.depthMaxM;
     if (min == null && max == null) return null;
-    if (min != null && max != null) return min == max ? '${min}m' : '$min–${max}m';
+    if (min != null && max != null)
+      return min == max ? '${min}m' : '$min–${max}m';
     return max != null ? '≤${max}m' : '${min}m+';
   }
 
@@ -275,7 +434,12 @@ class _TripCardBadges extends StatelessWidget {
 }
 
 class _Badge extends StatelessWidget {
-  const _Badge({required this.icon, required this.text, required this.color, required this.style});
+  const _Badge({
+    required this.icon,
+    required this.text,
+    required this.color,
+    required this.style,
+  });
 
   final IconData icon;
   final String text;
@@ -291,7 +455,12 @@ class _Badge extends StatelessWidget {
         const SizedBox(width: 2),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 68),
-          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
         ),
       ],
     );
@@ -313,7 +482,9 @@ class _DatePill extends StatelessWidget {
       ),
       child: Text(
         formatShortDate(date),
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onInverseSurface),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Theme.of(context).colorScheme.onInverseSurface,
+        ),
       ),
     );
   }
