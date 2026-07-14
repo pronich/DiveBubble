@@ -95,6 +95,7 @@ class _MyTripsViewState extends State<MyTripsView> {
           transportViewModel: TransportViewModel(
             repository: widget.transportRepository,
             tripId: trip.id,
+            currentUserId: widget.currentUserId,
           ),
           tripTitle: trip.title,
           tripRepository: widget.tripRepository,

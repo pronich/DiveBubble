@@ -56,4 +56,16 @@ class TransportApiService {
       throw Exception('joinOffer failed: ${res.statusCode} ${res.body}');
     }
   }
+
+  Future<List<String>> fetchJoinedUserIds(String tripId, String offerId) async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl/trips/$tripId/transport/$offerId/joins'),
+      headers: _headers,
+    );
+    if (res.statusCode != 200) {
+      throw Exception('fetchJoinedUserIds failed: ${res.statusCode} ${res.body}');
+    }
+    final decoded = jsonDecode(res.body) as List<dynamic>;
+    return decoded.map((e) => (e as Map<String, dynamic>)['userId'] as String).toList();
+  }
 }

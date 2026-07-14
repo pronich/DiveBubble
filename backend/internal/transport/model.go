@@ -10,23 +10,17 @@ import (
 type OfferType string
 
 const (
-	OfferRide    OfferType = "offer_ride"
-	ShareRental  OfferType = "share_rental"
-	SelfArranged OfferType = "self_arranged"
+	OfferRide   OfferType = "offer_ride"
+	ShareRental OfferType = "share_rental"
 )
 
 func (t OfferType) Valid() bool {
 	switch t {
-	case OfferRide, ShareRental, SelfArranged:
+	case OfferRide, ShareRental:
 		return true
 	default:
 		return false
 	}
-}
-
-// Joinable offers reserve seats for other participants — self_arranged is just an announcement.
-func (t OfferType) Joinable() bool {
-	return t == OfferRide || t == ShareRental
 }
 
 type Offer struct {

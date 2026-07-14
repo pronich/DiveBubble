@@ -9,7 +9,6 @@ import (
 )
 
 var ErrInvalidArgument = errors.New("invalid argument")
-var ErrNotJoinable = errors.New("this offer can't be joined")
 var ErrFull = errors.New("no seats left")
 
 type Service struct {
@@ -47,9 +46,6 @@ func (s *Service) Join(ctx context.Context, offerID, userID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	if !offer.Type.Joinable() {
-		return ErrNotJoinable
-	}
 
 	alreadyJoined, err := s.Repo.IsJoined(ctx, offerID, userID)
 	if err != nil {
@@ -69,4 +65,8 @@ func (s *Service) Join(ctx context.Context, offerID, userID uuid.UUID) error {
 		}
 	}
 	return s.Repo.Join(ctx, offerID, userID)
+}
+
+func (s *Service) ListJoins(ctx context.Context, offerID uuid.UUID) ([]uuid.UUID, error) {
+	return s.Repo.ListJoins(ctx, offerID)
 }

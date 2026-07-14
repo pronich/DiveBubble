@@ -4,10 +4,15 @@ import '../../../../data/repositories/transport_repository.dart';
 import '../../../../domain/entities/transport_offer.dart';
 
 class TransportViewModel extends ChangeNotifier {
-  TransportViewModel({required TransportRepository repository, required this.tripId}) : _repository = repository;
+  TransportViewModel({
+    required TransportRepository repository,
+    required this.tripId,
+    required this.currentUserId,
+  }) : _repository = repository;
 
   final TransportRepository _repository;
   final String tripId;
+  final String currentUserId;
 
   List<TransportOffer> _offers = [];
   List<TransportOffer> get offers => _offers;
@@ -70,4 +75,6 @@ class TransportViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<List<String>> getJoinedUserIds(String offerId) => _repository.getJoinedUserIds(tripId, offerId);
 }

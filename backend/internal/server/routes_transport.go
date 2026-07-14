@@ -18,6 +18,7 @@ func registerTransportRoutes(mux *http.ServeMux, svc *transport.Service, tripSvc
 	mux.HandleFunc("GET /trips/{id}/transport", withUser(userSvc, handleListTransportOffers(svc, tripSvc)))
 	mux.HandleFunc("POST /trips/{id}/transport", withUser(userSvc, handleCreateTransportOffer(svc, tripSvc)))
 	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/join", withUser(userSvc, handleJoinTransportOffer(svc, tripSvc)))
+	mux.HandleFunc("GET /trips/{id}/transport/{offerId}/joins", withUser(userSvc, handleListTransportOfferJoins(svc, tripSvc)))
 }
 
 type transportOfferResponse struct {
@@ -119,10 +120,6 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service) fun
 				writeError(w, http.StatusNotFound, "transport offer not found")
 				return
 			}
-			if errors.Is(err, transport.ErrNotJoinable) {
-				writeError(w, http.StatusBadRequest, "this offer can't be joined")
-				return
-			}
 			if errors.Is(err, transport.ErrFull) {
 				writeError(w, http.StatusConflict, "no seats left")
 				return
@@ -132,5 +129,36 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service) fun
 		}
 
 		writeJSON(w, http.StatusOK, map[string]bool{"joined": true})
+	}
+}
+
+type joinedUserResponse struct {
+	UserID uuid.UUID `json:"userId"`
+}
+
+func handleListTransportOfferJoins(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		_, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
+		if !ok {
+			return
+		}
+
+		offerID, err := uuid.Parse(r.PathValue("offerId"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid offer id")
+			return
+		}
+
+		userIDs, err := svc.ListJoins(r.Context(), offerID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not list transport offer joins")
+			return
+		}
+
+		out := make([]joinedUserResponse, 0, len(userIDs))
+		for _, id := range userIDs {
+			out = append(out, joinedUserResponse{UserID: id})
+		}
+		writeJSON(w, http.StatusOK, out)
 	}
 }

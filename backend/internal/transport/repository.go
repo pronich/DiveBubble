@@ -104,6 +104,26 @@ func (r *Repository) IsJoined(ctx context.Context, offerID, userID uuid.UUID) (b
 	return exists, err
 }
 
+func (r *Repository) ListJoins(ctx context.Context, offerID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT user_id FROM transport_offer_joins WHERE offer_id = $1 ORDER BY joined_at ASC
+	`, offerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	userIDs := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		userIDs = append(userIDs, id)
+	}
+	return userIDs, rows.Err()
+}
+
 // Join is idempotent — joining an already-joined offer is a no-op.
 func (r *Repository) Join(ctx context.Context, offerID, userID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `
