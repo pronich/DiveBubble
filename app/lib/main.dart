@@ -53,7 +53,7 @@ class MyApp extends StatelessWidget {
     );
 
     return MaterialApp(
-      title: 'DiveBuddy',
+      title: 'DiveBubble',
       theme: AppTheme.light,
       home: AppEntryGate(
         authRepository: authRepository,

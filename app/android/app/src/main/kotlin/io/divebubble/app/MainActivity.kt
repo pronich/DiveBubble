@@ -1,4 +1,4 @@
-package io.divebuddy.divebuddy
+package io.divebubble.app
 
 import io.flutter.embedding.android.FlutterActivity
 

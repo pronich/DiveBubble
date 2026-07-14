@@ -140,7 +140,7 @@ class _IntroContent extends StatelessWidget {
     return Column(
       children: [
         Text(
-          'DiveBuddy',
+          'DiveBubble',
           style: theme.textTheme.headlineLarge?.copyWith(color: Colors.white),
           textAlign: TextAlign.center,
         ),

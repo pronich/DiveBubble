@@ -1,6 +1,6 @@
 {
-    "name": "divebuddy",
-    "short_name": "divebuddy",
+    "name": "DiveBubble",
+    "short_name": "DiveBubble",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
