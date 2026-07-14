@@ -79,7 +79,7 @@ class _TripsListViewState extends State<TripsListView> {
               builder: (context, constraints) {
                 const spacing = 12.0;
                 const horizontalPadding = 16.0;
-                const textBlockHeight = 78.0; // title (1 line) + location + 2 fixed badge rows + paddings, kept fixed so the grid's childAspectRatio is predictable
+                const textBlockHeight = 64.0; // title (1 line) + location + 2 fixed badge rows + paddings, kept fixed so the grid's childAspectRatio is predictable
                 final cardWidth = (constraints.maxWidth - horizontalPadding * 2 - spacing) / 2;
                 final aspectRatio = cardWidth / (cardWidth + textBlockHeight);
 
@@ -229,7 +229,8 @@ class _TripCardBadges extends StatelessWidget {
 
     // Two fixed rows (not one flexible Wrap) so every card reserves exactly the same
     // badge-area height regardless of which optional fields a trip actually has.
-    final topRow = <Widget>[
+    // Level is always populated (falls back to "Open to all"), so it anchors row 1.
+    final secondRow = <Widget>[
       if (_depthText != null) _Badge(icon: Icons.waves, text: _depthText!, color: color, style: style),
       _Badge(icon: Icons.schedule, text: _durationText, color: color, style: style),
       if (_diveCountText != null) _Badge(icon: Icons.scuba_diving_outlined, text: _diveCountText!, color: color, style: style),
@@ -238,9 +239,9 @@ class _TripCardBadges extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(spacing: 8, children: topRow),
-        const SizedBox(height: 4),
         _Badge(icon: Icons.badge_outlined, text: trip.minCertification ?? 'Open to all', color: color, style: style),
+        const SizedBox(height: 4),
+        Wrap(spacing: 8, children: secondRow),
       ],
     );
   }
