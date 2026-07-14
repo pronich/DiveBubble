@@ -5,6 +5,7 @@ import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/app_gradients.dart';
+import '../../../core/widgets/empty_state_view.dart';
 import '../view_models/create_trip_view_model.dart';
 import '../view_models/trip_view_model.dart';
 import '../view_models/trips_list_view_model.dart';
@@ -71,7 +72,13 @@ class _TripsListViewState extends State<TripsListView> {
 
                     final trips = widget.viewModel.trips;
                     if (trips.isEmpty) {
-                      return const Center(child: Text('No trips yet'));
+                      return EmptyStateView(
+                        icon: Icons.scuba_diving_outlined,
+                        title: 'Be the first to dive in',
+                        subtitle: 'Start something new — create a trip and invite others to join.',
+                        ctaLabel: 'Create trip',
+                        onCtaPressed: () => _openCreateTrip(context),
+                      );
                     }
 
                     return RefreshIndicator(

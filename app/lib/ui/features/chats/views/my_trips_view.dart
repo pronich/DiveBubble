@@ -8,6 +8,7 @@ import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/semantic_colors.dart';
+import '../../../core/widgets/empty_state_view.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../view_models/chat_view_model.dart';
 import '../view_models/my_trips_view_model.dart';
@@ -62,7 +63,13 @@ class _MyTripsViewState extends State<MyTripsView> {
 
           final trips = widget.viewModel.trips;
           if (trips.isEmpty) {
-            return _EmptyTrips(onGetStarted: widget.onGoToExplore);
+            return EmptyStateView(
+              icon: Icons.luggage_outlined,
+              title: 'Book your first trip',
+              subtitle: 'Once you join a trip, you\'ll see it here with the group chat.',
+              ctaLabel: 'Explore trips',
+              onCtaPressed: widget.onGoToExplore,
+            );
           }
 
           return RefreshIndicator(
@@ -205,27 +212,3 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-class _EmptyTrips extends StatelessWidget {
-  const _EmptyTrips({required this.onGetStarted});
-
-  final VoidCallback onGetStarted;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('No trips yet'),
-            const SizedBox(height: 8),
-            const Text('Join a trip to start chatting with the group here.'),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: onGetStarted, child: const Text('Get started')),
-          ],
-        ),
-      ),
-    );
-  }
-}

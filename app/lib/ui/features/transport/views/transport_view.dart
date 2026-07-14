@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/transport_offer.dart';
 import '../../../core/theme/semantic_colors.dart';
+import '../../../core/widgets/empty_state_view.dart';
 import '../view_models/transport_view_model.dart';
 
 const _typeLabels = {
@@ -47,21 +48,12 @@ class _TransportViewState extends State<TransportView> {
 
           final offers = widget.viewModel.offers;
           if (offers.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('No transport offers yet'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => _openAddSheet(context),
-                      child: const Text('Add transport info'),
-                    ),
-                  ],
-                ),
-              ),
+            return EmptyStateView(
+              icon: Icons.directions_car_outlined,
+              title: 'Be the first to share transport',
+              subtitle: 'Offer a ride or share a rental so others can join you.',
+              ctaLabel: 'Add transport info',
+              onCtaPressed: () => _openAddSheet(context),
             );
           }
 
