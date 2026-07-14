@@ -17,6 +17,24 @@ MVP scope (deliberately small — logbook and dive-center self-service publishin
 
 Go-to-market: start by running trips personally (partnering with dive center **KingFish** for promotion) rather than waiting for a two-sided marketplace to bootstrap itself. Once there's an active user base, invite KingFish (then other dive centers) to publish their own trips directly.
 
+**Monetization**: free for everyone at launch — deliberately not pricing anything yet, positioning as a platform, not a marketplace taking a cut. Later phase: dive centers add a price to their trips so divers see cost upfront; further out, an Airbnb-style ~10% markup on top of the dive center's price. No pricing UI/fields until this is revisited.
+
+## Feature backlog (full scope, not yet built)
+
+Everything below is the full feature breakdown discussed for later phases — MVP intentionally implements a subset (see Product context above), enriched incrementally. Keep this section in sync if scope discussions change it; don't infer it from code, since none of it exists yet.
+
+- **Auth & onboarding**: real Login via Apple + Google (replacing stub `X-User-Id`). Minimal onboarding: splash screen → login screen, skippable (browse before signing in).
+- **Discovery card fields**: photo (or placeholder), date, location, title — filtered by proximity to user.
+- **Trip Page → Overview** (full field set, MVP only has title/location/startTime/joined so far): creator identity (dive center name or person), where, when, requirements (optional), extra description, what's included, required equipment list, booking status, meeting point, useful links.
+- **Trip Page → Chat**: participants list with avatars, pinned messages (tbd if needed). Tapping the chat header opens **Group info**: participants, organizer, rules (tbd), shared media (tbd), leave group, report.
+- **Trip Page → Transport board**: Offer a ride / Find a ride / Share a rental / I'll get there myself.
+- **Trip Page → Dives** (deferred): per-trip dive log, shareable with other participants.
+- **Trips tab**: also covers past trips (history), not just upcoming — current build only handles joined+active.
+- **Logbook** (deferred, separate from per-trip Dives): personal dive log across all trips.
+- **Profile tab**: diver profile (photo, display name, city, languages, short bio, dive count), certifications, gear locker, dive statistics, connected services, settings.
+- **Actions**: create trip, join trip, join a pre-booked trip via code (e.g. a dive center's own booking system like Drive&Dive), create transport offer, update profile, add certificates, add gear.
+- **Web**: diver-facing web is the same Flutter codebase (already builds to web). Dive-center admin is a separate panel for centers to publish their own trips manually; CMS integration is a later idea so centers don't have to enter trips by hand.
+
 ## Navigation / IA
 
 Bottom nav (v1): **Explore — Trips — Profile**. Key decision: **a joined trip *is* its chat** — no separate chat entity. "Explore" is the discovery list (all open trips); "Trips" lists only trips the current user has joined, ordered by conversation activity, and each row opens directly into that trip's chat. Tapping the chat header from there opens the same Trip Page (Overview/Transport/Dives tabs) — one shared screen/route, not a separate "joined trip" view, so the marketplace framing (a trip is always a trip, joined or not) doesn't get buried under a messaging mental model. `Trips` tab and its empty state are deferred until join (step 6) exists.
@@ -85,7 +103,9 @@ Runs as a compose service (`centrifugo/centrifugo:v5`) on `127.0.0.1:8000`, conf
 
 ### Stub auth
 
-No real auth yet — every route except `POST /trips`, `GET /trips`, and `GET /health` requires an `X-User-Id: <uuid>` header (`withUser` middleware; 401 if missing/invalid). The server upserts a `users` row for that id on first sight (`user.Service.GetOrCreate`). The client generates and persists this id locally (see `UserIdentityService` below) — swap for a real JWT-derived user id once Apple/Google Sign-In lands, no schema change needed since `users.id` is already the join key everywhere.
+No real auth yet — every route except `GET /trips` and `GET /health` requires an `X-User-Id: <uuid>` header (`withUser` middleware; 401 if missing/invalid). The server upserts a `users` row for that id on first sight (`user.Service.GetOrCreate`). The client generates and persists this id locally (see `UserIdentityService` below) — swap for a real JWT-derived user id once Apple/Google Sign-In lands, no schema change needed since `users.id` is already the join key everywhere.
+
+**Access model (decided, not all wired yet)**: anonymous/no-account access is search-only — browsing Discovery (`GET /trips`) stays open, but creating a trip and joining one require a user, so `POST /trips` needs `X-User-Id` too (currently still open — close this when Trip Page/organizer work lands, see backlog). `users` will also need an `account_type` (`individual` | `dive_center`) column ahead of dive centers being onboarded — default `individual`, no UI to set it yet, added early so the eventual dive-center onboarding isn't a breaking migration.
 
 Endpoints so far: `POST/GET /trips`, `GET /trips/{id}` (includes `joined` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant), `GET /realtime/token` (mints a Centrifugo connection JWT for the caller).
 
@@ -146,6 +166,10 @@ Component library is **Material** (Material 3 widgets throughout — no custom w
 | `semantic_colors.dart` | `SemanticColors` — a `ThemeExtension` for success/warning/info/neutral (+container/on-container), since Material 3's `ColorScheme` has no slots for these. Access via `Theme.of(context).extension<SemanticColors>()!`. |
 | `app_text_theme.dart` | `AppTextTheme.build()` — **Fraunces** (serif) for display/headline (splash, trip titles, empty states — brand warmth), **Inter** (grotesk) for title/body/label (dense lists, dates, chat — legibility at small sizes). Both via `google_fonts`, no bundled font assets. |
 | `app_theme.dart` | `AppTheme.light` — assembles `ThemeData`: `ColorScheme` derived field-by-field from `AppColors` (not `ColorScheme.fromSeed`), plus button/card/input component themes mapped to the Figma "Buttons" swatch (primary → `ElevatedButton`, secondary → `FilledButton`, outlined/ghost → `OutlinedButton`/`TextButton`). `AppButtonStyles.destructive`/`.ghost` cover styles with no dedicated Material widget. |
+
+Other `ui/core/` helpers used when building screens: `assets/app_assets.dart` (`AppAssets.tripPlaceholder` — every trip card uses the same placeholder photo until real trip photos exist, no per-trip image data yet), `formatting/date_format.dart` (`formatShortDate()` — "Sat, Jul 18" style, hand-rolled instead of pulling in `intl` for one label).
+
+Screens are being redesigned incrementally against Lovable-generated references (visual direction only, not copied 1:1) plus real KingFish trip pages as a check on what fields a real dive listing needs. Explore card (done): photo + gradient scrim + date pill, serif title, location, "Details" link — deliberately **omits seats/price/type tags**, since capacity and trip type aren't modeled yet and the platform isn't pricing trips (see Monetization above). Still to redesign: Trips tab (single chat list, no Chats/Upcoming tabs — keeps the trip==chat decision; add an Active/Past status computed from `startTime`, and a cropped trip-photo avatar instead of initials, later), Trip Page (needs `creator_user_id` + participant count first, see Stub auth's access model note), Profile (deferred until real profile fields exist).
 
 Only a light theme exists — Figma's Colors page doesn't specify a dark variant, so one hasn't been invented; add it if/when Figma defines one rather than guessing.
 
