@@ -7,17 +7,17 @@ import (
 	"net/http"
 	"time"
 
+	"divebuddy_be/internal/auth"
 	"divebuddy_be/internal/message"
 	"divebuddy_be/internal/realtime"
 	"divebuddy_be/internal/trip"
-	"divebuddy_be/internal/user"
 
 	"github.com/google/uuid"
 )
 
-func registerMessageRoutes(mux *http.ServeMux, svc *message.Service, tripSvc *trip.Service, userSvc *user.Service, publisher *realtime.Publisher) {
-	mux.HandleFunc("GET /trips/{id}/messages", withUser(userSvc, handleListMessages(svc, tripSvc)))
-	mux.HandleFunc("POST /trips/{id}/messages", withUser(userSvc, handleSendMessage(svc, tripSvc, publisher)))
+func registerMessageRoutes(mux *http.ServeMux, svc *message.Service, tripSvc *trip.Service, authIssuer *auth.TokenIssuer, publisher *realtime.Publisher) {
+	mux.HandleFunc("GET /trips/{id}/messages", withAuth(authIssuer, handleListMessages(svc, tripSvc)))
+	mux.HandleFunc("POST /trips/{id}/messages", withAuth(authIssuer, handleSendMessage(svc, tripSvc, publisher)))
 }
 
 type messageResponse struct {

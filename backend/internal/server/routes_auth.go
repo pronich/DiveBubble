@@ -178,16 +178,3 @@ func bearerAuth(issuer *auth.TokenIssuer, next func(http.ResponseWriter, *http.R
 		next(w, r, userID, sessionID)
 	}
 }
-
-func parseBearer(header string) (token string, ok bool) {
-	const prefix = "Bearer "
-	h := strings.TrimSpace(header)
-	if len(h) < len(prefix) || !strings.EqualFold(h[:len(prefix)], prefix) {
-		return "", false
-	}
-	t := strings.TrimSpace(h[len(prefix):])
-	if t == "" {
-		return "", false
-	}
-	return t, true
-}

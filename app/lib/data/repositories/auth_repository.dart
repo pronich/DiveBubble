@@ -1,10 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../services/auth_api_service.dart';
 import '../services/token_storage_service.dart';
 
 /// Wraps the Google Sign-In SDK + backend token exchange + secure token storage.
-class AuthRepository {
+/// A [ChangeNotifier] so screens built before a login-gate fires (e.g. the Trips tab, mounted
+/// while still anonymous) can react once sign-in completes elsewhere in the app.
+class AuthRepository extends ChangeNotifier {
   AuthRepository({
     required this.googleIosClientId,
     required this.googleServerClientId,
@@ -57,6 +60,38 @@ class AuthRepository {
       refreshToken: result.refreshToken,
       userId: result.userId,
     );
+    notifyListeners();
     return result.userId;
   }
+
+  /// Returns a currently-valid access token, transparently refreshing it if it's expired (or
+  /// close to it). Returns null if there's no session at all, or refreshing failed (revoked/expired
+  /// refresh token) — either way, any stored tokens are cleared so the caller can prompt login.
+  Future<String?> getValidAccessToken() async {
+    final stored = await _tokens.read();
+    if (stored == null) return null;
+
+    const refreshBuffer = Duration(seconds: 60);
+    if (stored.accessTokenExpiresAt.isAfter(DateTime.now().add(refreshBuffer))) {
+      return stored.accessToken;
+    }
+
+    try {
+      final result = await _api.refresh(stored.refreshToken);
+      await _tokens.save(
+        accessToken: result.accessToken,
+        accessTokenExpiresAt: result.accessTokenExpiresAt,
+        refreshToken: result.refreshToken,
+        userId: stored.userId,
+      );
+      return result.accessToken;
+    } catch (_) {
+      await _tokens.clear();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// The signed-in user's id, if any — does not attempt a refresh, just reads what's stored.
+  Future<String?> currentUserId() async => (await _tokens.read())?.userId;
 }

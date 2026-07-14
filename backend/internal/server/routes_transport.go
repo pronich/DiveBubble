@@ -7,18 +7,18 @@ import (
 	"net/http"
 	"time"
 
+	"divebuddy_be/internal/auth"
 	"divebuddy_be/internal/transport"
 	"divebuddy_be/internal/trip"
-	"divebuddy_be/internal/user"
 
 	"github.com/google/uuid"
 )
 
-func registerTransportRoutes(mux *http.ServeMux, svc *transport.Service, tripSvc *trip.Service, userSvc *user.Service) {
-	mux.HandleFunc("GET /trips/{id}/transport", withUser(userSvc, handleListTransportOffers(svc, tripSvc)))
-	mux.HandleFunc("POST /trips/{id}/transport", withUser(userSvc, handleCreateTransportOffer(svc, tripSvc)))
-	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/join", withUser(userSvc, handleJoinTransportOffer(svc, tripSvc)))
-	mux.HandleFunc("GET /trips/{id}/transport/{offerId}/joins", withUser(userSvc, handleListTransportOfferJoins(svc, tripSvc)))
+func registerTransportRoutes(mux *http.ServeMux, svc *transport.Service, tripSvc *trip.Service, authIssuer *auth.TokenIssuer) {
+	mux.HandleFunc("GET /trips/{id}/transport", withAuth(authIssuer, handleListTransportOffers(svc, tripSvc)))
+	mux.HandleFunc("POST /trips/{id}/transport", withAuth(authIssuer, handleCreateTransportOffer(svc, tripSvc)))
+	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/join", withAuth(authIssuer, handleJoinTransportOffer(svc, tripSvc)))
+	mux.HandleFunc("GET /trips/{id}/transport/{offerId}/joins", withAuth(authIssuer, handleListTransportOfferJoins(svc, tripSvc)))
 }
 
 type transportOfferResponse struct {

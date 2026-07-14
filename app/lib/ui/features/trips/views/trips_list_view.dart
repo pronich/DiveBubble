@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
+import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/app_gradients.dart';
 import '../../../core/widgets/empty_state_view.dart';
@@ -17,11 +19,13 @@ class TripsListView extends StatefulWidget {
     super.key,
     required this.viewModel,
     required this.tripRepository,
+    required this.authRepository,
     required this.currentUserId,
   });
 
   final TripsListViewModel viewModel;
   final TripRepository tripRepository;
+  final AuthRepository authRepository;
   final String currentUserId;
 
   @override
@@ -31,11 +35,25 @@ class TripsListView extends StatefulWidget {
 class _TripsListViewState extends State<TripsListView> {
   bool _isScrolled = false;
 
+  // Refetches on auth change (e.g. logging in via another screen's gate personalizes "joined")
+  // and on app resume — data may be stale after the app sat backgrounded for a while.
+  late final _lifecycleListener = AppLifecycleListener(onResume: widget.viewModel.loadTrips);
+
   @override
   void initState() {
     super.initState();
     widget.viewModel.loadTrips();
+    widget.authRepository.addListener(_onAuthChanged);
   }
+
+  @override
+  void dispose() {
+    widget.authRepository.removeListener(_onAuthChanged);
+    _lifecycleListener.dispose();
+    super.dispose();
+  }
+
+  void _onAuthChanged() => widget.viewModel.loadTrips();
 
   bool _handleScroll(ScrollNotification notification) {
     final isScrolled = notification.metrics.pixels > 0;
@@ -136,6 +154,7 @@ class _TripsListViewState extends State<TripsListView> {
         builder: (_) => TripPage(
           viewModel: TripViewModel(
             repository: widget.tripRepository,
+            authRepository: widget.authRepository,
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),
@@ -144,7 +163,10 @@ class _TripsListViewState extends State<TripsListView> {
     );
   }
 
-  void _openCreateTrip(BuildContext context) {
+  Future<void> _openCreateTrip(BuildContext context) async {
+    final userId = await ensureSignedIn(context, widget.authRepository);
+    if (userId == null || !context.mounted) return;
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CreateTripPage(
@@ -156,8 +178,9 @@ class _TripsListViewState extends State<TripsListView> {
                 builder: (_) => TripPage(
                   viewModel: TripViewModel(
                     repository: widget.tripRepository,
+                    authRepository: widget.authRepository,
                     tripId: trip.id,
-                    currentUserId: widget.currentUserId,
+                    currentUserId: userId,
                   ),
                 ),
               ),

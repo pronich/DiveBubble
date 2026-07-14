@@ -3,19 +3,25 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/transport_offer_api_model.dart';
+import 'access_token_provider.dart';
+import 'auth_required_exception.dart';
 
 class TransportApiService {
-  TransportApiService({required this.baseUrl, required this.userId, http.Client? client})
+  TransportApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
       : _client = client ?? http.Client();
 
   final String baseUrl;
-  final String userId;
+  final AccessTokenProvider getAccessToken;
   final http.Client _client;
 
-  Map<String, String> get _headers => {'X-User-Id': userId};
+  Future<Map<String, String>> _authHeaders() async {
+    final token = await getAccessToken();
+    if (token == null) throw const AuthRequiredException();
+    return {'Authorization': 'Bearer $token'};
+  }
 
   Future<List<TransportOfferApiModel>> fetchOffers(String tripId) async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips/$tripId/transport'), headers: _headers);
+    final res = await _client.get(Uri.parse('$baseUrl/trips/$tripId/transport'), headers: await _authHeaders());
     if (res.statusCode != 200) {
       throw Exception('fetchOffers failed: ${res.statusCode} ${res.body}');
     }
@@ -38,7 +44,7 @@ class TransportApiService {
     };
     final res = await _client.post(
       Uri.parse('$baseUrl/trips/$tripId/transport'),
-      headers: {..._headers, 'Content-Type': 'application/json'},
+      headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
     if (res.statusCode != 201) {
@@ -50,7 +56,7 @@ class TransportApiService {
   Future<void> joinOffer(String tripId, String offerId) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/trips/$tripId/transport/$offerId/join'),
-      headers: _headers,
+      headers: await _authHeaders(),
     );
     if (res.statusCode != 200) {
       throw Exception(_extractError(res.body) ?? 'Could not join transport offer');
@@ -73,7 +79,7 @@ class TransportApiService {
   Future<List<String>> fetchJoinedUserIds(String tripId, String offerId) async {
     final res = await _client.get(
       Uri.parse('$baseUrl/trips/$tripId/transport/$offerId/joins'),
-      headers: _headers,
+      headers: await _authHeaders(),
     );
     if (res.statusCode != 200) {
       throw Exception('fetchJoinedUserIds failed: ${res.statusCode} ${res.body}');

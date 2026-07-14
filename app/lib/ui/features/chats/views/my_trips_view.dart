@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
@@ -9,6 +10,7 @@ import '../../../core/assets/app_assets.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
+import '../../onboarding/views/login_sheet.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../view_models/chat_view_model.dart';
 import '../view_models/my_trips_view_model.dart';
@@ -22,6 +24,7 @@ class MyTripsView extends StatefulWidget {
     required this.tripRepository,
     required this.transportRepository,
     required this.realtimeService,
+    required this.authRepository,
     required this.currentUserId,
     required this.onGoToExplore,
   });
@@ -31,6 +34,7 @@ class MyTripsView extends StatefulWidget {
   final TripRepository tripRepository;
   final TransportRepository transportRepository;
   final RealtimeService realtimeService;
+  final AuthRepository authRepository;
   final String currentUserId;
   final VoidCallback onGoToExplore;
 
@@ -39,11 +43,26 @@ class MyTripsView extends StatefulWidget {
 }
 
 class _MyTripsViewState extends State<MyTripsView> {
+  // Refreshes on app resume too — trips/messages may have changed while backgrounded.
+  late final _lifecycleListener = AppLifecycleListener(onResume: widget.viewModel.load);
+
   @override
   void initState() {
     super.initState();
     widget.viewModel.load();
+    // Reload once signed in — this tab may have already loaded (and cached "needs sign in")
+    // before the user logged in via some other screen's gate (Create trip, Join, etc.).
+    widget.authRepository.addListener(_onAuthChanged);
   }
+
+  @override
+  void dispose() {
+    widget.authRepository.removeListener(_onAuthChanged);
+    _lifecycleListener.dispose();
+    super.dispose();
+  }
+
+  void _onAuthChanged() => widget.viewModel.load();
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +73,19 @@ class _MyTripsViewState extends State<MyTripsView> {
         builder: (context, _) {
           if (widget.viewModel.isLoading) {
             return const Center(child: CircularProgressIndicator());
+          }
+
+          if (widget.viewModel.needsSignIn) {
+            return EmptyStateView(
+              icon: Icons.login,
+              title: 'Sign in to see your trips',
+              subtitle: 'Log in to view the trips you\'ve joined and their group chats.',
+              ctaLabel: 'Login',
+              onCtaPressed: () async {
+                final signedIn = await LoginSheet.show(context, authRepository: widget.authRepository);
+                if (signedIn) widget.viewModel.load();
+              },
+            );
           }
 
           final error = widget.viewModel.error;
@@ -101,11 +133,13 @@ class _MyTripsViewState extends State<MyTripsView> {
           ),
           transportViewModel: TransportViewModel(
             repository: widget.transportRepository,
+            authRepository: widget.authRepository,
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),
           tripTitle: trip.title,
           tripRepository: widget.tripRepository,
+          authRepository: widget.authRepository,
         ),
       ),
     );

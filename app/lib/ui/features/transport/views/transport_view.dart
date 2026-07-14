@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/transport_offer.dart';
+import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import '../view_models/transport_view_model.dart';
@@ -204,6 +205,9 @@ class _TransportOfferDetailSheetState
   }
 
   Future<void> _join(TransportOffer offer) async {
+    final userId = await ensureSignedIn(context, widget.viewModel.authRepository);
+    if (userId == null || !mounted) return;
+
     setState(() => _joinError = null);
     final error = await widget.viewModel.join(offer.id);
     if (!mounted) return;

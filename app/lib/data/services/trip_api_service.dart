@@ -3,19 +3,32 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/trip_api_model.dart';
+import 'access_token_provider.dart';
+import 'auth_required_exception.dart';
 
 class TripApiService {
-  TripApiService({required this.baseUrl, required this.userId, http.Client? client})
+  TripApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
       : _client = client ?? http.Client();
 
   final String baseUrl;
-  final String userId;
+  final AccessTokenProvider getAccessToken;
   final http.Client _client;
 
-  Map<String, String> get _headers => {'X-User-Id': userId};
+  // Trip detail stays browsable without an account — attach a token if signed in
+  // (personalizes "joined"), but don't require one.
+  Future<Map<String, String>> _optionalAuthHeaders() async {
+    final token = await getAccessToken();
+    return token == null ? {} : {'Authorization': 'Bearer $token'};
+  }
+
+  Future<Map<String, String>> _requiredAuthHeaders() async {
+    final token = await getAccessToken();
+    if (token == null) throw const AuthRequiredException();
+    return {'Authorization': 'Bearer $token'};
+  }
 
   Future<List<TripApiModel>> fetchTrips() async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips'), headers: _headers);
+    final res = await _client.get(Uri.parse('$baseUrl/trips'));
     if (res.statusCode != 200) {
       throw Exception('fetchTrips failed: ${res.statusCode} ${res.body}');
     }
@@ -26,7 +39,7 @@ class TripApiService {
   }
 
   Future<TripApiModel> fetchTrip(String id) async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips/$id'), headers: _headers);
+    final res = await _client.get(Uri.parse('$baseUrl/trips/$id'), headers: await _optionalAuthHeaders());
     if (res.statusCode != 200) {
       throw Exception('fetchTrip failed: ${res.statusCode} ${res.body}');
     }
@@ -34,7 +47,7 @@ class TripApiService {
   }
 
   Future<List<TripApiModel>> fetchMyTrips() async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips/mine'), headers: _headers);
+    final res = await _client.get(Uri.parse('$baseUrl/trips/mine'), headers: await _requiredAuthHeaders());
     if (res.statusCode != 200) {
       throw Exception('fetchMyTrips failed: ${res.statusCode} ${res.body}');
     }
@@ -45,7 +58,7 @@ class TripApiService {
   }
 
   Future<void> joinTrip(String id) async {
-    final res = await _client.post(Uri.parse('$baseUrl/trips/$id/join'), headers: _headers);
+    final res = await _client.post(Uri.parse('$baseUrl/trips/$id/join'), headers: await _requiredAuthHeaders());
     if (res.statusCode != 200) {
       throw Exception('joinTrip failed: ${res.statusCode} ${res.body}');
     }
@@ -81,7 +94,7 @@ class TripApiService {
     };
     final res = await _client.post(
       Uri.parse('$baseUrl/trips'),
-      headers: {..._headers, 'Content-Type': 'application/json'},
+      headers: {...await _requiredAuthHeaders(), 'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
     if (res.statusCode != 201) {

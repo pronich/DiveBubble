@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/chat_repository.dart';
 import '../../../data/repositories/transport_repository.dart';
 import '../../../data/repositories/trip_repository.dart';
@@ -18,6 +19,7 @@ class RootShell extends StatefulWidget {
     required this.chatRepository,
     required this.transportRepository,
     required this.realtimeService,
+    required this.authRepository,
     required this.currentUserId,
   });
 
@@ -25,6 +27,7 @@ class RootShell extends StatefulWidget {
   final ChatRepository chatRepository;
   final TransportRepository transportRepository;
   final RealtimeService realtimeService;
+  final AuthRepository authRepository;
   final String currentUserId;
 
   @override
@@ -48,6 +51,7 @@ class _RootShellState extends State<RootShell> {
           TripsListView(
             viewModel: _exploreViewModel,
             tripRepository: widget.tripRepository,
+            authRepository: widget.authRepository,
             currentUserId: widget.currentUserId,
           ),
           MyTripsView(
@@ -56,10 +60,11 @@ class _RootShellState extends State<RootShell> {
             tripRepository: widget.tripRepository,
             transportRepository: widget.transportRepository,
             realtimeService: widget.realtimeService,
+            authRepository: widget.authRepository,
             currentUserId: widget.currentUserId,
             onGoToExplore: () => setState(() => _index = 0),
           ),
-          const ProfileView(),
+          ProfileView(authRepository: widget.authRepository),
         ],
       ),
       bottomNavigationBar: NavigationBar(

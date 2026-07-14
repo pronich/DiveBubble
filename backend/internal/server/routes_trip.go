@@ -8,18 +8,19 @@ import (
 	"net/http"
 	"time"
 
+	"divebuddy_be/internal/auth"
 	"divebuddy_be/internal/trip"
-	"divebuddy_be/internal/user"
 
 	"github.com/google/uuid"
 )
 
-func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, userSvc *user.Service) {
-	mux.HandleFunc("POST /trips", withUser(userSvc, handleCreateTrip(svc)))
+func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, authIssuer *auth.TokenIssuer) {
+	mux.HandleFunc("POST /trips", withAuth(authIssuer, handleCreateTrip(svc)))
 	mux.HandleFunc("GET /trips", handleListTrips(svc))
-	mux.HandleFunc("GET /trips/mine", withUser(userSvc, handleListMyTrips(svc)))
-	mux.HandleFunc("GET /trips/{id}", withUser(userSvc, handleGetTrip(svc)))
-	mux.HandleFunc("POST /trips/{id}/join", withUser(userSvc, handleJoinTrip(svc)))
+	mux.HandleFunc("GET /trips/mine", withAuth(authIssuer, handleListMyTrips(svc)))
+	// Detail stays browsable without an account — "joined" is just false for anonymous viewers.
+	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
+	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc)))
 }
 
 type tripResponse struct {

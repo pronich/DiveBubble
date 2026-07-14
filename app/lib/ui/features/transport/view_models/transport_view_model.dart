@@ -1,16 +1,19 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../domain/entities/transport_offer.dart';
 
 class TransportViewModel extends ChangeNotifier {
   TransportViewModel({
     required TransportRepository repository,
+    required this.authRepository,
     required this.tripId,
     required this.currentUserId,
   }) : _repository = repository;
 
   final TransportRepository _repository;
+  final AuthRepository authRepository;
   final String tripId;
   final String currentUserId;
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
+import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/app_gradients.dart';
 import '../view_models/trip_view_model.dart';
@@ -297,7 +298,7 @@ class _JoinButton extends StatelessWidget {
     }
 
     return ElevatedButton(
-      onPressed: viewModel.isJoining ? null : viewModel.join,
+      onPressed: viewModel.isJoining ? null : () => _handleJoin(context),
       child: viewModel.isJoining
           ? const SizedBox(
               width: 16,
@@ -306,5 +307,11 @@ class _JoinButton extends StatelessWidget {
             )
           : const Text('Join'),
     );
+  }
+
+  Future<void> _handleJoin(BuildContext context) async {
+    final userId = await ensureSignedIn(context, viewModel.authRepository);
+    if (userId == null) return;
+    await viewModel.join();
   }
 }

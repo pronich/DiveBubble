@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../data/repositories/trip_repository.dart';
+import '../../../../data/services/auth_required_exception.dart';
 import '../../../../domain/entities/trip.dart';
 
 class MyTripsViewModel extends ChangeNotifier {
@@ -17,13 +18,19 @@ class MyTripsViewModel extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  bool _needsSignIn = false;
+  bool get needsSignIn => _needsSignIn;
+
   Future<void> load() async {
     _isLoading = true;
     _error = null;
+    _needsSignIn = false;
     notifyListeners();
 
     try {
       _trips = await _repository.getMyTrips();
+    } on AuthRequiredException {
+      _needsSignIn = true;
     } catch (e) {
       _error = e.toString();
     } finally {

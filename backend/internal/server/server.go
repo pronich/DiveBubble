@@ -11,17 +11,15 @@ import (
 	"divebuddy_be/internal/realtime"
 	"divebuddy_be/internal/transport"
 	"divebuddy_be/internal/trip"
-	"divebuddy_be/internal/user"
 )
 
 func New(cfg config.Config, db *sql.DB) http.Handler {
 	tripRepo := trip.NewRepository(db)
 	tripSvc := trip.NewService(tripRepo)
-	userSvc := user.NewService(user.NewRepository(db))
 	messageSvc := message.NewService(message.NewRepository(db))
 	transportSvc := transport.NewService(transport.NewRepository(db))
 	publisher := realtime.NewPublisher(cfg.CentrifugoURL, cfg.CentrifugoAPIKey)
-	tokenIssuer := realtime.NewTokenIssuer(cfg.CentrifugoTokenSecret)
+	realtimeTokenIssuer := realtime.NewTokenIssuer(cfg.CentrifugoTokenSecret)
 
 	identityRepo := auth.NewIdentityRepository(db)
 	sessionRepo := auth.NewSessionRepository(db)
@@ -32,10 +30,10 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)
-	registerTripRoutes(mux, tripSvc, userSvc)
-	registerMessageRoutes(mux, messageSvc, tripSvc, userSvc, publisher)
-	registerTransportRoutes(mux, transportSvc, tripSvc, userSvc)
-	registerRealtimeRoutes(mux, tokenIssuer, userSvc)
+	registerTripRoutes(mux, tripSvc, authIssuer)
+	registerMessageRoutes(mux, messageSvc, tripSvc, authIssuer, publisher)
+	registerTransportRoutes(mux, transportSvc, tripSvc, authIssuer)
+	registerRealtimeRoutes(mux, realtimeTokenIssuer, authIssuer)
 	registerAuthRoutes(mux, cfg, identityRepo, sessionRepo, authIssuer)
 	return mux
 }

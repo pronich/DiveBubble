@@ -3,19 +3,25 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/chat_message_api_model.dart';
+import 'access_token_provider.dart';
+import 'auth_required_exception.dart';
 
 class ChatApiService {
-  ChatApiService({required this.baseUrl, required this.userId, http.Client? client})
+  ChatApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
       : _client = client ?? http.Client();
 
   final String baseUrl;
-  final String userId;
+  final AccessTokenProvider getAccessToken;
   final http.Client _client;
 
-  Map<String, String> get _headers => {'X-User-Id': userId};
+  Future<Map<String, String>> _authHeaders() async {
+    final token = await getAccessToken();
+    if (token == null) throw const AuthRequiredException();
+    return {'Authorization': 'Bearer $token'};
+  }
 
   Future<List<ChatMessageApiModel>> fetchMessages(String tripId) async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips/$tripId/messages'), headers: _headers);
+    final res = await _client.get(Uri.parse('$baseUrl/trips/$tripId/messages'), headers: await _authHeaders());
     if (res.statusCode != 200) {
       throw Exception('fetchMessages failed: ${res.statusCode} ${res.body}');
     }
@@ -26,7 +32,7 @@ class ChatApiService {
   }
 
   Future<String> fetchRealtimeToken() async {
-    final res = await _client.get(Uri.parse('$baseUrl/realtime/token'), headers: _headers);
+    final res = await _client.get(Uri.parse('$baseUrl/realtime/token'), headers: await _authHeaders());
     if (res.statusCode != 200) {
       throw Exception('fetchRealtimeToken failed: ${res.statusCode} ${res.body}');
     }
@@ -36,7 +42,7 @@ class ChatApiService {
   Future<void> sendMessage(String tripId, String body) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/trips/$tripId/messages'),
-      headers: {..._headers, 'Content-Type': 'application/json'},
+      headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
       body: jsonEncode({'body': body}),
     );
     if (res.statusCode != 201) {
