@@ -10,5 +10,7 @@ abstract class Trip with _$Trip {
     required String location,
     required DateTime startTime,
     required bool joined,
+    String? creatorUserId,
+    @Default(0) int participantCount,
   }) = _Trip;
 }

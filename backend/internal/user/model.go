@@ -7,6 +7,7 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	AccountType string // "individual" | "dive_center" — always "individual" until dive-center onboarding exists
 }

@@ -19,13 +19,13 @@ func NewService(repo *Repository) *Service {
 	return &Service{Repo: repo}
 }
 
-func (s *Service) CreateTrip(ctx context.Context, title, location string, startTime time.Time) (Trip, error) {
+func (s *Service) CreateTrip(ctx context.Context, title, location string, startTime time.Time, creatorUserID uuid.UUID) (Trip, error) {
 	title = strings.TrimSpace(title)
 	location = strings.TrimSpace(location)
 	if title == "" || location == "" || startTime.IsZero() {
 		return Trip{}, ErrInvalidArgument
 	}
-	return s.Repo.Create(ctx, title, location, startTime)
+	return s.Repo.Create(ctx, title, location, startTime, creatorUserID)
 }
 
 func (s *Service) ListTrips(ctx context.Context) ([]Trip, error) {
@@ -61,4 +61,8 @@ func (s *Service) IsJoined(ctx context.Context, id string, userID uuid.UUID) (bo
 
 func (s *Service) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]Trip, error) {
 	return s.Repo.ListJoinedByUser(ctx, userID)
+}
+
+func (s *Service) CountParticipants(ctx context.Context, tripID uuid.UUID) (int, error) {
+	return s.Repo.CountParticipants(ctx, tripID)
 }

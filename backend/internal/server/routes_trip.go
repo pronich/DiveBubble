@@ -14,7 +14,7 @@ import (
 )
 
 func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, userSvc *user.Service) {
-	mux.HandleFunc("POST /trips", handleCreateTrip(svc))
+	mux.HandleFunc("POST /trips", withUser(userSvc, handleCreateTrip(svc)))
 	mux.HandleFunc("GET /trips", handleListTrips(svc))
 	mux.HandleFunc("GET /trips/mine", withUser(userSvc, handleListMyTrips(svc)))
 	mux.HandleFunc("GET /trips/{id}", withUser(userSvc, handleGetTrip(svc)))
@@ -22,23 +22,30 @@ func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, userSvc *user.Ser
 }
 
 type tripResponse struct {
-	ID        uuid.UUID `json:"id"`
-	Title     string    `json:"title"`
-	Location  string    `json:"location"`
-	StartTime time.Time `json:"startTime"`
-	CreatedAt time.Time `json:"createdAt"`
-	Joined    bool      `json:"joined"`
+	ID               uuid.UUID  `json:"id"`
+	Title            string     `json:"title"`
+	Location         string     `json:"location"`
+	StartTime        time.Time  `json:"startTime"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	Joined           bool       `json:"joined"`
+	CreatorUserID    *uuid.UUID `json:"creatorUserId,omitempty"`
+	ParticipantCount int        `json:"participantCount"`
 }
 
-func toTripResponse(t trip.Trip, joined bool) tripResponse {
-	return tripResponse{
-		ID:        t.ID,
-		Title:     t.Title,
-		Location:  t.Location,
-		StartTime: t.StartTime,
-		CreatedAt: t.CreatedAt,
-		Joined:    joined,
+func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse {
+	resp := tripResponse{
+		ID:               t.ID,
+		Title:            t.Title,
+		Location:         t.Location,
+		StartTime:        t.StartTime,
+		CreatedAt:        t.CreatedAt,
+		Joined:           joined,
+		ParticipantCount: participantCount,
 	}
+	if t.CreatorUserID.Valid {
+		resp.CreatorUserID = &t.CreatorUserID.UUID
+	}
+	return resp
 }
 
 type createTripRequest struct {
@@ -47,8 +54,8 @@ type createTripRequest struct {
 	StartTime time.Time `json:"startTime"`
 }
 
-func handleCreateTrip(svc *trip.Service) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		var req createTripRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
@@ -56,7 +63,7 @@ func handleCreateTrip(svc *trip.Service) http.HandlerFunc {
 			return
 		}
 
-		t, err := svc.CreateTrip(r.Context(), req.Title, req.Location, req.StartTime)
+		t, err := svc.CreateTrip(r.Context(), req.Title, req.Location, req.StartTime, userID)
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, "title, location and startTime are required")
@@ -66,7 +73,7 @@ func handleCreateTrip(svc *trip.Service) http.HandlerFunc {
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, toTripResponse(t, false))
+		writeJSON(w, http.StatusCreated, toTripResponse(t, false, 0))
 	}
 }
 
@@ -93,7 +100,13 @@ func handleGetTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, u
 			return
 		}
 
-		writeJSON(w, http.StatusOK, toTripResponse(t, joined))
+		participantCount, err := svc.CountParticipants(r.Context(), t.ID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not get trip")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, toTripResponse(t, joined, participantCount))
 	}
 }
 
@@ -127,7 +140,7 @@ func handleListMyTrips(svc *trip.Service) func(http.ResponseWriter, *http.Reques
 
 		out := make([]tripResponse, 0, len(trips))
 		for _, t := range trips {
-			out = append(out, toTripResponse(t, true))
+			out = append(out, toTripResponse(t, true, 0))
 		}
 		writeJSON(w, http.StatusOK, out)
 	}
@@ -143,7 +156,7 @@ func handleListTrips(svc *trip.Service) http.HandlerFunc {
 
 		out := make([]tripResponse, 0, len(trips))
 		for _, t := range trips {
-			out = append(out, toTripResponse(t, false))
+			out = append(out, toTripResponse(t, false, 0))
 		}
 		writeJSON(w, http.StatusOK, out)
 	}

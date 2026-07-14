@@ -4,12 +4,16 @@ import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
 
 class TripViewModel extends ChangeNotifier {
-  TripViewModel({required TripRepository repository, required String tripId})
-      : _repository = repository,
+  TripViewModel({
+    required TripRepository repository,
+    required String tripId,
+    required this.currentUserId,
+  })  : _repository = repository,
         _tripId = tripId;
 
   final TripRepository _repository;
   final String _tripId;
+  final String currentUserId;
 
   Trip? _trip;
   Trip? get trip => _trip;

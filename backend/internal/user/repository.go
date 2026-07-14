@@ -21,7 +21,7 @@ func (r *Repository) GetOrCreate(ctx context.Context, id uuid.UUID) (User, error
 	err := r.DB.QueryRowContext(ctx, `
 		INSERT INTO users (id) VALUES ($1)
 		ON CONFLICT (id) DO UPDATE SET id = EXCLUDED.id
-		RETURNING id, created_at
-	`, id).Scan(&u.ID, &u.CreatedAt)
+		RETURNING id, created_at, account_type
+	`, id).Scan(&u.ID, &u.CreatedAt, &u.AccountType)
 	return u, err
 }

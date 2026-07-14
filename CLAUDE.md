@@ -105,9 +105,9 @@ Runs as a compose service (`centrifugo/centrifugo:v5`) on `127.0.0.1:8000`, conf
 
 No real auth yet — every route except `GET /trips` and `GET /health` requires an `X-User-Id: <uuid>` header (`withUser` middleware; 401 if missing/invalid). The server upserts a `users` row for that id on first sight (`user.Service.GetOrCreate`). The client generates and persists this id locally (see `UserIdentityService` below) — swap for a real JWT-derived user id once Apple/Google Sign-In lands, no schema change needed since `users.id` is already the join key everywhere.
 
-**Access model (decided, not all wired yet)**: anonymous/no-account access is search-only — browsing Discovery (`GET /trips`) stays open, but creating a trip and joining one require a user, so `POST /trips` needs `X-User-Id` too (currently still open — close this when Trip Page/organizer work lands, see backlog). `users` will also need an `account_type` (`individual` | `dive_center`) column ahead of dive centers being onboarded — default `individual`, no UI to set it yet, added early so the eventual dive-center onboarding isn't a breaking migration.
+**Access model (done)**: anonymous/no-account access is search-only — browsing Discovery (`GET /trips`) stays open, but `POST /trips` and joining both require `X-User-Id`. Trips carry a nullable `creator_user_id` (nullable because pre-existing dev rows have none — every trip created from here on always has one). `users` has an `account_type` (`individual` | `dive_center`, default `individual`, no UI to set it yet) ahead of dive centers being onboarded, so that onboarding won't need a breaking migration.
 
-Endpoints so far: `POST/GET /trips`, `GET /trips/{id}` (includes `joined` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant), `GET /realtime/token` (mints a Centrifugo connection JWT for the caller).
+Endpoints so far: `POST /trips` (auth required), `GET /trips` (open), `GET /trips/{id}` (includes `joined`, `creatorUserId`, `participantCount` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant), `GET /realtime/token` (mints a Centrifugo connection JWT for the caller).
 
 ### Packages (`backend/internal/`)
 
@@ -116,8 +116,8 @@ Endpoints so far: `POST/GET /trips`, `GET /trips/{id}` (includes `joined` for th
 | `server` | HTTP router, route registration, handlers, `withUser` stub-auth middleware |
 | `config` | Env-var loading (`.env` via godotenv) |
 | `db` | Database connection pool (pgx) |
-| `trip` | Trip domain: model, repository, service (create/list/get/join/isJoined/listJoinedByUser) |
-| `user` | Stub identity: `GetOrCreate` upserts by client-supplied `X-User-Id` |
+| `trip` | Trip domain: model, repository, service (create/list/get/join/isJoined/listJoinedByUser/countParticipants) |
+| `user` | Stub identity: `GetOrCreate` upserts by client-supplied `X-User-Id`; also carries `account_type` |
 | `message` | Chat messages: model, repository, service (send/list per trip) |
 | `realtime` | `Publisher` (POST to Centrifugo `/api/publish`), `TokenIssuer` (mints connection JWTs, HS256) |
 
@@ -138,12 +138,12 @@ Features: `ui/features/trips/` (Explore list, Trip Page detail + join), `ui/feat
 
 | Layer | Path | Contents |
 |---|---|---|
-| Domain | `domain/entities/` | `Trip`, `ChatMessage` (freezed) |
+| Domain | `domain/entities/` | `Trip` (incl. nullable `creatorUserId`, `participantCount`), `ChatMessage` (freezed) |
 | Data | `data/models/` | `TripApiModel`, `ChatMessageApiModel` (freezed + json_serializable) |
 | Data | `data/mappers/` | `*ApiMapper.toDomain()` extensions |
 | Data | `data/services/` | `TripApiService`, `ChatApiService` (attach `X-User-Id` header), `UserIdentityService` (persists a client-generated uuid via `shared_preferences`), `RealtimeService` (wraps a single shared `centrifuge.Client`, `subscribe`/`unsubscribe` per channel) |
 | Data | `data/repositories/` | `TripRepository`, `ChatRepository` (incl. `getRealtimeToken()`) |
-| UI | `ui/features/trips/view_models/` `/views/` | `TripsListViewModel`/`TripsListView` (Explore), `TripViewModel`/`TripPage` (detail + join) |
+| UI | `ui/features/trips/view_models/` `/views/` | `TripsListViewModel`/`TripsListView` (Explore), `TripViewModel`/`TripPage` (detail + join — `TripViewModel` carries `currentUserId` too, same pattern as `ChatViewModel`, so the view can tell "you organized this" without a separate prop) |
 | UI | `ui/features/chats/view_models/` `/views/` | `MyTripsViewModel`/`MyTripsView` (Trips tab), `ChatViewModel`/`ChatView` — subscribes to `trip:$tripId` on `load()`, dedupes incoming publications by message id (own sent messages already arrive via the post-send REST reload), unsubscribes in `dispose()` (called explicitly from `ChatView.dispose()`, ChangeNotifier's `dispose` isn't auto-invoked by Flutter) |
 | UI | `ui/features/profile/views/` | `ProfileView` (placeholder) |
 
@@ -173,7 +173,8 @@ Screens are being redesigned incrementally against Lovable-generated references 
 
 - **Explore card (done)**: 2-column grid, square photo + gradient scrim + date pill, serif title (2 lines max), location — deliberately **omits seats/price/type tags**, since capacity and trip type aren't modeled yet and the platform isn't pricing trips (see Monetization above).
 - **Trips tab (done)**: single chat list, no Chats/Upcoming tabs (keeps the trip==chat decision). Each row: cropped trip-photo thumbnail, title + date on one line (title `Expanded` + ellipsis so a long title truncates instead of pushing the date off, date vertically centered against the title not top-aligned), location, then an Active/Past status pill computed from `startTime` (no backend field). Unread-message indicator is intentionally not built yet — needs the backend to track last-read-message per user/trip first; the row layout doesn't reserve dedicated space for it since it'll likely sit next to the date once that data exists.
-- **Still to redesign**: Trip Page (needs `creator_user_id` + participant count first, see Stub auth's access model note), Profile (deferred until real profile fields exist).
+- **Trip Page (done)**: hero photo + gradient scrim, title, location + date/time, an Organizer card (avatar placeholder, no name — `users` has no display name yet, so it only shows "(You)" when `trip.creatorUserId == currentUserId`, nothing otherwise), "N divers joined" from the real `participantCount`, then Join/Joined. No Meet/Depth/Level info grid, no description, no "I've already booked" — none of that data exists yet (see feature backlog).
+- **Still to redesign**: Profile (deferred until real profile fields exist).
 
 Only a light theme exists — Figma's Colors page doesn't specify a dark variant, so one hasn't been invented; add it if/when Figma defines one rather than guessing.
 

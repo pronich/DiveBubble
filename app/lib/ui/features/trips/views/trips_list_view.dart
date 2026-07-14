@@ -14,10 +14,12 @@ class TripsListView extends StatefulWidget {
     super.key,
     required this.viewModel,
     required this.tripRepository,
+    required this.currentUserId,
   });
 
   final TripsListViewModel viewModel;
   final TripRepository tripRepository;
+  final String currentUserId;
 
   @override
   State<TripsListView> createState() => _TripsListViewState();
@@ -90,6 +92,7 @@ class _TripsListViewState extends State<TripsListView> {
           viewModel: TripViewModel(
             repository: widget.tripRepository,
             tripId: trip.id,
+            currentUserId: widget.currentUserId,
           ),
         ),
       ),

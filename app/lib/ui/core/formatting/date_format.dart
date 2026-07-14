@@ -9,3 +9,9 @@ String formatShortDate(DateTime dateTime) {
   final local = dateTime.toLocal();
   return '${_weekdays[local.weekday - 1]}, ${_months[local.month - 1]} ${local.day}';
 }
+
+/// e.g. "09:30" (24h) — same dependency-free approach as formatShortDate.
+String formatTime(DateTime dateTime) {
+  final local = dateTime.toLocal();
+  return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+}

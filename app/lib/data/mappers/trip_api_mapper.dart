@@ -8,5 +8,7 @@ extension TripApiMapper on TripApiModel {
         location: location,
         startTime: startTime,
         joined: joined,
+        creatorUserId: creatorUserId,
+        participantCount: participantCount,
       );
 }

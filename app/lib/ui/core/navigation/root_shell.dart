@@ -45,6 +45,7 @@ class _RootShellState extends State<RootShell> {
           TripsListView(
             viewModel: _exploreViewModel,
             tripRepository: widget.tripRepository,
+            currentUserId: widget.currentUserId,
           ),
           MyTripsView(
             viewModel: _myTripsViewModel,

@@ -12,6 +12,8 @@ abstract class TripApiModel with _$TripApiModel {
     required DateTime startTime,
     required DateTime createdAt,
     required bool joined,
+    String? creatorUserId,
+    @Default(0) int participantCount,
   }) = _TripApiModel;
 
   factory TripApiModel.fromJson(Map<String, dynamic> json) =>

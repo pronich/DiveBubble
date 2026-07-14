@@ -109,6 +109,7 @@ class _ChatViewState extends State<ChatView> {
           viewModel: TripViewModel(
             repository: widget.tripRepository,
             tripId: widget.viewModel.tripId,
+            currentUserId: widget.viewModel.currentUserId,
           ),
         ),
       ),
