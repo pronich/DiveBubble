@@ -10,6 +10,7 @@ import 'data/services/trip_api_service.dart';
 import 'data/services/user_identity_service.dart';
 import 'ui/core/navigation/root_shell.dart';
 import 'ui/core/theme/app_theme.dart';
+import 'ui/features/onboarding/views/app_entry_gate.dart';
 
 const _apiBaseUrl = 'http://localhost:8080';
 const _centrifugoWsUrl = 'ws://localhost:8000/connection/websocket';
@@ -44,12 +45,14 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'DiveBuddy',
       theme: AppTheme.light,
-      home: RootShell(
-        tripRepository: tripRepository,
-        chatRepository: chatRepository,
-        transportRepository: transportRepository,
-        realtimeService: realtimeService,
-        currentUserId: userId,
+      home: AppEntryGate(
+        rootShellBuilder: (context) => RootShell(
+          tripRepository: tripRepository,
+          chatRepository: chatRepository,
+          transportRepository: transportRepository,
+          realtimeService: realtimeService,
+          currentUserId: userId,
+        ),
       ),
     );
   }
