@@ -104,6 +104,19 @@ func (r *Repository) IsJoined(ctx context.Context, offerID, userID uuid.UUID) (b
 	return exists, err
 }
 
+// HasAnyJoinInTrip checks across every offer on the trip, not just one — a diver only needs one ride.
+func (r *Repository) HasAnyJoinInTrip(ctx context.Context, tripID, userID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM transport_offer_joins toj
+			JOIN trip_transport_offers o ON o.id = toj.offer_id
+			WHERE o.trip_id = $1 AND toj.user_id = $2
+		)
+	`, tripID, userID).Scan(&exists)
+	return exists, err
+}
+
 func (r *Repository) ListJoins(ctx context.Context, offerID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT user_id FROM transport_offer_joins WHERE offer_id = $1 ORDER BY joined_at ASC

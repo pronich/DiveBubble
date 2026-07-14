@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/transport_offer.dart';
+import '../../../core/theme/semantic_colors.dart';
 import '../view_models/transport_view_model.dart';
 
 const _typeLabels = {
@@ -54,7 +55,10 @@ class _TransportViewState extends State<TransportView> {
                   children: [
                     const Text('No transport offers yet'),
                     const SizedBox(height: 16),
-                    ElevatedButton(onPressed: () => _openAddSheet(context), child: const Text('Add transport info')),
+                    ElevatedButton(
+                      onPressed: () => _openAddSheet(context),
+                      child: const Text('Add transport info'),
+                    ),
                   ],
                 ),
               ),
@@ -91,7 +95,10 @@ class _TransportViewState extends State<TransportView> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _TransportOfferDetailSheet(offerId: offer.id, viewModel: widget.viewModel),
+      builder: (_) => _TransportOfferDetailSheet(
+        offerId: offer.id,
+        viewModel: widget.viewModel,
+      ),
     );
   }
 }
@@ -105,6 +112,7 @@ class _OfferTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isFull = offer.seats != null && offer.joinedCount >= offer.seats!;
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -115,34 +123,72 @@ class _OfferTile extends StatelessWidget {
           color: theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Icon(_typeIcons[offer.type] ?? Icons.directions_car, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _typeLabels[offer.type] ?? offer.type,
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  _typeIcons[offer.type] ?? Icons.directions_car,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _typeLabels[offer.type] ?? offer.type,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (offer.seats != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          '${offer.joinedCount} of ${offer.seats} seats taken',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      if (offer.details != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          offer.details!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  if (offer.seats != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      '${offer.joinedCount} of ${offer.seats} seats taken',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ],
-                  if (offer.details != null) ...[
-                    const SizedBox(height: 2),
-                    Text(offer.details!, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                  ],
-                ],
+                ),
+                // Reserves room so text never runs under the chevron/badge, both drawn as overlays below.
+                const SizedBox(width: 40),
+              ],
+            ),
+            Positioned.fill(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Icon(
+                  Icons.chevron_right,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
-            Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+            if (offer.joined)
+              const Positioned(
+                top: 0,
+                right: 0,
+                child: _StatusPill(label: 'Joined', kind: _StatusKind.success),
+              )
+            else if (isFull)
+              const Positioned(
+                top: 0,
+                right: 0,
+                child: _StatusPill(label: 'Full', kind: _StatusKind.info),
+              ),
           ],
         ),
       ),
@@ -151,16 +197,21 @@ class _OfferTile extends StatelessWidget {
 }
 
 class _TransportOfferDetailSheet extends StatefulWidget {
-  const _TransportOfferDetailSheet({required this.offerId, required this.viewModel});
+  const _TransportOfferDetailSheet({
+    required this.offerId,
+    required this.viewModel,
+  });
 
   final String offerId;
   final TransportViewModel viewModel;
 
   @override
-  State<_TransportOfferDetailSheet> createState() => _TransportOfferDetailSheetState();
+  State<_TransportOfferDetailSheet> createState() =>
+      _TransportOfferDetailSheetState();
 }
 
-class _TransportOfferDetailSheetState extends State<_TransportOfferDetailSheet> {
+class _TransportOfferDetailSheetState
+    extends State<_TransportOfferDetailSheet> {
   List<String>? _joinedUserIds;
   String? _error;
 
@@ -193,7 +244,8 @@ class _TransportOfferDetailSheetState extends State<_TransportOfferDetailSheet> 
               (o) => o.id == widget.offerId,
               orElse: () => widget.viewModel.offers.first,
             );
-            final isFull = offer.seats != null && offer.joinedCount >= offer.seats!;
+            final isFull =
+                offer.seats != null && offer.joinedCount >= offer.seats!;
             final isOrganizer = offer.userId == widget.viewModel.currentUserId;
 
             return Column(
@@ -204,7 +256,19 @@ class _TransportOfferDetailSheetState extends State<_TransportOfferDetailSheet> 
                   children: [
                     Icon(_typeIcons[offer.type] ?? Icons.directions_car),
                     const SizedBox(width: 8),
-                    Text(_typeLabels[offer.type] ?? offer.type, style: theme.textTheme.titleMedium),
+                    Expanded(
+                      child: Text(
+                        _typeLabels[offer.type] ?? offer.type,
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                    if (offer.joined)
+                      const _StatusPill(
+                        label: 'Joined',
+                        kind: _StatusKind.success,
+                      )
+                    else if (isFull)
+                      const _StatusPill(label: 'Full', kind: _StatusKind.info),
                   ],
                 ),
                 if (offer.details != null) ...[
@@ -216,7 +280,10 @@ class _TransportOfferDetailSheetState extends State<_TransportOfferDetailSheet> 
                   children: [
                     CircleAvatar(
                       backgroundColor: theme.colorScheme.secondaryContainer,
-                      child: Icon(Icons.person, color: theme.colorScheme.onSecondaryContainer),
+                      child: Icon(
+                        Icons.person,
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Column(
@@ -224,7 +291,12 @@ class _TransportOfferDetailSheetState extends State<_TransportOfferDetailSheet> 
                       children: [
                         Text('Organizer', style: theme.textTheme.bodyMedium),
                         if (isOrganizer)
-                          Text('(You)', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                          Text(
+                            '(You)',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -233,11 +305,19 @@ class _TransportOfferDetailSheetState extends State<_TransportOfferDetailSheet> 
                 Text('Joined divers', style: theme.textTheme.labelLarge),
                 const SizedBox(height: 8),
                 if (_error != null)
-                  Text('Error: $_error', style: TextStyle(color: theme.colorScheme.error))
+                  Text(
+                    'Error: $_error',
+                    style: TextStyle(color: theme.colorScheme.error),
+                  )
                 else if (_joinedUserIds == null)
                   const Center(child: CircularProgressIndicator())
                 else if (_joinedUserIds!.isEmpty)
-                  Text('No one has joined yet', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant))
+                  Text(
+                    'No one has joined yet',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  )
                 else
                   ..._joinedUserIds!.map((userId) {
                     final isMe = userId == widget.viewModel.currentUserId;
@@ -247,25 +327,34 @@ class _TransportOfferDetailSheetState extends State<_TransportOfferDetailSheet> 
                         children: [
                           CircleAvatar(
                             radius: 16,
-                            backgroundColor: theme.colorScheme.secondaryContainer,
-                            child: Icon(Icons.person, size: 18, color: theme.colorScheme.onSecondaryContainer),
+                            backgroundColor:
+                                theme.colorScheme.secondaryContainer,
+                            child: Icon(
+                              Icons.person,
+                              size: 18,
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
                           ),
                           const SizedBox(width: 12),
-                          Text(isMe ? 'You' : 'Diver', style: theme.textTheme.bodyMedium),
+                          Text(
+                            isMe ? 'You' : 'Diver',
+                            style: theme.textTheme.bodyMedium,
+                          ),
                         ],
                       ),
                     );
                   }),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: _JoinButton(
-                    offer: offer,
-                    viewModel: widget.viewModel,
-                    isFull: isFull,
-                    onJoined: _loadJoinedUserIds,
+                if (!offer.joined && !isFull) ...[
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: _JoinButton(
+                      offer: offer,
+                      viewModel: widget.viewModel,
+                      onJoined: _loadJoinedUserIds,
+                    ),
                   ),
-                ),
+                ],
               ],
             );
           },
@@ -275,33 +364,77 @@ class _TransportOfferDetailSheetState extends State<_TransportOfferDetailSheet> 
   }
 }
 
+enum _StatusKind { success, info }
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.label, required this.kind});
+
+  final String label;
+  final _StatusKind kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final semantic = Theme.of(context).extension<SemanticColors>()!;
+    final theme = Theme.of(context);
+    final background = kind == _StatusKind.success
+        ? semantic.successContainer
+        : semantic.infoContainer;
+    final foreground = kind == _StatusKind.success
+        ? semantic.onSuccessContainer
+        : semantic.onInfoContainer;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
 class _JoinButton extends StatelessWidget {
-  const _JoinButton({required this.offer, required this.viewModel, required this.isFull, this.onJoined});
+  const _JoinButton({
+    required this.offer,
+    required this.viewModel,
+    this.onJoined,
+  });
 
   final TransportOffer offer;
   final TransportViewModel viewModel;
-  final bool isFull;
   final VoidCallback? onJoined;
 
   @override
   Widget build(BuildContext context) {
-    if (offer.joined) {
-      return const Chip(label: Text('Joined'));
-    }
-    if (isFull) {
-      return const Chip(label: Text('Full'));
-    }
-
     final isJoining = viewModel.isJoining(offer.id);
     return ElevatedButton(
       onPressed: isJoining
           ? null
           : () async {
-              await viewModel.join(offer.id);
+              final error = await viewModel.join(offer.id);
+              if (error != null) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(error)),
+                  );
+                }
+                return;
+              }
               onJoined?.call();
             },
       child: isJoining
-          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           : const Text('Join'),
     );
   }
@@ -313,7 +446,8 @@ class _AddTransportOfferSheet extends StatefulWidget {
   final TransportViewModel viewModel;
 
   @override
-  State<_AddTransportOfferSheet> createState() => _AddTransportOfferSheetState();
+  State<_AddTransportOfferSheet> createState() =>
+      _AddTransportOfferSheetState();
 }
 
 class _AddTransportOfferSheetState extends State<_AddTransportOfferSheet> {
@@ -330,50 +464,64 @@ class _AddTransportOfferSheetState extends State<_AddTransportOfferSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Add transport info', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _typeLabels.entries.map((entry) {
-              return ChoiceChip(
-                label: Text(entry.value),
-                selected: _type == entry.key,
-                onSelected: (_) => setState(() => _type = entry.key),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _seatsController,
-            decoration: const InputDecoration(labelText: 'Seats (optional)'),
-            keyboardType: TextInputType.number,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _detailsController,
-            decoration: const InputDecoration(labelText: 'Details — time, pickup point (optional)'),
-            maxLines: 2,
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: widget.viewModel.isSubmitting ? null : _submit,
-            child: widget.viewModel.isSubmitting
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Add'),
-          ),
-        ],
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Add transport info',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _typeLabels.entries.map((entry) {
+                return ChoiceChip(
+                  label: Text(entry.value),
+                  selected: _type == entry.key,
+                  onSelected: (_) => setState(() => _type = entry.key),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _seatsController,
+              decoration: const InputDecoration(labelText: 'Seats (optional)'),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _detailsController,
+              decoration: const InputDecoration(
+                labelText: 'Details — time, pickup point (optional)',
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: widget.viewModel.isSubmitting ? null : _submit,
+                child: widget.viewModel.isSubmitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Add'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

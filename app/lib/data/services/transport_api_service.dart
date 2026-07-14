@@ -53,8 +53,21 @@ class TransportApiService {
       headers: _headers,
     );
     if (res.statusCode != 200) {
-      throw Exception('joinOffer failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'Could not join transport offer');
     }
+  }
+
+  // Server errors come back as {"error": "..."} — surface that message directly instead of the raw body.
+  String? _extractError(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic> && decoded['error'] is String) {
+        return decoded['error'] as String;
+      }
+    } catch (_) {
+      // fall through
+    }
+    return null;
   }
 
   Future<List<String>> fetchJoinedUserIds(String tripId, String offerId) async {

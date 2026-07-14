@@ -124,6 +124,10 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service) fun
 				writeError(w, http.StatusConflict, "no seats left")
 				return
 			}
+			if errors.Is(err, transport.ErrAlreadyBooked) {
+				writeError(w, http.StatusConflict, "already joined a transport offer on this trip")
+				return
+			}
 			writeError(w, http.StatusInternalServerError, "could not join transport offer")
 			return
 		}

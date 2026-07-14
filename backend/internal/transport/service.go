@@ -10,6 +10,7 @@ import (
 
 var ErrInvalidArgument = errors.New("invalid argument")
 var ErrFull = errors.New("no seats left")
+var ErrAlreadyBooked = errors.New("already joined a transport offer on this trip")
 
 type Service struct {
 	Repo *Repository
@@ -53,6 +54,15 @@ func (s *Service) Join(ctx context.Context, offerID, userID uuid.UUID) error {
 	}
 	if alreadyJoined {
 		return nil
+	}
+
+	// One booking per trip — a diver only needs one ride, regardless of how many offers exist.
+	hasOtherBooking, err := s.Repo.HasAnyJoinInTrip(ctx, offer.TripID, userID)
+	if err != nil {
+		return err
+	}
+	if hasOtherBooking {
+		return ErrAlreadyBooked
 	}
 
 	if offer.Seats.Valid {

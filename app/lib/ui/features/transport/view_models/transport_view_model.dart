@@ -61,15 +61,19 @@ class TransportViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> join(String offerId) async {
+  /// Returns null on success, or an error message on failure — a join failure
+  /// (e.g. already booked elsewhere on this trip) shouldn't blow away the whole
+  /// list via the shared [error] field, just that one action.
+  Future<String?> join(String offerId) async {
     _joiningOfferIds.add(offerId);
     notifyListeners();
 
     try {
       await _repository.joinOffer(tripId, offerId);
       _offers = await _repository.getOffers(tripId);
+      return null;
     } catch (e) {
-      _error = e.toString();
+      return e.toString().replaceFirst('Exception: ', '');
     } finally {
       _joiningOfferIds.remove(offerId);
       notifyListeners();
