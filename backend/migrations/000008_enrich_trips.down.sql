@@ -1,0 +1,12 @@
+ALTER TABLE trips
+    DROP COLUMN end_date,
+    DROP COLUMN description,
+    DROP COLUMN meeting_point,
+    DROP COLUMN dive_count_min,
+    DROP COLUMN dive_count_max,
+    DROP COLUMN depth_min_m,
+    DROP COLUMN depth_max_m,
+    DROP COLUMN min_certification,
+    DROP COLUMN booking_code,
+    DROP COLUMN max_participants,
+    DROP COLUMN booking_status;

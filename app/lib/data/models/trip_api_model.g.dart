@@ -16,6 +16,19 @@ _TripApiModel _$TripApiModelFromJson(Map<String, dynamic> json) =>
       joined: json['joined'] as bool,
       creatorUserId: json['creatorUserId'] as String?,
       participantCount: (json['participantCount'] as num?)?.toInt() ?? 0,
+      endDate: json['endDate'] == null
+          ? null
+          : DateTime.parse(json['endDate'] as String),
+      description: json['description'] as String?,
+      meetingPoint: json['meetingPoint'] as String?,
+      diveCountMin: (json['diveCountMin'] as num?)?.toInt(),
+      diveCountMax: (json['diveCountMax'] as num?)?.toInt(),
+      depthMinM: (json['depthMinM'] as num?)?.toInt(),
+      depthMaxM: (json['depthMaxM'] as num?)?.toInt(),
+      minCertification: json['minCertification'] as String?,
+      bookingCode: json['bookingCode'] as String?,
+      maxParticipants: (json['maxParticipants'] as num?)?.toInt(),
+      bookingStatus: json['bookingStatus'] as String? ?? 'open',
     );
 
 Map<String, dynamic> _$TripApiModelToJson(_TripApiModel instance) =>
@@ -28,4 +41,15 @@ Map<String, dynamic> _$TripApiModelToJson(_TripApiModel instance) =>
       'joined': instance.joined,
       'creatorUserId': instance.creatorUserId,
       'participantCount': instance.participantCount,
+      'endDate': instance.endDate?.toIso8601String(),
+      'description': instance.description,
+      'meetingPoint': instance.meetingPoint,
+      'diveCountMin': instance.diveCountMin,
+      'diveCountMax': instance.diveCountMax,
+      'depthMinM': instance.depthMinM,
+      'depthMaxM': instance.depthMaxM,
+      'minCertification': instance.minCertification,
+      'bookingCode': instance.bookingCode,
+      'maxParticipants': instance.maxParticipants,
+      'bookingStatus': instance.bookingStatus,
     };

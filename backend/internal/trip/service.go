@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -19,13 +18,16 @@ func NewService(repo *Repository) *Service {
 	return &Service{Repo: repo}
 }
 
-func (s *Service) CreateTrip(ctx context.Context, title, location string, startTime time.Time, creatorUserID uuid.UUID) (Trip, error) {
-	title = strings.TrimSpace(title)
-	location = strings.TrimSpace(location)
-	if title == "" || location == "" || startTime.IsZero() {
+func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) {
+	p.Title = strings.TrimSpace(p.Title)
+	p.Location = strings.TrimSpace(p.Location)
+	if p.Title == "" || p.Location == "" || p.StartTime.IsZero() {
 		return Trip{}, ErrInvalidArgument
 	}
-	return s.Repo.Create(ctx, title, location, startTime, creatorUserID)
+	if p.EndDate != nil && p.EndDate.Before(p.StartTime) {
+		return Trip{}, ErrInvalidArgument
+	}
+	return s.Repo.Create(ctx, p)
 }
 
 func (s *Service) ListTrips(ctx context.Context) ([]Trip, error) {

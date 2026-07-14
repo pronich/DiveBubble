@@ -1,6 +1,7 @@
 package server
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -30,6 +31,40 @@ type tripResponse struct {
 	Joined           bool       `json:"joined"`
 	CreatorUserID    *uuid.UUID `json:"creatorUserId,omitempty"`
 	ParticipantCount int        `json:"participantCount"`
+
+	EndDate          *time.Time `json:"endDate,omitempty"`
+	Description      *string    `json:"description,omitempty"`
+	MeetingPoint     *string    `json:"meetingPoint,omitempty"`
+	DiveCountMin     *int       `json:"diveCountMin,omitempty"`
+	DiveCountMax     *int       `json:"diveCountMax,omitempty"`
+	DepthMinM        *int       `json:"depthMinM,omitempty"`
+	DepthMaxM        *int       `json:"depthMaxM,omitempty"`
+	MinCertification *string    `json:"minCertification,omitempty"`
+	BookingCode      *string    `json:"bookingCode,omitempty"`
+	MaxParticipants  *int       `json:"maxParticipants,omitempty"`
+	BookingStatus    string     `json:"bookingStatus"`
+}
+
+func nullStringPtr(v sql.NullString) *string {
+	if !v.Valid {
+		return nil
+	}
+	return &v.String
+}
+
+func nullInt32Ptr(v sql.NullInt32) *int {
+	if !v.Valid {
+		return nil
+	}
+	i := int(v.Int32)
+	return &i
+}
+
+func nullTimePtr(v sql.NullTime) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	return &v.Time
 }
 
 func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse {
@@ -41,6 +76,17 @@ func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse
 		CreatedAt:        t.CreatedAt,
 		Joined:           joined,
 		ParticipantCount: participantCount,
+		EndDate:          nullTimePtr(t.EndDate),
+		Description:      nullStringPtr(t.Description),
+		MeetingPoint:     nullStringPtr(t.MeetingPoint),
+		DiveCountMin:     nullInt32Ptr(t.DiveCountMin),
+		DiveCountMax:     nullInt32Ptr(t.DiveCountMax),
+		DepthMinM:        nullInt32Ptr(t.DepthMinM),
+		DepthMaxM:        nullInt32Ptr(t.DepthMaxM),
+		MinCertification: nullStringPtr(t.MinCertification),
+		BookingCode:      nullStringPtr(t.BookingCode),
+		MaxParticipants:  nullInt32Ptr(t.MaxParticipants),
+		BookingStatus:    t.BookingStatus,
 	}
 	if t.CreatorUserID.Valid {
 		resp.CreatorUserID = &t.CreatorUserID.UUID
@@ -52,6 +98,17 @@ type createTripRequest struct {
 	Title     string    `json:"title"`
 	Location  string    `json:"location"`
 	StartTime time.Time `json:"startTime"`
+
+	EndDate          *time.Time `json:"endDate"`
+	Description      *string    `json:"description"`
+	MeetingPoint     *string    `json:"meetingPoint"`
+	DiveCountMin     *int       `json:"diveCountMin"`
+	DiveCountMax     *int       `json:"diveCountMax"`
+	DepthMinM        *int       `json:"depthMinM"`
+	DepthMaxM        *int       `json:"depthMaxM"`
+	MinCertification *string    `json:"minCertification"`
+	BookingCode      *string    `json:"bookingCode"`
+	MaxParticipants  *int       `json:"maxParticipants"`
 }
 
 func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -63,7 +120,22 @@ func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 			return
 		}
 
-		t, err := svc.CreateTrip(r.Context(), req.Title, req.Location, req.StartTime, userID)
+		t, err := svc.CreateTrip(r.Context(), trip.CreateParams{
+			Title:            req.Title,
+			Location:         req.Location,
+			StartTime:        req.StartTime,
+			CreatorUserID:    userID,
+			EndDate:          req.EndDate,
+			Description:      req.Description,
+			MeetingPoint:     req.MeetingPoint,
+			DiveCountMin:     req.DiveCountMin,
+			DiveCountMax:     req.DiveCountMax,
+			DepthMinM:        req.DepthMinM,
+			DepthMaxM:        req.DepthMaxM,
+			MinCertification: req.MinCertification,
+			BookingCode:      req.BookingCode,
+			MaxParticipants:  req.MaxParticipants,
+		})
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, "title, location and startTime are required")

@@ -15,3 +15,14 @@ String formatTime(DateTime dateTime) {
   final local = dateTime.toLocal();
   return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
 }
+
+/// Collapses to a single date when [end] is null or the same calendar day as [start].
+String formatDateRange(DateTime start, DateTime? end) {
+  if (end == null) return formatShortDate(start);
+  final s = start.toLocal();
+  final e = end.toLocal();
+  if (s.year == e.year && s.month == e.month && s.day == e.day) {
+    return formatShortDate(start);
+  }
+  return '${formatShortDate(start)} – ${formatShortDate(end)}';
+}

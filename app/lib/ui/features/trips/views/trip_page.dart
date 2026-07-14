@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/app_gradients.dart';
@@ -49,6 +50,7 @@ class _TripPageState extends State<TripPage> {
 
           final theme = Theme.of(context);
           final isOrganizer = trip.creatorUserId == widget.viewModel.currentUserId;
+          final diveCountText = _diveCountText(trip);
 
           return ListView(
             padding: EdgeInsets.zero,
@@ -85,44 +87,129 @@ class _TripPageState extends State<TripPage> {
                         Icon(Icons.calendar_today_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
                         const SizedBox(width: 4),
                         Text(
-                          '${formatShortDate(trip.startTime)} · ${formatTime(trip.startTime)}',
+                          '${formatDateRange(trip.startTime, trip.endDate)} · ${formatTime(trip.startTime)}',
                           style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                    _InfoGrid(trip: trip),
+                    if (diveCountText != null) ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(Icons.scuba_diving_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Text(diveCountText, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    ],
+                    if (trip.description != null) ...[
+                      const SizedBox(height: 20),
+                      Text('About this dive', style: theme.textTheme.labelLarge),
+                      const SizedBox(height: 6),
+                      Text(trip.description!, style: theme.textTheme.bodyMedium),
+                    ],
                     const SizedBox(height: 20),
                     _OrganizerCard(isOrganizer: isOrganizer),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Icon(Icons.groups_outlined, size: 18, color: theme.colorScheme.onSurfaceVariant),
-                        const SizedBox(width: 6),
-                        Text(
-                          trip.participantCount == 1 ? '1 diver joined' : '${trip.participantCount} divers joined',
-                          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 24),
-                    if (trip.joined)
-                      const Chip(label: Text('Joined'))
-                    else
-                      ElevatedButton(
-                        onPressed: widget.viewModel.isJoining ? null : widget.viewModel.join,
-                        child: widget.viewModel.isJoining
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Text('Join'),
-                      ),
+                    _JoinButton(trip: trip, viewModel: widget.viewModel),
                   ],
                 ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  String? _diveCountText(Trip trip) {
+    final min = trip.diveCountMin;
+    final max = trip.diveCountMax;
+    if (min == null && max == null) return null;
+    if (min != null && max != null) {
+      if (min == max) return min == 1 ? '1 dive' : '$min dives';
+      return '$min–$max dives';
+    }
+    if (max != null) return 'Up to $max dives';
+    return '$min+ dives';
+  }
+}
+
+class _InfoGrid extends StatelessWidget {
+  const _InfoGrid({required this.trip});
+
+  final Trip trip;
+
+  @override
+  Widget build(BuildContext context) {
+    final tiles = <Widget>[
+      _InfoTile(
+        label: 'MEET',
+        value: '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
+      ),
+      _InfoTile(label: 'LEVEL', value: trip.minCertification ?? 'Open to all'),
+      if (_depthText(trip) != null) _InfoTile(label: 'DEPTH', value: _depthText(trip)!),
+      _InfoTile(
+        label: 'SEATS',
+        value: trip.maxParticipants != null
+            ? '${trip.participantCount} of ${trip.maxParticipants}'
+            : '${trip.participantCount} joined',
+      ),
+    ];
+
+    final rows = <Widget>[];
+    for (var i = 0; i < tiles.length; i += 2) {
+      if (rows.isNotEmpty) rows.add(const SizedBox(height: 10));
+      final second = i + 1 < tiles.length ? tiles[i + 1] : const SizedBox.shrink();
+      rows.add(Row(
+        children: [
+          Expanded(child: tiles[i]),
+          const SizedBox(width: 10),
+          Expanded(child: second),
+        ],
+      ));
+    }
+
+    return Column(children: rows);
+  }
+
+  static String? _depthText(Trip trip) {
+    final min = trip.depthMinM;
+    final max = trip.depthMaxM;
+    if (min == null && max == null) return null;
+    if (min != null && max != null) {
+      if (min == max) return '$min m';
+      return '$min–$max m';
+    }
+    if (max != null) return 'Up to $max m';
+    return '$min+ m';
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  const _InfoTile({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+        ],
       ),
     );
   }
@@ -160,6 +247,38 @@ class _OrganizerCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _JoinButton extends StatelessWidget {
+  const _JoinButton({required this.trip, required this.viewModel});
+
+  final Trip trip;
+  final TripViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    if (trip.joined) {
+      return const Chip(label: Text('Joined'));
+    }
+
+    if (trip.bookingStatus == 'cancelled') {
+      return const Chip(label: Text('Trip cancelled'));
+    }
+    if (trip.bookingStatus == 'full') {
+      return const Chip(label: Text('Trip full'));
+    }
+
+    return ElevatedButton(
+      onPressed: viewModel.isJoining ? null : viewModel.join,
+      child: viewModel.isJoining
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Text('Join'),
     );
   }
 }

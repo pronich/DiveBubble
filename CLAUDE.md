@@ -25,7 +25,7 @@ Everything below is the full feature breakdown discussed for later phases — MV
 
 - **Auth & onboarding**: real Login via Apple + Google (replacing stub `X-User-Id`). Minimal onboarding: splash screen → login screen, skippable (browse before signing in).
 - **Discovery card fields**: photo (or placeholder), date, location, title — filtered by proximity to user.
-- **Trip Page → Overview** (full field set, MVP only has title/location/startTime/joined so far): creator identity (dive center name or person), where, when, requirements (optional), extra description, what's included, required equipment list, booking status, meeting point, useful links.
+- **Trip Page → Overview**: `Trip` now carries `endDate`, `description`, `meetingPoint`, `diveCountMin/Max`, `depthMinM/MaxM`, `minCertification`, `bookingCode`, `maxParticipants`, `bookingStatus` (see Backend enrichment section) — all displayed on Trip Page. Still missing: what's included, required equipment list, useful links (not requested for this round).
 - **Trip Page → Chat**: participants list with avatars, pinned messages (tbd if needed). Tapping the chat header opens **Group info**: participants, organizer, rules (tbd), shared media (tbd), leave group, report.
 - **Trip Page → Transport board**: Offer a ride / Find a ride / Share a rental / I'll get there myself.
 - **Trip Page → Dives** (deferred): per-trip dive log, shareable with other participants.
@@ -108,6 +108,25 @@ No real auth yet — every route except `GET /trips` and `GET /health` requires 
 **Access model (done)**: anonymous/no-account access is search-only — browsing Discovery (`GET /trips`) stays open, but `POST /trips` and joining both require `X-User-Id`. Trips carry a nullable `creator_user_id` (nullable because pre-existing dev rows have none — every trip created from here on always has one). `users` has an `account_type` (`individual` | `dive_center`, default `individual`, no UI to set it yet) ahead of dive centers being onboarded, so that onboarding won't need a breaking migration.
 
 Endpoints so far: `POST /trips` (auth required), `GET /trips` (open), `GET /trips/{id}` (includes `joined`, `creatorUserId`, `participantCount` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant), `GET /realtime/token` (mints a Centrifugo connection JWT for the caller).
+
+### Trip data fields (enrichment)
+
+`trips` has one required field beyond the original title/location/start_time: `booking_status` (`open` | `full` | `cancelled`, default `open`, **set manually by the organizer** — not derived from participant count, since dive-center trips may track real capacity outside our system entirely). Everything else added is optional (nullable), matching what a real dive trip listing needs (cross-checked against KingFish's own trip pages):
+
+| Field | Type | Notes |
+|---|---|---|
+| `end_date` | DATE, nullable | Null = single-day trip (same day as `start_time`). Organizer can edit it directly (this is why it's a real end date, not a derived duration). |
+| `description` | TEXT | Free text, "About this dive". |
+| `meeting_point` | TEXT | Falls back to `location` in the UI when absent — `location` is the general area, this is the exact spot. |
+| `dive_count_min` / `dive_count_max` | INT, INT | Either can be null alone (e.g. "up to 8" = min null, max 8); both null = not shown. |
+| `depth_min_m` / `depth_max_m` | INT, INT | Same min/max-either-nullable shape as dive count. |
+| `min_certification` | TEXT, free text | Not an enum — PADI/SSI/etc. name levels differently, a fixed list would be wrong for some organizers. UI falls back to "Open to all" when null. |
+| `booking_code` | TEXT | For the future join-by-code flow (e.g. redeeming a KingFish Drive&Dive booking) — field exists now, redemption logic doesn't yet. |
+| `max_participants` | INT, nullable | Only meaningful for individually-organized trips, where joining our marketplace *is* taking a seat (e.g. a car with 4 spots) — `participant_count` already equals occupancy. Dive-center trips leave this null since their real capacity isn't tracked through us. |
+
+SQL `CHECK` constraints enforce `dive_count_max >= dive_count_min`, `depth_max_m >= depth_min_m`, and `max_participants > 0` at the DB level (all nullable-safe).
+
+Trip Page renders these as: a MEET/LEVEL/DEPTH/SEATS info grid (DEPTH tile omitted entirely when both depth fields are null, rather than shown empty — the grid is a manually-built `Row`/`Column`, not `GridView.count`, after a shrinkWrap sizing bug left a phantom empty row above the tiles), a dive-count line, an "About this dive" block, and a Join button that becomes a disabled "Trip full"/"Trip cancelled" chip when `bookingStatus` isn't `open`.
 
 ### Packages (`backend/internal/`)
 

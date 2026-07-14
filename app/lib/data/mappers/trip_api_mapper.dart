@@ -10,5 +10,16 @@ extension TripApiMapper on TripApiModel {
         joined: joined,
         creatorUserId: creatorUserId,
         participantCount: participantCount,
+        endDate: endDate,
+        description: description,
+        meetingPoint: meetingPoint,
+        diveCountMin: diveCountMin,
+        diveCountMax: diveCountMax,
+        depthMinM: depthMinM,
+        depthMaxM: depthMaxM,
+        minCertification: minCertification,
+        bookingCode: bookingCode,
+        maxParticipants: maxParticipants,
+        bookingStatus: bookingStatus,
       );
 }
