@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/semantic_colors.dart';
+import '../../transport/view_models/transport_view_model.dart';
 import '../view_models/chat_view_model.dart';
 import '../view_models/my_trips_view_model.dart';
-import 'chat_view.dart';
+import 'trip_conversation_page.dart';
 
 class MyTripsView extends StatefulWidget {
   const MyTripsView({
@@ -17,6 +19,7 @@ class MyTripsView extends StatefulWidget {
     required this.viewModel,
     required this.chatRepository,
     required this.tripRepository,
+    required this.transportRepository,
     required this.realtimeService,
     required this.currentUserId,
     required this.onGoToExplore,
@@ -25,6 +28,7 @@ class MyTripsView extends StatefulWidget {
   final MyTripsViewModel viewModel;
   final ChatRepository chatRepository;
   final TripRepository tripRepository;
+  final TransportRepository transportRepository;
   final RealtimeService realtimeService;
   final String currentUserId;
   final VoidCallback onGoToExplore;
@@ -81,12 +85,16 @@ class _MyTripsViewState extends State<MyTripsView> {
   void _openChat(BuildContext context, Trip trip) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChatView(
-          viewModel: ChatViewModel(
+        builder: (_) => TripConversationPage(
+          chatViewModel: ChatViewModel(
             repository: widget.chatRepository,
             realtimeService: widget.realtimeService,
             tripId: trip.id,
             currentUserId: widget.currentUserId,
+          ),
+          transportViewModel: TransportViewModel(
+            repository: widget.transportRepository,
+            tripId: trip.id,
           ),
           tripTitle: trip.title,
           tripRepository: widget.tripRepository,

@@ -26,20 +26,24 @@ Everything below is the full feature breakdown discussed for later phases — MV
 - **Auth & onboarding**: real Login via Apple + Google (replacing stub `X-User-Id`). Minimal onboarding: splash screen → login screen, skippable (browse before signing in).
 - **Discovery card fields**: photo (or placeholder), date, location, title — filtered by proximity to user.
 - **Trip Page → Overview**: `Trip` now carries `endDate`, `description`, `meetingPoint`, `diveCountMin/Max`, `depthMinM/MaxM`, `minCertification`, `bookingCode`, `maxParticipants`, `bookingStatus` (see Backend enrichment section) — all displayed on Trip Page. Still missing: what's included, required equipment list, useful links (not requested for this round).
-- **Trip Page → Chat**: participants list with avatars, pinned messages (tbd if needed). Tapping the chat header opens **Group info**: participants, organizer, rules (tbd), shared media (tbd), leave group, report.
-- **Trip Page → Transport board**: Offer a ride / Find a ride / Share a rental / I'll get there myself.
+- **Chat**: participants list with avatars, pinned messages (tbd if needed). Tapping the header opens **Trip Page**: participants, organizer, rules (tbd), shared media (tbd), leave group, report — most of this still tbd, only participants/organizer exist today.
+- ~~**Transport board**~~ (done — see Transport section under App below): Offer a ride / Find a ride / Share a rental / I'll get there myself.
 - **Trip Page → Dives** (deferred): per-trip dive log, shareable with other participants.
 - **Trips tab**: also covers past trips (history), not just upcoming — current build only handles joined+active.
 - **Logbook** (deferred, separate from per-trip Dives): personal dive log across all trips.
+- **Splitwise-style expense splitting** (deferred, new idea): per-trip shared expenses — flagged as possibly generalizing beyond diving trips later, not diving-specific.
+- **Share trip** (deferred): share sheet so a trip can be sent to friends outside the app — deliberately not doing real deep-linking yet (no domain/routing infra until deploy), so this waits.
 - **Profile tab**: diver profile (photo, display name, city, languages, short bio, dive count), certifications, gear locker, dive statistics, connected services, settings.
-- **Actions**: ~~create trip~~ (done, individual organizers only — see App section below), join trip, join a pre-booked trip via code (e.g. a dive center's own booking system like Drive&Dive), create transport offer, update profile, add certificates, add gear.
+- **Actions**: ~~create trip~~ (done, individual organizers only), join trip, join a pre-booked trip via code (e.g. a dive center's own booking system like Drive&Dive), ~~create transport offer~~ (done), update profile, add certificates, add gear.
 - **Web**: diver-facing web is the same Flutter codebase (already builds to web). Dive-center admin is a separate panel for centers to publish their own trips manually; CMS integration is a later idea so centers don't have to enter trips by hand.
 
 ## Navigation / IA
 
-Bottom nav (v1): **Explore — Trips — Profile**. Key decision: **a joined trip *is* its chat** — no separate chat entity. "Explore" is the discovery list (all open trips); "Trips" lists only trips the current user has joined, ordered by conversation activity, and each row opens directly into that trip's chat. Tapping the chat header from there opens the same Trip Page (Overview/Transport/Dives tabs) — one shared screen/route, not a separate "joined trip" view, so the marketplace framing (a trip is always a trip, joined or not) doesn't get buried under a messaging mental model. `Trips` tab and its empty state are deferred until join (step 6) exists.
+Bottom nav (v1): **Explore — Trips — Profile**. Key decision: **a joined trip *is* its chat** — no separate chat entity. "Explore" is the discovery list (all open trips); "Trips" lists only trips the current user has joined, ordered by conversation activity, and each row opens directly into `TripConversationPage`. Tapping the header there opens Trip Page (the general-info screen — location, meeting point, level/depth/dives/duration, organizer, participants) — one shared screen/route, not a separate "joined trip" view, so the marketplace framing (a trip is always a trip, joined or not) doesn't get buried under a messaging mental model.
 
-Build order being followed: Discovery list (done) → Trip Page detail (done) → stub auth + join (done) → Trips tab (= chats) + chat screen (done) → realtime via Centrifugo (done) → real Apple/Google auth → transport board → richer Discovery/profile fields. Logbook, Dives sub-tab, and the dive-center web admin are explicitly deferred past all of this.
+**Priority ordering within a trip (decided)**: Chat is most important, Transport is second, everything else (trip description, future photos, shared dive log, future splitwise-style expense splitting — the last explicitly flagged as possibly generalizing beyond diving trips later) is lower-priority. This is why Chat/Transport are tabs one tap away from "Trips", while Trip Page (the lower-priority stuff) stays a level deeper, opened only by tapping the header — same pattern Telegram uses for a group's primary conversation vs. its "Group Info" screen. Trip Page itself doesn't need secondary tabs yet since there's nothing to tab between today (description is still just shown inline) — add them there only once Photos/Dive log/Splitwise actually exist, not preemptively.
+
+Build order being followed: Discovery list (done) → Trip Page detail (done) → stub auth + join (done) → Trips tab (= chats) + chat screen (done) → realtime via Centrifugo (done) → Create Trip flow (done, individual organizers only) → Chat/Transport tabs (done) → real Apple/Google auth + Profile → richer Discovery/profile fields. Logbook, Dives sub-tab, Share trip, and the dive-center web admin (incl. its multi-user-per-account model) are explicitly deferred past all of this — dive centers need a meaningfully different auth shape (several staff acting on behalf of one account), so the individual flow is being finished completely first rather than half-building both at once.
 
 ## Stack
 
@@ -109,7 +113,7 @@ No real auth yet — every route except `GET /trips` and `GET /health` requires 
 
 **Deliberate priority call**: finish the individual (peer-to-peer) organizer flow completely before touching dive centers. Dive centers need a real multi-user-per-account model (several staff accounts acting on behalf of one center), which is a meaningfully different auth shape than anything built so far — better to build it once, later, than bolt it on halfway through.
 
-Endpoints so far: `POST /trips` (auth required), `GET /trips` (open), `GET /trips/{id}` (includes `joined`, `creatorUserId`, `participantCount` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant), `GET /realtime/token` (mints a Centrifugo connection JWT for the caller).
+Endpoints so far: `POST /trips` (auth required), `GET /trips` (open), `GET /trips/{id}` (includes `joined`, `creatorUserId`, `participantCount` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant), `GET/POST /trips/{id}/transport` (403 if not a participant — same `requireParticipant` guard as messages), `GET /realtime/token` (mints a Centrifugo connection JWT for the caller).
 
 ### Trip data fields (enrichment)
 
@@ -151,6 +155,7 @@ Every enriched field from the backend section above is in the form except `booki
 | `trip` | Trip domain: model, repository, service (create/list/get/join/isJoined/listJoinedByUser/countParticipants) |
 | `user` | Stub identity: `GetOrCreate` upserts by client-supplied `X-User-Id`; also carries `account_type` |
 | `message` | Chat messages: model, repository, service (send/list per trip) |
+| `transport` | Transport offers: model (`OfferType` enum: offer_ride/find_ride/share_rental/self_arranged, `Seats` int nullable, `Details` text nullable), repository, service (create/list per trip) |
 | `realtime` | `Publisher` (POST to Centrifugo `/api/publish`), `TokenIssuer` (mints connection JWTs, HS256) |
 
 ### App (`app/`)
@@ -164,19 +169,20 @@ Runs independently of the backend — no shared tooling with the `backend/` Make
 
 Top-level shell: `ui/core/navigation/root_shell.dart` — `RootShell` holds the Explore/Trips/Profile `NavigationBar` + an `IndexedStack`. **Gotcha already hit once**: construct each tab's ViewModel exactly once (as a `late final` field on `_RootShellState`, e.g. via `initState` or field initializer) — building them inline inside `build()` hands the tab a fresh, unloaded ViewModel on every rebuild (any `setState`, including switching tabs), silently wiping already-loaded data. `TripsListView`/`MyTripsView` etc. don't re-run `initState` on rebuild, so a swapped-out `widget.viewModel` is never reloaded.
 
-Features: `ui/features/trips/` (Explore list, Trip Page detail + join), `ui/features/chats/` (Trips tab = joined-trips list, chat screen), `ui/features/profile/` (placeholder).
+Features: `ui/features/trips/` (Explore list, Trip Page detail + join, Create Trip), `ui/features/chats/` (Trips tab = joined-trips list, `TripConversationPage` tab shell, `ChatView`), `ui/features/transport/` (`TransportView`, its own feature folder rather than living under `chats/` since it isn't messaging), `ui/features/profile/` (placeholder).
 
 ### App layers (`app/lib/`)
 
 | Layer | Path | Contents |
 |---|---|---|
-| Domain | `domain/entities/` | `Trip` (incl. nullable `creatorUserId`, `participantCount`), `ChatMessage` (freezed) |
-| Data | `data/models/` | `TripApiModel`, `ChatMessageApiModel` (freezed + json_serializable) |
+| Domain | `domain/entities/` | `Trip` (incl. nullable `creatorUserId`, `participantCount`), `ChatMessage`, `TransportOffer` (freezed) |
+| Data | `data/models/` | `TripApiModel`, `ChatMessageApiModel`, `TransportOfferApiModel` (freezed + json_serializable) |
 | Data | `data/mappers/` | `*ApiMapper.toDomain()` extensions |
-| Data | `data/services/` | `TripApiService`, `ChatApiService` (attach `X-User-Id` header), `UserIdentityService` (persists a client-generated uuid via `shared_preferences`), `RealtimeService` (wraps a single shared `centrifuge.Client`, `subscribe`/`unsubscribe` per channel) |
-| Data | `data/repositories/` | `TripRepository`, `ChatRepository` (incl. `getRealtimeToken()`) |
-| UI | `ui/features/trips/view_models/` `/views/` | `TripsListViewModel`/`TripsListView` (Explore), `TripViewModel`/`TripPage` (detail + join — `TripViewModel` carries `currentUserId` too, same pattern as `ChatViewModel`, so the view can tell "you organized this" without a separate prop) |
-| UI | `ui/features/chats/view_models/` `/views/` | `MyTripsViewModel`/`MyTripsView` (Trips tab), `ChatViewModel`/`ChatView` — subscribes to `trip:$tripId` on `load()`, dedupes incoming publications by message id (own sent messages already arrive via the post-send REST reload), unsubscribes in `dispose()` (called explicitly from `ChatView.dispose()`, ChangeNotifier's `dispose` isn't auto-invoked by Flutter) |
+| Data | `data/services/` | `TripApiService`, `ChatApiService`, `TransportApiService` (attach `X-User-Id` header), `UserIdentityService` (persists a client-generated uuid via `shared_preferences`), `RealtimeService` (wraps a single shared `centrifuge.Client`, `subscribe`/`unsubscribe` per channel) |
+| Data | `data/repositories/` | `TripRepository`, `ChatRepository` (incl. `getRealtimeToken()`), `TransportRepository` |
+| UI | `ui/features/trips/view_models/` `/views/` | `TripsListViewModel`/`TripsListView` (Explore), `TripViewModel`/`TripPage` (detail + join — `TripViewModel` carries `currentUserId` too, same pattern as `ChatViewModel`, so the view can tell "you organized this" without a separate prop), `CreateTripViewModel`/`CreateTripPage` |
+| UI | `ui/features/chats/view_models/` `/views/` | `MyTripsViewModel`/`MyTripsView` (Trips tab), `ChatViewModel`/`ChatView` — `ChatView` is body-only now (no `Scaffold`/`AppBar` of its own), embedded as a tab inside `TripConversationPage`; subscribes to `trip:$tripId` on `load()`, dedupes incoming publications by message id (own sent messages already arrive via the post-send REST reload), unsubscribes in `dispose()` (called explicitly from `ChatView.dispose()`, ChangeNotifier's `dispose` isn't auto-invoked by Flutter). `TripConversationPage` owns the shared `AppBar` (title tap → Trip Page) + `TabBar`/`TabBarView` wrapping `ChatView` and `TransportView`. |
+| UI | `ui/features/transport/view_models/` `/views/` | `TransportViewModel`/`TransportView` — list of offers + a FAB opening a bottom sheet form (type via `ChoiceChip`s, optional seats/details) |
 | UI | `ui/features/profile/views/` | `ProfileView` (placeholder) |
 
 DI is manual (constructed in `main.dart` / `RootShell.initState`) — no `get_it`/`provider` yet, added only if wiring gets unwieldy across more features.

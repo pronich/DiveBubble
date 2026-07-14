@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/repositories/chat_repository.dart';
+import '../../../data/repositories/transport_repository.dart';
 import '../../../data/repositories/trip_repository.dart';
 import '../../../data/services/realtime_service.dart';
 import '../../features/chats/view_models/my_trips_view_model.dart';
@@ -15,12 +16,14 @@ class RootShell extends StatefulWidget {
     super.key,
     required this.tripRepository,
     required this.chatRepository,
+    required this.transportRepository,
     required this.realtimeService,
     required this.currentUserId,
   });
 
   final TripRepository tripRepository;
   final ChatRepository chatRepository;
+  final TransportRepository transportRepository;
   final RealtimeService realtimeService;
   final String currentUserId;
 
@@ -51,6 +54,7 @@ class _RootShellState extends State<RootShell> {
             viewModel: _myTripsViewModel,
             chatRepository: widget.chatRepository,
             tripRepository: widget.tripRepository,
+            transportRepository: widget.transportRepository,
             realtimeService: widget.realtimeService,
             currentUserId: widget.currentUserId,
             onGoToExplore: () => setState(() => _index = 0),
