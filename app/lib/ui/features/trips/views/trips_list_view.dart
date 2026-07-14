@@ -5,8 +5,10 @@ import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/app_gradients.dart';
+import '../view_models/create_trip_view_model.dart';
 import '../view_models/trip_view_model.dart';
 import '../view_models/trips_list_view_model.dart';
+import 'create_trip_page.dart';
 import 'trip_page.dart';
 
 class TripsListView extends StatefulWidget {
@@ -35,7 +37,24 @@ class _TripsListViewState extends State<TripsListView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Explore')),
+      appBar: AppBar(
+        title: const Text('Explore'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: ElevatedButton.icon(
+              onPressed: () => _openCreateTrip(context),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Create trip'),
+              style: ElevatedButton.styleFrom(
+                shape: const StadiumBorder(),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+        ],
+      ),
       body: ListenableBuilder(
         listenable: widget.viewModel,
         builder: (context, _) {
@@ -94,6 +113,30 @@ class _TripsListViewState extends State<TripsListView> {
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),
+        ),
+      ),
+    );
+  }
+
+  void _openCreateTrip(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CreateTripPage(
+          viewModel: CreateTripViewModel(repository: widget.tripRepository),
+          onCreated: (trip) {
+            widget.viewModel.loadTrips();
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => TripPage(
+                  viewModel: TripViewModel(
+                    repository: widget.tripRepository,
+                    tripId: trip.id,
+                    currentUserId: widget.currentUserId,
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TripApiModel {
 
- String get id; String get title; String get location; DateTime get startTime; DateTime get createdAt; bool get joined; String? get creatorUserId; int get participantCount; DateTime? get endDate; String? get description; String? get meetingPoint; int? get diveCountMin; int? get diveCountMax; int? get depthMinM; int? get depthMaxM; String? get minCertification; String? get bookingCode; int? get maxParticipants; String get bookingStatus;
+ String get id; String get title; String get location; DateTime get startTime; DateTime get createdAt; bool get joined; String? get creatorUserId; int get participantCount; DateTime? get endDate; String? get description; String? get meetingPoint; int? get diveCountMin; int? get diveCountMax; int? get depthMinM; int? get depthMaxM; String? get minCertification; String? get bookingCode; int? get maxParticipants; String get bookingStatus; String? get photoUrl;
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $TripApiModelCopyWith<TripApiModel> get copyWith => _$TripApiModelCopyWithImpl<T
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,createdAt,joined,creatorUserId,participantCount,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus]);
+int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,createdAt,joined,creatorUserId,participantCount,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus,photoUrl]);
 
 @override
 String toString() {
-  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus)';
+  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus, photoUrl: $photoUrl)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $TripApiModelCopyWith<$Res>  {
   factory $TripApiModelCopyWith(TripApiModel value, $Res Function(TripApiModel) _then) = _$TripApiModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, String location, DateTime startTime, DateTime createdAt, bool joined, String? creatorUserId, int participantCount, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus
+ String id, String title, String location, DateTime startTime, DateTime createdAt, bool joined, String? creatorUserId, int participantCount, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus, String? photoUrl
 });
 
 
@@ -65,7 +65,7 @@ class _$TripApiModelCopyWithImpl<$Res>
 
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,Object? photoUrl = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -86,7 +86,8 @@ as int?,minCertification: freezed == minCertification ? _self.minCertification :
 as String?,bookingCode: freezed == bookingCode ? _self.bookingCode : bookingCode // ignore: cast_nullable_to_non_nullable
 as String?,maxParticipants: freezed == maxParticipants ? _self.maxParticipants : maxParticipants // ignore: cast_nullable_to_non_nullable
 as int?,bookingStatus: null == bookingStatus ? _self.bookingStatus : bookingStatus // ignore: cast_nullable_to_non_nullable
-as String,
+as String,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -171,10 +172,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TripApiModel() when $default != null:
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl);case _:
   return orElse();
 
 }
@@ -192,10 +193,10 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.create
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl)  $default,) {final _that = this;
 switch (_that) {
 case _TripApiModel():
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -212,10 +213,10 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.create
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _TripApiModel() when $default != null:
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl);case _:
   return null;
 
 }
@@ -227,7 +228,7 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.create
 @JsonSerializable()
 
 class _TripApiModel implements TripApiModel {
-  const _TripApiModel({required this.id, required this.title, required this.location, required this.startTime, required this.createdAt, required this.joined, this.creatorUserId, this.participantCount = 0, this.endDate, this.description, this.meetingPoint, this.diveCountMin, this.diveCountMax, this.depthMinM, this.depthMaxM, this.minCertification, this.bookingCode, this.maxParticipants, this.bookingStatus = 'open'});
+  const _TripApiModel({required this.id, required this.title, required this.location, required this.startTime, required this.createdAt, required this.joined, this.creatorUserId, this.participantCount = 0, this.endDate, this.description, this.meetingPoint, this.diveCountMin, this.diveCountMax, this.depthMinM, this.depthMaxM, this.minCertification, this.bookingCode, this.maxParticipants, this.bookingStatus = 'open', this.photoUrl});
   factory _TripApiModel.fromJson(Map<String, dynamic> json) => _$TripApiModelFromJson(json);
 
 @override final  String id;
@@ -249,6 +250,7 @@ class _TripApiModel implements TripApiModel {
 @override final  String? bookingCode;
 @override final  int? maxParticipants;
 @override@JsonKey() final  String bookingStatus;
+@override final  String? photoUrl;
 
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
@@ -263,16 +265,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,createdAt,joined,creatorUserId,participantCount,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus]);
+int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,createdAt,joined,creatorUserId,participantCount,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus,photoUrl]);
 
 @override
 String toString() {
-  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus)';
+  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus, photoUrl: $photoUrl)';
 }
 
 
@@ -283,7 +285,7 @@ abstract mixin class _$TripApiModelCopyWith<$Res> implements $TripApiModelCopyWi
   factory _$TripApiModelCopyWith(_TripApiModel value, $Res Function(_TripApiModel) _then) = __$TripApiModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, String location, DateTime startTime, DateTime createdAt, bool joined, String? creatorUserId, int participantCount, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus
+ String id, String title, String location, DateTime startTime, DateTime createdAt, bool joined, String? creatorUserId, int participantCount, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus, String? photoUrl
 });
 
 
@@ -300,7 +302,7 @@ class __$TripApiModelCopyWithImpl<$Res>
 
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,Object? photoUrl = freezed,}) {
   return _then(_TripApiModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -321,7 +323,8 @@ as int?,minCertification: freezed == minCertification ? _self.minCertification :
 as String?,bookingCode: freezed == bookingCode ? _self.bookingCode : bookingCode // ignore: cast_nullable_to_non_nullable
 as String?,maxParticipants: freezed == maxParticipants ? _self.maxParticipants : maxParticipants // ignore: cast_nullable_to_non_nullable
 as int?,bookingStatus: null == bookingStatus ? _self.bookingStatus : bookingStatus // ignore: cast_nullable_to_non_nullable
-as String,
+as String,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

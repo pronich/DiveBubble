@@ -23,5 +23,6 @@ abstract class Trip with _$Trip {
     String? bookingCode,
     int? maxParticipants,
     @Default('open') String bookingStatus,
+    String? photoUrl, // unused until real photo upload/storage exists
   }) = _Trip;
 }

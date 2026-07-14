@@ -32,7 +32,7 @@ Everything below is the full feature breakdown discussed for later phases — MV
 - **Trips tab**: also covers past trips (history), not just upcoming — current build only handles joined+active.
 - **Logbook** (deferred, separate from per-trip Dives): personal dive log across all trips.
 - **Profile tab**: diver profile (photo, display name, city, languages, short bio, dive count), certifications, gear locker, dive statistics, connected services, settings.
-- **Actions**: create trip, join trip, join a pre-booked trip via code (e.g. a dive center's own booking system like Drive&Dive), create transport offer, update profile, add certificates, add gear.
+- **Actions**: ~~create trip~~ (done, individual organizers only — see App section below), join trip, join a pre-booked trip via code (e.g. a dive center's own booking system like Drive&Dive), create transport offer, update profile, add certificates, add gear.
 - **Web**: diver-facing web is the same Flutter codebase (already builds to web). Dive-center admin is a separate panel for centers to publish their own trips manually; CMS integration is a later idea so centers don't have to enter trips by hand.
 
 ## Navigation / IA
@@ -107,6 +107,8 @@ No real auth yet — every route except `GET /trips` and `GET /health` requires 
 
 **Access model (done)**: anonymous/no-account access is search-only — browsing Discovery (`GET /trips`) stays open, but `POST /trips` and joining both require `X-User-Id`. Trips carry a nullable `creator_user_id` (nullable because pre-existing dev rows have none — every trip created from here on always has one). `users` has an `account_type` (`individual` | `dive_center`, default `individual`, no UI to set it yet) ahead of dive centers being onboarded, so that onboarding won't need a breaking migration.
 
+**Deliberate priority call**: finish the individual (peer-to-peer) organizer flow completely before touching dive centers. Dive centers need a real multi-user-per-account model (several staff accounts acting on behalf of one center), which is a meaningfully different auth shape than anything built so far — better to build it once, later, than bolt it on halfway through.
+
 Endpoints so far: `POST /trips` (auth required), `GET /trips` (open), `GET /trips/{id}` (includes `joined`, `creatorUserId`, `participantCount` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant), `GET /realtime/token` (mints a Centrifugo connection JWT for the caller).
 
 ### Trip data fields (enrichment)
@@ -123,10 +125,19 @@ Endpoints so far: `POST /trips` (auth required), `GET /trips` (open), `GET /trip
 | `min_certification` | TEXT, free text | Not an enum — PADI/SSI/etc. name levels differently, a fixed list would be wrong for some organizers. UI falls back to "Open to all" when null. |
 | `booking_code` | TEXT | For the future join-by-code flow (e.g. redeeming a KingFish Drive&Dive booking) — field exists now, redemption logic doesn't yet. |
 | `max_participants` | INT, nullable | Only meaningful for individually-organized trips, where joining our marketplace *is* taking a seat (e.g. a car with 4 spots) — `participant_count` already equals occupancy. Dive-center trips leave this null since their real capacity isn't tracked through us. |
+| `photo_url` | TEXT, nullable | Unused — no upload flow yet. Added ahead of time so real photo storage is just plumbing later, not a new migration. |
 
 SQL `CHECK` constraints enforce `dive_count_max >= dive_count_min`, `depth_max_m >= depth_min_m`, and `max_participants > 0` at the DB level (all nullable-safe).
 
 Trip Page layout, top to bottom: title, location, date (`formatDateRange`, date only — no time here), a **Meeting point** section (own block, not a grid tile, since the address text can be long: shows meeting *time* + `meetingPoint` falling back to `location`), then an info grid — **LEVEL / DEPTH / DIVES / DURATION** (DEPTH and DIVES tiles omitted entirely when their fields are null rather than shown empty; DURATION is computed client-side from `startTime`/`endDate`, always shown; the grid is a manually-built `Row`/`Column`, not `GridView.count`, after a shrinkWrap sizing bug left a phantom empty row above the tiles) — then "About this dive", the Organizer card, a participants line ("`N` people out of `M` joined" when `maxParticipants` is set, else "`N` people joined"), and a Join button that becomes a disabled "Trip full"/"Trip cancelled" chip when `bookingStatus` isn't `open`. Seats/capacity deliberately isn't a grid tile — it lives in that participants line instead, per product decision.
+
+### Create Trip (`ui/features/trips/views/create_trip_page.dart`)
+
+Individual-organizer trip creation, reachable via the pill-shaped "+ Create trip" button in Explore's `AppBar` (deliberately a real visible button, not an icon-only affordance or a FAB — a FAB read as too easy to miss scrolled behind card content). `CreateTripViewModel` takes the raw field values on `submit()` and calls `TripRepository.createTrip(...)` → `POST /trips`; on success `TripsListView` reloads the Explore list and navigates straight to the new Trip Page.
+
+Every enriched field from the backend section above is in the form except `bookingCode`/`bookingStatus` (dive-center-flavored, not relevant to an individual creating their own trip yet). Date/time fields (`Date`, `Meeting time`, `End date`) use a Cupertino wheel picker (`CupertinoDatePicker` in a modal bottom sheet) instead of Material's `showDatePicker`/`showTimePicker` dialogs — chosen after those read as an ugly, overlay-style interaction; the field itself still renders as a standard Material `InputDecorator` (floating label inside the filled box), which was tried once as an external-caption layout and reverted — turns out that's a familiar, common pattern once compared against other apps.
+
+`Trip`/`TripApiModel` also carry `photoUrl` (nullable, added ahead of need) — no upload UI exists yet, this is scaffolding for when real photo storage (DigitalOcean Spaces, matching the deploy target) gets built post-launch. Every card/page still renders the same placeholder image regardless of what's in this field.
 
 ### Packages (`backend/internal/`)
 

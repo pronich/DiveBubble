@@ -43,6 +43,7 @@ type tripResponse struct {
 	BookingCode      *string    `json:"bookingCode,omitempty"`
 	MaxParticipants  *int       `json:"maxParticipants,omitempty"`
 	BookingStatus    string     `json:"bookingStatus"`
+	PhotoURL         *string    `json:"photoUrl,omitempty"`
 }
 
 func nullStringPtr(v sql.NullString) *string {
@@ -87,6 +88,7 @@ func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse
 		BookingCode:      nullStringPtr(t.BookingCode),
 		MaxParticipants:  nullInt32Ptr(t.MaxParticipants),
 		BookingStatus:    t.BookingStatus,
+		PhotoURL:         nullStringPtr(t.PhotoURL),
 	}
 	if t.CreatorUserID.Valid {
 		resp.CreatorUserID = &t.CreatorUserID.UUID

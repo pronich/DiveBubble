@@ -16,7 +16,7 @@ var tripColumnNames = []string{
 	"id", "title", "location", "start_time", "created_at", "creator_user_id",
 	"end_date", "description", "meeting_point",
 	"dive_count_min", "dive_count_max", "depth_min_m", "depth_max_m",
-	"min_certification", "booking_code", "max_participants", "booking_status",
+	"min_certification", "booking_code", "max_participants", "booking_status", "photo_url",
 }
 
 var tripColumns = strings.Join(tripColumnNames, ", ")
@@ -44,7 +44,7 @@ func scanTrip(row interface{ Scan(...any) error }) (Trip, error) {
 		&t.ID, &t.Title, &t.Location, &t.StartTime, &t.CreatedAt, &t.CreatorUserID,
 		&t.EndDate, &t.Description, &t.MeetingPoint,
 		&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
-		&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus,
+		&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus, &t.PhotoURL,
 	)
 	return t, err
 }

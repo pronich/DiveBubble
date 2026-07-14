@@ -29,6 +29,7 @@ _TripApiModel _$TripApiModelFromJson(Map<String, dynamic> json) =>
       bookingCode: json['bookingCode'] as String?,
       maxParticipants: (json['maxParticipants'] as num?)?.toInt(),
       bookingStatus: json['bookingStatus'] as String? ?? 'open',
+      photoUrl: json['photoUrl'] as String?,
     );
 
 Map<String, dynamic> _$TripApiModelToJson(_TripApiModel instance) =>
@@ -52,4 +53,5 @@ Map<String, dynamic> _$TripApiModelToJson(_TripApiModel instance) =>
       'bookingCode': instance.bookingCode,
       'maxParticipants': instance.maxParticipants,
       'bookingStatus': instance.bookingStatus,
+      'photoUrl': instance.photoUrl,
     };

@@ -21,5 +21,6 @@ extension TripApiMapper on TripApiModel {
         bookingCode: bookingCode,
         maxParticipants: maxParticipants,
         bookingStatus: bookingStatus,
+        photoUrl: photoUrl,
       );
 }

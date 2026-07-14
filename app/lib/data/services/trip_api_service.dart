@@ -50,4 +50,43 @@ class TripApiService {
       throw Exception('joinTrip failed: ${res.statusCode} ${res.body}');
     }
   }
+
+  Future<TripApiModel> createTrip({
+    required String title,
+    required String location,
+    required DateTime startTime,
+    DateTime? endDate,
+    String? description,
+    String? meetingPoint,
+    int? diveCountMin,
+    int? diveCountMax,
+    int? depthMinM,
+    int? depthMaxM,
+    String? minCertification,
+    int? maxParticipants,
+  }) async {
+    final body = <String, dynamic>{
+      'title': title,
+      'location': location,
+      'startTime': startTime.toUtc().toIso8601String(),
+      if (endDate != null) 'endDate': endDate.toUtc().toIso8601String(),
+      if (description != null) 'description': description,
+      if (meetingPoint != null) 'meetingPoint': meetingPoint,
+      if (diveCountMin != null) 'diveCountMin': diveCountMin,
+      if (diveCountMax != null) 'diveCountMax': diveCountMax,
+      if (depthMinM != null) 'depthMinM': depthMinM,
+      if (depthMaxM != null) 'depthMaxM': depthMaxM,
+      if (minCertification != null) 'minCertification': minCertification,
+      if (maxParticipants != null) 'maxParticipants': maxParticipants,
+    };
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips'),
+      headers: {..._headers, 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (res.statusCode != 201) {
+      throw Exception('createTrip failed: ${res.statusCode} ${res.body}');
+    }
+    return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
 }

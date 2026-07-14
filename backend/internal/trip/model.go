@@ -28,4 +28,5 @@ type Trip struct {
 	BookingCode      sql.NullString
 	MaxParticipants  sql.NullInt32
 	BookingStatus    string
+	PhotoURL         sql.NullString // unused until real photo upload/storage exists — always null for now
 }

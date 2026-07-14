@@ -23,4 +23,35 @@ class TripRepository {
     final apiModels = await _service.fetchMyTrips();
     return apiModels.map((m) => m.toDomain()).toList();
   }
+
+  Future<Trip> createTrip({
+    required String title,
+    required String location,
+    required DateTime startTime,
+    DateTime? endDate,
+    String? description,
+    String? meetingPoint,
+    int? diveCountMin,
+    int? diveCountMax,
+    int? depthMinM,
+    int? depthMaxM,
+    String? minCertification,
+    int? maxParticipants,
+  }) async {
+    final apiModel = await _service.createTrip(
+      title: title,
+      location: location,
+      startTime: startTime,
+      endDate: endDate,
+      description: description,
+      meetingPoint: meetingPoint,
+      diveCountMin: diveCountMin,
+      diveCountMax: diveCountMax,
+      depthMinM: depthMinM,
+      depthMaxM: depthMaxM,
+      minCertification: minCertification,
+      maxParticipants: maxParticipants,
+    );
+    return apiModel.toDomain();
+  }
 }
