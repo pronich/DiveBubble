@@ -150,7 +150,7 @@ class _InfoGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final tiles = <Widget>[
       _InfoTile(icon: Icons.badge_outlined, label: 'LEVEL', value: trip.minCertification ?? 'Open to all'),
-      if (_depthText(trip) != null) _InfoTile(icon: Icons.south, label: 'DEPTH', value: _depthText(trip)!),
+      if (_depthText(trip) != null) _InfoTile(icon: Icons.waves, label: 'DEPTH', value: _depthText(trip)!),
       if (_diveCountText(trip) != null) _InfoTile(icon: Icons.scuba_diving_outlined, label: 'DIVES', value: _diveCountText(trip)!),
       _InfoTile(icon: Icons.schedule, label: 'DURATION', value: _durationText(trip)),
     ];

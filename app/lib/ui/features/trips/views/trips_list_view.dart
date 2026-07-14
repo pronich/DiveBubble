@@ -79,7 +79,7 @@ class _TripsListViewState extends State<TripsListView> {
               builder: (context, constraints) {
                 const spacing = 12.0;
                 const horizontalPadding = 16.0;
-                const textBlockHeight = 112.0; // title (2 lines) + location + icon row + paddings, kept fixed so the grid's childAspectRatio is predictable
+                const textBlockHeight = 78.0; // title (1 line) + location + 2 fixed badge rows + paddings, kept fixed so the grid's childAspectRatio is predictable
                 final cardWidth = (constraints.maxWidth - horizontalPadding * 2 - spacing) / 2;
                 final aspectRatio = cardWidth / (cardWidth + textBlockHeight);
 
@@ -162,7 +162,7 @@ class _TripCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             AspectRatio(
-              aspectRatio: 1,
+              aspectRatio: 4 / 3,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -185,7 +185,7 @@ class _TripCard extends StatelessWidget {
                 children: [
                   Text(
                     trip.title,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.headlineSmall?.copyWith(fontSize: 16, height: 1.15),
                   ),
@@ -227,14 +227,22 @@ class _TripCardBadges extends StatelessWidget {
     final color = theme.colorScheme.onSurfaceVariant;
     final style = theme.textTheme.labelSmall?.copyWith(color: color);
 
-    final badges = <Widget>[
-      if (trip.minCertification != null) _Badge(icon: Icons.badge_outlined, text: trip.minCertification!, color: color, style: style),
-      if (_depthText != null) _Badge(icon: Icons.south, text: _depthText!, color: color, style: style),
+    // Two fixed rows (not one flexible Wrap) so every card reserves exactly the same
+    // badge-area height regardless of which optional fields a trip actually has.
+    final topRow = <Widget>[
+      if (_depthText != null) _Badge(icon: Icons.waves, text: _depthText!, color: color, style: style),
       _Badge(icon: Icons.schedule, text: _durationText, color: color, style: style),
       if (_diveCountText != null) _Badge(icon: Icons.scuba_diving_outlined, text: _diveCountText!, color: color, style: style),
     ];
 
-    return Wrap(spacing: 8, runSpacing: 4, children: badges);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(spacing: 8, children: topRow),
+        const SizedBox(height: 4),
+        _Badge(icon: Icons.badge_outlined, text: trip.minCertification ?? 'Open to all', color: color, style: style),
+      ],
+    );
   }
 
   String? get _depthText {
