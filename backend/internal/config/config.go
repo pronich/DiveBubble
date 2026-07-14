@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -14,6 +15,10 @@ type Config struct {
 	CentrifugoURL         string
 	CentrifugoAPIKey      string
 	CentrifugoTokenSecret string
+	JWTSecret             string
+	GoogleServerClientID  string
+	AccessTokenTTL        time.Duration
+	RefreshSessionTTL     time.Duration
 }
 
 func Load() Config {
@@ -29,6 +34,10 @@ func Load() Config {
 	centrifugoURL := require("CENTRIFUGO_URL")
 	centrifugoAPIKey := require("CENTRIFUGO_API_KEY")
 	centrifugoTokenSecret := require("CENTRIFUGO_TOKEN_SECRET")
+	jwtSecret := require("JWT_SECRET")
+	googleServerClientID := require("GOOGLE_SERVER_CLIENT_ID")
+	accessTokenTTL := durationEnv("ACCESS_TOKEN_TTL", 8*time.Hour)
+	refreshSessionTTL := durationEnv("REFRESH_SESSION_TTL", 180*24*time.Hour)
 
 	return Config{
 		Port:                  port,
@@ -36,6 +45,10 @@ func Load() Config {
 		CentrifugoURL:         centrifugoURL,
 		CentrifugoAPIKey:      centrifugoAPIKey,
 		CentrifugoTokenSecret: centrifugoTokenSecret,
+		JWTSecret:             jwtSecret,
+		GoogleServerClientID:  googleServerClientID,
+		AccessTokenTTL:        accessTokenTTL,
+		RefreshSessionTTL:     refreshSessionTTL,
 	}
 }
 
@@ -45,4 +58,16 @@ func require(key string) string {
 		log.Fatalf("config: %s is required", key)
 	}
 	return v
+}
+
+func durationEnv(key string, fallback time.Duration) time.Duration {
+	v := strings.TrimSpace(os.Getenv(key))
+	if v == "" {
+		return fallback
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		log.Fatalf("config: %s is not a valid duration: %v", key, err)
+	}
+	return d
 }
