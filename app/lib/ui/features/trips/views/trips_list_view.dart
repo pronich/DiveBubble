@@ -38,7 +38,8 @@ class _TripsListViewState extends State<TripsListView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Explore'),
+        centerTitle: false,
+        title: Text('Explore', style: Theme.of(context).textTheme.headlineSmall),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -78,7 +79,7 @@ class _TripsListViewState extends State<TripsListView> {
               builder: (context, constraints) {
                 const spacing = 12.0;
                 const horizontalPadding = 16.0;
-                const textBlockHeight = 76.0; // title (2 lines) + location + paddings, kept fixed so the grid's childAspectRatio is predictable
+                const textBlockHeight = 112.0; // title (2 lines) + location + icon row + paddings, kept fixed so the grid's childAspectRatio is predictable
                 final cardWidth = (constraints.maxWidth - horizontalPadding * 2 - spacing) / 2;
                 final aspectRatio = cardWidth / (cardWidth + textBlockHeight);
 
@@ -203,12 +204,87 @@ class _TripCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  _TripCardBadges(trip: trip),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TripCardBadges extends StatelessWidget {
+  const _TripCardBadges({required this.trip});
+
+  final Trip trip;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.onSurfaceVariant;
+    final style = theme.textTheme.labelSmall?.copyWith(color: color);
+
+    final badges = <Widget>[
+      if (trip.minCertification != null) _Badge(icon: Icons.badge_outlined, text: trip.minCertification!, color: color, style: style),
+      if (_depthText != null) _Badge(icon: Icons.south, text: _depthText!, color: color, style: style),
+      _Badge(icon: Icons.schedule, text: _durationText, color: color, style: style),
+      if (_diveCountText != null) _Badge(icon: Icons.scuba_diving_outlined, text: _diveCountText!, color: color, style: style),
+    ];
+
+    return Wrap(spacing: 8, runSpacing: 4, children: badges);
+  }
+
+  String? get _depthText {
+    final min = trip.depthMinM;
+    final max = trip.depthMaxM;
+    if (min == null && max == null) return null;
+    if (min != null && max != null) return min == max ? '${min}m' : '$min–${max}m';
+    return max != null ? '≤${max}m' : '${min}m+';
+  }
+
+  String? get _diveCountText {
+    final min = trip.diveCountMin;
+    final max = trip.diveCountMax;
+    if (min == null && max == null) return null;
+    if (min != null && max != null) return min == max ? '$min' : '$min–$max';
+    return max != null ? '≤$max' : '$min+';
+  }
+
+  String get _durationText {
+    final end = trip.endDate;
+    if (end == null) return '1d';
+    final start = trip.startTime.toLocal();
+    final endLocal = end.toLocal();
+    final startDate = DateTime(start.year, start.month, start.day);
+    final endDateOnly = DateTime(endLocal.year, endLocal.month, endLocal.day);
+    final days = endDateOnly.difference(startDate).inDays + 1;
+    return '${days}d';
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({required this.icon, required this.text, required this.color, required this.style});
+
+  final IconData icon;
+  final String text;
+  final Color color;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 2),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 68),
+          child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
+        ),
+      ],
     );
   }
 }

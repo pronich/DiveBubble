@@ -149,10 +149,10 @@ class _InfoGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = <Widget>[
-      _InfoTile(label: 'LEVEL', value: trip.minCertification ?? 'Open to all'),
-      if (_depthText(trip) != null) _InfoTile(label: 'DEPTH', value: _depthText(trip)!),
-      if (_diveCountText(trip) != null) _InfoTile(label: 'DIVES', value: _diveCountText(trip)!),
-      _InfoTile(label: 'DURATION', value: _durationText(trip)),
+      _InfoTile(icon: Icons.badge_outlined, label: 'LEVEL', value: trip.minCertification ?? 'Open to all'),
+      if (_depthText(trip) != null) _InfoTile(icon: Icons.south, label: 'DEPTH', value: _depthText(trip)!),
+      if (_diveCountText(trip) != null) _InfoTile(icon: Icons.scuba_diving_outlined, label: 'DIVES', value: _diveCountText(trip)!),
+      _InfoTile(icon: Icons.schedule, label: 'DURATION', value: _durationText(trip)),
     ];
 
     final rows = <Widget>[];
@@ -208,8 +208,9 @@ class _InfoGrid extends StatelessWidget {
 }
 
 class _InfoTile extends StatelessWidget {
-  const _InfoTile({required this.label, required this.value});
+  const _InfoTile({required this.icon, required this.label, required this.value});
 
+  final IconData icon;
   final String label;
   final String value;
 
@@ -226,7 +227,13 @@ class _InfoTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          Row(
+            children: [
+              Icon(icon, size: 13, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 4),
+              Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            ],
+          ),
           Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
