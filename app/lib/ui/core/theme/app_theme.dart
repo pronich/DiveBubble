@@ -56,6 +56,23 @@ abstract final class AppTheme {
         scrolledUnderElevation: 2,
         titleTextStyle: textTheme.titleLarge,
       ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: AppColors.bgBase,
+        surfaceTintColor: Colors.transparent,
+        // No pill behind the selected icon — color alone signals the active tab.
+        indicatorColor: Colors.transparent,
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            color: states.contains(WidgetState.selected) ? AppColors.buttonPrimary : AppColors.textTertiary,
+          ),
+        ),
+        labelTextStyle: WidgetStateProperty.resolveWith(
+          (states) => textTheme.labelSmall?.copyWith(
+            color: states.contains(WidgetState.selected) ? AppColors.buttonPrimary : AppColors.textTertiary,
+            fontWeight: states.contains(WidgetState.selected) ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ),
       cardTheme: CardThemeData(
         color: AppColors.surfacePrimary,
         elevation: 0,

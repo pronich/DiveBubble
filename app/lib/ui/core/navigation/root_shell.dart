@@ -67,7 +67,8 @@ class _RootShellState extends State<RootShell> {
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.explore_outlined), selectedIcon: Icon(Icons.explore), label: 'Explore'),
-          NavigationDestination(icon: Icon(Icons.chat_bubble_outline), selectedIcon: Icon(Icons.chat_bubble), label: 'Trips'),
+          // Diving-specific for now — revisit once trip types expand beyond diving.
+          NavigationDestination(icon: Icon(Icons.scuba_diving_outlined), selectedIcon: Icon(Icons.scuba_diving), label: 'Trips'),
           NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
