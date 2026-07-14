@@ -123,72 +123,52 @@ class _OfferTile extends StatelessWidget {
           color: theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Stack(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  _typeIcons[offer.type] ?? Icons.directions_car,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _typeLabels[offer.type] ?? offer.type,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (offer.seats != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          '${offer.joinedCount} of ${offer.seats} seats taken',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                      if (offer.details != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          offer.details!,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ],
+            Icon(
+              _typeIcons[offer.type] ?? Icons.directions_car,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _typeLabels[offer.type] ?? offer.type,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                // Reserves room so text never runs under the chevron/badge, both drawn as overlays below.
-                const SizedBox(width: 40),
-              ],
-            ),
-            Positioned.fill(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: Icon(
-                  Icons.chevron_right,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                  if (offer.seats != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '${offer.joinedCount} of ${offer.seats} seats taken',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                  if (offer.details != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      offer.details!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (offer.joined)
-              const Positioned(
-                top: 0,
-                right: 0,
-                child: _StatusPill(label: 'Joined', kind: _StatusKind.success),
-              )
-            else if (isFull)
-              const Positioned(
-                top: 0,
-                right: 0,
-                child: _StatusPill(label: 'Full', kind: _StatusKind.info),
-              ),
+            if (offer.joined) ...[
+              const SizedBox(width: 12),
+              const _StatusPill(label: 'Joined', kind: _StatusKind.success),
+            ] else if (isFull) ...[
+              const SizedBox(width: 12),
+              const _StatusPill(label: 'Full', kind: _StatusKind.info),
+            ],
           ],
         ),
       ),
@@ -214,6 +194,7 @@ class _TransportOfferDetailSheetState
     extends State<_TransportOfferDetailSheet> {
   List<String>? _joinedUserIds;
   String? _error;
+  String? _joinError;
 
   @override
   void initState() {
@@ -227,6 +208,17 @@ class _TransportOfferDetailSheetState
       if (mounted) setState(() => _joinedUserIds = ids);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
+    }
+  }
+
+  Future<void> _join(TransportOffer offer) async {
+    setState(() => _joinError = null);
+    final error = await widget.viewModel.join(offer.id);
+    if (!mounted) return;
+    if (error != null) {
+      setState(() => _joinError = error);
+    } else {
+      _loadJoinedUserIds();
     }
   }
 
@@ -247,6 +239,10 @@ class _TransportOfferDetailSheetState
             final isFull =
                 offer.seats != null && offer.joinedCount >= offer.seats!;
             final isOrganizer = offer.userId == widget.viewModel.currentUserId;
+            // A diver can only book one ride per trip — don't offer a Join button
+            // on other offers once they've already joined one.
+            final hasBookingElsewhere = !offer.joined &&
+                widget.viewModel.offers.any((o) => o.joined);
 
             return Column(
               mainAxisSize: MainAxisSize.min,
@@ -344,16 +340,23 @@ class _TransportOfferDetailSheetState
                       ),
                     );
                   }),
-                if (!offer.joined && !isFull) ...[
+                if (!offer.joined && !isFull && !hasBookingElsewhere) ...[
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     child: _JoinButton(
                       offer: offer,
                       viewModel: widget.viewModel,
-                      onJoined: _loadJoinedUserIds,
+                      onPressed: () => _join(offer),
                     ),
                   ),
+                  if (_joinError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _joinError!,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                  ],
                 ],
               ],
             );
@@ -404,31 +407,18 @@ class _JoinButton extends StatelessWidget {
   const _JoinButton({
     required this.offer,
     required this.viewModel,
-    this.onJoined,
+    required this.onPressed,
   });
 
   final TransportOffer offer;
   final TransportViewModel viewModel;
-  final VoidCallback? onJoined;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
     final isJoining = viewModel.isJoining(offer.id);
     return ElevatedButton(
-      onPressed: isJoining
-          ? null
-          : () async {
-              final error = await viewModel.join(offer.id);
-              if (error != null) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(error)),
-                  );
-                }
-                return;
-              }
-              onJoined?.call();
-            },
+      onPressed: isJoining ? null : onPressed,
       child: isJoining
           ? const SizedBox(
               width: 16,
