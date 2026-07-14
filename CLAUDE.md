@@ -113,7 +113,15 @@ No real auth yet — every route except `GET /trips` and `GET /health` requires 
 
 **Deliberate priority call**: finish the individual (peer-to-peer) organizer flow completely before touching dive centers. Dive centers need a real multi-user-per-account model (several staff accounts acting on behalf of one center), which is a meaningfully different auth shape than anything built so far — better to build it once, later, than bolt it on halfway through.
 
-Endpoints so far: `POST /trips` (auth required), `GET /trips` (open), `GET /trips/{id}` (includes `joined`, `creatorUserId`, `participantCount` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant), `GET/POST /trips/{id}/transport` (403 if not a participant — same `requireParticipant` guard as messages), `GET /realtime/token` (mints a Centrifugo connection JWT for the caller).
+Endpoints so far: `POST /trips` (auth required), `GET /trips` (open), `GET /trips/{id}` (includes `joined`, `creatorUserId`, `participantCount` for the caller), `GET /trips/mine` (joined trips, ordered by `joined_at` until real "last message" ordering exists), `POST /trips/{id}/join` (idempotent), `GET/POST /trips/{id}/messages` (403 if not a participant), `GET/POST /trips/{id}/transport` (403 if not a participant — same `requireParticipant` guard as messages), `POST /trips/{id}/transport/{offerId}/join` (idempotent, see Transport offers below), `GET /realtime/token` (mints a Centrifugo connection JWT for the caller).
+
+### Transport offers
+
+`trip_transport_offers`: `type` (`offer_ride` | `share_rental` | `self_arranged`), `seats` (nullable int, seats available *for others* — the creator isn't counted as occupying one), `details` (nullable free text — time + pickup point combined, not separate structured fields). A sibling table `transport_offer_joins` (`offer_id`, `user_id`, composite PK) tracks who's claimed a seat.
+
+**`find_ride` existed briefly and was removed** (migration `000011`, which also converts any existing `find_ride` rows to `self_arranged` rather than leaving them dangling): once you can join a seat on a posted `offer_ride`/`share_rental` directly, a passive "looking for a ride" post has nothing left to do — you just join the real offer instead. `OfferType.Joinable()` gates which types accept joins; `self_arranged` is announcement-only.
+
+`Service.Join` order of checks: offer exists → type is joinable (else `ErrNotJoinable`, 400) → already joined is a no-op success (checked *before* the seat-count check, so re-joining a now-full offer you're already in doesn't spuriously fail) → seat count against `seats` if set (else `ErrFull`, 409). `Repository.ListByTrip` computes `joinedCount` and the caller's `joined` flag for every offer in one query (`LEFT JOIN` aggregate + `EXISTS` subquery) rather than N+1 per-offer lookups, since the whole list needs this data rendered at once (unlike trips, where only the single-trip `GetTrip` call needs `participantCount`).
 
 ### Trip data fields (enrichment)
 
@@ -155,7 +163,7 @@ Every enriched field from the backend section above is in the form except `booki
 | `trip` | Trip domain: model, repository, service (create/list/get/join/isJoined/listJoinedByUser/countParticipants) |
 | `user` | Stub identity: `GetOrCreate` upserts by client-supplied `X-User-Id`; also carries `account_type` |
 | `message` | Chat messages: model, repository, service (send/list per trip) |
-| `transport` | Transport offers: model (`OfferType` enum: offer_ride/find_ride/share_rental/self_arranged, `Seats` int nullable, `Details` text nullable), repository, service (create/list per trip) |
+| `transport` | Transport offers: model (`OfferType` enum: offer_ride/share_rental/self_arranged — `find_ride` removed, see below; `Joinable()` is true for offer_ride/share_rental only), repository, service (create/list/join per trip) |
 | `realtime` | `Publisher` (POST to Centrifugo `/api/publish`), `TokenIssuer` (mints connection JWTs, HS256) |
 
 ### App (`app/`)
@@ -182,7 +190,7 @@ Features: `ui/features/trips/` (Explore list, Trip Page detail + join, Create Tr
 | Data | `data/repositories/` | `TripRepository`, `ChatRepository` (incl. `getRealtimeToken()`), `TransportRepository` |
 | UI | `ui/features/trips/view_models/` `/views/` | `TripsListViewModel`/`TripsListView` (Explore), `TripViewModel`/`TripPage` (detail + join — `TripViewModel` carries `currentUserId` too, same pattern as `ChatViewModel`, so the view can tell "you organized this" without a separate prop), `CreateTripViewModel`/`CreateTripPage` |
 | UI | `ui/features/chats/view_models/` `/views/` | `MyTripsViewModel`/`MyTripsView` (Trips tab), `ChatViewModel`/`ChatView` — `ChatView` is body-only now (no `Scaffold`/`AppBar` of its own), embedded as a tab inside `TripConversationPage`; subscribes to `trip:$tripId` on `load()`, dedupes incoming publications by message id (own sent messages already arrive via the post-send REST reload), unsubscribes in `dispose()` (called explicitly from `ChatView.dispose()`, ChangeNotifier's `dispose` isn't auto-invoked by Flutter). `TripConversationPage` owns the shared `AppBar` (title tap → Trip Page) + `TabBar`/`TabBarView` wrapping `ChatView` and `TransportView`. |
-| UI | `ui/features/transport/view_models/` `/views/` | `TransportViewModel`/`TransportView` — list of offers + a FAB opening a bottom sheet form (type via `ChoiceChip`s, optional seats/details) |
+| UI | `ui/features/transport/view_models/` `/views/` | `TransportViewModel`/`TransportView` — list of offers + a FAB opening a bottom sheet form (type via `ChoiceChip`s, optional seats/details). Joinable offers (offer_ride/share_rental) show a trailing button: "Join" → disabled "Joined" chip once the caller has joined, or disabled "Full" chip once `joinedCount >= seats`. |
 | UI | `ui/features/profile/views/` | `ProfileView` (placeholder) |
 
 DI is manual (constructed in `main.dart` / `RootShell.initState`) — no `get_it`/`provider` yet, added only if wiring gets unwieldy across more features.

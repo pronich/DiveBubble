@@ -10,5 +10,7 @@ extension TransportOfferApiMapper on TransportOfferApiModel {
         seats: seats,
         details: details,
         createdAt: createdAt,
+        joinedCount: joinedCount,
+        joined: joined,
       );
 }

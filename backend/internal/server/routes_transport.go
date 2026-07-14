@@ -17,27 +17,32 @@ import (
 func registerTransportRoutes(mux *http.ServeMux, svc *transport.Service, tripSvc *trip.Service, userSvc *user.Service) {
 	mux.HandleFunc("GET /trips/{id}/transport", withUser(userSvc, handleListTransportOffers(svc, tripSvc)))
 	mux.HandleFunc("POST /trips/{id}/transport", withUser(userSvc, handleCreateTransportOffer(svc, tripSvc)))
+	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/join", withUser(userSvc, handleJoinTransportOffer(svc, tripSvc)))
 }
 
 type transportOfferResponse struct {
-	ID        uuid.UUID `json:"id"`
-	TripID    uuid.UUID `json:"tripId"`
-	UserID    uuid.UUID `json:"userId"`
-	Type      string    `json:"type"`
-	Seats     *int      `json:"seats,omitempty"`
-	Details   *string   `json:"details,omitempty"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID          uuid.UUID `json:"id"`
+	TripID      uuid.UUID `json:"tripId"`
+	UserID      uuid.UUID `json:"userId"`
+	Type        string    `json:"type"`
+	Seats       *int      `json:"seats,omitempty"`
+	Details     *string   `json:"details,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
+	JoinedCount int       `json:"joinedCount"`
+	Joined      bool      `json:"joined"`
 }
 
 func toTransportOfferResponse(o transport.Offer) transportOfferResponse {
 	return transportOfferResponse{
-		ID:        o.ID,
-		TripID:    o.TripID,
-		UserID:    o.UserID,
-		Type:      string(o.Type),
-		Seats:     nullInt32Ptr(o.Seats),
-		Details:   nullStringPtr(o.Details),
-		CreatedAt: o.CreatedAt,
+		ID:          o.ID,
+		TripID:      o.TripID,
+		UserID:      o.UserID,
+		Type:        string(o.Type),
+		Seats:       nullInt32Ptr(o.Seats),
+		Details:     nullStringPtr(o.Details),
+		CreatedAt:   o.CreatedAt,
+		JoinedCount: o.JoinedCount,
+		Joined:      o.Joined,
 	}
 }
 
@@ -48,7 +53,7 @@ func handleListTransportOffers(svc *transport.Service, tripSvc *trip.Service) fu
 			return
 		}
 
-		offers, err := svc.List(r.Context(), tripID)
+		offers, err := svc.List(r.Context(), tripID, userID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not list transport offers")
 			return
@@ -93,5 +98,39 @@ func handleCreateTransportOffer(svc *transport.Service, tripSvc *trip.Service) f
 		}
 
 		writeJSON(w, http.StatusCreated, toTransportOfferResponse(o))
+	}
+}
+
+func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		_, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
+		if !ok {
+			return
+		}
+
+		offerID, err := uuid.Parse(r.PathValue("offerId"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid offer id")
+			return
+		}
+
+		if err := svc.Join(r.Context(), offerID, userID); err != nil {
+			if errors.Is(err, transport.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "transport offer not found")
+				return
+			}
+			if errors.Is(err, transport.ErrNotJoinable) {
+				writeError(w, http.StatusBadRequest, "this offer can't be joined")
+				return
+			}
+			if errors.Is(err, transport.ErrFull) {
+				writeError(w, http.StatusConflict, "no seats left")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not join transport offer")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]bool{"joined": true})
 	}
 }

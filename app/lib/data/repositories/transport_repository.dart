@@ -16,4 +16,6 @@ class TransportRepository {
     final apiModel = await _service.createOffer(tripId, type: type, seats: seats, details: details);
     return apiModel.toDomain();
   }
+
+  Future<void> joinOffer(String tripId, String offerId) => _service.joinOffer(tripId, offerId);
 }

@@ -46,4 +46,14 @@ class TransportApiService {
     }
     return TransportOfferApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
+
+  Future<void> joinOffer(String tripId, String offerId) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$tripId/transport/$offerId/join'),
+      headers: _headers,
+    );
+    if (res.statusCode != 200) {
+      throw Exception('joinOffer failed: ${res.statusCode} ${res.body}');
+    }
+  }
 }

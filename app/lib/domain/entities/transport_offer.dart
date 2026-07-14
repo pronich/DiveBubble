@@ -12,5 +12,7 @@ abstract class TransportOffer with _$TransportOffer {
     int? seats,
     String? details,
     required DateTime createdAt,
+    @Default(0) int joinedCount,
+    @Default(false) bool joined,
   }) = _TransportOffer;
 }

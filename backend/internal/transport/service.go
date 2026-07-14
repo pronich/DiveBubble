@@ -9,6 +9,8 @@ import (
 )
 
 var ErrInvalidArgument = errors.New("invalid argument")
+var ErrNotJoinable = errors.New("this offer can't be joined")
+var ErrFull = errors.New("no seats left")
 
 type Service struct {
 	Repo *Repository
@@ -36,6 +38,35 @@ func (s *Service) Create(ctx context.Context, tripID, userID uuid.UUID, offerTyp
 	return s.Repo.Create(ctx, CreateParams{TripID: tripID, UserID: userID, Type: offerType, Seats: seats, Details: details})
 }
 
-func (s *Service) List(ctx context.Context, tripID uuid.UUID) ([]Offer, error) {
-	return s.Repo.ListByTrip(ctx, tripID)
+func (s *Service) List(ctx context.Context, tripID, callerUserID uuid.UUID) ([]Offer, error) {
+	return s.Repo.ListByTrip(ctx, tripID, callerUserID)
+}
+
+func (s *Service) Join(ctx context.Context, offerID, userID uuid.UUID) error {
+	offer, err := s.Repo.GetByID(ctx, offerID)
+	if err != nil {
+		return err
+	}
+	if !offer.Type.Joinable() {
+		return ErrNotJoinable
+	}
+
+	alreadyJoined, err := s.Repo.IsJoined(ctx, offerID, userID)
+	if err != nil {
+		return err
+	}
+	if alreadyJoined {
+		return nil
+	}
+
+	if offer.Seats.Valid {
+		count, err := s.Repo.CountJoins(ctx, offerID)
+		if err != nil {
+			return err
+		}
+		if count >= int(offer.Seats.Int32) {
+			return ErrFull
+		}
+	}
+	return s.Repo.Join(ctx, offerID, userID)
 }

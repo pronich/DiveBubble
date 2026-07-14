@@ -21,6 +21,9 @@ class TransportViewModel extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  final Set<String> _joiningOfferIds = {};
+  bool isJoining(String offerId) => _joiningOfferIds.contains(offerId);
+
   Future<void> load() async {
     _isLoading = true;
     _error = null;
@@ -49,6 +52,21 @@ class TransportViewModel extends ChangeNotifier {
       return false;
     } finally {
       _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> join(String offerId) async {
+    _joiningOfferIds.add(offerId);
+    notifyListeners();
+
+    try {
+      await _repository.joinOffer(tripId, offerId);
+      _offers = await _repository.getOffers(tripId);
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _joiningOfferIds.remove(offerId);
       notifyListeners();
     }
   }

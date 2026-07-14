@@ -5,17 +5,17 @@ import '../view_models/transport_view_model.dart';
 
 const _typeLabels = {
   'offer_ride': 'Offering a ride',
-  'find_ride': 'Looking for a ride',
   'share_rental': 'Sharing a rental',
   'self_arranged': "Getting there myself",
 };
 
 const _typeIcons = {
   'offer_ride': Icons.directions_car,
-  'find_ride': Icons.person_search,
   'share_rental': Icons.car_rental,
   'self_arranged': Icons.directions_walk,
 };
+
+bool _isJoinable(String type) => type == 'offer_ride' || type == 'share_rental';
 
 class TransportView extends StatefulWidget {
   const TransportView({super.key, required this.viewModel});
@@ -69,7 +69,7 @@ class _TransportViewState extends State<TransportView> {
             padding: const EdgeInsets.all(16),
             itemCount: offers.length,
             separatorBuilder: (context, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) => _OfferTile(offer: offers[index]),
+            itemBuilder: (context, index) => _OfferTile(offer: offers[index], viewModel: widget.viewModel),
           );
         },
       ),
@@ -90,13 +90,17 @@ class _TransportViewState extends State<TransportView> {
 }
 
 class _OfferTile extends StatelessWidget {
-  const _OfferTile({required this.offer});
+  const _OfferTile({required this.offer, required this.viewModel});
 
   final TransportOffer offer;
+  final TransportViewModel viewModel;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final joinable = _isJoinable(offer.type);
+    final isFull = offer.seats != null && offer.joinedCount >= offer.seats!;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -118,7 +122,10 @@ class _OfferTile extends StatelessWidget {
                 ),
                 if (offer.seats != null) ...[
                   const SizedBox(height: 2),
-                  Text('${offer.seats} seat${offer.seats == 1 ? '' : 's'}', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  Text(
+                    '${offer.joinedCount} of ${offer.seats} seats taken',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
                 ],
                 if (offer.details != null) ...[
                   const SizedBox(height: 2),
@@ -127,8 +134,38 @@ class _OfferTile extends StatelessWidget {
               ],
             ),
           ),
+          if (joinable) ...[
+            const SizedBox(width: 8),
+            _JoinButton(offer: offer, viewModel: viewModel, isFull: isFull),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _JoinButton extends StatelessWidget {
+  const _JoinButton({required this.offer, required this.viewModel, required this.isFull});
+
+  final TransportOffer offer;
+  final TransportViewModel viewModel;
+  final bool isFull;
+
+  @override
+  Widget build(BuildContext context) {
+    if (offer.joined) {
+      return const Chip(label: Text('Joined'), visualDensity: VisualDensity.compact);
+    }
+    if (isFull) {
+      return const Chip(label: Text('Full'), visualDensity: VisualDensity.compact);
+    }
+
+    final isJoining = viewModel.isJoining(offer.id);
+    return OutlinedButton(
+      onPressed: isJoining ? null : () => viewModel.join(offer.id),
+      child: isJoining
+          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+          : const Text('Join'),
     );
   }
 }
@@ -181,12 +218,14 @@ class _AddTransportOfferSheetState extends State<_AddTransportOfferSheet> {
             }).toList(),
           ),
           const SizedBox(height: 16),
-          TextField(
-            controller: _seatsController,
-            decoration: const InputDecoration(labelText: 'Seats (optional)'),
-            keyboardType: TextInputType.number,
-          ),
-          const SizedBox(height: 12),
+          if (_isJoinable(_type)) ...[
+            TextField(
+              controller: _seatsController,
+              decoration: const InputDecoration(labelText: 'Seats (optional)'),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+          ],
           TextField(
             controller: _detailsController,
             decoration: const InputDecoration(labelText: 'Details — time, pickup point (optional)'),
@@ -205,7 +244,7 @@ class _AddTransportOfferSheetState extends State<_AddTransportOfferSheet> {
   }
 
   Future<void> _submit() async {
-    final seats = int.tryParse(_seatsController.text.trim());
+    final seats = _isJoinable(_type) ? int.tryParse(_seatsController.text.trim()) : null;
     final details = _detailsController.text.trim();
     final ok = await widget.viewModel.submit(
       type: _type,
