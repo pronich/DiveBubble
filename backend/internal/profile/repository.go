@@ -15,13 +15,14 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{DB: db}
 }
 
-const profileColumns = `id, display_name, avatar_url, location, bio, dive_count, certification_level, languages, created_at`
+const profileColumns = `id, display_name, avatar_url, location, bio, dive_count, certification_level, certification_agency, certification_number, certification_photo_url, certification_verified, languages, created_at`
 
 func scanProfile(row interface{ Scan(...any) error }) (Profile, error) {
 	var p Profile
 	err := row.Scan(
 		&p.UserID, &p.DisplayName, &p.AvatarURL, &p.Location, &p.Bio,
-		&p.DiveCount, &p.CertificationLevel, &p.Languages, &p.MemberSince,
+		&p.DiveCount, &p.CertificationLevel, &p.CertificationAgency, &p.CertificationNumber,
+		&p.CertificationPhotoURL, &p.CertificationVerified, &p.Languages, &p.MemberSince,
 	)
 	return p, err
 }
@@ -33,13 +34,17 @@ func (r *Repository) Get(ctx context.Context, userID uuid.UUID) (Profile, error)
 
 // UpdateParams uses pointers so a nil field is left unchanged rather than cleared.
 type UpdateParams struct {
-	DisplayName        *string
-	AvatarURL          *string
-	Location           *string
-	Bio                *string
-	DiveCount          *int
-	CertificationLevel *string
-	Languages          *string
+	DisplayName           *string
+	AvatarURL             *string
+	Location              *string
+	Bio                   *string
+	DiveCount             *int
+	CertificationLevel    *string
+	CertificationAgency   *string
+	CertificationNumber   *string
+	CertificationPhotoURL *string
+	CertificationVerified *bool
+	Languages             *string
 }
 
 func (r *Repository) Update(ctx context.Context, userID uuid.UUID, params UpdateParams) (Profile, error) {
@@ -51,11 +56,17 @@ func (r *Repository) Update(ctx context.Context, userID uuid.UUID, params Update
 			bio = COALESCE($5, bio),
 			dive_count = COALESCE($6, dive_count),
 			certification_level = COALESCE($7, certification_level),
-			languages = COALESCE($8, languages)
+			certification_agency = COALESCE($8, certification_agency),
+			certification_number = COALESCE($9, certification_number),
+			certification_photo_url = COALESCE($10, certification_photo_url),
+			certification_verified = COALESCE($11, certification_verified),
+			languages = COALESCE($12, languages)
 		WHERE id = $1
 		RETURNING `+profileColumns,
 		userID, params.DisplayName, params.AvatarURL, params.Location, params.Bio,
-		params.DiveCount, params.CertificationLevel, params.Languages,
+		params.DiveCount, params.CertificationLevel, params.CertificationAgency,
+		params.CertificationNumber, params.CertificationPhotoURL, params.CertificationVerified,
+		params.Languages,
 	)
 	return scanProfile(row)
 }
