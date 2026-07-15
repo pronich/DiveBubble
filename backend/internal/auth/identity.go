@@ -8,12 +8,27 @@ import (
 	"github.com/google/uuid"
 )
 
+var ErrIdentityNotFound = errors.New("no account found for that email")
+
 type IdentityRepository struct {
 	DB *sql.DB
 }
 
 func NewIdentityRepository(db *sql.DB) *IdentityRepository {
 	return &IdentityRepository{DB: db}
+}
+
+// FindUserIDByEmail backs the dive-center "add staff by email" flow — a deliberately narrow
+// exact-match lookup (no fuzzy/name search) so it can't be used as a general user directory.
+func (r *IdentityRepository) FindUserIDByEmail(ctx context.Context, email string) (uuid.UUID, error) {
+	var userID uuid.UUID
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT user_id FROM auth_identities WHERE provider_email = $1 LIMIT 1
+	`, email).Scan(&userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.Nil, ErrIdentityNotFound
+	}
+	return userID, err
 }
 
 // LoginOrRegister resolves the internal user id for a (provider, providerUserID) identity,

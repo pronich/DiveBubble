@@ -8,6 +8,7 @@ import (
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/certification"
 	"divebubble_be/internal/config"
+	"divebubble_be/internal/divecenter"
 	"divebubble_be/internal/gear"
 	"divebubble_be/internal/message"
 	"divebubble_be/internal/profile"
@@ -18,8 +19,9 @@ import (
 )
 
 func New(cfg config.Config, db *sql.DB) http.Handler {
+	diveCenterSvc := divecenter.NewService(divecenter.NewRepository(db))
 	tripRepo := trip.NewRepository(db)
-	tripSvc := trip.NewService(tripRepo)
+	tripSvc := trip.NewService(tripRepo, diveCenterSvc)
 	messageSvc := message.NewService(message.NewRepository(db))
 	transportSvc := transport.NewService(transport.NewRepository(db))
 	profileSvc := profile.NewService(profile.NewRepository(db))
@@ -47,6 +49,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	registerCertificationRoutes(mux, certificationSvc, authIssuer)
 	registerGearRoutes(mux, gearSvc, authIssuer)
 	registerUploadRoutes(mux, uploadSvc, profileSvc, tripSvc, certificationSvc, authIssuer)
+	registerDiveCenterRoutes(mux, diveCenterSvc, identityRepo, profileSvc, authIssuer)
 	// Uploaded images are served back unauthenticated, same as any other image URL
 	// referenced from a profile/trip card — dev-only local disk today, swappable for
 	// object storage (DigitalOcean Spaces) later without callers noticing.
