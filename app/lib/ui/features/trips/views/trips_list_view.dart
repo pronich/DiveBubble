@@ -343,7 +343,9 @@ class _TripCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.asset(AppAssets.tripPlaceholder, fit: BoxFit.cover),
+                  (trip.photoUrl?.isNotEmpty ?? false)
+                      ? Image.network(trip.photoUrl!, fit: BoxFit.cover)
+                      : Image.asset(AppAssets.tripPlaceholder, fit: BoxFit.cover),
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: AppGradients.imageScrim,

@@ -41,4 +41,14 @@ class ProfileRepository {
     );
     return apiModel.toDomain();
   }
+
+  Future<Profile> uploadAvatar(String filePath) async {
+    final apiModel = await _service.uploadAvatar(filePath);
+    return apiModel.toDomain();
+  }
+
+  Future<Profile> uploadCertificationPhoto(String filePath) async {
+    final apiModel = await _service.uploadCertificationPhoto(filePath);
+    return apiModel.toDomain();
+  }
 }

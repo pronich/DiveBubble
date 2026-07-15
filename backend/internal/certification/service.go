@@ -33,3 +33,7 @@ func (s *Service) ListSpecialties(ctx context.Context, userID uuid.UUID) ([]Spec
 func (s *Service) RemoveSpecialty(ctx context.Context, userID, id uuid.UUID) (bool, error) {
 	return s.Repo.Delete(ctx, userID, id)
 }
+
+func (s *Service) SetSpecialtyPhoto(ctx context.Context, userID, id uuid.UUID, url string) (bool, error) {
+	return s.Repo.SetPhotoURL(ctx, id, userID, url)
+}

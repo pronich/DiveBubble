@@ -2,17 +2,34 @@ import 'package:flutter/material.dart';
 
 import '../../../../ui/core/theme/app_colors.dart';
 import '../../../../ui/core/theme/app_gradients.dart';
+import '../../../core/widgets/card_photo_picker.dart';
 
 /// Full-size wallet-style card for the diver's current certification level —
 /// deliberately not the same as Overview's compact "Level" stat tile (that one
 /// stays a short text value; this shows agency/number/verified detail).
 class LevelCard extends StatelessWidget {
-  const LevelCard({super.key, required this.level, this.agency, this.number, this.verified = false});
+  const LevelCard({
+    super.key,
+    required this.level,
+    this.agency,
+    this.number,
+    this.verified = false,
+    this.photoUrl,
+    this.onPhotoTap,
+    this.isUploadingPhoto = false,
+  });
 
   final String level;
   final String? agency;
   final String? number;
   final bool verified;
+  final String? photoUrl;
+
+  /// Null hides the photo affordance — the Level card is shown read-only wherever it's
+  /// reused outside the diver's own Profile screen (none today, but matches the same
+  /// null-hides-the-edit-affordance posture as ProfileOverviewCard's onAvatarTap).
+  final VoidCallback? onPhotoTap;
+  final bool isUploadingPhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +54,15 @@ class LevelCard extends StatelessWidget {
                     letterSpacing: 0.5,
                   ),
                 ),
-              const Icon(Icons.workspace_premium_outlined, color: AppColors.textInverse),
+              Row(
+                children: [
+                  if (onPhotoTap != null) ...[
+                    CardPhotoPicker(photoUrl: photoUrl, onPick: onPhotoTap!, isUploading: isUploadingPhoto),
+                    const SizedBox(width: 8),
+                  ],
+                  const Icon(Icons.workspace_premium_outlined, color: AppColors.textInverse),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 12),

@@ -43,6 +43,9 @@ class TripViewModel extends ChangeNotifier {
   bool _isCancelling = false;
   bool get isCancelling => _isCancelling;
 
+  bool _isUploadingPhoto = false;
+  bool get isUploadingPhoto => _isUploadingPhoto;
+
   Future<void> load() async {
     _isLoading = true;
     _error = null;
@@ -115,6 +118,25 @@ class TripViewModel extends ChangeNotifier {
       return e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isCancelling = false;
+      notifyListeners();
+    }
+  }
+
+  /// Returns null on success, or an error message on failure. Organizer-only server-side
+  /// (see trip.ErrOnlyOrganizerCanEditTrip) — the UI only ever surfaces the picker to the
+  /// organizer in the first place, so a rejection here would mean something's out of sync.
+  Future<String?> uploadPhoto(String filePath) async {
+    _isUploadingPhoto = true;
+    notifyListeners();
+
+    try {
+      await _repository.uploadTripPhoto(_tripId, filePath);
+      _trip = await _repository.getTrip(_tripId);
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _isUploadingPhoto = false;
       notifyListeners();
     }
   }

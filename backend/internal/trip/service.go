@@ -11,6 +11,7 @@ import (
 var ErrInvalidArgument = errors.New("invalid argument")
 var ErrOrganizerCannotLeave = errors.New("organizer cannot leave their own trip")
 var ErrOnlyOrganizerCanCancel = errors.New("only the organizer can cancel this trip")
+var ErrOnlyOrganizerCanEditTrip = errors.New("only the organizer can edit this trip")
 var ErrTripNotOpen = errors.New("trip is not open")
 var ErrTripCancelled = errors.New("trip has been cancelled")
 
@@ -109,6 +110,23 @@ func (s *Service) Cancel(ctx context.Context, id string, userID uuid.UUID) error
 		return nil
 	}
 	return s.Repo.SetBookingStatus(ctx, tripID, "cancelled")
+}
+
+// SetPhotoURL is organizer-only — matches Cancel's ownership check, since nothing about a
+// trip other than its photo is editable yet either.
+func (s *Service) SetPhotoURL(ctx context.Context, id string, userID uuid.UUID, url string) error {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return ErrInvalidArgument
+	}
+	t, err := s.Repo.GetByID(ctx, tripID)
+	if err != nil {
+		return err
+	}
+	if !t.CreatorUserID.Valid || t.CreatorUserID.UUID != userID {
+		return ErrOnlyOrganizerCanEditTrip
+	}
+	return s.Repo.SetPhotoURL(ctx, tripID, url)
 }
 
 // EnsureNotCancelled is the shared guard for actions that freeze once a trip is

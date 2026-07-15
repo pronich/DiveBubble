@@ -28,4 +28,6 @@ class SpecialtyRepository {
   }
 
   Future<void> removeSpecialty(String id) => _service.removeSpecialty(id);
+
+  Future<String> uploadSpecialtyPhoto(String id, String filePath) => _service.uploadSpecialtyPhoto(id, filePath);
 }

@@ -27,6 +27,8 @@ class TripRepository {
 
   Future<void> markRead(String id) => _service.markRead(id);
 
+  Future<String> uploadTripPhoto(String id, String filePath) => _service.uploadTripPhoto(id, filePath);
+
   Future<List<Trip>> getMyTrips() async {
     final apiModels = await _service.fetchMyTrips();
     return apiModels.map((m) => m.toDomain()).toList();
