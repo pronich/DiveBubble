@@ -5,7 +5,7 @@ import '../../../../domain/entities/transport_offer.dart';
 import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
-import '../../profile/views/public_profile_page.dart';
+import '../../profile/views/diver_id_card.dart';
 import '../view_models/transport_view_model.dart';
 
 const _typeLabels = {
@@ -27,7 +27,12 @@ class TransportView extends StatefulWidget {
   State<TransportView> createState() => _TransportViewState();
 }
 
-class _TransportViewState extends State<TransportView> {
+class _TransportViewState extends State<TransportView> with AutomaticKeepAliveClientMixin {
+  // Same reasoning as ChatView — TabBarView disposes offscreen tabs by default, which
+  // otherwise re-triggers a full offer reload every time this tab scrolls back into view.
+  @override
+  bool get wantKeepAlive => true;
+
   @override
   void initState() {
     super.initState();
@@ -36,6 +41,7 @@ class _TransportViewState extends State<TransportView> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       body: ListenableBuilder(
         listenable: widget.viewModel,
@@ -229,11 +235,7 @@ class _TransportOfferDetailSheetState
   }
 
   void _openProfile(String userId) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PublicProfilePage(userId: userId, profileRepository: widget.viewModel.profileRepository),
-      ),
-    );
+    showDiverIdCard(context, userId: userId, profileRepository: widget.viewModel.profileRepository);
   }
 
   Future<void> _join(TransportOffer offer) async {

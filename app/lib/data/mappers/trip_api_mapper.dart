@@ -10,6 +10,7 @@ extension TripApiMapper on TripApiModel {
         joined: joined,
         creatorUserId: creatorUserId,
         participantCount: participantCount,
+        unreadCount: unreadCount,
         endDate: endDate,
         description: description,
         meetingPoint: meetingPoint,

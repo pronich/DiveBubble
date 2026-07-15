@@ -12,8 +12,15 @@ class ChatView extends StatefulWidget {
   State<ChatView> createState() => _ChatViewState();
 }
 
-class _ChatViewState extends State<ChatView> {
+class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin {
   final _textController = TextEditingController();
+
+  // TabBarView disposes offscreen tabs by default — without this, switching to Transport
+  // and back tore down ChatView (and, since dispose() below tears down the ChatViewModel
+  // with it) then rebuilt a fresh ChatView still holding the now-disposed ViewModel,
+  // throwing "used after being disposed" on the next call.
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -30,6 +37,7 @@ class _ChatViewState extends State<ChatView> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Column(
       children: [
         Expanded(

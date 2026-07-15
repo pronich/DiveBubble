@@ -107,6 +107,9 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, publisher *r
 		}
 
 		resp := toMessageResponse(m)
+		// Best-effort — sending implies you've read up to now, so this keeps your own
+		// message from ever showing up in your own unread count.
+		_ = tripSvc.MarkRead(r.Context(), tripID.String(), userID)
 		// Best-effort — REST already persisted the message, realtime push is not required for correctness.
 		_ = publisher.Publish(r.Context(), "trip:"+tripID.String(), resp)
 

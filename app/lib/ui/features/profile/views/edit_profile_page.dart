@@ -4,12 +4,23 @@ import '../../../../data/services/location_service.dart';
 import '../../../../domain/entities/profile.dart';
 import '../view_models/profile_view_model.dart';
 import 'language_picker_page.dart';
+import 'update_level_sheet.dart';
 
 class EditProfilePage extends StatefulWidget {
-  const EditProfilePage({super.key, required this.viewModel, required this.profile});
+  const EditProfilePage({
+    super.key,
+    required this.viewModel,
+    required this.profile,
+    this.isOnboarding = false,
+  });
 
   final ProfileViewModel viewModel;
   final Profile profile;
+
+  /// True only for the brand-new-account flow pushed from LoginSheet — chains straight
+  /// into UpdateLevelSheet after saving, so a new diver sets their certification level
+  /// as part of the same onboarding pass instead of having to find Certifications later.
+  final bool isOnboarding;
 
   @override
   State<EditProfilePage> createState() => _EditProfilePageState();
@@ -70,7 +81,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
       diveCount: int.tryParse(_diveCountController.text.trim()) ?? 0,
       languages: _languages.join(', '),
     );
-    if (success && mounted) Navigator.of(context).pop();
+    if (!success || !mounted) return;
+
+    if (widget.isOnboarding) {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => UpdateLevelSheet(viewModel: widget.viewModel),
+      );
+    }
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -143,7 +163,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 onPressed: widget.viewModel.isSubmitting ? null : _save,
                 child: widget.viewModel.isSubmitting
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Save'),
+                    : Text(widget.isOnboarding ? 'Continue' : 'Save'),
               ),
             ],
           );

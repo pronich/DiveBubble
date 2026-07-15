@@ -123,6 +123,26 @@ func (r *Repository) Join(ctx context.Context, tripID, userID uuid.UUID) error {
 	return err
 }
 
+func (r *Repository) ListParticipantUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT user_id FROM trip_participants WHERE trip_id = $1 ORDER BY joined_at ASC
+	`, tripID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	ids := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 func (r *Repository) IsJoined(ctx context.Context, tripID, userID uuid.UUID) (bool, error) {
 	var exists bool
 	err := r.DB.QueryRowContext(ctx, `
@@ -131,14 +151,20 @@ func (r *Repository) IsJoined(ctx context.Context, tripID, userID uuid.UUID) (bo
 	return exists, err
 }
 
-// ListJoinedByUser orders by joined_at until real "last message" ordering exists.
+// ListJoinedByUser orders by most-recent chat activity (last message, or joined_at for a
+// trip with no messages yet) — WhatsApp/Telegram-style, not join order.
+// UnreadCount excludes the caller's own messages (sending isn't "unread" for the sender)
+// and counts everything sent after this participant's last_read_at.
 func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]Trip, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-		SELECT `+tripColumnsPrefixed("t")+`
+		SELECT `+tripColumnsPrefixed("t")+`,
+			(SELECT COUNT(*) FROM chat_messages cm
+			 WHERE cm.trip_id = t.id AND cm.user_id != tp.user_id
+			   AND cm.created_at > COALESCE(tp.last_read_at, '-infinity'::timestamptz))
 		FROM trips t
 		JOIN trip_participants tp ON tp.trip_id = t.id
 		WHERE tp.user_id = $1
-		ORDER BY tp.joined_at DESC
+		ORDER BY COALESCE((SELECT MAX(created_at) FROM chat_messages WHERE trip_id = t.id), tp.joined_at) DESC
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -147,13 +173,27 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 
 	trips := []Trip{}
 	for rows.Next() {
-		t, err := scanTrip(rows)
+		var t Trip
+		err := rows.Scan(
+			&t.ID, &t.Title, &t.Location, &t.StartTime, &t.CreatedAt, &t.CreatorUserID,
+			&t.EndDate, &t.Description, &t.MeetingPoint,
+			&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
+			&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus, &t.PhotoURL,
+			&t.UnreadCount,
+		)
 		if err != nil {
 			return nil, err
 		}
 		trips = append(trips, t)
 	}
 	return trips, rows.Err()
+}
+
+func (r *Repository) MarkRead(ctx context.Context, tripID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `
+		UPDATE trip_participants SET last_read_at = now() WHERE trip_id = $1 AND user_id = $2
+	`, tripID, userID)
+	return err
 }
 
 func (r *Repository) CountParticipants(ctx context.Context, tripID uuid.UUID) (int, error) {

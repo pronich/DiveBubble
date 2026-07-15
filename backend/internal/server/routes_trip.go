@@ -21,6 +21,8 @@ func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, authIssuer *auth.
 	// Detail stays browsable without an account — "joined" is just false for anonymous viewers.
 	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
 	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc)))
+	mux.HandleFunc("GET /trips/{id}/participants", withAuth(authIssuer, handleListParticipants(svc)))
+	mux.HandleFunc("POST /trips/{id}/read", withAuth(authIssuer, handleMarkRead(svc)))
 }
 
 type tripResponse struct {
@@ -32,6 +34,7 @@ type tripResponse struct {
 	Joined           bool       `json:"joined"`
 	CreatorUserID    *uuid.UUID `json:"creatorUserId,omitempty"`
 	ParticipantCount int        `json:"participantCount"`
+	UnreadCount      int        `json:"unreadCount"`
 
 	EndDate          *time.Time `json:"endDate,omitempty"`
 	Description      *string    `json:"description,omitempty"`
@@ -78,6 +81,7 @@ func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse
 		CreatedAt:        t.CreatedAt,
 		Joined:           joined,
 		ParticipantCount: participantCount,
+		UnreadCount:      t.UnreadCount,
 		EndDate:          nullTimePtr(t.EndDate),
 		Description:      nullStringPtr(t.Description),
 		MeetingPoint:     nullStringPtr(t.MeetingPoint),
@@ -148,7 +152,7 @@ func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, toTripResponse(t, false, 0))
+		writeJSON(w, http.StatusCreated, toTripResponse(t, true, 1))
 	}
 }
 
@@ -202,6 +206,38 @@ func handleJoinTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, 
 		}
 
 		writeJSON(w, http.StatusOK, map[string]bool{"joined": true})
+	}
+}
+
+// Gated to participants only (requireParticipant, same guard as messages/transport) — who
+// joined a trip isn't public information, just like the trip's chat isn't.
+func handleListParticipants(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		tripIDStr := r.PathValue("id")
+		if _, ok := requireParticipant(w, r, svc, tripIDStr, userID); !ok {
+			return
+		}
+		ids, err := svc.ListParticipantUserIDs(r.Context(), tripIDStr)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not list participants")
+			return
+		}
+		writeJSON(w, http.StatusOK, ids)
+	}
+}
+
+func handleMarkRead(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+		if err := svc.MarkRead(r.Context(), id, userID); err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not mark trip read")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

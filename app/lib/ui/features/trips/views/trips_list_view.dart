@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
+import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/auth/ensure_signed_in.dart';
@@ -20,6 +23,9 @@ class TripsListView extends StatefulWidget {
     super.key,
     required this.viewModel,
     required this.tripRepository,
+    required this.chatRepository,
+    required this.transportRepository,
+    required this.realtimeService,
     required this.authRepository,
     required this.profileRepository,
     required this.currentUserId,
@@ -27,6 +33,9 @@ class TripsListView extends StatefulWidget {
 
   final TripsListViewModel viewModel;
   final TripRepository tripRepository;
+  final ChatRepository chatRepository;
+  final TransportRepository transportRepository;
+  final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
   final String currentUserId;
@@ -162,6 +171,10 @@ class _TripsListViewState extends State<TripsListView> {
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),
+          tripRepository: widget.tripRepository,
+          chatRepository: widget.chatRepository,
+          transportRepository: widget.transportRepository,
+          realtimeService: widget.realtimeService,
         ),
       ),
     );
@@ -187,6 +200,10 @@ class _TripsListViewState extends State<TripsListView> {
                     tripId: trip.id,
                     currentUserId: userId,
                   ),
+                  tripRepository: widget.tripRepository,
+                  chatRepository: widget.chatRepository,
+                  transportRepository: widget.transportRepository,
+                  realtimeService: widget.realtimeService,
                 ),
               ),
             );

@@ -12,6 +12,7 @@ abstract class Trip with _$Trip {
     required bool joined,
     String? creatorUserId,
     @Default(0) int participantCount,
+    @Default(0) int unreadCount,
     DateTime? endDate,
     String? description,
     String? meetingPoint,
