@@ -1,0 +1,9 @@
+ALTER TABLE dive_centers
+    DROP COLUMN location,
+    DROP COLUMN description,
+    DROP COLUMN logo_url,
+    DROP COLUMN agency,
+    DROP COLUMN agency_detail,
+    DROP COLUMN languages,
+    DROP COLUMN website,
+    DROP COLUMN phone;

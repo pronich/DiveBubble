@@ -1,14 +1,27 @@
 package divecenter
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 type DiveCenter struct {
-	ID        uuid.UUID
-	Name      string
+	ID   uuid.UUID
+	Name string
+
+	// Profile fields, collected during onboarding — see CLAUDE.md's Business / dive
+	// centers section for why each one made the MVP cut.
+	Location     sql.NullString
+	Description  sql.NullString
+	LogoURL      sql.NullString
+	Agency       sql.NullString
+	AgencyDetail sql.NullString
+	Languages    string // comma-separated, matching users.languages
+	Website      sql.NullString
+	Phone        sql.NullString
+
 	CreatedAt time.Time
 }
 

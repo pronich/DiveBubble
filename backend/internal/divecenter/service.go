@@ -9,7 +9,7 @@ import (
 )
 
 var ErrInvalidArgument = errors.New("invalid argument")
-var ErrOnlyOwnerCanManageMembers = errors.New("only an owner can manage members")
+var ErrOnlyOwner = errors.New("only an owner can perform this action")
 var ErrCannotRemoveLastOwner = errors.New("cannot remove the last owner")
 var ErrNotAMember = errors.New("not a member of this dive center")
 
@@ -21,12 +21,12 @@ func NewService(repo *Repository) *Service {
 	return &Service{Repo: repo}
 }
 
-func (s *Service) Create(ctx context.Context, name string, ownerUserID uuid.UUID) (DiveCenter, error) {
-	name = strings.TrimSpace(name)
-	if name == "" {
+func (s *Service) Create(ctx context.Context, p CreateParams, ownerUserID uuid.UUID) (DiveCenter, error) {
+	p.Name = strings.TrimSpace(p.Name)
+	if p.Name == "" {
 		return DiveCenter{}, ErrInvalidArgument
 	}
-	return s.Repo.Create(ctx, name, ownerUserID)
+	return s.Repo.Create(ctx, p, ownerUserID)
 }
 
 func (s *Service) Get(ctx context.Context, id uuid.UUID) (DiveCenter, error) {
@@ -43,6 +43,18 @@ func (s *Service) IsMember(ctx context.Context, diveCenterID, userID uuid.UUID) 
 
 func (s *Service) IsOwner(ctx context.Context, diveCenterID, userID uuid.UUID) (bool, error) {
 	return s.Repo.IsOwner(ctx, diveCenterID, userID)
+}
+
+// SetLogoURL is owner-only — matches trip.Service.SetPhotoURL's ownership posture.
+func (s *Service) SetLogoURL(ctx context.Context, id, callerID uuid.UUID, url string) error {
+	isOwner, err := s.Repo.IsOwner(ctx, id, callerID)
+	if err != nil {
+		return err
+	}
+	if !isOwner {
+		return ErrOnlyOwner
+	}
+	return s.Repo.SetLogoURL(ctx, id, url)
 }
 
 // ListMembers is member-gated (any role) — staff can see their own roster, not just owners.
@@ -66,7 +78,7 @@ func (s *Service) AddMember(ctx context.Context, diveCenterID, callerID, targetU
 		return Member{}, err
 	}
 	if !isOwner {
-		return Member{}, ErrOnlyOwnerCanManageMembers
+		return Member{}, ErrOnlyOwner
 	}
 	if role != "owner" {
 		role = "staff"
@@ -82,7 +94,7 @@ func (s *Service) RemoveMember(ctx context.Context, diveCenterID, callerID, targ
 		return err
 	}
 	if !isOwner {
-		return ErrOnlyOwnerCanManageMembers
+		return ErrOnlyOwner
 	}
 
 	targetIsOwner, err := s.Repo.IsOwner(ctx, diveCenterID, targetUserID)
