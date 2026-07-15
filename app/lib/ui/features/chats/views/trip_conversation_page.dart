@@ -46,6 +46,7 @@ class TripConversationPage extends StatefulWidget {
 
 class _TripConversationPageState extends State<TripConversationPage> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  bool _isCancelled = false;
 
   @override
   void initState() {
@@ -58,6 +59,20 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
     // the diver actually switches to Transport, which re-checks and (now correctly) finds
     // nothing, hiding it — "seen the badge" isn't the same as "went and looked."
     widget.transportViewModel.checkAlert();
+    _refreshCancelledStatus();
+  }
+
+  // Owned here, not by ChatViewModel/TransportViewModel — both tabs just need a plain
+  // bool, and a single fetch avoids duplicating "am I cancelled" logic (and its own
+  // realtime-subscription-shaped footguns, see RealtimeService) into two ViewModels.
+  Future<void> _refreshCancelledStatus() async {
+    try {
+      final trip = await widget.tripRepository.getTrip(widget.chatViewModel.tripId);
+      if (mounted) setState(() => _isCancelled = trip.bookingStatus == 'cancelled');
+    } catch (_) {
+      // Best-effort — worst case the input stays enabled until the next successful check,
+      // and the server-side guards (EnsureNotCancelled) still reject the action either way.
+    }
   }
 
   void _onTabChanged() {
@@ -110,15 +125,15 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
       body: TabBarView(
         controller: _tabController,
         children: [
-          ChatView(viewModel: widget.chatViewModel),
-          TransportView(viewModel: widget.transportViewModel),
+          ChatView(viewModel: widget.chatViewModel, isCancelled: _isCancelled),
+          TransportView(viewModel: widget.transportViewModel, isCancelled: _isCancelled),
         ],
       ),
     );
   }
 
-  void _openTripPage(BuildContext context) {
-    Navigator.of(context).push(
+  Future<void> _openTripPage(BuildContext context) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TripPage(
           viewModel: TripViewModel(
@@ -136,5 +151,8 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
         ),
       ),
     );
+    // Trip Page is the only place bookingStatus can change (Cancel Trip) — refresh once
+    // back, since ChatView/TransportView otherwise have no reason to know it changed.
+    if (mounted) _refreshCancelledStatus();
   }
 }

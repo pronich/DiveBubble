@@ -23,6 +23,7 @@ func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, transportSvc *tra
 	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
 	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc)))
 	mux.HandleFunc("POST /trips/{id}/leave", withAuth(authIssuer, handleLeaveTrip(svc, transportSvc)))
+	mux.HandleFunc("POST /trips/{id}/cancel", withAuth(authIssuer, handleCancelTrip(svc)))
 	mux.HandleFunc("GET /trips/{id}/participants", withAuth(authIssuer, handleListParticipants(svc)))
 	mux.HandleFunc("POST /trips/{id}/read", withAuth(authIssuer, handleMarkRead(svc)))
 }
@@ -203,11 +204,44 @@ func handleJoinTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, 
 				writeError(w, http.StatusNotFound, "trip not found")
 				return
 			}
+			if errors.Is(err, trip.ErrTripNotOpen) {
+				writeError(w, http.StatusConflict, "trip is not open to join")
+				return
+			}
 			writeError(w, http.StatusInternalServerError, "could not join trip")
 			return
 		}
 
 		writeJSON(w, http.StatusOK, map[string]bool{"joined": true})
+	}
+}
+
+// handleCancelTrip is organizer-only (enforced inside svc.Cancel) and final — booking_status
+// flips to "cancelled", which is what everything downstream keys off: Explore's List query
+// excludes it, the Join handler above rejects new joins, and message/transport handlers call
+// EnsureNotCancelled to freeze new activity while read access (history, participants,
+// existing transport) stays untouched.
+func handleCancelTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+		if err := svc.Cancel(r.Context(), id, userID); err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			if errors.Is(err, trip.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "trip not found")
+				return
+			}
+			if errors.Is(err, trip.ErrOnlyOrganizerCanCancel) {
+				writeError(w, http.StatusForbidden, "only the organizer can cancel this trip")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not cancel trip")
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

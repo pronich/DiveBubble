@@ -190,7 +190,9 @@ class _TripPageState extends State<TripPage> {
                     else if (!trip.joined && trip.bookingStatus == 'open')
                       _JoinButton(trip: trip, viewModel: widget.viewModel)
                     else if (widget.openedFromConversation && trip.joined && !isOrganizer)
-                      _LeaveButton(viewModel: widget.viewModel),
+                      _LeaveButton(viewModel: widget.viewModel)
+                    else if (widget.openedFromConversation && isOrganizer && trip.bookingStatus != 'cancelled')
+                      _CancelButton(viewModel: widget.viewModel),
                   ],
                 ),
               ),
@@ -546,6 +548,62 @@ class _LeaveButton extends StatelessWidget {
   }
 }
 
+/// Organizer-only, Specific view — the structural counterpart to [_LeaveButton], but
+/// cancelling doesn't remove the organizer from anything: it stays on this page, the
+/// status pill flips to "Cancelled", and this button itself disappears (see the caller's
+/// `bookingStatus != 'cancelled'` guard) since there's nothing left to cancel. Bolder
+/// (solid destructive) styling than Leave's outlined one — this affects every participant,
+/// not just the person tapping it, and it's final: no reopen path exists.
+class _CancelButton extends StatelessWidget {
+  const _CancelButton({required this.viewModel});
+
+  final TripViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: AppButtonStyles.destructive,
+        onPressed: viewModel.isCancelling ? null : () => _handleCancel(context),
+        child: viewModel.isCancelling
+            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Text('Cancel Trip'),
+      ),
+    );
+  }
+
+  Future<void> _handleCancel(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel this trip?'),
+        content: const Text(
+          "Every participant keeps the Bubble to see the chat history, but no one — including you — "
+          "can send messages, join, or arrange transport anymore. This can't be undone.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Never mind')),
+          TextButton(
+            style: AppButtonStyles.ghost.copyWith(foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.error)),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Cancel trip'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final error = await viewModel.cancel();
+    if (!context.mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Trip cancelled')));
+  }
+}
+
 /// Passive status indicator next to the trip title — Organizer/Joined/Full/Cancelled.
 /// Nothing shown for the common "open, not yet joined" case, matching the app's
 /// quiet-by-default badges.
@@ -563,7 +621,13 @@ class _TripStatusPill extends StatelessWidget {
     final theme = Theme.of(context);
     final semantic = Theme.of(context).extension<SemanticColors>()!;
 
-    if (isOrganizer) {
+    // Cancelled outranks Organizer/Joined — that's the one thing everyone in the Bubble
+    // needs to see at a glance, organizer included, not just non-participants browsing in.
+    if (trip.bookingStatus == 'cancelled') {
+      label = 'Cancelled';
+      background = theme.colorScheme.surfaceContainerHighest;
+      foreground = theme.colorScheme.onSurfaceVariant;
+    } else if (isOrganizer) {
       // Of course the organizer is "joined" — that label is more useful for everyone else.
       label = 'Organizer';
       background = theme.colorScheme.primaryContainer;
@@ -572,10 +636,6 @@ class _TripStatusPill extends StatelessWidget {
       label = 'Joined';
       background = semantic.successContainer;
       foreground = semantic.onSuccessContainer;
-    } else if (trip.bookingStatus == 'cancelled') {
-      label = 'Cancelled';
-      background = theme.colorScheme.surfaceContainerHighest;
-      foreground = theme.colorScheme.onSurfaceVariant;
     } else if (trip.bookingStatus == 'full') {
       label = 'Full';
       background = semantic.infoContainer;

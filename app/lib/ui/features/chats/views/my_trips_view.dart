@@ -237,7 +237,7 @@ class _TripRow extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  _StatusPill(isPast: _isPast),
+                  _StatusPill(isPast: _isPast, isCancelled: trip.bookingStatus == 'cancelled'),
                 ],
               ),
             ),
@@ -275,22 +275,39 @@ class _UnreadBadge extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.isPast});
+  const _StatusPill({required this.isPast, required this.isCancelled});
 
   final bool isPast;
+  final bool isCancelled;
 
   @override
   Widget build(BuildContext context) {
     final semantic = Theme.of(context).extension<SemanticColors>()!;
     final theme = Theme.of(context);
-    final background = isPast ? semantic.neutralContainer : semantic.infoContainer;
-    final foreground = isPast ? semantic.onNeutralContainer : semantic.onInfoContainer;
+
+    final String label;
+    final Color background;
+    final Color foreground;
+    // Cancelled outranks Active/Past — same priority call as Trip Page's status pill.
+    if (isCancelled) {
+      label = 'Cancelled';
+      background = theme.colorScheme.surfaceContainerHighest;
+      foreground = theme.colorScheme.onSurfaceVariant;
+    } else if (isPast) {
+      label = 'Past';
+      background = semantic.neutralContainer;
+      foreground = semantic.onNeutralContainer;
+    } else {
+      label = 'Active';
+      background = semantic.infoContainer;
+      foreground = semantic.onInfoContainer;
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
       child: Text(
-        isPast ? 'Past' : 'Active',
+        label,
         style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600),
       ),
     );

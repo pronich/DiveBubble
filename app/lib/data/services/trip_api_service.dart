@@ -73,6 +73,15 @@ class TripApiService {
     }
   }
 
+  // 403 if the caller isn't the trip's organizer. Idempotent server-side — cancelling an
+  // already-cancelled trip still returns 204.
+  Future<void> cancelTrip(String id) async {
+    final res = await _client.post(Uri.parse('$baseUrl/trips/$id/cancel'), headers: await _requiredAuthHeaders());
+    if (res.statusCode != 204) {
+      throw Exception('cancelTrip failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
   // Gated to participants server-side — who joined a trip isn't public.
   Future<List<String>> fetchParticipantUserIds(String id) async {
     final res = await _client.get(Uri.parse('$baseUrl/trips/$id/participants'), headers: await _requiredAuthHeaders());

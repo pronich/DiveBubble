@@ -88,6 +88,16 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, publisher *r
 		if !ok {
 			return
 		}
+		// Cancelled trips are read-only — history stays visible (handleListMessages is
+		// untouched), but the input is effectively closed server-side too, not just in the UI.
+		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
+			if errors.Is(err, trip.ErrTripCancelled) {
+				writeError(w, http.StatusConflict, "trip has been cancelled")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not send message")
+			return
+		}
 
 		var req sendMessageRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
