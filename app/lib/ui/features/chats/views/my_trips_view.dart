@@ -138,6 +138,7 @@ class _MyTripsViewState extends State<MyTripsView> {
           chatViewModel: ChatViewModel(
             repository: widget.chatRepository,
             realtimeService: widget.realtimeService,
+            profileRepository: widget.profileRepository,
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),

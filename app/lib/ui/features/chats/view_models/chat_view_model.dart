@@ -5,6 +5,7 @@ import 'package:centrifuge/centrifuge.dart' as centrifuge;
 import 'package:flutter/foundation.dart';
 
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/chat_message.dart';
 
@@ -12,6 +13,7 @@ class ChatViewModel extends ChangeNotifier {
   ChatViewModel({
     required ChatRepository repository,
     required RealtimeService realtimeService,
+    required this.profileRepository,
     required this.tripId,
     required this.currentUserId,
   })  : _repository = repository,
@@ -19,6 +21,7 @@ class ChatViewModel extends ChangeNotifier {
 
   final ChatRepository _repository;
   final RealtimeService _realtimeService;
+  final ProfileRepository profileRepository;
   final String tripId;
   final String currentUserId;
 

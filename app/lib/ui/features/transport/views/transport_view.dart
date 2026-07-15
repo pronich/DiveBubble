@@ -36,7 +36,11 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
   @override
   void initState() {
     super.initState();
-    widget.viewModel.load();
+    // Deferred a tick: TabBarView builds both tabs eagerly up front, so calling load()
+    // (whose first line is a synchronous notifyListeners()) straight from initState here
+    // fires while the *sibling* Chat tab's build is still in flight, tripping "setState
+    // called during build". A microtask lets the current build pass finish first.
+    Future.microtask(widget.viewModel.load);
   }
 
   @override

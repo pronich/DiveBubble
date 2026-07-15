@@ -39,7 +39,25 @@ class MyTripsViewModel extends ChangeNotifier {
   bool _needsSignIn = false;
   bool get needsSignIn => _needsSignIn;
 
-  Future<void> load() async {
+  Future<void>? _loadFuture;
+
+  // load() has three independent triggers (initState, the authRepository listener, and
+  // tapping the Bubbles tab) that can fire close together — without coalescing, two
+  // overlapping calls would both pass _subscribeToAll's per-trip "already subscribed?"
+  // check before either finishes awaiting, so both would call RealtimeService.subscribe
+  // and register a second sub.publication.listen() for the same trip (double-counting
+  // unread messages), while dispose() would only ever cancel one of the two. A concurrent
+  // caller just awaits the same in-flight load instead of starting its own.
+  Future<void> load() {
+    final existing = _loadFuture;
+    if (existing != null) return existing;
+    final future = _loadImpl();
+    _loadFuture = future;
+    future.whenComplete(() => _loadFuture = null);
+    return future;
+  }
+
+  Future<void> _loadImpl() async {
     _isLoading = true;
     _error = null;
     _needsSignIn = false;

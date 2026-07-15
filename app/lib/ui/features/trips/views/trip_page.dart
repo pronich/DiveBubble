@@ -631,6 +631,7 @@ class _DiveInButton extends StatelessWidget {
                 chatViewModel: ChatViewModel(
                   repository: chatRepository,
                   realtimeService: realtimeService,
+                  profileRepository: profileRepository,
                   tripId: trip.id,
                   currentUserId: currentUserId,
                 ),

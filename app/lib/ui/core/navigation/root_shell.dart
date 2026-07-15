@@ -98,6 +98,11 @@ class _RootShellState extends State<RootShell> {
           ),
         ],
       ),
+      // TODO(notifications-rework): the Bubbles destination needs a red-dot badge when
+      // _myTripsViewModel.trips has any unreadCount > 0 and the tab isn't currently active.
+      // Not wiring it up piecemeal here — this, the per-trip unread badge, and the
+      // Transport alert dot are three separate ad-hoc notification signals that should
+      // become one coherent in-app notifications system instead of growing a fourth.
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: _onDestinationSelected,

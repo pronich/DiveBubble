@@ -3,6 +3,10 @@ const _months = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
+const _fullMonths = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
 
 /// e.g. "Sat, Jul 18" — kept dependency-free, no `intl` needed for one label.
 String formatShortDate(DateTime dateTime) {
@@ -14,6 +18,17 @@ String formatShortDate(DateTime dateTime) {
 String formatTime(DateTime dateTime) {
   final local = dateTime.toLocal();
   return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+}
+
+/// e.g. "July 15" (same year as now) or "December 27, 2025" (a different year) — the
+/// chat's date-separator label, deliberately no "Today"/"Yesterday" special-casing since
+/// the reference chat UI this is matching always shows the real date.
+String formatChatDateSeparator(DateTime dateTime) {
+  final local = dateTime.toLocal();
+  final now = DateTime.now();
+  final month = _fullMonths[local.month - 1];
+  if (local.year == now.year) return '$month ${local.day}';
+  return '$month ${local.day}, ${local.year}';
 }
 
 /// Collapses to a single date when [end] is null or the same calendar day as [start].
