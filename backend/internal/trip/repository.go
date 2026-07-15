@@ -17,6 +17,7 @@ var tripColumnNames = []string{
 	"end_date", "description", "meeting_point",
 	"dive_count_min", "dive_count_max", "depth_min_m", "depth_max_m",
 	"min_certification", "booking_code", "max_participants", "booking_status", "photo_url",
+	"dive_center_id", "price_minor", "currency",
 }
 
 var tripColumns = strings.Join(tripColumnNames, ", ")
@@ -45,6 +46,7 @@ func scanTrip(row interface{ Scan(...any) error }) (Trip, error) {
 		&t.EndDate, &t.Description, &t.MeetingPoint,
 		&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
 		&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus, &t.PhotoURL,
+		&t.DiveCenterID, &t.PriceMinor, &t.Currency,
 	)
 	return t, err
 }
@@ -76,6 +78,12 @@ type CreateParams struct {
 	MinCertification *string
 	BookingCode      *string
 	MaxParticipants  *int
+
+	// Business fields — nil DiveCenterID means an individual-organizer trip (the common
+	// case). PriceMinor is minor currency units (øre); currency isn't yet settable per
+	// trip (always defaults to DKK at the DB level — see migration 000023).
+	DiveCenterID *uuid.UUID
+	PriceMinor   *int
 }
 
 func (r *Repository) Create(ctx context.Context, p CreateParams) (Trip, error) {
@@ -84,14 +92,16 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Trip, error) {
 			title, location, start_time, creator_user_id,
 			end_date, description, meeting_point,
 			dive_count_min, dive_count_max, depth_min_m, depth_max_m,
-			min_certification, booking_code, max_participants
+			min_certification, booking_code, max_participants,
+			dive_center_id, price_minor
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 		RETURNING `+tripColumns,
 		p.Title, p.Location, p.StartTime, p.CreatorUserID,
 		p.EndDate, p.Description, p.MeetingPoint,
 		p.DiveCountMin, p.DiveCountMax, p.DepthMinM, p.DepthMaxM,
 		p.MinCertification, p.BookingCode, p.MaxParticipants,
+		p.DiveCenterID, p.PriceMinor,
 	))
 }
 
@@ -172,20 +182,30 @@ func (r *Repository) IsJoined(ctx context.Context, tripID, userID uuid.UUID) (bo
 	return exists, err
 }
 
-// ListJoinedByUser orders by most-recent chat activity (last message, or joined_at for a
-// trip with no messages yet) — WhatsApp/Telegram-style, not join order.
+// ListJoinedByUser orders by most-recent chat activity (last message, or joined_at/
+// created_at for a trip with no messages yet) — WhatsApp/Telegram-style, not join order.
 // UnreadCount excludes the caller's own messages (sending isn't "unread" for the sender)
 // and counts everything sent after this participant's last_read_at.
+//
+// Also includes trips organized by any dive center this user is a *member* of, even
+// without a trip_participants row — staff never get one (see trip.Service.CreateTrip),
+// access is membership-based instead. tp is LEFT JOINed (not INNER) so those rows still
+// come back; last_read_at/joined_at fall back to '-infinity'/created_at when tp is absent,
+// so an unvisited business trip reads as fully unread rather than erroring on a null join column.
 func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]Trip, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT `+tripColumnsPrefixed("t")+`,
 			(SELECT COUNT(*) FROM chat_messages cm
-			 WHERE cm.trip_id = t.id AND cm.user_id != tp.user_id
+			 WHERE cm.trip_id = t.id AND cm.user_id != $1
 			   AND cm.created_at > COALESCE(tp.last_read_at, '-infinity'::timestamptz))
 		FROM trips t
-		JOIN trip_participants tp ON tp.trip_id = t.id
+		LEFT JOIN trip_participants tp ON tp.trip_id = t.id AND tp.user_id = $1
 		WHERE tp.user_id = $1
-		ORDER BY COALESCE((SELECT MAX(created_at) FROM chat_messages WHERE trip_id = t.id), tp.joined_at) DESC
+		   OR EXISTS (
+		       SELECT 1 FROM dive_center_members dcm
+		       WHERE dcm.dive_center_id = t.dive_center_id AND dcm.user_id = $1
+		   )
+		ORDER BY COALESCE((SELECT MAX(created_at) FROM chat_messages WHERE trip_id = t.id), tp.joined_at, t.created_at) DESC
 	`, userID)
 	if err != nil {
 		return nil, err
@@ -200,6 +220,7 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 			&t.EndDate, &t.Description, &t.MeetingPoint,
 			&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
 			&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus, &t.PhotoURL,
+			&t.DiveCenterID, &t.PriceMinor, &t.Currency,
 			&t.UnreadCount,
 		)
 		if err != nil {

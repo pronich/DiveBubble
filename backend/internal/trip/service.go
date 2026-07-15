@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 
+	"divebubble_be/internal/divecenter"
+
 	"github.com/google/uuid"
 )
 
@@ -14,13 +16,54 @@ var ErrOnlyOrganizerCanCancel = errors.New("only the organizer can cancel this t
 var ErrOnlyOrganizerCanEditTrip = errors.New("only the organizer can edit this trip")
 var ErrTripNotOpen = errors.New("trip is not open")
 var ErrTripCancelled = errors.New("trip has been cancelled")
+var ErrNotDiveCenterMember = errors.New("not a member of that dive center")
 
 type Service struct {
-	Repo *Repository
+	Repo          *Repository
+	DiveCenterSvc *divecenter.Service
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{Repo: repo}
+func NewService(repo *Repository, diveCenterSvc *divecenter.Service) *Service {
+	return &Service{Repo: repo, DiveCenterSvc: diveCenterSvc}
+}
+
+// isOrganizer reports whether userID can act as this trip's organizer — either they
+// created it personally, or the trip is run by a dive center they're a member of (any
+// member, not just the staff member who happened to create it — the organization is the
+// organizer, not one specific employee; see CLAUDE.md's Business/dive-center section).
+func (s *Service) isOrganizer(ctx context.Context, t Trip, userID uuid.UUID) (bool, error) {
+	if t.CreatorUserID.Valid && t.CreatorUserID.UUID == userID {
+		return true, nil
+	}
+	if t.DiveCenterID.Valid && s.DiveCenterSvc != nil {
+		return s.DiveCenterSvc.IsMember(ctx, t.DiveCenterID.UUID, userID)
+	}
+	return false, nil
+}
+
+// HasAccess is the general "can this user read/write inside this trip" check — either
+// they've joined normally (a trip_participants row) or they're the trip's organizer.
+// Dive-center staff never get a trip_participants row for the center's own trips (see
+// CreateTrip below), so without the organizer branch here they'd be locked out of their
+// own business's chat/transport.
+func (s *Service) HasAccess(ctx context.Context, id string, userID uuid.UUID) (uuid.UUID, bool, error) {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return uuid.Nil, false, ErrInvalidArgument
+	}
+	joined, err := s.Repo.IsJoined(ctx, tripID, userID)
+	if err != nil {
+		return uuid.Nil, false, err
+	}
+	if joined {
+		return tripID, true, nil
+	}
+	t, err := s.Repo.GetByID(ctx, tripID)
+	if err != nil {
+		return uuid.Nil, false, err
+	}
+	isOrg, err := s.isOrganizer(ctx, t, userID)
+	return tripID, isOrg, err
 }
 
 func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) {
@@ -32,14 +75,33 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 	if p.EndDate != nil && p.EndDate.Before(p.StartTime) {
 		return Trip{}, ErrInvalidArgument
 	}
+	if p.DiveCenterID != nil {
+		if s.DiveCenterSvc == nil {
+			return Trip{}, ErrInvalidArgument
+		}
+		isMember, err := s.DiveCenterSvc.IsMember(ctx, *p.DiveCenterID, p.CreatorUserID)
+		if err != nil {
+			return Trip{}, err
+		}
+		if !isMember {
+			return Trip{}, ErrNotDiveCenterMember
+		}
+	}
 	t, err := s.Repo.Create(ctx, p)
 	if err != nil {
 		return Trip{}, err
 	}
-	// The organizer is a participant of their own trip from the start — no separate Join
-	// step, and it's what makes the trip show up under their own Bubbles tab immediately.
-	if err := s.Repo.Join(ctx, t.ID, p.CreatorUserID); err != nil {
-		return Trip{}, err
+	// Individual trips auto-join their creator (no separate Join step — it's what makes
+	// the trip show up in their own Bubbles tab immediately). Business trips skip this
+	// deliberately: staff reach the trip via dive-center membership (see HasAccess/
+	// isOrganizer above and ListJoinedByUser's dive_center_members branch), the same way
+	// regardless of which specific staff member created it — a trip_participants row for
+	// just the creator would be redundant and would need to be kept in sync with staffing
+	// changes for no benefit.
+	if p.DiveCenterID == nil {
+		if err := s.Repo.Join(ctx, t.ID, p.CreatorUserID); err != nil {
+			return Trip{}, err
+		}
 	}
 	return t, nil
 }
@@ -103,7 +165,11 @@ func (s *Service) Cancel(ctx context.Context, id string, userID uuid.UUID) error
 	if err != nil {
 		return err
 	}
-	if !t.CreatorUserID.Valid || t.CreatorUserID.UUID != userID {
+	ok, err := s.isOrganizer(ctx, t, userID)
+	if err != nil {
+		return err
+	}
+	if !ok {
 		return ErrOnlyOrganizerCanCancel
 	}
 	if t.BookingStatus == "cancelled" {
@@ -123,7 +189,11 @@ func (s *Service) SetPhotoURL(ctx context.Context, id string, userID uuid.UUID, 
 	if err != nil {
 		return err
 	}
-	if !t.CreatorUserID.Valid || t.CreatorUserID.UUID != userID {
+	ok, err := s.isOrganizer(ctx, t, userID)
+	if err != nil {
+		return err
+	}
+	if !ok {
 		return ErrOnlyOrganizerCanEditTrip
 	}
 	return s.Repo.SetPhotoURL(ctx, tripID, url)

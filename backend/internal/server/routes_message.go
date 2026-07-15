@@ -38,19 +38,20 @@ func toMessageResponse(m message.Message) messageResponse {
 	}
 }
 
-// requireParticipant is shared by both message handlers — only trip participants can read/send.
+// requireParticipant is shared by message/transport/participants handlers — access means
+// either joined normally (trip_participants) or being the trip's organizer (HasAccess also
+// covers dive-center staff, who never get a trip_participants row for their own center's trips).
 func requireParticipant(w http.ResponseWriter, r *http.Request, tripSvc *trip.Service, tripID string, userID uuid.UUID) (uuid.UUID, bool) {
-	parsed, err := uuid.Parse(tripID)
+	parsed, hasAccess, err := tripSvc.HasAccess(r.Context(), tripID, userID)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid trip id")
-		return uuid.Nil, false
-	}
-	joined, err := tripSvc.IsJoined(r.Context(), tripID, userID)
-	if err != nil {
+		if errors.Is(err, trip.ErrInvalidArgument) {
+			writeError(w, http.StatusBadRequest, "invalid trip id")
+			return uuid.Nil, false
+		}
 		writeError(w, http.StatusInternalServerError, "could not verify trip membership")
 		return uuid.Nil, false
 	}
-	if !joined {
+	if !hasAccess {
 		writeError(w, http.StatusForbidden, "not a participant of this trip")
 		return uuid.Nil, false
 	}

@@ -29,5 +29,10 @@ type Trip struct {
 	BookingCode      sql.NullString
 	MaxParticipants  sql.NullInt32
 	BookingStatus    string
-	PhotoURL         sql.NullString // unused until real photo upload/storage exists — always null for now
+	PhotoURL         sql.NullString
+
+	// Business fields — nil/DKK for every individual-organizer trip. See divecenter package.
+	DiveCenterID uuid.NullUUID
+	PriceMinor   sql.NullInt32 // minor currency units (øre) — nil means price not set/shown
+	Currency     string
 }

@@ -51,6 +51,10 @@ type tripResponse struct {
 	MaxParticipants  *int       `json:"maxParticipants,omitempty"`
 	BookingStatus    string     `json:"bookingStatus"`
 	PhotoURL         *string    `json:"photoUrl,omitempty"`
+
+	DiveCenterID *uuid.UUID `json:"diveCenterId,omitempty"`
+	PriceMinor   *int       `json:"priceMinor,omitempty"`
+	Currency     string     `json:"currency"`
 }
 
 func nullStringPtr(v sql.NullString) *string {
@@ -97,9 +101,14 @@ func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse
 		MaxParticipants:  nullInt32Ptr(t.MaxParticipants),
 		BookingStatus:    t.BookingStatus,
 		PhotoURL:         nullStringPtr(t.PhotoURL),
+		PriceMinor:       nullInt32Ptr(t.PriceMinor),
+		Currency:         t.Currency,
 	}
 	if t.CreatorUserID.Valid {
 		resp.CreatorUserID = &t.CreatorUserID.UUID
+	}
+	if t.DiveCenterID.Valid {
+		resp.DiveCenterID = &t.DiveCenterID.UUID
 	}
 	return resp
 }
@@ -119,6 +128,12 @@ type createTripRequest struct {
 	MinCertification *string    `json:"minCertification"`
 	BookingCode      *string    `json:"bookingCode"`
 	MaxParticipants  *int       `json:"maxParticipants"`
+
+	// DiveCenterID set means this is a business trip — the caller must be a member of that
+	// dive center (checked in trip.Service.CreateTrip), and the creator doesn't get
+	// auto-joined the way an individual organizer does (see CreateTrip's own comment).
+	DiveCenterID *uuid.UUID `json:"diveCenterId"`
+	PriceMinor   *int       `json:"priceMinor"`
 }
 
 func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -145,17 +160,26 @@ func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 			MinCertification: req.MinCertification,
 			BookingCode:      req.BookingCode,
 			MaxParticipants:  req.MaxParticipants,
+			DiveCenterID:     req.DiveCenterID,
+			PriceMinor:       req.PriceMinor,
 		})
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, "title, location and startTime are required")
 				return
 			}
+			if errors.Is(err, trip.ErrNotDiveCenterMember) {
+				writeError(w, http.StatusForbidden, "not a member of that dive center")
+				return
+			}
 			writeError(w, http.StatusInternalServerError, "could not create trip")
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, toTripResponse(t, true, 1))
+		// A business trip has no trip_participants row for its creator (see CreateTrip),
+		// so `joined` here would be misleading either way — the client doesn't currently
+		// branch on it for the just-created-trip response, only true participantCount matters.
+		writeJSON(w, http.StatusCreated, toTripResponse(t, req.DiveCenterID == nil, 1))
 	}
 }
 
