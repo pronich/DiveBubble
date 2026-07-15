@@ -1,4 +1,4 @@
-# DiveBuddy
+# DiveBubble
 
 Marketplace for dive trips — short and long, organized by dive centers or by local divers.
 

@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: "${POSTGRES_USER:-divebuddy}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-divebuddy}"
-      POSTGRES_DB: "${POSTGRES_DB:-divebuddy}"
+      POSTGRES_USER: "${POSTGRES_USER:-divebubble}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-divebubble}"
+      POSTGRES_DB: "${POSTGRES_DB:-divebubble}"
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-divebuddy} -d ${POSTGRES_DB:-divebuddy}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-divebubble} -d ${POSTGRES_DB:-divebubble}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -23,7 +23,7 @@ services:
       - ./migrations:/migrations:ro
     command:
       - "-path=/migrations"
-      - "-database=${DATABASE_URL_COMPOSE:-postgres://${POSTGRES_USER:-divebuddy}:${POSTGRES_PASSWORD:-divebuddy}@postgres:5432/${POSTGRES_DB:-divebuddy}?sslmode=disable}"
+      - "-database=${DATABASE_URL_COMPOSE:-postgres://${POSTGRES_USER:-divebubble}:${POSTGRES_PASSWORD:-divebubble}@postgres:5432/${POSTGRES_DB:-divebubble}?sslmode=disable}"
       - "up"
     depends_on:
       postgres:

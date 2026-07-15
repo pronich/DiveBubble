@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"divebuddy_be/internal/auth"
-	"divebuddy_be/internal/message"
-	"divebuddy_be/internal/realtime"
-	"divebuddy_be/internal/trip"
+	"divebubble_be/internal/auth"
+	"divebubble_be/internal/message"
+	"divebubble_be/internal/realtime"
+	"divebubble_be/internal/trip"
 
 	"github.com/google/uuid"
 )

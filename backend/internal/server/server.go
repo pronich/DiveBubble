@@ -5,13 +5,13 @@ import (
 	"log"
 	"net/http"
 
-	"divebuddy_be/internal/auth"
-	"divebuddy_be/internal/config"
-	"divebuddy_be/internal/message"
-	"divebuddy_be/internal/profile"
-	"divebuddy_be/internal/realtime"
-	"divebuddy_be/internal/transport"
-	"divebuddy_be/internal/trip"
+	"divebubble_be/internal/auth"
+	"divebubble_be/internal/config"
+	"divebubble_be/internal/message"
+	"divebubble_be/internal/profile"
+	"divebubble_be/internal/realtime"
+	"divebubble_be/internal/transport"
+	"divebubble_be/internal/trip"
 )
 
 func New(cfg config.Config, db *sql.DB) http.Handler {

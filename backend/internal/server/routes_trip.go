@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"divebuddy_be/internal/auth"
-	"divebuddy_be/internal/trip"
+	"divebubble_be/internal/auth"
+	"divebubble_be/internal/trip"
 
 	"github.com/google/uuid"
 )

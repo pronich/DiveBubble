@@ -3,8 +3,8 @@ package server
 import (
 	"net/http"
 
-	"divebuddy_be/internal/auth"
-	"divebuddy_be/internal/realtime"
+	"divebubble_be/internal/auth"
+	"divebubble_be/internal/realtime"
 
 	"github.com/google/uuid"
 )

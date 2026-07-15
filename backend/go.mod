@@ -1,4 +1,4 @@
-module divebuddy_be
+module divebubble_be
 
 go 1.26.1
 

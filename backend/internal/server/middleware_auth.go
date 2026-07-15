@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"divebuddy_be/internal/auth"
+	"divebubble_be/internal/auth"
 
 	"github.com/google/uuid"
 )

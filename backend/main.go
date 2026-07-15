@@ -4,9 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"divebuddy_be/internal/config"
-	"divebuddy_be/internal/db"
-	"divebuddy_be/internal/server"
+	"divebubble_be/internal/config"
+	"divebubble_be/internal/db"
+	"divebubble_be/internal/server"
 )
 
 func main() {
