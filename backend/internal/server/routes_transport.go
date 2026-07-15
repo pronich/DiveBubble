@@ -81,6 +81,15 @@ func handleCreateTransportOffer(svc *transport.Service, tripSvc *trip.Service) f
 		if !ok {
 			return
 		}
+		// A cancelled trip is dead — no reason to keep arranging rides to it.
+		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
+			if errors.Is(err, trip.ErrTripCancelled) {
+				writeError(w, http.StatusConflict, "trip has been cancelled")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not create transport offer")
+			return
+		}
 
 		var req createTransportOfferRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
@@ -105,8 +114,18 @@ func handleCreateTransportOffer(svc *transport.Service, tripSvc *trip.Service) f
 
 func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
-		_, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
+		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
 		if !ok {
+			return
+		}
+		// Joining an existing offer is blocked too, not just creating new ones — the trip
+		// is dead, so committing to a ride toward it doesn't make sense either.
+		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
+			if errors.Is(err, trip.ErrTripCancelled) {
+				writeError(w, http.StatusConflict, "trip has been cancelled")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not join transport offer")
 			return
 		}
 

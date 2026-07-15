@@ -10,6 +10,9 @@ import (
 
 var ErrInvalidArgument = errors.New("invalid argument")
 var ErrOrganizerCannotLeave = errors.New("organizer cannot leave their own trip")
+var ErrOnlyOrganizerCanCancel = errors.New("only the organizer can cancel this trip")
+var ErrTripNotOpen = errors.New("trip is not open")
+var ErrTripCancelled = errors.New("trip has been cancelled")
 
 type Service struct {
 	Repo *Repository
@@ -57,8 +60,15 @@ func (s *Service) Join(ctx context.Context, id string, userID uuid.UUID) error {
 	if err != nil {
 		return ErrInvalidArgument
 	}
-	if _, err := s.Repo.GetByID(ctx, tripID); err != nil {
+	t, err := s.Repo.GetByID(ctx, tripID)
+	if err != nil {
 		return err
+	}
+	// The client already hides the Join button once bookingStatus isn't "open" (full or
+	// cancelled) — this closes the same gap server-side, since that was previously only a
+	// client-side convention with no backend enforcement behind it.
+	if t.BookingStatus != "open" {
+		return ErrTripNotOpen
 	}
 	return s.Repo.Join(ctx, tripID, userID)
 }
@@ -78,6 +88,41 @@ func (s *Service) Leave(ctx context.Context, id string, userID uuid.UUID) error 
 		return ErrOrganizerCannotLeave
 	}
 	return s.Repo.Leave(ctx, tripID, userID)
+}
+
+// Cancel is organizer-only and, once set, final — there's no reopen path (an organizer
+// who cancelled by mistake creates a new trip rather than walking back a public
+// cancellation). Idempotent: cancelling an already-cancelled trip is a no-op success.
+func (s *Service) Cancel(ctx context.Context, id string, userID uuid.UUID) error {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return ErrInvalidArgument
+	}
+	t, err := s.Repo.GetByID(ctx, tripID)
+	if err != nil {
+		return err
+	}
+	if !t.CreatorUserID.Valid || t.CreatorUserID.UUID != userID {
+		return ErrOnlyOrganizerCanCancel
+	}
+	if t.BookingStatus == "cancelled" {
+		return nil
+	}
+	return s.Repo.SetBookingStatus(ctx, tripID, "cancelled")
+}
+
+// EnsureNotCancelled is the shared guard for actions that freeze once a trip is
+// cancelled — sending a message, creating or joining a transport offer — while everything
+// read-only (message history, transport list, participants) stays reachable.
+func (s *Service) EnsureNotCancelled(ctx context.Context, tripID uuid.UUID) error {
+	t, err := s.Repo.GetByID(ctx, tripID)
+	if err != nil {
+		return err
+	}
+	if t.BookingStatus == "cancelled" {
+		return ErrTripCancelled
+	}
+	return nil
 }
 
 func (s *Service) ListParticipantUserIDs(ctx context.Context, id string) ([]uuid.UUID, error) {

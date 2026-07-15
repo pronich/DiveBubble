@@ -40,6 +40,9 @@ class TripViewModel extends ChangeNotifier {
   bool _isLeaving = false;
   bool get isLeaving => _isLeaving;
 
+  bool _isCancelling = false;
+  bool get isCancelling => _isCancelling;
+
   Future<void> load() async {
     _isLoading = true;
     _error = null;
@@ -93,6 +96,25 @@ class TripViewModel extends ChangeNotifier {
       return e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isLeaving = false;
+      notifyListeners();
+    }
+  }
+
+  /// Returns null on success, or an error message on failure (e.g. a non-organizer
+  /// somehow reaching this) — same scoped pattern as [leave]. Reloads the trip on success
+  /// so [trip.bookingStatus] flips to "cancelled" and the pill/action area update in place.
+  Future<String?> cancel() async {
+    _isCancelling = true;
+    notifyListeners();
+
+    try {
+      await _repository.cancelTrip(_tripId);
+      _trip = await _repository.getTrip(_tripId);
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _isCancelling = false;
       notifyListeners();
     }
   }

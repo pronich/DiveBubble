@@ -19,9 +19,13 @@ const _typeIcons = {
 };
 
 class TransportView extends StatefulWidget {
-  const TransportView({super.key, required this.viewModel});
+  const TransportView({super.key, required this.viewModel, this.isCancelled = false});
 
   final TransportViewModel viewModel;
+
+  /// See ChatView.isCancelled — same source of truth (TripConversationPage), same idea:
+  /// existing offers/joins stay visible, but nothing new can be created or joined.
+  final bool isCancelled;
 
   @override
   State<TransportView> createState() => _TransportViewState();
@@ -63,10 +67,12 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
           if (offers.isEmpty) {
             return EmptyStateView(
               icon: Icons.directions_car_outlined,
-              title: 'Be the first to share transport',
-              subtitle: 'Offer a ride or share a rental so others can join you.',
-              ctaLabel: 'Add transport info',
-              onCtaPressed: () => _openAddSheet(context),
+              title: widget.isCancelled ? 'No transport was arranged' : 'Be the first to share transport',
+              subtitle: widget.isCancelled
+                  ? 'This trip has been cancelled.'
+                  : 'Offer a ride or share a rental so others can join you.',
+              ctaLabel: widget.isCancelled ? null : 'Add transport info',
+              onCtaPressed: widget.isCancelled ? null : () => _openAddSheet(context),
             );
           }
 
@@ -81,10 +87,12 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openAddSheet(context),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: widget.isCancelled
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _openAddSheet(context),
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
@@ -103,6 +111,7 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
       builder: (_) => _TransportOfferDetailSheet(
         offerId: offer.id,
         viewModel: widget.viewModel,
+        isCancelled: widget.isCancelled,
       ),
     );
   }
@@ -185,10 +194,12 @@ class _TransportOfferDetailSheet extends StatefulWidget {
   const _TransportOfferDetailSheet({
     required this.offerId,
     required this.viewModel,
+    this.isCancelled = false,
   });
 
   final String offerId;
   final TransportViewModel viewModel;
+  final bool isCancelled;
 
   @override
   State<_TransportOfferDetailSheet> createState() =>
@@ -388,7 +399,7 @@ class _TransportOfferDetailSheetState
                       ),
                     );
                   }),
-                if (!offer.joined && !isFull && !hasBookingElsewhere) ...[
+                if (!offer.joined && !isFull && !hasBookingElsewhere && !widget.isCancelled) ...[
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,

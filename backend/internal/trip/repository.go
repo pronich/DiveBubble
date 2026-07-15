@@ -95,8 +95,11 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Trip, error) {
 	))
 }
 
+// List excludes cancelled trips — Explore is a marketplace of things you could join, and a
+// cancelled trip no longer qualifies. Full trips stay listed (capacity isn't dead, just
+// full); only the Join action itself is what's actually blocked for those.
 func (r *Repository) List(ctx context.Context) ([]Trip, error) {
-	rows, err := r.DB.QueryContext(ctx, `SELECT `+tripColumns+` FROM trips ORDER BY start_time ASC`)
+	rows, err := r.DB.QueryContext(ctx, `SELECT `+tripColumns+` FROM trips WHERE booking_status != 'cancelled' ORDER BY start_time ASC`)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +131,11 @@ func (r *Repository) Leave(ctx context.Context, tripID, userID uuid.UUID) error 
 	_, err := r.DB.ExecContext(ctx, `
 		DELETE FROM trip_participants WHERE trip_id = $1 AND user_id = $2
 	`, tripID, userID)
+	return err
+}
+
+func (r *Repository) SetBookingStatus(ctx context.Context, tripID uuid.UUID, status string) error {
+	_, err := r.DB.ExecContext(ctx, `UPDATE trips SET booking_status = $1 WHERE id = $2`, status, tripID)
 	return err
 }
 

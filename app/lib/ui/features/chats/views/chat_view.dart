@@ -13,9 +13,13 @@ import '../view_models/chat_view_model.dart';
 const _groupingWindow = Duration(minutes: 5);
 
 class ChatView extends StatefulWidget {
-  const ChatView({super.key, required this.viewModel});
+  const ChatView({super.key, required this.viewModel, this.isCancelled = false});
 
   final ChatViewModel viewModel;
+
+  /// Trip Page (see TripConversationPage._refreshCancelledStatus) is the source of truth —
+  /// cancelling freezes the input, but history stays fully visible either way.
+  final bool isCancelled;
 
   @override
   State<ChatView> createState() => _ChatViewState();
@@ -195,32 +199,41 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
         ),
         SafeArea(
           top: false,
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _textController,
-                    minLines: 1,
-                    maxLines: 5,
-                    keyboardType: TextInputType.multiline,
-                    textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(hintText: 'Message'),
+          child: widget.isCancelled
+              ? Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'This trip has been cancelled — the chat is read-only.',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _textController,
+                          minLines: 1,
+                          maxLines: 5,
+                          keyboardType: TextInputType.multiline,
+                          textCapitalization: TextCapitalization.sentences,
+                          decoration: const InputDecoration(hintText: 'Message'),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.send),
+                        onPressed: () {
+                          final text = _textController.text;
+                          _textController.clear();
+                          widget.viewModel.send(text);
+                        },
+                      ),
+                    ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: () {
-                    final text = _textController.text;
-                    _textController.clear();
-                    widget.viewModel.send(text);
-                  },
-                ),
-              ],
-            ),
-          ),
         ),
       ],
     );

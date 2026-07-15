@@ -21,6 +21,8 @@ class TripRepository {
 
   Future<void> leaveTrip(String id) => _service.leaveTrip(id);
 
+  Future<void> cancelTrip(String id) => _service.cancelTrip(id);
+
   Future<List<String>> getParticipantUserIds(String id) => _service.fetchParticipantUserIds(id);
 
   Future<void> markRead(String id) => _service.markRead(id);
