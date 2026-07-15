@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
+import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/trip.dart';
 
 class TripViewModel extends ChangeNotifier {
@@ -24,6 +25,9 @@ class TripViewModel extends ChangeNotifier {
   Trip? _trip;
   Trip? get trip => _trip;
 
+  Profile? _organizerProfile;
+  Profile? get organizerProfile => _organizerProfile;
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -40,6 +44,15 @@ class TripViewModel extends ChangeNotifier {
 
     try {
       _trip = await _repository.getTrip(_tripId);
+      final creatorId = _trip?.creatorUserId;
+      // Best-effort — an organizer profile fetch failing shouldn't block viewing the trip.
+      if (creatorId != null) {
+        try {
+          _organizerProfile = await profileRepository.getPublicProfile(creatorId);
+        } catch (_) {
+          _organizerProfile = null;
+        }
+      }
     } catch (e) {
       _error = e.toString();
     } finally {

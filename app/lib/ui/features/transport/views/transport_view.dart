@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/transport_offer.dart';
 import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
+import '../../profile/views/public_profile_page.dart';
 import '../view_models/transport_view_model.dart';
 
 const _typeLabels = {
@@ -186,22 +188,52 @@ class _TransportOfferDetailSheet extends StatefulWidget {
 class _TransportOfferDetailSheetState
     extends State<_TransportOfferDetailSheet> {
   List<String>? _joinedUserIds;
+  final Map<String, Profile> _profiles = {};
   String? _error;
   String? _joinError;
+
+  TransportOffer get _offer => widget.viewModel.offers.firstWhere(
+        (o) => o.id == widget.offerId,
+        orElse: () => widget.viewModel.offers.first,
+      );
 
   @override
   void initState() {
     super.initState();
     _loadJoinedUserIds();
+    _loadProfile(_offer.userId);
+  }
+
+  // Best-effort, one-at-a-time — a profile fetch failing just leaves that row on the
+  // generic "Diver" fallback rather than blocking the rest of the sheet.
+  Future<void> _loadProfile(String userId) async {
+    if (_profiles.containsKey(userId)) return;
+    try {
+      final p = await widget.viewModel.profileRepository.getPublicProfile(userId);
+      if (mounted) setState(() => _profiles[userId] = p);
+    } catch (_) {
+      // ignore — row falls back to "Diver"
+    }
   }
 
   Future<void> _loadJoinedUserIds() async {
     try {
       final ids = await widget.viewModel.getJoinedUserIds(widget.offerId);
       if (mounted) setState(() => _joinedUserIds = ids);
+      for (final id in ids) {
+        _loadProfile(id);
+      }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
     }
+  }
+
+  void _openProfile(String userId) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PublicProfilePage(userId: userId, profileRepository: widget.viewModel.profileRepository),
+      ),
+    );
   }
 
   Future<void> _join(TransportOffer offer) async {
@@ -268,31 +300,40 @@ class _TransportOfferDetailSheetState
                   Text(offer.details!, style: theme.textTheme.bodyMedium),
                 ],
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: theme.colorScheme.secondaryContainer,
-                      child: Icon(
-                        Icons.person,
-                        color: theme.colorScheme.onSecondaryContainer,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                Builder(builder: (context) {
+                  final organizerProfile = _profiles[offer.userId];
+                  final organizerName = (organizerProfile?.displayName?.isNotEmpty ?? false)
+                      ? organizerProfile!.displayName!
+                      : 'Organizer';
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => _openProfile(offer.userId),
+                    child: Row(
                       children: [
-                        Text('Organizer', style: theme.textTheme.bodyMedium),
-                        if (isOrganizer)
-                          Text(
-                            '(You)',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                        CircleAvatar(
+                          backgroundColor: theme.colorScheme.secondaryContainer,
+                          backgroundImage: (organizerProfile?.avatarUrl?.isNotEmpty ?? false)
+                              ? NetworkImage(organizerProfile!.avatarUrl!)
+                              : null,
+                          child: (organizerProfile?.avatarUrl?.isNotEmpty ?? false)
+                              ? null
+                              : Icon(Icons.person, color: theme.colorScheme.onSecondaryContainer),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(organizerName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                            Text(
+                              isOrganizer ? 'Organizer · You' : 'Organizer',
+                              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                             ),
-                          ),
+                          ],
+                        ),
                       ],
                     ),
-                  ],
-                ),
+                  );
+                }),
                 const SizedBox(height: 16),
                 Text('Joined divers', style: theme.textTheme.labelLarge),
                 const SizedBox(height: 8),
@@ -313,26 +354,31 @@ class _TransportOfferDetailSheetState
                 else
                   ..._joinedUserIds!.map((userId) {
                     final isMe = userId == widget.viewModel.currentUserId;
+                    final diverProfile = _profiles[userId];
+                    final name = (diverProfile?.displayName?.isNotEmpty ?? false)
+                        ? diverProfile!.displayName!
+                        : (isMe ? 'You' : 'Diver');
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundColor:
-                                theme.colorScheme.secondaryContainer,
-                            child: Icon(
-                              Icons.person,
-                              size: 18,
-                              color: theme.colorScheme.onSecondaryContainer,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () => _openProfile(userId),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: theme.colorScheme.secondaryContainer,
+                              backgroundImage: (diverProfile?.avatarUrl?.isNotEmpty ?? false)
+                                  ? NetworkImage(diverProfile!.avatarUrl!)
+                                  : null,
+                              child: (diverProfile?.avatarUrl?.isNotEmpty ?? false)
+                                  ? null
+                                  : Icon(Icons.person, size: 18, color: theme.colorScheme.onSecondaryContainer),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            isMe ? 'You' : 'Diver',
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ],
+                            const SizedBox(width: 12),
+                            Text(name, style: theme.textTheme.bodyMedium),
+                          ],
+                        ),
                       ),
                     );
                   }),

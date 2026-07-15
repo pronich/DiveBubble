@@ -12,6 +12,11 @@ class ProfileRepository {
     return apiModel.toDomain();
   }
 
+  Future<Profile> getPublicProfile(String userId) async {
+    final apiModel = await _service.fetchPublicProfile(userId);
+    return apiModel.toDomain();
+  }
+
   Future<Profile> updateProfile({
     String? displayName,
     String? avatarUrl,

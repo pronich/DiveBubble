@@ -17,6 +17,7 @@ import 'gear_summary_card.dart';
 import 'legal_page.dart';
 import 'level_card.dart';
 import 'notifications_settings_page.dart';
+import 'profile_overview_card.dart';
 import 'specialties_section.dart';
 import 'update_level_sheet.dart';
 
@@ -268,7 +269,6 @@ class _SignedInBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final name = (profile.displayName?.isNotEmpty ?? false) ? profile.displayName! : 'Diver';
 
     return ListView(
       children: [
@@ -276,92 +276,7 @@ class _SignedInBody extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: theme.colorScheme.secondaryContainer,
-                    backgroundImage: (profile.avatarUrl?.isNotEmpty ?? false)
-                        ? NetworkImage(profile.avatarUrl!)
-                        : null,
-                    child: (profile.avatarUrl?.isNotEmpty ?? false)
-                        ? null
-                        : Icon(Icons.person, size: 40, color: theme.colorScheme.onSecondaryContainer),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(name, style: theme.textTheme.titleLarge),
-                        if (profile.location?.isNotEmpty ?? false) ...[
-                          const SizedBox(height: 2),
-                          Row(
-                            children: [
-                              Icon(Icons.location_on_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  profile.location!,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              if (profile.bio?.isNotEmpty ?? false) ...[
-                const SizedBox(height: 24),
-                InputDecorator(
-                  decoration: const InputDecoration(labelText: 'Bio'),
-                  child: SizedBox(
-                    height: 60,
-                    child: SingleChildScrollView(
-                      child: Text(profile.bio!, style: theme.textTheme.bodyMedium),
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(child: _StatCard(value: '${profile.diveCount}', label: 'Dives')),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _StatCard(
-                      value: _hasLevel ? profile.certificationLevel! : 'Add certificate',
-                      label: 'Level',
-                      onTap: _hasLevel ? null : onLevelStatTap,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Container(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    _InfoRow(label: 'Languages', value: profile.languages.isNotEmpty ? profile.languages : '—'),
-                    const Divider(height: 1),
-                    _InfoRow(label: 'Member since', value: '${profile.memberSince.year}'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              OutlinedButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: const Text('Edit profile'),
-              ),
+              ProfileOverviewCard(profile: profile, onEditProfile: onEdit, onLevelStatTap: onLevelStatTap),
               const SizedBox(height: 24),
               DashedDivider(key: certificationsKey),
               const SizedBox(height: 16),
@@ -483,43 +398,6 @@ class _DiveOutRow extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.value, required this.label, this.onTap});
-
-  final String value;
-  final String label;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: onTap != null
-                  ? theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w600)
-                  : theme.textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 2),
-            Text(label, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Sub-section label inside Certifications (Level/Specialties) — an optional trailing
 /// action ("Update" text button or "+" icon), same idea as the compact quick-action
 /// pattern used in Explore's header.
@@ -545,24 +423,3 @@ class _SubHeader extends StatelessWidget {
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}

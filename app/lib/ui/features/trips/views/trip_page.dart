@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/repositories/profile_repository.dart';
+import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/app_gradients.dart';
+import '../../profile/views/public_profile_page.dart';
 import '../view_models/trip_view_model.dart';
 
 class TripPage extends StatefulWidget {
@@ -108,7 +111,12 @@ class _TripPageState extends State<TripPage> {
                       Text(trip.description!, style: theme.textTheme.bodyMedium),
                     ],
                     const SizedBox(height: 20),
-                    _OrganizerCard(isOrganizer: isOrganizer),
+                    _OrganizerCard(
+                      isOrganizer: isOrganizer,
+                      profile: widget.viewModel.organizerProfile,
+                      creatorUserId: trip.creatorUserId,
+                      profileRepository: widget.viewModel.profileRepository,
+                    ),
                     const SizedBox(height: 12),
                     Row(
                       children: [
@@ -243,36 +251,64 @@ class _InfoTile extends StatelessWidget {
 }
 
 class _OrganizerCard extends StatelessWidget {
-  const _OrganizerCard({required this.isOrganizer});
+  const _OrganizerCard({
+    required this.isOrganizer,
+    required this.profile,
+    required this.creatorUserId,
+    required this.profileRepository,
+  });
 
   final bool isOrganizer;
+  final Profile? profile;
+  final String? creatorUserId;
+  final ProfileRepository profileRepository;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: theme.colorScheme.secondaryContainer,
-            child: Icon(Icons.person, color: theme.colorScheme.onSecondaryContainer),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Organizer', style: theme.textTheme.bodyMedium),
-              // Display name isn't modeled yet — see Profile in the feature backlog.
-              if (isOrganizer)
-                Text('(You)', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+    final name = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Organizer';
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: creatorUserId == null
+          ? null
+          : () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => PublicProfilePage(userId: creatorUserId!, profileRepository: profileRepository),
+                ),
+              ),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: theme.colorScheme.secondaryContainer,
+              backgroundImage: (profile?.avatarUrl?.isNotEmpty ?? false) ? NetworkImage(profile!.avatarUrl!) : null,
+              child: (profile?.avatarUrl?.isNotEmpty ?? false)
+                  ? null
+                  : Icon(Icons.person, color: theme.colorScheme.onSecondaryContainer),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                Text(
+                  isOrganizer ? 'Organizer · You' : 'Organizer',
+                  style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+            if (creatorUserId != null) ...[
+              const Spacer(),
+              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
             ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

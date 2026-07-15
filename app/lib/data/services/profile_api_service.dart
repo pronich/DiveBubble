@@ -28,6 +28,17 @@ class ProfileApiService {
     return ProfileApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
+  // Signed in required — the response is a trimmed public projection (no certification
+  // agency/number/verified, no specialties/gear), but viewing another diver's profile is
+  // still an in-app action gated behind sign-in, not open browsing.
+  Future<ProfileApiModel> fetchPublicProfile(String userId) async {
+    final res = await _client.get(Uri.parse('$baseUrl/users/$userId'), headers: await _authHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('fetchPublicProfile failed: ${res.statusCode} ${res.body}');
+    }
+    return ProfileApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   Future<ProfileApiModel> updateProfile({
     String? displayName,
     String? avatarUrl,
