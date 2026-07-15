@@ -19,6 +19,8 @@ class TripRepository {
 
   Future<void> joinTrip(String id) => _service.joinTrip(id);
 
+  Future<void> leaveTrip(String id) => _service.leaveTrip(id);
+
   Future<List<String>> getParticipantUserIds(String id) => _service.fetchParticipantUserIds(id);
 
   Future<void> markRead(String id) => _service.markRead(id);

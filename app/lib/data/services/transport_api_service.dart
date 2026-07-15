@@ -87,4 +87,17 @@ class TransportApiService {
     final decoded = jsonDecode(res.body) as List<dynamic>;
     return decoded.map((e) => (e as Map<String, dynamic>)['userId'] as String).toList();
   }
+
+  // Also clears the alert server-side — checking is the acknowledgment, same as opening a chat.
+  Future<bool> fetchHasAlert(String tripId) async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl/trips/$tripId/transport/alert'),
+      headers: await _authHeaders(),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('fetchHasAlert failed: ${res.statusCode} ${res.body}');
+    }
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    return decoded['hasAlert'] as bool;
+  }
 }

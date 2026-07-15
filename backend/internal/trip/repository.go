@@ -123,6 +123,14 @@ func (r *Repository) Join(ctx context.Context, tripID, userID uuid.UUID) error {
 	return err
 }
 
+// Leave is idempotent — leaving a trip you're not in is a no-op, not an error.
+func (r *Repository) Leave(ctx context.Context, tripID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `
+		DELETE FROM trip_participants WHERE trip_id = $1 AND user_id = $2
+	`, tripID, userID)
+	return err
+}
+
 func (r *Repository) ListParticipantUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT user_id FROM trip_participants WHERE trip_id = $1 ORDER BY joined_at ASC

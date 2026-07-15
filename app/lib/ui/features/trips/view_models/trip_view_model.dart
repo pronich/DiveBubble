@@ -37,6 +37,9 @@ class TripViewModel extends ChangeNotifier {
   bool _isJoining = false;
   bool get isJoining => _isJoining;
 
+  bool _isLeaving = false;
+  bool get isLeaving => _isLeaving;
+
   Future<void> load() async {
     _isLoading = true;
     _error = null;
@@ -72,6 +75,24 @@ class TripViewModel extends ChangeNotifier {
       _error = e.toString();
     } finally {
       _isJoining = false;
+      notifyListeners();
+    }
+  }
+
+  /// Returns null on success, or an error message on failure (e.g. the organizer trying
+  /// to leave their own trip) — scoped to the confirmation dialog rather than the shared
+  /// [error] field, since a rejected leave shouldn't blow away the whole page.
+  Future<String?> leave() async {
+    _isLeaving = true;
+    notifyListeners();
+
+    try {
+      await _repository.leaveTrip(_tripId);
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _isLeaving = false;
       notifyListeners();
     }
   }

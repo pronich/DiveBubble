@@ -64,6 +64,15 @@ class TripApiService {
     }
   }
 
+  // 403 (mapped to an Exception here) if the caller is the trip's organizer — they cancel
+  // the trip instead of leaving it.
+  Future<void> leaveTrip(String id) async {
+    final res = await _client.post(Uri.parse('$baseUrl/trips/$id/leave'), headers: await _requiredAuthHeaders());
+    if (res.statusCode != 204) {
+      throw Exception('leaveTrip failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
   // Gated to participants server-side — who joined a trip isn't public.
   Future<List<String>> fetchParticipantUserIds(String id) async {
     final res = await _client.get(Uri.parse('$baseUrl/trips/$id/participants'), headers: await _requiredAuthHeaders());

@@ -9,18 +9,20 @@ import (
 	"time"
 
 	"divebubble_be/internal/auth"
+	"divebubble_be/internal/transport"
 	"divebubble_be/internal/trip"
 
 	"github.com/google/uuid"
 )
 
-func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, authIssuer *auth.TokenIssuer) {
+func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, transportSvc *transport.Service, authIssuer *auth.TokenIssuer) {
 	mux.HandleFunc("POST /trips", withAuth(authIssuer, handleCreateTrip(svc)))
 	mux.HandleFunc("GET /trips", handleListTrips(svc))
 	mux.HandleFunc("GET /trips/mine", withAuth(authIssuer, handleListMyTrips(svc)))
 	// Detail stays browsable without an account — "joined" is just false for anonymous viewers.
 	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
 	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc)))
+	mux.HandleFunc("POST /trips/{id}/leave", withAuth(authIssuer, handleLeaveTrip(svc, transportSvc)))
 	mux.HandleFunc("GET /trips/{id}/participants", withAuth(authIssuer, handleListParticipants(svc)))
 	mux.HandleFunc("POST /trips/{id}/read", withAuth(authIssuer, handleMarkRead(svc)))
 }
@@ -206,6 +208,47 @@ func handleJoinTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, 
 		}
 
 		writeJSON(w, http.StatusOK, map[string]bool{"joined": true})
+	}
+}
+
+// handleLeaveTrip orchestrates across both trip and transport: dropping trip.Leave's
+// business rule (organizer can't leave) plus transport's cascade (their own joins freed,
+// any offer *they* created dissolved with an alert for whoever had joined it — see
+// transport.Service.HandleUserLeavingTrip).
+func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+		tripID, err := uuid.Parse(id)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid trip id")
+			return
+		}
+
+		// Organizer check (inside svc.Leave) runs first and blocks entirely on failure —
+		// the transport cascade below must never fire for a rejected leave attempt.
+		if err := svc.Leave(r.Context(), id, userID); err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			if errors.Is(err, trip.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "trip not found")
+				return
+			}
+			if errors.Is(err, trip.ErrOrganizerCannotLeave) {
+				writeError(w, http.StatusForbidden, "organizer cannot leave their own trip — cancel it instead")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not leave trip")
+			return
+		}
+
+		if err := transportSvc.HandleUserLeavingTrip(r.Context(), tripID, userID); err != nil {
+			writeError(w, http.StatusInternalServerError, "could not clean up transport offers")
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

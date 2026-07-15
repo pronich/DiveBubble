@@ -12,6 +12,7 @@ import '../../../core/assets/app_assets.dart';
 import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/app_gradients.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../chats/view_models/chat_view_model.dart';
 import '../../chats/views/trip_conversation_page.dart';
@@ -187,7 +188,9 @@ class _TripPageState extends State<TripPage> {
                         currentUserId: widget.viewModel.currentUserId,
                       )
                     else if (!trip.joined && trip.bookingStatus == 'open')
-                      _JoinButton(trip: trip, viewModel: widget.viewModel),
+                      _JoinButton(trip: trip, viewModel: widget.viewModel)
+                    else if (widget.openedFromConversation && trip.joined && !isOrganizer)
+                      _LeaveButton(viewModel: widget.viewModel),
                   ],
                 ),
               ),
@@ -482,6 +485,64 @@ class _JoinButton extends StatelessWidget {
     final userId = await ensureSignedIn(context, viewModel.authRepository, viewModel.profileRepository);
     if (userId == null) return;
     await viewModel.join();
+  }
+}
+
+/// Only shown on the Specific view (opened from inside a Bubble) to a joined,
+/// non-organizer diver — the organizer's way out is cancelling the trip, not this.
+/// On success, pops all the way back out of the Bubble; [MyTripsView]'s own
+/// `await Navigator.push(...)` around [TripConversationPage] resolves the moment that
+/// route is removed from the stack (popUntil pops it same as a direct pop), so its
+/// existing post-return reload already picks up the trip disappearing — no extra
+/// callback needed here.
+class _LeaveButton extends StatelessWidget {
+  const _LeaveButton({required this.viewModel});
+
+  final TripViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.error,
+          side: BorderSide(color: Theme.of(context).colorScheme.error),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        onPressed: viewModel.isLeaving ? null : () => _handleLeave(context),
+        child: viewModel.isLeaving
+            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Text('Leave Bubble'),
+      ),
+    );
+  }
+
+  Future<void> _handleLeave(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Leave this Bubble?'),
+        content: const Text("You'll lose your spot and can rejoin later if there's room."),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            style: AppButtonStyles.ghost.copyWith(foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.error)),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final error = await viewModel.leave();
+    if (!context.mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 }
 

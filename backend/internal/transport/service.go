@@ -80,3 +80,44 @@ func (s *Service) Join(ctx context.Context, offerID, userID uuid.UUID) error {
 func (s *Service) ListJoins(ctx context.Context, offerID uuid.UUID) ([]uuid.UUID, error) {
 	return s.Repo.ListJoins(ctx, offerID)
 }
+
+// HandleUserLeavingTrip is called when a diver leaves a trip entirely (see trip.Service —
+// this is transport's side of that): drops their own joins (frees seats they held), and
+// dissolves any offer *they* created on this trip — an offer with its creator gone no
+// longer makes sense, so it's deleted (cascading its joins) rather than left stale. Everyone
+// who'd joined a dissolved offer gets a transport_alerts row — a real notification doesn't
+// exist yet, this is the "something changed, go check" stopgap surfaced as a dot in the UI.
+func (s *Service) HandleUserLeavingTrip(ctx context.Context, tripID, userID uuid.UUID) error {
+	if err := s.Repo.RemoveUserJoinsInTrip(ctx, tripID, userID); err != nil {
+		return err
+	}
+
+	offers, err := s.Repo.ListCreatedByUserInTrip(ctx, tripID, userID)
+	if err != nil {
+		return err
+	}
+
+	for _, offer := range offers {
+		joinedUserIDs, err := s.Repo.ListJoins(ctx, offer.ID)
+		if err != nil {
+			return err
+		}
+		if err := s.Repo.DeleteOffer(ctx, offer.ID); err != nil {
+			return err
+		}
+		if len(joinedUserIDs) > 0 {
+			if err := s.Repo.CreateAlerts(ctx, tripID, joinedUserIDs); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Service) HasAlert(ctx context.Context, tripID, userID uuid.UUID) (bool, error) {
+	return s.Repo.HasAlert(ctx, tripID, userID)
+}
+
+func (s *Service) ClearAlert(ctx context.Context, tripID, userID uuid.UUID) error {
+	return s.Repo.ClearAlert(ctx, tripID, userID)
+}

@@ -9,6 +9,7 @@ import (
 )
 
 var ErrInvalidArgument = errors.New("invalid argument")
+var ErrOrganizerCannotLeave = errors.New("organizer cannot leave their own trip")
 
 type Service struct {
 	Repo *Repository
@@ -60,6 +61,23 @@ func (s *Service) Join(ctx context.Context, id string, userID uuid.UUID) error {
 		return err
 	}
 	return s.Repo.Join(ctx, tripID, userID)
+}
+
+// Leave rejects the trip's organizer — other participants are relying on them, so their
+// way out is cancelling the trip (booking_status), not quietly disappearing from it.
+func (s *Service) Leave(ctx context.Context, id string, userID uuid.UUID) error {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return ErrInvalidArgument
+	}
+	t, err := s.Repo.GetByID(ctx, tripID)
+	if err != nil {
+		return err
+	}
+	if t.CreatorUserID.Valid && t.CreatorUserID.UUID == userID {
+		return ErrOrganizerCannotLeave
+	}
+	return s.Repo.Leave(ctx, tripID, userID)
 }
 
 func (s *Service) ListParticipantUserIDs(ctx context.Context, id string) ([]uuid.UUID, error) {
