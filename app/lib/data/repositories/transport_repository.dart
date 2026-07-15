@@ -20,4 +20,6 @@ class TransportRepository {
   Future<void> joinOffer(String tripId, String offerId) => _service.joinOffer(tripId, offerId);
 
   Future<List<String>> getJoinedUserIds(String tripId, String offerId) => _service.fetchJoinedUserIds(tripId, offerId);
+
+  Future<bool> getHasAlert(String tripId) => _service.fetchHasAlert(tripId);
 }

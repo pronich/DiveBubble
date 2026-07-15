@@ -54,6 +54,7 @@ class _LoginSheetState extends State<LoginSheet> {
               builder: (_) => EditProfilePage(
                 viewModel: ProfileViewModel(repository: widget.profileRepository),
                 profile: profile,
+                isOnboarding: true,
               ),
             ),
           );

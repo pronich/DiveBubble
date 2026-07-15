@@ -1,19 +1,46 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/transport_repository.dart';
+import '../../../../data/repositories/trip_repository.dart';
+import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/app_gradients.dart';
-import '../../profile/views/public_profile_page.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/semantic_colors.dart';
+import '../../chats/view_models/chat_view_model.dart';
+import '../../chats/views/trip_conversation_page.dart';
+import '../../profile/views/diver_id_card.dart';
+import '../../transport/view_models/transport_view_model.dart';
 import '../view_models/trip_view_model.dart';
 
 class TripPage extends StatefulWidget {
-  const TripPage({super.key, required this.viewModel});
+  const TripPage({
+    super.key,
+    required this.viewModel,
+    required this.tripRepository,
+    required this.chatRepository,
+    required this.transportRepository,
+    required this.realtimeService,
+    this.openedFromConversation = false,
+  });
 
   final TripViewModel viewModel;
+  final TripRepository tripRepository;
+  final ChatRepository chatRepository;
+  final TransportRepository transportRepository;
+  final RealtimeService realtimeService;
+
+  /// True when reached by tapping the header of an already-open Bubble (chat) —
+  /// "Dive in to Bubble" would just navigate back into the conversation the diver is
+  /// already in, which reads as a broken loop rather than a useful action.
+  final bool openedFromConversation;
 
   @override
   State<TripPage> createState() => _TripPageState();
@@ -75,7 +102,14 @@ class _TripPageState extends State<TripPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(trip.title, style: theme.textTheme.headlineSmall),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: Text(trip.title, style: theme.textTheme.headlineSmall)),
+                        const SizedBox(width: 8),
+                        _TripStatusPill(trip: trip, isOrganizer: isOrganizer),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -128,8 +162,35 @@ class _TripPageState extends State<TripPage> {
                         ),
                       ],
                     ),
+                    // Deliberately gated on *how this screen was reached*, not just
+                    // trip.joined: Explore's "general" trip detail never shows who's in
+                    // it, even for a trip the viewer has already joined — the member list
+                    // only appears on the "specific" view reached from inside the Bubble
+                    // itself. Two privacy postures for the same data, not two widgets.
+                    if (widget.openedFromConversation) ...[
+                      const SizedBox(height: 8),
+                      _TripParticipantsList(
+                        tripId: trip.id,
+                        tripRepository: widget.tripRepository,
+                        profileRepository: widget.viewModel.profileRepository,
+                      ),
+                    ],
                     const SizedBox(height: 24),
-                    _JoinButton(trip: trip, viewModel: widget.viewModel),
+                    if (trip.joined && !widget.openedFromConversation)
+                      _DiveInButton(
+                        trip: trip,
+                        chatRepository: widget.chatRepository,
+                        transportRepository: widget.transportRepository,
+                        realtimeService: widget.realtimeService,
+                        tripRepository: widget.tripRepository,
+                        authRepository: widget.viewModel.authRepository,
+                        profileRepository: widget.viewModel.profileRepository,
+                        currentUserId: widget.viewModel.currentUserId,
+                      )
+                    else if (!trip.joined && trip.bookingStatus == 'open')
+                      _JoinButton(trip: trip, viewModel: widget.viewModel)
+                    else if (widget.openedFromConversation && trip.joined && !isOrganizer)
+                      _LeaveButton(viewModel: widget.viewModel),
                   ],
                 ),
               ),
@@ -147,6 +208,91 @@ class _TripPageState extends State<TripPage> {
       return '$count $people out of ${trip.maxParticipants} joined';
     }
     return '$count $people joined';
+  }
+}
+
+/// Inline member list embedded right under "N people joined" — Telegram-style, no extra
+/// screen to get to it. Same lazy-per-id profile fetch pattern as Transport's joined-divers.
+class _TripParticipantsList extends StatefulWidget {
+  const _TripParticipantsList({required this.tripId, required this.tripRepository, required this.profileRepository});
+
+  final String tripId;
+  final TripRepository tripRepository;
+  final ProfileRepository profileRepository;
+
+  @override
+  State<_TripParticipantsList> createState() => _TripParticipantsListState();
+}
+
+class _TripParticipantsListState extends State<_TripParticipantsList> {
+  List<String>? _userIds;
+  final Map<String, Profile> _profiles = {};
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final ids = await widget.tripRepository.getParticipantUserIds(widget.tripId);
+      if (mounted) setState(() => _userIds = ids);
+      for (final id in ids) {
+        widget.profileRepository.getPublicProfile(id).then((p) {
+          if (mounted) setState(() => _profiles[id] = p);
+        }).catchError((_) {});
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (_error != null) {
+      return Text('Error: $_error', style: TextStyle(color: theme.colorScheme.error));
+    }
+    if (_userIds == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final userId in _userIds!)
+          Builder(builder: (context) {
+            final profile = _profiles[userId];
+            final name = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
+            return InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => showDiverIdCard(context, userId: userId, profileRepository: widget.profileRepository),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: theme.colorScheme.secondaryContainer,
+                      backgroundImage: (profile?.avatarUrl?.isNotEmpty ?? false) ? NetworkImage(profile!.avatarUrl!) : null,
+                      child: (profile?.avatarUrl?.isNotEmpty ?? false)
+                          ? null
+                          : Icon(Icons.person, size: 18, color: theme.colorScheme.onSecondaryContainer),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(name, style: theme.textTheme.bodyMedium),
+                  ],
+                ),
+              ),
+            );
+          }),
+      ],
+    );
   }
 }
 
@@ -272,11 +418,7 @@ class _OrganizerCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       onTap: creatorUserId == null
           ? null
-          : () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => PublicProfilePage(userId: creatorUserId!, profileRepository: profileRepository),
-                ),
-              ),
+          : () => showDiverIdCard(context, userId: creatorUserId!, profileRepository: profileRepository),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -314,6 +456,8 @@ class _OrganizerCard extends StatelessWidget {
   }
 }
 
+// Only rendered for the actionable case (open, not yet joined) — Joined/Full/Cancelled are
+// passive states shown as a pill next to the title instead (see _TripStatusPill).
 class _JoinButton extends StatelessWidget {
   const _JoinButton({required this.trip, required this.viewModel});
 
@@ -322,26 +466,18 @@ class _JoinButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (trip.joined) {
-      return const Chip(label: Text('Joined'));
-    }
-
-    if (trip.bookingStatus == 'cancelled') {
-      return const Chip(label: Text('Trip cancelled'));
-    }
-    if (trip.bookingStatus == 'full') {
-      return const Chip(label: Text('Trip full'));
-    }
-
-    return ElevatedButton(
-      onPressed: viewModel.isJoining ? null : () => _handleJoin(context),
-      child: viewModel.isJoining
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Text('Join'),
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: viewModel.isJoining ? null : () => _handleJoin(context),
+        child: viewModel.isJoining
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Join'),
+      ),
     );
   }
 
@@ -349,5 +485,180 @@ class _JoinButton extends StatelessWidget {
     final userId = await ensureSignedIn(context, viewModel.authRepository, viewModel.profileRepository);
     if (userId == null) return;
     await viewModel.join();
+  }
+}
+
+/// Only shown on the Specific view (opened from inside a Bubble) to a joined,
+/// non-organizer diver — the organizer's way out is cancelling the trip, not this.
+/// On success, pops all the way back out of the Bubble; [MyTripsView]'s own
+/// `await Navigator.push(...)` around [TripConversationPage] resolves the moment that
+/// route is removed from the stack (popUntil pops it same as a direct pop), so its
+/// existing post-return reload already picks up the trip disappearing — no extra
+/// callback needed here.
+class _LeaveButton extends StatelessWidget {
+  const _LeaveButton({required this.viewModel});
+
+  final TripViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.error,
+          side: BorderSide(color: Theme.of(context).colorScheme.error),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        onPressed: viewModel.isLeaving ? null : () => _handleLeave(context),
+        child: viewModel.isLeaving
+            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Text('Leave Bubble'),
+      ),
+    );
+  }
+
+  Future<void> _handleLeave(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Leave this Bubble?'),
+        content: const Text("You'll lose your spot and can rejoin later if there's room."),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            style: AppButtonStyles.ghost.copyWith(foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.error)),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final error = await viewModel.leave();
+    if (!context.mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      return;
+    }
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+}
+
+/// Passive status indicator next to the trip title — Organizer/Joined/Full/Cancelled.
+/// Nothing shown for the common "open, not yet joined" case, matching the app's
+/// quiet-by-default badges.
+class _TripStatusPill extends StatelessWidget {
+  const _TripStatusPill({required this.trip, required this.isOrganizer});
+
+  final Trip trip;
+  final bool isOrganizer;
+
+  @override
+  Widget build(BuildContext context) {
+    final String? label;
+    final Color background;
+    final Color foreground;
+    final theme = Theme.of(context);
+    final semantic = Theme.of(context).extension<SemanticColors>()!;
+
+    if (isOrganizer) {
+      // Of course the organizer is "joined" — that label is more useful for everyone else.
+      label = 'Organizer';
+      background = theme.colorScheme.primaryContainer;
+      foreground = theme.colorScheme.onPrimaryContainer;
+    } else if (trip.joined) {
+      label = 'Joined';
+      background = semantic.successContainer;
+      foreground = semantic.onSuccessContainer;
+    } else if (trip.bookingStatus == 'cancelled') {
+      label = 'Cancelled';
+      background = theme.colorScheme.surfaceContainerHighest;
+      foreground = theme.colorScheme.onSurfaceVariant;
+    } else if (trip.bookingStatus == 'full') {
+      label = 'Full';
+      background = semantic.infoContainer;
+      foreground = semantic.onInfoContainer;
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// Shown instead of the Join button once the diver has joined — takes them straight into
+/// the trip's chat rather than leaving them on a static "Joined" chip with nowhere to go.
+class _DiveInButton extends StatelessWidget {
+  const _DiveInButton({
+    required this.trip,
+    required this.chatRepository,
+    required this.transportRepository,
+    required this.realtimeService,
+    required this.tripRepository,
+    required this.authRepository,
+    required this.profileRepository,
+    required this.currentUserId,
+  });
+
+  final Trip trip;
+  final ChatRepository chatRepository;
+  final TransportRepository transportRepository;
+  final RealtimeService realtimeService;
+  final TripRepository tripRepository;
+  final AuthRepository authRepository;
+  final ProfileRepository profileRepository;
+  final String currentUserId;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: () async {
+          tripRepository.markRead(trip.id).catchError((_) {});
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TripConversationPage(
+                chatViewModel: ChatViewModel(
+                  repository: chatRepository,
+                  realtimeService: realtimeService,
+                  profileRepository: profileRepository,
+                  tripId: trip.id,
+                  currentUserId: currentUserId,
+                ),
+                transportViewModel: TransportViewModel(
+                  repository: transportRepository,
+                  authRepository: authRepository,
+                  profileRepository: profileRepository,
+                  tripId: trip.id,
+                  currentUserId: currentUserId,
+                ),
+                tripTitle: trip.title,
+                tripRepository: tripRepository,
+                chatRepository: chatRepository,
+                transportRepository: transportRepository,
+                realtimeService: realtimeService,
+                authRepository: authRepository,
+                profileRepository: profileRepository,
+              ),
+            ),
+          );
+          // Catches any messages that arrived while actively in the chat — the Bubbles
+          // list itself will pick up the corrected count next time it's opened.
+          tripRepository.markRead(trip.id).catchError((_) {});
+        },
+        icon: const Icon(Icons.chat_bubble_outline, size: 18),
+        label: const Text('Dive in to Bubble'),
+      ),
+    );
   }
 }

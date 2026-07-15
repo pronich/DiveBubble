@@ -15,6 +15,7 @@ type Trip struct {
 	CreatedAt        time.Time
 	CreatorUserID    uuid.NullUUID
 	ParticipantCount int
+	UnreadCount      int // only populated by ListJoinedByUser
 
 	// Enrichment fields — all optional except BookingStatus, which always has a value.
 	EndDate          sql.NullTime

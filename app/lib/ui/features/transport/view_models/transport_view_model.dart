@@ -35,6 +35,9 @@ class TransportViewModel extends ChangeNotifier {
   final Set<String> _joiningOfferIds = {};
   bool isJoining(String offerId) => _joiningOfferIds.contains(offerId);
 
+  bool _hasAlert = false;
+  bool get hasAlert => _hasAlert;
+
   Future<void> load() async {
     _isLoading = true;
     _error = null;
@@ -48,6 +51,18 @@ class TransportViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Checks (and, server-side, clears) whether transport changed under this diver since
+  /// they last looked — call whenever the Transport tab is actually shown, not on every
+  /// [load], since viewing is what acknowledges the alert.
+  Future<void> checkAlert() async {
+    try {
+      _hasAlert = await _repository.getHasAlert(tripId);
+    } catch (_) {
+      // Best-effort — a failed check just leaves the dot as it was, not worth surfacing.
+    }
+    notifyListeners();
   }
 
   Future<bool> submit({required String type, int? seats, String? details}) async {

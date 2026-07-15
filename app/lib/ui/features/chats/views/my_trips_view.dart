@@ -104,8 +104,8 @@ class _MyTripsViewState extends State<MyTripsView> {
           if (trips.isEmpty) {
             return EmptyStateView(
               icon: Icons.luggage_outlined,
-              title: 'Book your first trip',
-              subtitle: 'Once you join a trip, you\'ll see it here with the group chat.',
+              title: 'No Bubbles yet',
+              subtitle: 'Join a trip in Explore and it becomes your Bubble here — chat, transport, and trip details all in one place.',
               ctaLabel: 'Explore trips',
               onCtaPressed: widget.onGoToExplore,
             );
@@ -128,13 +128,17 @@ class _MyTripsViewState extends State<MyTripsView> {
     );
   }
 
-  void _openChat(BuildContext context, Trip trip) {
-    Navigator.of(context).push(
+  Future<void> _openChat(BuildContext context, Trip trip) async {
+    // Fire-and-forget — a failed mark-read shouldn't block opening the chat, it just
+    // means the unread badge lingers until the next successful one.
+    widget.tripRepository.markRead(trip.id).catchError((_) {});
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TripConversationPage(
           chatViewModel: ChatViewModel(
             repository: widget.chatRepository,
             realtimeService: widget.realtimeService,
+            profileRepository: widget.profileRepository,
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),
@@ -147,11 +151,20 @@ class _MyTripsViewState extends State<MyTripsView> {
           ),
           tripTitle: trip.title,
           tripRepository: widget.tripRepository,
+          chatRepository: widget.chatRepository,
+          transportRepository: widget.transportRepository,
+          realtimeService: widget.realtimeService,
           authRepository: widget.authRepository,
           profileRepository: widget.profileRepository,
         ),
       ),
     );
+    // Mark read again on the way out — catches any messages that arrived while the
+    // diver was actively inside the chat — then refresh so the corrected (accurate)
+    // unread count shows immediately rather than waiting for the next tab switch.
+    if (!context.mounted) return;
+    widget.tripRepository.markRead(trip.id).catchError((_) {});
+    widget.viewModel.load();
   }
 }
 
@@ -202,7 +215,10 @@ class _TripRow extends StatelessWidget {
                         formatShortDate(trip.startTime),
                         style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),
-                      // Unread indicator (red dot) goes here once the backend tracks last-read-message per user/trip.
+                      if (trip.unreadCount > 0) ...[
+                        const SizedBox(width: 6),
+                        _UnreadBadge(count: trip.unreadCount),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -226,6 +242,32 @@ class _TripRow extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UnreadBadge extends StatelessWidget {
+  const _UnreadBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      constraints: const BoxConstraints(minWidth: 18),
+      height: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: theme.colorScheme.error, borderRadius: BorderRadius.circular(999)),
+      child: Text(
+        count > 9 ? '9+' : '$count',
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onError,
+          fontWeight: FontWeight.w700,
+          height: 1,
         ),
       ),
     );

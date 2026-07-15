@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:centrifuge/centrifuge.dart' as centrifuge;
 import 'package:flutter/foundation.dart';
 
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/chat_message.dart';
 
@@ -11,6 +13,7 @@ class ChatViewModel extends ChangeNotifier {
   ChatViewModel({
     required ChatRepository repository,
     required RealtimeService realtimeService,
+    required this.profileRepository,
     required this.tripId,
     required this.currentUserId,
   })  : _repository = repository,
@@ -18,10 +21,12 @@ class ChatViewModel extends ChangeNotifier {
 
   final ChatRepository _repository;
   final RealtimeService _realtimeService;
+  final ProfileRepository profileRepository;
   final String tripId;
   final String currentUserId;
 
   centrifuge.Subscription? _subscription;
+  StreamSubscription<centrifuge.PublicationEvent>? _publicationListener;
 
   List<ChatMessage> _messages = [];
   List<ChatMessage> get messages => _messages;
@@ -53,7 +58,10 @@ class ChatViewModel extends ChangeNotifier {
 
   Future<void> _subscribeToRealtime() async {
     _subscription = await _realtimeService.subscribe('trip:$tripId');
-    _subscription!.publication.listen((event) {
+    // The channel Subscription can now be shared with other screens (e.g. the Bubbles
+    // list also watches trip:$id) — cancel just this listener in dispose(), not the
+    // whole channel, or a later reopen would stack a second listener on top of it.
+    _publicationListener = _subscription!.publication.listen((event) {
       final json = jsonDecode(utf8.decode(event.data)) as Map<String, dynamic>;
       final message = ChatMessage(
         id: json['id'] as String,
@@ -86,6 +94,7 @@ class ChatViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _publicationListener?.cancel();
     final sub = _subscription;
     if (sub != null) {
       _realtimeService.unsubscribe(sub);

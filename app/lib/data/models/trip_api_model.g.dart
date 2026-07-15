@@ -16,6 +16,7 @@ _TripApiModel _$TripApiModelFromJson(Map<String, dynamic> json) =>
       joined: json['joined'] as bool,
       creatorUserId: json['creatorUserId'] as String?,
       participantCount: (json['participantCount'] as num?)?.toInt() ?? 0,
+      unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
       endDate: json['endDate'] == null
           ? null
           : DateTime.parse(json['endDate'] as String),
@@ -42,6 +43,7 @@ Map<String, dynamic> _$TripApiModelToJson(_TripApiModel instance) =>
       'joined': instance.joined,
       'creatorUserId': instance.creatorUserId,
       'participantCount': instance.participantCount,
+      'unreadCount': instance.unreadCount,
       'endDate': instance.endDate?.toIso8601String(),
       'description': instance.description,
       'meetingPoint': instance.meetingPoint,

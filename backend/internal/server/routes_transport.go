@@ -19,6 +19,7 @@ func registerTransportRoutes(mux *http.ServeMux, svc *transport.Service, tripSvc
 	mux.HandleFunc("POST /trips/{id}/transport", withAuth(authIssuer, handleCreateTransportOffer(svc, tripSvc)))
 	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/join", withAuth(authIssuer, handleJoinTransportOffer(svc, tripSvc)))
 	mux.HandleFunc("GET /trips/{id}/transport/{offerId}/joins", withAuth(authIssuer, handleListTransportOfferJoins(svc, tripSvc)))
+	mux.HandleFunc("GET /trips/{id}/transport/alert", withAuth(authIssuer, handleGetTransportAlert(svc, tripSvc)))
 }
 
 type transportOfferResponse struct {
@@ -138,6 +139,28 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service) fun
 
 type joinedUserResponse struct {
 	UserID uuid.UUID `json:"userId"`
+}
+
+// handleGetTransportAlert both reads and clears — viewing the Transport tab is what
+// acknowledges the "something changed" ping (transport_alerts), same as opening a chat
+// marks it read. No separate ack endpoint needed for this stopgap.
+func handleGetTransportAlert(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
+		if !ok {
+			return
+		}
+
+		hasAlert, err := svc.HasAlert(r.Context(), tripID, userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not check transport alert")
+			return
+		}
+		if hasAlert {
+			_ = svc.ClearAlert(r.Context(), tripID, userID)
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"hasAlert": hasAlert})
+	}
 }
 
 func handleListTransportOfferJoins(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {

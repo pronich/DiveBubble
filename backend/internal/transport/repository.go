@@ -146,3 +146,71 @@ func (r *Repository) Join(ctx context.Context, offerID, userID uuid.UUID) error 
 	`, offerID, userID)
 	return err
 }
+
+// ListCreatedByUserInTrip finds offers this user made on this trip — used when they leave
+// the trip, since an offer with its creator gone no longer makes sense.
+func (r *Repository) ListCreatedByUserInTrip(ctx context.Context, tripID, userID uuid.UUID) ([]Offer, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT id, trip_id, user_id, type, seats, details, created_at
+		FROM trip_transport_offers
+		WHERE trip_id = $1 AND user_id = $2
+	`, tripID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	offers := []Offer{}
+	for rows.Next() {
+		var o Offer
+		if err := rows.Scan(&o.ID, &o.TripID, &o.UserID, &o.Type, &o.Seats, &o.Details, &o.CreatedAt); err != nil {
+			return nil, err
+		}
+		offers = append(offers, o)
+	}
+	return offers, rows.Err()
+}
+
+// DeleteOffer cascades to transport_offer_joins via the FK (ON DELETE CASCADE) — callers
+// that need to notify joined users should read ListJoins before calling this.
+func (r *Repository) DeleteOffer(ctx context.Context, offerID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `DELETE FROM trip_transport_offers WHERE id = $1`, offerID)
+	return err
+}
+
+// RemoveUserJoinsInTrip drops this user's joins across every offer on the trip — used when
+// they leave the trip entirely, freeing whatever seats they held.
+func (r *Repository) RemoveUserJoinsInTrip(ctx context.Context, tripID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `
+		DELETE FROM transport_offer_joins
+		WHERE user_id = $2 AND offer_id IN (SELECT id FROM trip_transport_offers WHERE trip_id = $1)
+	`, tripID, userID)
+	return err
+}
+
+// CreateAlerts is a best-effort "something changed in Transport" ping — ON CONFLICT DO
+// NOTHING since a user only needs to see the dot once, not one per bumped offer.
+func (r *Repository) CreateAlerts(ctx context.Context, tripID uuid.UUID, userIDs []uuid.UUID) error {
+	for _, userID := range userIDs {
+		if _, err := r.DB.ExecContext(ctx, `
+			INSERT INTO transport_alerts (trip_id, user_id) VALUES ($1, $2)
+			ON CONFLICT (trip_id, user_id) DO NOTHING
+		`, tripID, userID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Repository) HasAlert(ctx context.Context, tripID, userID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM transport_alerts WHERE trip_id = $1 AND user_id = $2)
+	`, tripID, userID).Scan(&exists)
+	return exists, err
+}
+
+func (r *Repository) ClearAlert(ctx context.Context, tripID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `DELETE FROM transport_alerts WHERE trip_id = $1 AND user_id = $2`, tripID, userID)
+	return err
+}

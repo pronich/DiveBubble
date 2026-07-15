@@ -49,7 +49,18 @@ class _RootShellState extends State<RootShell> {
   // Created once — building these inline in build() would hand each tab a
   // fresh, unloaded ViewModel on every rebuild (e.g. every tab switch).
   late final _exploreViewModel = TripsListViewModel(repository: widget.tripRepository);
-  late final _myTripsViewModel = MyTripsViewModel(repository: widget.tripRepository);
+  late final _myTripsViewModel = MyTripsViewModel(
+    repository: widget.tripRepository,
+    realtimeService: widget.realtimeService,
+    currentUserId: widget.currentUserId,
+  );
+
+  void _onDestinationSelected(int i) {
+    setState(() => _index = i);
+    // MyTripsViewModel only loads once via IndexedStack's initState — a trip joined
+    // elsewhere (Explore -> Trip Page) wouldn't show up here otherwise until app resume.
+    if (i == 1) _myTripsViewModel.load();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +71,9 @@ class _RootShellState extends State<RootShell> {
           TripsListView(
             viewModel: _exploreViewModel,
             tripRepository: widget.tripRepository,
+            chatRepository: widget.chatRepository,
+            transportRepository: widget.transportRepository,
+            realtimeService: widget.realtimeService,
             authRepository: widget.authRepository,
             profileRepository: widget.profileRepository,
             currentUserId: widget.currentUserId,
@@ -84,9 +98,14 @@ class _RootShellState extends State<RootShell> {
           ),
         ],
       ),
+      // TODO(notifications-rework): the Bubbles destination needs a red-dot badge when
+      // _myTripsViewModel.trips has any unreadCount > 0 and the tab isn't currently active.
+      // Not wiring it up piecemeal here — this, the per-trip unread badge, and the
+      // Transport alert dot are three separate ad-hoc notification signals that should
+      // become one coherent in-app notifications system instead of growing a fourth.
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: _onDestinationSelected,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.explore_outlined), selectedIcon: Icon(Icons.explore), label: 'Explore'),
           NavigationDestination(icon: Icon(Icons.bubble_chart_outlined), selectedIcon: Icon(Icons.bubble_chart), label: 'Bubbles'),

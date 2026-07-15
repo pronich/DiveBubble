@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
+import '../../../../data/services/realtime_service.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../../transport/views/transport_view.dart';
 import '../../trips/view_models/trip_view_model.dart';
@@ -13,13 +16,16 @@ import 'chat_view.dart';
 /// Shell for a joined trip: Chat and Transport are the two things worth reaching
 /// immediately, so they're tabs here rather than buried inside Trip Page (which
 /// stays reachable by tapping the title, for the fuller trip overview).
-class TripConversationPage extends StatelessWidget {
+class TripConversationPage extends StatefulWidget {
   const TripConversationPage({
     super.key,
     required this.chatViewModel,
     required this.transportViewModel,
     required this.tripTitle,
     required this.tripRepository,
+    required this.chatRepository,
+    required this.transportRepository,
+    required this.realtimeService,
     required this.authRepository,
     required this.profileRepository,
   });
@@ -28,29 +34,85 @@ class TripConversationPage extends StatelessWidget {
   final TransportViewModel transportViewModel;
   final String tripTitle;
   final TripRepository tripRepository;
+  final ChatRepository chatRepository;
+  final TransportRepository transportRepository;
+  final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
 
   @override
+  State<TripConversationPage> createState() => _TripConversationPageState();
+}
+
+class _TripConversationPageState extends State<TripConversationPage> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+    // Checked once up front too — the dot itself lives in the AppBar, always visible
+    // regardless of which tab is active, so this is what actually surfaces it. Clearing
+    // it server-side here is fine: the local hasAlert flag keeps the dot showing until
+    // the diver actually switches to Transport, which re-checks and (now correctly) finds
+    // nothing, hiding it — "seen the badge" isn't the same as "went and looked."
+    widget.transportViewModel.checkAlert();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    if (_tabController.index == 1) {
+      widget.transportViewModel.checkAlert();
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: InkWell(onTap: () => _openTripPage(context), child: Text(tripTitle)),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Chat'),
-              Tab(text: 'Transport'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          children: [
-            ChatView(viewModel: chatViewModel),
-            TransportView(viewModel: transportViewModel),
+    return Scaffold(
+      appBar: AppBar(
+        title: InkWell(onTap: () => _openTripPage(context), child: Text(widget.tripTitle)),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            const Tab(text: 'Chat'),
+            ListenableBuilder(
+              listenable: widget.transportViewModel,
+              builder: (context, _) => Tab(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Text('Transport'),
+                    if (widget.transportViewModel.hasAlert)
+                      Positioned(
+                        right: -8,
+                        top: -2,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          ChatView(viewModel: widget.chatViewModel),
+          TransportView(viewModel: widget.transportViewModel),
+        ],
       ),
     );
   }
@@ -60,12 +122,17 @@ class TripConversationPage extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => TripPage(
           viewModel: TripViewModel(
-            repository: tripRepository,
-            authRepository: authRepository,
-            profileRepository: profileRepository,
-            tripId: chatViewModel.tripId,
-            currentUserId: chatViewModel.currentUserId,
+            repository: widget.tripRepository,
+            authRepository: widget.authRepository,
+            profileRepository: widget.profileRepository,
+            tripId: widget.chatViewModel.tripId,
+            currentUserId: widget.chatViewModel.currentUserId,
           ),
+          tripRepository: widget.tripRepository,
+          chatRepository: widget.chatRepository,
+          transportRepository: widget.transportRepository,
+          realtimeService: widget.realtimeService,
+          openedFromConversation: true,
         ),
       ),
     );
