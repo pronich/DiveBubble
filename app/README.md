@@ -1,4 +1,4 @@
-# divebuddy
+# divebubble
 
 A new Flutter project.
 

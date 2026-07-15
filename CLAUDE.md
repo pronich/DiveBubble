@@ -2,7 +2,7 @@
 
 Marketplace for dive trips (short and long), organized by dive centers or by local divers. Single monorepo for app + backend.
 
-Renamed from "DiveBuddy" (name was taken) — app display name, splash screen, and the Trips tab (now "Bubbles") all reflect the new brand. The repo folder, Dart package (`divebuddy`), Go module (`divebuddy_be`), and Google Cloud project were deliberately left as-is (not worth the churn); only the iOS/Android bundle id changed (see Auth section) since Google Sign-In ties directly to it.
+Renamed from "DiveBuddy" (name was taken) — app display name, splash screen, and the Trips tab (now "Bubbles") all reflect the new brand. The repo folder, Dart package (`divebubble`), Go module (`divebubble_be`), and local Postgres dev credentials were also renamed to match. The Google Cloud project itself was left as-is (renaming a live GCP project is out of scope here) — only the iOS/Android bundle id changed (see Auth section) since Google Sign-In ties directly to it.
 
 ## Product context
 
@@ -60,7 +60,7 @@ Build order being followed: Discovery list (done) → Trip Page detail (done) �
 ## Repo structure
 
 ```
-DiveBuddy/
+DiveBubble/
   app/        # Flutter app — Explore/Trips/Profile bottom nav, chat, MVVM, verified on iOS simulator
   admin/      # Flutter admin panel for dive centers (future phase)
   backend/    # Go API — trips, join, chat messages (Postgres-backed)
@@ -111,7 +111,7 @@ Runs as a compose service (`centrifugo/centrifugo:v5`) on `127.0.0.1:8000`, conf
 
 `X-User-Id`/`withUser`/`internal/user` (the stub-auth era) are gone — deleted entirely once nothing referenced them anymore, rather than left around unused. Every route except `GET /trips` and `GET /health` now requires a real bearer access token; `GET /trips/{id}` is the one exception that takes either (see below).
 
-`internal/auth/` — ForeignReader-pattern JWT access token + rotating refresh-token session, adapted down to DiveBuddy's single-mobile-client shape (no ForeignReader's `source: app/web` split, since there's no separate web cabinet yet).
+`internal/auth/` — ForeignReader-pattern JWT access token + rotating refresh-token session, adapted down to DiveBubble's single-mobile-client shape (no ForeignReader's `source: app/web` split, since there's no separate web cabinet yet).
 
 - **Tables**: `auth_identities` (`user_id`, `provider`, `provider_user_id`, `provider_email`, unique on `(provider, provider_user_id)`) and `auth_sessions` (`user_id`, `provider`, `refresh_token_hash`, `expires_at`, `revoked_at`/`revoke_reason`/`replaced_by_session_id` for rotation tracking) — migrations `000013`/`000014`. Kept separate from `users` (not a column on it) so Apple can be added later without another migration.
 - **Tokens**: access token is an HS256 JWT (`auth.TokenIssuer`, `sub`=user id, `sid`=session id), default TTL 8h (`ACCESS_TOKEN_TTL` env, `time.ParseDuration` syntax). Refresh token is an opaque random value (`auth.GenerateRefreshToken`) — only its SHA-256 hash is stored, default session TTL 180 days (`REFRESH_SESSION_TTL`). `auth.SessionRepository.RotateRefreshToken` rotates atomically on every refresh (old session marked `revoked_at`/`replaced_by_session_id`, new row inserted) and treats reusing an already-rotated token as `ErrRefreshReused` — a signal the token was stolen, not just an expired session.

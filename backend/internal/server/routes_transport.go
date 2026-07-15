@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"divebuddy_be/internal/auth"
-	"divebuddy_be/internal/transport"
-	"divebuddy_be/internal/trip"
+	"divebubble_be/internal/auth"
+	"divebubble_be/internal/transport"
+	"divebubble_be/internal/trip"
 
 	"github.com/google/uuid"
 )

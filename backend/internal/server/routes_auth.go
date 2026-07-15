@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"divebuddy_be/internal/auth"
-	"divebuddy_be/internal/config"
+	"divebubble_be/internal/auth"
+	"divebubble_be/internal/config"
 
 	"github.com/google/uuid"
 )
