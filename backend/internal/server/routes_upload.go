@@ -1,0 +1,169 @@
+package server
+
+import (
+	"errors"
+	"mime/multipart"
+	"net/http"
+
+	"divebubble_be/internal/auth"
+	"divebubble_be/internal/certification"
+	"divebubble_be/internal/profile"
+	"divebubble_be/internal/trip"
+	"divebubble_be/internal/upload"
+
+	"github.com/google/uuid"
+)
+
+func registerUploadRoutes(
+	mux *http.ServeMux,
+	uploadSvc *upload.Service,
+	profileSvc *profile.Service,
+	tripSvc *trip.Service,
+	certificationSvc *certification.Service,
+	authIssuer *auth.TokenIssuer,
+) {
+	mux.HandleFunc("POST /me/avatar", withAuth(authIssuer, handleUploadAvatar(uploadSvc, profileSvc)))
+	mux.HandleFunc("POST /me/certification-photo", withAuth(authIssuer, handleUploadCertificationPhoto(uploadSvc, profileSvc)))
+	mux.HandleFunc("POST /me/specialties/{id}/photo", withAuth(authIssuer, handleUploadSpecialtyPhoto(uploadSvc, certificationSvc)))
+	mux.HandleFunc("POST /trips/{id}/photo", withAuth(authIssuer, handleUploadTripPhoto(uploadSvc, tripSvc)))
+}
+
+// parseUploadFile expects a single multipart field named "file". The size cap here is
+// upload.MaxFileSize plus headroom for the rest of the multipart form (field boundaries,
+// other parts) — upload.Service.Save enforces the real per-file limit.
+func parseUploadFile(r *http.Request) (multipart.File, *multipart.FileHeader, error) {
+	if err := r.ParseMultipartForm(upload.MaxFileSize + 1<<20); err != nil {
+		return nil, nil, err
+	}
+	return r.FormFile("file")
+}
+
+func writeUploadError(w http.ResponseWriter, err error) {
+	if errors.Is(err, upload.ErrInvalidImage) || errors.Is(err, upload.ErrTooLarge) {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeError(w, http.StatusInternalServerError, "could not save file")
+}
+
+func handleUploadAvatar(uploadSvc *upload.Service, profileSvc *profile.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		file, header, err := parseUploadFile(r)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			return
+		}
+		defer file.Close()
+
+		url, err := uploadSvc.Save("avatars", file, header)
+		if err != nil {
+			writeUploadError(w, err)
+			return
+		}
+
+		p, err := profileSvc.Update(r.Context(), userID, profile.UpdateParams{AvatarURL: &url})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not update profile")
+			return
+		}
+		writeJSON(w, http.StatusOK, toProfileResponse(p))
+	}
+}
+
+// handleUploadCertificationPhoto is for the Level card's single photo (users.
+// certification_photo_url) — distinct from a specialty's own photo (see
+// handleUploadSpecialtyPhoto), since Level is a singleton the diver updates in place.
+func handleUploadCertificationPhoto(uploadSvc *upload.Service, profileSvc *profile.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		file, header, err := parseUploadFile(r)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			return
+		}
+		defer file.Close()
+
+		url, err := uploadSvc.Save("certifications", file, header)
+		if err != nil {
+			writeUploadError(w, err)
+			return
+		}
+
+		p, err := profileSvc.Update(r.Context(), userID, profile.UpdateParams{CertificationPhotoURL: &url})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not update profile")
+			return
+		}
+		writeJSON(w, http.StatusOK, toProfileResponse(p))
+	}
+}
+
+func handleUploadSpecialtyPhoto(uploadSvc *upload.Service, certificationSvc *certification.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid specialty id")
+			return
+		}
+
+		file, header, err := parseUploadFile(r)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			return
+		}
+		defer file.Close()
+
+		url, err := uploadSvc.Save("specialties", file, header)
+		if err != nil {
+			writeUploadError(w, err)
+			return
+		}
+
+		found, err := certificationSvc.SetSpecialtyPhoto(r.Context(), userID, id, url)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not update specialty photo")
+			return
+		}
+		if !found {
+			writeError(w, http.StatusNotFound, "specialty not found")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"photoUrl": url})
+	}
+}
+
+func handleUploadTripPhoto(uploadSvc *upload.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+
+		file, header, err := parseUploadFile(r)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			return
+		}
+		defer file.Close()
+
+		url, err := uploadSvc.Save("trips", file, header)
+		if err != nil {
+			writeUploadError(w, err)
+			return
+		}
+
+		if err := tripSvc.SetPhotoURL(r.Context(), id, userID, url); err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			if errors.Is(err, trip.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "trip not found")
+				return
+			}
+			if errors.Is(err, trip.ErrOnlyOrganizerCanEditTrip) {
+				writeError(w, http.StatusForbidden, "only the organizer can edit this trip")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not update trip photo")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"photoUrl": url})
+	}
+}

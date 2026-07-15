@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/trip_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'multipart_upload.dart';
 
 class TripApiService {
   TripApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
@@ -90,6 +91,16 @@ class TripApiService {
     }
     final decoded = jsonDecode(res.body) as List<dynamic>;
     return decoded.cast<String>();
+  }
+
+  // 403 if the caller isn't the trip's organizer (mapped to an Exception here).
+  Future<String> uploadTripPhoto(String id, String filePath) async {
+    final json = await uploadImageFile(
+      Uri.parse('$baseUrl/trips/$id/photo'),
+      filePath: filePath,
+      headers: await _requiredAuthHeaders(),
+    );
+    return json['photoUrl'] as String;
   }
 
   Future<void> markRead(String id) async {

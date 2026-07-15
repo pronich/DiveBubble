@@ -18,6 +18,8 @@ class SpecialtiesSection extends StatelessWidget {
     required this.onToggle,
     required this.onAdd,
     required this.onRemove,
+    required this.onPhotoTap,
+    this.uploadingPhotoId,
   });
 
   final List<SpecialtyCertification> specialties;
@@ -25,6 +27,8 @@ class SpecialtiesSection extends StatelessWidget {
   final ValueChanged<bool> onToggle;
   final VoidCallback onAdd;
   final void Function(String id) onRemove;
+  final void Function(String id) onPhotoTap;
+  final String? uploadingPhotoId;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +37,13 @@ class SpecialtiesSection extends StatelessWidget {
     }
 
     if (specialties.length == 1) {
-      return SpecialtyCard(specialty: specialties.first, onRemove: () => onRemove(specialties.first.id));
+      final specialty = specialties.first;
+      return SpecialtyCard(
+        specialty: specialty,
+        onRemove: () => onRemove(specialty.id),
+        onPhotoTap: () => onPhotoTap(specialty.id),
+        isUploadingPhoto: uploadingPhotoId == specialty.id,
+      );
     }
 
     return _SpecialtyDeck(
@@ -41,6 +51,8 @@ class SpecialtiesSection extends StatelessWidget {
       expanded: expanded,
       onToggle: onToggle,
       onRemove: onRemove,
+      onPhotoTap: onPhotoTap,
+      uploadingPhotoId: uploadingPhotoId,
     );
   }
 }
@@ -54,12 +66,16 @@ class _SpecialtyDeck extends StatelessWidget {
     required this.expanded,
     required this.onToggle,
     required this.onRemove,
+    required this.onPhotoTap,
+    this.uploadingPhotoId,
   });
 
   final List<SpecialtyCertification> specialties;
   final bool expanded;
   final ValueChanged<bool> onToggle;
   final void Function(String id) onRemove;
+  final void Function(String id) onPhotoTap;
+  final String? uploadingPhotoId;
 
   static const double _cardHeight = 150;
   static const double _peekOffset = 16;
@@ -114,6 +130,8 @@ class _SpecialtyDeck extends StatelessWidget {
                         child: SpecialtyCard(
                           specialty: specialties[i],
                           onRemove: expanded ? () => onRemove(specialties[i].id) : null,
+                          onPhotoTap: expanded ? () => onPhotoTap(specialties[i].id) : null,
+                          isUploadingPhoto: uploadingPhotoId == specialties[i].id,
                         ),
                       ),
                     ),

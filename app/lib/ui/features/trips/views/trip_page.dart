@@ -14,6 +14,7 @@ import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/semantic_colors.dart';
+import '../../../core/widgets/pick_image.dart';
 import '../../chats/view_models/chat_view_model.dart';
 import '../../chats/views/trip_conversation_page.dart';
 import '../../profile/views/diver_id_card.dart';
@@ -53,6 +54,17 @@ class _TripPageState extends State<TripPage> {
     widget.viewModel.load();
   }
 
+  Future<void> _pickAndUploadPhoto(BuildContext context) async {
+    final filePath = await pickImage(context);
+    if (filePath == null || !context.mounted) return;
+
+    final error = await widget.viewModel.uploadPhoto(filePath);
+    if (!context.mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,10 +102,35 @@ class _TripPageState extends State<TripPage> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.asset(AppAssets.tripPlaceholder, fit: BoxFit.cover),
+                    (trip.photoUrl?.isNotEmpty ?? false)
+                        ? Image.network(trip.photoUrl!, fit: BoxFit.cover)
+                        : Image.asset(AppAssets.tripPlaceholder, fit: BoxFit.cover),
                     const DecoratedBox(
                       decoration: BoxDecoration(gradient: AppGradients.imageScrim),
                     ),
+                    if (isOrganizer)
+                      Positioned(
+                        right: 16,
+                        bottom: 16,
+                        child: Material(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: widget.viewModel.isUploadingPhoto ? null : () => _pickAndUploadPhoto(context),
+                            child: Padding(
+                              padding: const EdgeInsets.all(10),
+                              child: widget.viewModel.isUploadingPhoto
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

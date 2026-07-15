@@ -15,11 +15,18 @@ class ProfileOverviewCard extends StatelessWidget {
     required this.profile,
     this.onEditProfile,
     this.onLevelStatTap,
+    this.onAvatarTap,
+    this.isUploadingAvatar = false,
   });
 
   final Profile profile;
   final VoidCallback? onEditProfile;
   final VoidCallback? onLevelStatTap;
+
+  /// Null hides the camera badge entirely — same posture as [onEditProfile]: only the
+  /// diver's own Profile screen passes this, not the public/diver-ID-card usage.
+  final VoidCallback? onAvatarTap;
+  final bool isUploadingAvatar;
 
   bool get _hasLevel => profile.certificationLevel?.isNotEmpty ?? false;
 
@@ -32,13 +39,40 @@ class ProfileOverviewCard extends StatelessWidget {
       children: [
         Row(
           children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: theme.colorScheme.secondaryContainer,
-              backgroundImage: (profile.avatarUrl?.isNotEmpty ?? false) ? NetworkImage(profile.avatarUrl!) : null,
-              child: (profile.avatarUrl?.isNotEmpty ?? false)
-                  ? null
-                  : Icon(Icons.person, size: 40, color: theme.colorScheme.onSecondaryContainer),
+            InkWell(
+              customBorder: const CircleBorder(),
+              onTap: (onAvatarTap != null && !isUploadingAvatar) ? onAvatarTap : null,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundColor: theme.colorScheme.secondaryContainer,
+                    backgroundImage: (profile.avatarUrl?.isNotEmpty ?? false) ? NetworkImage(profile.avatarUrl!) : null,
+                    child: (profile.avatarUrl?.isNotEmpty ?? false)
+                        ? null
+                        : Icon(Icons.person, size: 40, color: theme.colorScheme.onSecondaryContainer),
+                  ),
+                  // Purely decorative now — the whole circle above is the tap target
+                  // (item 2: tapping only this badge felt too small a target to hit).
+                  if (onAvatarTap != null)
+                    Positioned(
+                      right: -2,
+                      bottom: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(color: theme.colorScheme.primary, shape: BoxShape.circle),
+                        child: isUploadingAvatar
+                            ? SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.onPrimary),
+                              )
+                            : Icon(Icons.camera_alt, size: 14, color: theme.colorScheme.onPrimary),
+                      ),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(

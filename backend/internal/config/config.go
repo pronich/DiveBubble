@@ -19,6 +19,8 @@ type Config struct {
 	GoogleServerClientID  string
 	AccessTokenTTL        time.Duration
 	RefreshSessionTTL     time.Duration
+	UploadDir             string
+	PublicBaseURL         string
 }
 
 func Load() Config {
@@ -39,6 +41,17 @@ func Load() Config {
 	accessTokenTTL := durationEnv("ACCESS_TOKEN_TTL", 8*time.Hour)
 	refreshSessionTTL := durationEnv("REFRESH_SESSION_TTL", 180*24*time.Hour)
 
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = "./uploads"
+	}
+	// What the client uses to build a full image URL from the relative path Save()
+	// returns — must be reachable from the device/simulator, not just the server host.
+	publicBaseURL := os.Getenv("PUBLIC_BASE_URL")
+	if publicBaseURL == "" {
+		publicBaseURL = "http://localhost:" + port
+	}
+
 	return Config{
 		Port:                  port,
 		DatabaseURL:           databaseURL,
@@ -49,6 +62,8 @@ func Load() Config {
 		GoogleServerClientID:  googleServerClientID,
 		AccessTokenTTL:        accessTokenTTL,
 		RefreshSessionTTL:     refreshSessionTTL,
+		UploadDir:             uploadDir,
+		PublicBaseURL:         publicBaseURL,
 	}
 }
 

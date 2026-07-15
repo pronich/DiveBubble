@@ -139,6 +139,11 @@ func (r *Repository) SetBookingStatus(ctx context.Context, tripID uuid.UUID, sta
 	return err
 }
 
+func (r *Repository) SetPhotoURL(ctx context.Context, tripID uuid.UUID, url string) error {
+	_, err := r.DB.ExecContext(ctx, `UPDATE trips SET photo_url = $1 WHERE id = $2`, url, tripID)
+	return err
+}
+
 func (r *Repository) ListParticipantUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT user_id FROM trip_participants WHERE trip_id = $1 ORDER BY joined_at ASC

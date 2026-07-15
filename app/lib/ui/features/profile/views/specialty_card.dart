@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/specialty_certification.dart';
 import '../../../../ui/core/theme/app_colors.dart';
+import '../../../core/widgets/card_photo_picker.dart';
 
 const double kSpecialtyCardWidth = 220;
 
@@ -21,10 +22,21 @@ Color colorForSpecialty(String specialty) => _kSpecialtyColors[specialty] ?? App
 /// Colored per specialty type — the Level card still gets the brand gradient since it's
 /// the hero credential, but specialties are now a proper colorful card deck, not gray tiles.
 class SpecialtyCard extends StatelessWidget {
-  const SpecialtyCard({super.key, required this.specialty, this.onRemove});
+  const SpecialtyCard({
+    super.key,
+    required this.specialty,
+    this.onRemove,
+    this.onPhotoTap,
+    this.isUploadingPhoto = false,
+  });
 
   final SpecialtyCertification specialty;
   final VoidCallback? onRemove;
+
+  /// Same null-hides-the-affordance posture as onRemove — only rendered on the single-card
+  /// case or an expanded deck card, never on a collapsed peeking sliver.
+  final VoidCallback? onPhotoTap;
+  final bool isUploadingPhoto;
 
   @override
   Widget build(BuildContext context) {
@@ -55,12 +67,26 @@ class SpecialtyCard extends StatelessWidget {
                 )
               else
                 const SizedBox.shrink(),
-              if (onRemove != null)
-                InkWell(
-                  onTap: onRemove,
-                  borderRadius: BorderRadius.circular(12),
-                  child: const Icon(Icons.close, size: 16, color: AppColors.textInverse),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (onPhotoTap != null) ...[
+                    CardPhotoPicker(
+                      photoUrl: specialty.photoUrl,
+                      onPick: onPhotoTap!,
+                      isUploading: isUploadingPhoto,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  if (onRemove != null)
+                    InkWell(
+                      onTap: onRemove,
+                      borderRadius: BorderRadius.circular(12),
+                      child: const Icon(Icons.close, size: 16, color: AppColors.textInverse),
+                    ),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 6),

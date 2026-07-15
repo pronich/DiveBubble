@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/specialty_certification_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'multipart_upload.dart';
 
 class SpecialtyApiService {
   SpecialtyApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
@@ -62,5 +63,14 @@ class SpecialtyApiService {
     if (res.statusCode != 204) {
       throw Exception('removeSpecialty failed: ${res.statusCode} ${res.body}');
     }
+  }
+
+  Future<String> uploadSpecialtyPhoto(String id, String filePath) async {
+    final json = await uploadImageFile(
+      Uri.parse('$baseUrl/me/specialties/$id/photo'),
+      filePath: filePath,
+      headers: await _authHeaders(),
+    );
+    return json['photoUrl'] as String;
   }
 }

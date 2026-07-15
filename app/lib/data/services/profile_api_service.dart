@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/profile_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'multipart_upload.dart';
 
 class ProfileApiService {
   ProfileApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
@@ -70,5 +71,17 @@ class ProfileApiService {
       throw Exception('updateProfile failed: ${res.statusCode} ${res.body}');
     }
     return ProfileApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<ProfileApiModel> uploadAvatar(String filePath) async {
+    final json = await uploadImageFile(Uri.parse('$baseUrl/me/avatar'), filePath: filePath, headers: await _authHeaders());
+    return ProfileApiModel.fromJson(json);
+  }
+
+  // Level card's single photo (users.certification_photo_url) — distinct from a
+  // specialty's own photo, see SpecialtyApiService.uploadSpecialtyPhoto.
+  Future<ProfileApiModel> uploadCertificationPhoto(String filePath) async {
+    final json = await uploadImageFile(Uri.parse('$baseUrl/me/certification-photo'), filePath: filePath, headers: await _authHeaders());
+    return ProfileApiModel.fromJson(json);
   }
 }

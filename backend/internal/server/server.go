@@ -14,6 +14,7 @@ import (
 	"divebubble_be/internal/realtime"
 	"divebubble_be/internal/transport"
 	"divebubble_be/internal/trip"
+	"divebubble_be/internal/upload"
 )
 
 func New(cfg config.Config, db *sql.DB) http.Handler {
@@ -24,6 +25,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	profileSvc := profile.NewService(profile.NewRepository(db))
 	certificationSvc := certification.NewService(certification.NewRepository(db))
 	gearSvc := gear.NewService(gear.NewRepository(db))
+	uploadSvc := upload.NewService(cfg.UploadDir, cfg.PublicBaseURL)
 	publisher := realtime.NewPublisher(cfg.CentrifugoURL, cfg.CentrifugoAPIKey)
 	realtimeTokenIssuer := realtime.NewTokenIssuer(cfg.CentrifugoTokenSecret)
 
@@ -44,6 +46,11 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	registerProfileRoutes(mux, profileSvc, authIssuer)
 	registerCertificationRoutes(mux, certificationSvc, authIssuer)
 	registerGearRoutes(mux, gearSvc, authIssuer)
+	registerUploadRoutes(mux, uploadSvc, profileSvc, tripSvc, certificationSvc, authIssuer)
+	// Uploaded images are served back unauthenticated, same as any other image URL
+	// referenced from a profile/trip card — dev-only local disk today, swappable for
+	// object storage (DigitalOcean Spaces) later without callers noticing.
+	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadDir))))
 	return mux
 }
 

@@ -17,6 +17,9 @@ backend/tmp/
 *.exe
 *.test
 
+# Uploaded images — dev-only local disk storage, not real object storage
+backend/uploads/
+
 # Env / secrets
 .env
 .env.*

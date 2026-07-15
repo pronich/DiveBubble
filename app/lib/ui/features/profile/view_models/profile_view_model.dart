@@ -39,6 +39,14 @@ class ProfileViewModel extends ChangeNotifier {
   bool _isSubmitting = false;
   bool get isSubmitting => _isSubmitting;
 
+  bool _isUploadingPhoto = false;
+  bool get isUploadingPhoto => _isUploadingPhoto;
+
+  // Specialty photo tracks *which* card is uploading (unlike the shared flag above) since
+  // several specialty cards can be on screen at once — a shared bool would spin all of them.
+  String? _uploadingSpecialtyId;
+  String? get uploadingSpecialtyId => _uploadingSpecialtyId;
+
   String? _error;
   String? get error => _error;
 
@@ -156,6 +164,58 @@ class ProfileViewModel extends ChangeNotifier {
       return false;
     } finally {
       _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> uploadAvatar(String filePath) async {
+    _isUploadingPhoto = true;
+    notifyListeners();
+
+    try {
+      _profile = await _repository.uploadAvatar(filePath);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    } finally {
+      _isUploadingPhoto = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> uploadCertificationPhoto(String filePath) async {
+    _isUploadingPhoto = true;
+    notifyListeners();
+
+    try {
+      _profile = await _repository.uploadCertificationPhoto(filePath);
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    } finally {
+      _isUploadingPhoto = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> uploadSpecialtyPhoto(String id, String filePath) async {
+    _uploadingSpecialtyId = id;
+    notifyListeners();
+
+    try {
+      final url = await _specialtyRepository!.uploadSpecialtyPhoto(id, filePath);
+      _specialties = [
+        for (final s in _specialties)
+          if (s.id == id) s.copyWith(photoUrl: url) else s,
+      ];
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    } finally {
+      _uploadingSpecialtyId = null;
       notifyListeners();
     }
   }

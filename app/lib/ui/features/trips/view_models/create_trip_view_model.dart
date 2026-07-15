@@ -55,4 +55,15 @@ class CreateTripViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Best-effort — the trip itself already exists by the time this is called, so a failed
+  /// photo upload shouldn't block navigating to it; the organizer can retry from Trip
+  /// Page's own hero-image camera button.
+  Future<void> uploadPhoto(String tripId, String filePath) async {
+    try {
+      await _repository.uploadTripPhoto(tripId, filePath);
+    } catch (_) {
+      // ignore — see above
+    }
+  }
 }

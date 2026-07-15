@@ -7,6 +7,7 @@ import '../../../../data/repositories/specialty_repository.dart';
 import '../../../../data/services/location_service.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../core/widgets/dashed_divider.dart';
+import '../../../core/widgets/pick_image.dart';
 import '../../onboarding/views/login_sheet.dart';
 import '../view_models/profile_view_model.dart';
 import 'about_page.dart';
@@ -266,6 +267,39 @@ class _SignedInBody extends StatelessWidget {
     );
   }
 
+  Future<void> _pickAndUploadAvatar(BuildContext context) async {
+    final filePath = await pickImage(context);
+    if (filePath == null || !context.mounted) return;
+
+    final ok = await viewModel.uploadAvatar(filePath);
+    if (!context.mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.error ?? 'Could not upload photo')));
+    }
+  }
+
+  Future<void> _pickAndUploadCertificationPhoto(BuildContext context) async {
+    final filePath = await pickImage(context);
+    if (filePath == null || !context.mounted) return;
+
+    final ok = await viewModel.uploadCertificationPhoto(filePath);
+    if (!context.mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.error ?? 'Could not upload photo')));
+    }
+  }
+
+  Future<void> _pickAndUploadSpecialtyPhoto(BuildContext context, String id) async {
+    final filePath = await pickImage(context);
+    if (filePath == null || !context.mounted) return;
+
+    final ok = await viewModel.uploadSpecialtyPhoto(id, filePath);
+    if (!context.mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.error ?? 'Could not upload photo')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -276,7 +310,13 @@ class _SignedInBody extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              ProfileOverviewCard(profile: profile, onEditProfile: onEdit, onLevelStatTap: onLevelStatTap),
+              ProfileOverviewCard(
+                profile: profile,
+                onEditProfile: onEdit,
+                onLevelStatTap: onLevelStatTap,
+                onAvatarTap: () => _pickAndUploadAvatar(context),
+                isUploadingAvatar: viewModel.isUploadingPhoto,
+              ),
               const SizedBox(height: 24),
               DashedDivider(key: certificationsKey),
               const SizedBox(height: 16),
@@ -294,6 +334,9 @@ class _SignedInBody extends StatelessWidget {
                       agency: profile.certificationAgency,
                       number: profile.certificationNumber,
                       verified: profile.certificationVerified,
+                      photoUrl: profile.certificationPhotoUrl,
+                      onPhotoTap: () => _pickAndUploadCertificationPhoto(context),
+                      isUploadingPhoto: viewModel.isUploadingPhoto,
                     )
                   : AddLevelCard(onTap: () => _openUpdateLevelSheet(context)),
               const SizedBox(height: 20),
@@ -313,6 +356,8 @@ class _SignedInBody extends StatelessWidget {
                 onToggle: onToggleSpecialtiesExpanded,
                 onAdd: () => _openAddSpecialtySheet(context),
                 onRemove: viewModel.removeSpecialty,
+                onPhotoTap: (id) => _pickAndUploadSpecialtyPhoto(context, id),
+                uploadingPhotoId: viewModel.uploadingSpecialtyId,
               ),
               const SizedBox(height: 24),
               const DashedDivider(),

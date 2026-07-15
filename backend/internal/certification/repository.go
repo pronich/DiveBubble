@@ -66,6 +66,18 @@ func (r *Repository) ListByUser(ctx context.Context, userID uuid.UUID) ([]Specia
 	return specialties, rows.Err()
 }
 
+// SetPhotoURL returns false (no error) if no row matched — same ownership-scoped shape as Delete.
+func (r *Repository) SetPhotoURL(ctx context.Context, id, userID uuid.UUID, url string) (bool, error) {
+	res, err := r.DB.ExecContext(ctx, `
+		UPDATE specialty_certifications SET photo_url = $1 WHERE id = $2 AND user_id = $3
+	`, url, id, userID)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
+}
+
 // Delete returns false (no error) if no row matched — either it didn't exist or belonged to another user.
 func (r *Repository) Delete(ctx context.Context, userID, id uuid.UUID) (bool, error) {
 	res, err := r.DB.ExecContext(ctx, `
