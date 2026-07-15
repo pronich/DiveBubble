@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/chat_repository.dart';
+import '../../../data/repositories/gear_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
+import '../../../data/repositories/specialty_repository.dart';
 import '../../../data/repositories/transport_repository.dart';
 import '../../../data/repositories/trip_repository.dart';
 import '../../../data/services/realtime_service.dart';
@@ -22,6 +24,8 @@ class RootShell extends StatefulWidget {
     required this.realtimeService,
     required this.authRepository,
     required this.profileRepository,
+    required this.specialtyRepository,
+    required this.gearRepository,
     required this.currentUserId,
   });
 
@@ -31,6 +35,8 @@ class RootShell extends StatefulWidget {
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final SpecialtyRepository specialtyRepository;
+  final GearRepository gearRepository;
   final String currentUserId;
 
   @override
@@ -69,7 +75,13 @@ class _RootShellState extends State<RootShell> {
             currentUserId: widget.currentUserId,
             onGoToExplore: () => setState(() => _index = 0),
           ),
-          ProfileView(authRepository: widget.authRepository, profileRepository: widget.profileRepository),
+          ProfileView(
+            authRepository: widget.authRepository,
+            profileRepository: widget.profileRepository,
+            specialtyRepository: widget.specialtyRepository,
+            gearRepository: widget.gearRepository,
+            isActive: _index == 2,
+          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(

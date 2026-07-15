@@ -19,6 +19,8 @@ class ProfileRepository {
     String? bio,
     int? diveCount,
     String? certificationLevel,
+    String? certificationAgency,
+    String? certificationNumber,
     String? languages,
   }) async {
     final apiModel = await _service.updateProfile(
@@ -28,6 +30,8 @@ class ProfileRepository {
       bio: bio,
       diveCount: diveCount,
       certificationLevel: certificationLevel,
+      certificationAgency: certificationAgency,
+      certificationNumber: certificationNumber,
       languages: languages,
     );
     return apiModel.toDomain();

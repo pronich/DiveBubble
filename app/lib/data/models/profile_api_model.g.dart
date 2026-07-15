@@ -15,6 +15,10 @@ _ProfileApiModel _$ProfileApiModelFromJson(Map<String, dynamic> json) =>
       bio: json['bio'] as String?,
       diveCount: (json['diveCount'] as num?)?.toInt() ?? 0,
       certificationLevel: json['certificationLevel'] as String?,
+      certificationAgency: json['certificationAgency'] as String?,
+      certificationNumber: json['certificationNumber'] as String?,
+      certificationPhotoUrl: json['certificationPhotoUrl'] as String?,
+      certificationVerified: json['certificationVerified'] as bool? ?? false,
       languages: json['languages'] as String? ?? '',
       memberSince: DateTime.parse(json['memberSince'] as String),
     );
@@ -28,6 +32,10 @@ Map<String, dynamic> _$ProfileApiModelToJson(_ProfileApiModel instance) =>
       'bio': instance.bio,
       'diveCount': instance.diveCount,
       'certificationLevel': instance.certificationLevel,
+      'certificationAgency': instance.certificationAgency,
+      'certificationNumber': instance.certificationNumber,
+      'certificationPhotoUrl': instance.certificationPhotoUrl,
+      'certificationVerified': instance.certificationVerified,
       'languages': instance.languages,
       'memberSince': instance.memberSince.toIso8601String(),
     };

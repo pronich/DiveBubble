@@ -1,31 +1,59 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/gear_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/specialty_repository.dart';
 import '../../../../data/services/location_service.dart';
 import '../../../../domain/entities/profile.dart';
+import '../../../core/widgets/dashed_divider.dart';
 import '../../onboarding/views/login_sheet.dart';
 import '../view_models/profile_view_model.dart';
 import 'about_page.dart';
+import 'add_specialty_sheet.dart';
 import 'edit_profile_page.dart';
+import 'gear_locker_page.dart';
+import 'gear_summary_card.dart';
 import 'legal_page.dart';
+import 'level_card.dart';
 import 'notifications_settings_page.dart';
+import 'specialties_section.dart';
+import 'update_level_sheet.dart';
 
 class ProfileView extends StatefulWidget {
-  const ProfileView({super.key, required this.authRepository, required this.profileRepository});
+  const ProfileView({
+    super.key,
+    required this.authRepository,
+    required this.profileRepository,
+    required this.specialtyRepository,
+    required this.gearRepository,
+    required this.isActive,
+  });
 
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final SpecialtyRepository specialtyRepository;
+  final GearRepository gearRepository;
+
+  /// Whether this is the currently-selected bottom-nav tab. RootShell's IndexedStack keeps
+  /// ProfileView alive when another tab is selected, so this is how it notices tab switches.
+  final bool isActive;
 
   @override
   State<ProfileView> createState() => _ProfileViewState();
 }
 
 class _ProfileViewState extends State<ProfileView> {
-  late final _viewModel = ProfileViewModel(repository: widget.profileRepository);
+  late final _viewModel = ProfileViewModel(
+    repository: widget.profileRepository,
+    specialtyRepository: widget.specialtyRepository,
+    gearRepository: widget.gearRepository,
+  );
   final _locationService = LocationService();
   bool _signedIn = false;
   String? _guestLocation;
+  final _certificationsKey = GlobalKey();
+  bool _specialtiesExpanded = false;
 
   // Re-checks on app resume too — the session may have expired/been revoked while backgrounded.
   late final _lifecycleListener = AppLifecycleListener(onResume: _refresh);
@@ -35,6 +63,16 @@ class _ProfileViewState extends State<ProfileView> {
     super.initState();
     widget.authRepository.addListener(_refresh);
     _refresh();
+  }
+
+  @override
+  void didUpdateWidget(ProfileView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Leaving the tab collapses the specialties stack back down, so it doesn't stay
+    // expanded (widget state survives IndexedStack) when the user returns later.
+    if (oldWidget.isActive && !widget.isActive && _specialtiesExpanded) {
+      setState(() => _specialtiesExpanded = false);
+    }
   }
 
   @override
@@ -61,6 +99,13 @@ class _ProfileViewState extends State<ProfileView> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => EditProfilePage(viewModel: _viewModel, profile: profile)),
     );
+  }
+
+  void _scrollToCertifications() {
+    final ctx = _certificationsKey.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    }
   }
 
   @override
@@ -95,8 +140,13 @@ class _ProfileViewState extends State<ProfileView> {
 
                 return _SignedInBody(
                   profile: profile,
+                  viewModel: _viewModel,
+                  certificationsKey: _certificationsKey,
                   onEdit: () => _openEditProfile(context, profile),
+                  onLevelStatTap: _scrollToCertifications,
                   onDiveOut: widget.authRepository.signOut,
+                  specialtiesExpanded: _specialtiesExpanded,
+                  onToggleSpecialtiesExpanded: (v) => setState(() => _specialtiesExpanded = v),
                 );
               },
             ),
@@ -172,11 +222,48 @@ class _GuestBody extends StatelessWidget {
 }
 
 class _SignedInBody extends StatelessWidget {
-  const _SignedInBody({required this.profile, required this.onEdit, required this.onDiveOut});
+  const _SignedInBody({
+    required this.profile,
+    required this.viewModel,
+    required this.certificationsKey,
+    required this.onEdit,
+    required this.onLevelStatTap,
+    required this.onDiveOut,
+    required this.specialtiesExpanded,
+    required this.onToggleSpecialtiesExpanded,
+  });
 
   final Profile profile;
+  final ProfileViewModel viewModel;
+  final GlobalKey certificationsKey;
   final VoidCallback onEdit;
+  final VoidCallback onLevelStatTap;
   final Future<void> Function() onDiveOut;
+  final bool specialtiesExpanded;
+  final ValueChanged<bool> onToggleSpecialtiesExpanded;
+
+  bool get _hasLevel => profile.certificationLevel?.isNotEmpty ?? false;
+
+  void _openUpdateLevelSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => UpdateLevelSheet(
+        viewModel: viewModel,
+        initialLevel: profile.certificationLevel,
+        initialAgency: profile.certificationAgency,
+        initialNumber: profile.certificationNumber,
+      ),
+    );
+  }
+
+  void _openAddSpecialtySheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => AddSpecialtySheet(viewModel: viewModel),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -248,8 +335,9 @@ class _SignedInBody extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: _StatCard(
-                      value: (profile.certificationLevel?.isNotEmpty ?? false) ? profile.certificationLevel! : '—',
+                      value: _hasLevel ? profile.certificationLevel! : 'Add certificate',
                       label: 'Level',
+                      onTap: _hasLevel ? null : onLevelStatTap,
                     ),
                   ),
                 ],
@@ -273,6 +361,54 @@ class _SignedInBody extends StatelessWidget {
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined, size: 18),
                 label: const Text('Edit profile'),
+              ),
+              const SizedBox(height: 24),
+              DashedDivider(key: certificationsKey),
+              const SizedBox(height: 16),
+              Text('Certifications', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 16),
+              _SubHeader(
+                title: 'Level',
+                trailing: _hasLevel
+                    ? TextButton(onPressed: () => _openUpdateLevelSheet(context), child: const Text('Update'))
+                    : null,
+              ),
+              _hasLevel
+                  ? LevelCard(
+                      level: profile.certificationLevel!,
+                      agency: profile.certificationAgency,
+                      number: profile.certificationNumber,
+                      verified: profile.certificationVerified,
+                    )
+                  : AddLevelCard(onTap: () => _openUpdateLevelSheet(context)),
+              const SizedBox(height: 20),
+              _SubHeader(
+                title: 'Specialties',
+                trailing: viewModel.specialties.isNotEmpty
+                    ? IconButton(
+                        onPressed: () => _openAddSpecialtySheet(context),
+                        icon: const Icon(Icons.add_circle_outline),
+                        visualDensity: VisualDensity.compact,
+                      )
+                    : null,
+              ),
+              SpecialtiesSection(
+                specialties: viewModel.specialties,
+                expanded: specialtiesExpanded,
+                onToggle: onToggleSpecialtiesExpanded,
+                onAdd: () => _openAddSpecialtySheet(context),
+                onRemove: viewModel.removeSpecialty,
+              ),
+              const SizedBox(height: 24),
+              const DashedDivider(),
+              const SizedBox(height: 16),
+              Text('Gear', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 16),
+              GearSummaryCard(
+                gear: viewModel.gear,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => GearLockerPage(viewModel: viewModel)),
+                ),
               ),
             ],
           ),
@@ -300,10 +436,10 @@ class _SettingsDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: const [
+    return const Column(
+      children: [
         SizedBox(height: 16),
-        Divider(height: 1, thickness: 6),
+        DashedDivider(),
         SizedBox(height: 8),
       ],
     );
@@ -348,25 +484,61 @@ class _DiveOutRow extends StatelessWidget {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.value, required this.label});
+  const _StatCard({required this.value, required this.label, this.onTap});
 
   final String value;
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: onTap != null
+                  ? theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.w600)
+                  : theme.textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 2),
+            Text(label, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          ],
+        ),
       ),
-      child: Column(
+    );
+  }
+}
+
+/// Sub-section label inside Certifications (Level/Specialties) — an optional trailing
+/// action ("Update" text button or "+" icon), same idea as the compact quick-action
+/// pattern used in Explore's header.
+class _SubHeader extends StatelessWidget {
+  const _SubHeader({required this.title, this.trailing});
+
+  final String title;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(value, style: theme.textTheme.titleLarge),
-          const SizedBox(height: 2),
-          Text(label, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          Text(title, style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          if (trailing != null) trailing!,
         ],
       ),
     );

@@ -6,7 +6,9 @@ import (
 	"net/http"
 
 	"divebubble_be/internal/auth"
+	"divebubble_be/internal/certification"
 	"divebubble_be/internal/config"
+	"divebubble_be/internal/gear"
 	"divebubble_be/internal/message"
 	"divebubble_be/internal/profile"
 	"divebubble_be/internal/realtime"
@@ -20,6 +22,8 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	messageSvc := message.NewService(message.NewRepository(db))
 	transportSvc := transport.NewService(transport.NewRepository(db))
 	profileSvc := profile.NewService(profile.NewRepository(db))
+	certificationSvc := certification.NewService(certification.NewRepository(db))
+	gearSvc := gear.NewService(gear.NewRepository(db))
 	publisher := realtime.NewPublisher(cfg.CentrifugoURL, cfg.CentrifugoAPIKey)
 	realtimeTokenIssuer := realtime.NewTokenIssuer(cfg.CentrifugoTokenSecret)
 
@@ -38,6 +42,8 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	registerRealtimeRoutes(mux, realtimeTokenIssuer, authIssuer)
 	registerAuthRoutes(mux, cfg, identityRepo, sessionRepo, authIssuer)
 	registerProfileRoutes(mux, profileSvc, authIssuer)
+	registerCertificationRoutes(mux, certificationSvc, authIssuer)
+	registerGearRoutes(mux, gearSvc, authIssuer)
 	return mux
 }
 

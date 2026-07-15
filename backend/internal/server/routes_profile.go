@@ -19,28 +19,36 @@ func registerProfileRoutes(mux *http.ServeMux, svc *profile.Service, authIssuer 
 }
 
 type profileResponse struct {
-	ID                 uuid.UUID `json:"id"`
-	DisplayName        *string   `json:"displayName,omitempty"`
-	AvatarURL          *string   `json:"avatarUrl,omitempty"`
-	Location           *string   `json:"location,omitempty"`
-	Bio                *string   `json:"bio,omitempty"`
-	DiveCount          int       `json:"diveCount"`
-	CertificationLevel *string   `json:"certificationLevel,omitempty"`
-	Languages          string    `json:"languages"`
-	MemberSince        time.Time `json:"memberSince"`
+	ID                    uuid.UUID `json:"id"`
+	DisplayName           *string   `json:"displayName,omitempty"`
+	AvatarURL             *string   `json:"avatarUrl,omitempty"`
+	Location              *string   `json:"location,omitempty"`
+	Bio                   *string   `json:"bio,omitempty"`
+	DiveCount             int       `json:"diveCount"`
+	CertificationLevel    *string   `json:"certificationLevel,omitempty"`
+	CertificationAgency   *string   `json:"certificationAgency,omitempty"`
+	CertificationNumber   *string   `json:"certificationNumber,omitempty"`
+	CertificationPhotoURL *string   `json:"certificationPhotoUrl,omitempty"`
+	CertificationVerified bool      `json:"certificationVerified"`
+	Languages             string    `json:"languages"`
+	MemberSince           time.Time `json:"memberSince"`
 }
 
 func toProfileResponse(p profile.Profile) profileResponse {
 	return profileResponse{
-		ID:                 p.UserID,
-		DisplayName:        nullStringPtr(p.DisplayName),
-		AvatarURL:          nullStringPtr(p.AvatarURL),
-		Location:           nullStringPtr(p.Location),
-		Bio:                nullStringPtr(p.Bio),
-		DiveCount:          p.DiveCount,
-		CertificationLevel: nullStringPtr(p.CertificationLevel),
-		Languages:          p.Languages,
-		MemberSince:        p.MemberSince,
+		ID:                    p.UserID,
+		DisplayName:           nullStringPtr(p.DisplayName),
+		AvatarURL:             nullStringPtr(p.AvatarURL),
+		Location:              nullStringPtr(p.Location),
+		Bio:                   nullStringPtr(p.Bio),
+		DiveCount:             p.DiveCount,
+		CertificationLevel:    nullStringPtr(p.CertificationLevel),
+		CertificationAgency:   nullStringPtr(p.CertificationAgency),
+		CertificationNumber:   nullStringPtr(p.CertificationNumber),
+		CertificationPhotoURL: nullStringPtr(p.CertificationPhotoURL),
+		CertificationVerified: p.CertificationVerified,
+		Languages:             p.Languages,
+		MemberSince:           p.MemberSince,
 	}
 }
 
@@ -56,13 +64,17 @@ func handleGetProfile(svc *profile.Service) func(http.ResponseWriter, *http.Requ
 }
 
 type updateProfileRequest struct {
-	DisplayName        *string `json:"displayName"`
-	AvatarURL          *string `json:"avatarUrl"`
-	Location           *string `json:"location"`
-	Bio                *string `json:"bio"`
-	DiveCount          *int    `json:"diveCount"`
-	CertificationLevel *string `json:"certificationLevel"`
-	Languages          *string `json:"languages"`
+	DisplayName           *string `json:"displayName"`
+	AvatarURL             *string `json:"avatarUrl"`
+	Location              *string `json:"location"`
+	Bio                   *string `json:"bio"`
+	DiveCount             *int    `json:"diveCount"`
+	CertificationLevel    *string `json:"certificationLevel"`
+	CertificationAgency   *string `json:"certificationAgency"`
+	CertificationNumber   *string `json:"certificationNumber"`
+	CertificationPhotoURL *string `json:"certificationPhotoUrl"`
+	CertificationVerified *bool   `json:"certificationVerified"`
+	Languages             *string `json:"languages"`
 }
 
 func handleUpdateProfile(svc *profile.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -92,13 +104,17 @@ func handleUpdateProfile(svc *profile.Service) func(http.ResponseWriter, *http.R
 		}
 
 		p, err := svc.Update(r.Context(), userID, profile.UpdateParams{
-			DisplayName:        req.DisplayName,
-			AvatarURL:          req.AvatarURL,
-			Location:           req.Location,
-			Bio:                req.Bio,
-			DiveCount:          req.DiveCount,
-			CertificationLevel: req.CertificationLevel,
-			Languages:          req.Languages,
+			DisplayName:           req.DisplayName,
+			AvatarURL:             req.AvatarURL,
+			Location:              req.Location,
+			Bio:                   req.Bio,
+			DiveCount:             req.DiveCount,
+			CertificationLevel:    req.CertificationLevel,
+			CertificationAgency:   req.CertificationAgency,
+			CertificationNumber:   req.CertificationNumber,
+			CertificationPhotoURL: req.CertificationPhotoURL,
+			CertificationVerified: req.CertificationVerified,
+			Languages:             req.Languages,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not update profile")
