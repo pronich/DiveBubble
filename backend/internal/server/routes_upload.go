@@ -7,6 +7,7 @@ import (
 
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/certification"
+	"divebubble_be/internal/divecenter"
 	"divebubble_be/internal/profile"
 	"divebubble_be/internal/trip"
 	"divebubble_be/internal/upload"
@@ -20,12 +21,14 @@ func registerUploadRoutes(
 	profileSvc *profile.Service,
 	tripSvc *trip.Service,
 	certificationSvc *certification.Service,
+	diveCenterSvc *divecenter.Service,
 	authIssuer *auth.TokenIssuer,
 ) {
 	mux.HandleFunc("POST /me/avatar", withAuth(authIssuer, handleUploadAvatar(uploadSvc, profileSvc)))
 	mux.HandleFunc("POST /me/certification-photo", withAuth(authIssuer, handleUploadCertificationPhoto(uploadSvc, profileSvc)))
 	mux.HandleFunc("POST /me/specialties/{id}/photo", withAuth(authIssuer, handleUploadSpecialtyPhoto(uploadSvc, certificationSvc)))
 	mux.HandleFunc("POST /trips/{id}/photo", withAuth(authIssuer, handleUploadTripPhoto(uploadSvc, tripSvc)))
+	mux.HandleFunc("POST /dive-centers/{id}/logo", withAuth(authIssuer, handleUploadDiveCenterLogo(uploadSvc, diveCenterSvc)))
 }
 
 // parseUploadFile expects a single multipart field named "file". The size cap here is
@@ -128,6 +131,39 @@ func handleUploadSpecialtyPhoto(uploadSvc *upload.Service, certificationSvc *cer
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"photoUrl": url})
+	}
+}
+
+func handleUploadDiveCenterLogo(uploadSvc *upload.Service, diveCenterSvc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			return
+		}
+
+		file, header, err := parseUploadFile(r)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			return
+		}
+		defer file.Close()
+
+		url, err := uploadSvc.Save("dive-centers", file, header)
+		if err != nil {
+			writeUploadError(w, err)
+			return
+		}
+
+		if err := diveCenterSvc.SetLogoURL(r.Context(), id, userID, url); err != nil {
+			if errors.Is(err, divecenter.ErrOnlyOwner) {
+				writeError(w, http.StatusForbidden, "only an owner can edit this dive center")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not update dive center logo")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"logoUrl": url})
 	}
 }
 

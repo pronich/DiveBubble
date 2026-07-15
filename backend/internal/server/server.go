@@ -48,7 +48,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	registerProfileRoutes(mux, profileSvc, authIssuer)
 	registerCertificationRoutes(mux, certificationSvc, authIssuer)
 	registerGearRoutes(mux, gearSvc, authIssuer)
-	registerUploadRoutes(mux, uploadSvc, profileSvc, tripSvc, certificationSvc, authIssuer)
+	registerUploadRoutes(mux, uploadSvc, profileSvc, tripSvc, certificationSvc, diveCenterSvc, authIssuer)
 	registerDiveCenterRoutes(mux, diveCenterSvc, identityRepo, profileSvc, authIssuer)
 	// Uploaded images are served back unauthenticated, same as any other image URL
 	// referenced from a profile/trip card — dev-only local disk today, swappable for

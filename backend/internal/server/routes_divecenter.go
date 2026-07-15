@@ -32,14 +32,34 @@ func registerDiveCenterRoutes(
 }
 
 type diveCenterResponse struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"createdAt"`
-	Role      string    `json:"role,omitempty"`
+	ID           uuid.UUID `json:"id"`
+	Name         string    `json:"name"`
+	Location     *string   `json:"location,omitempty"`
+	Description  *string   `json:"description,omitempty"`
+	LogoURL      *string   `json:"logoUrl,omitempty"`
+	Agency       *string   `json:"agency,omitempty"`
+	AgencyDetail *string   `json:"agencyDetail,omitempty"`
+	Languages    string    `json:"languages"`
+	Website      *string   `json:"website,omitempty"`
+	Phone        *string   `json:"phone,omitempty"`
+	CreatedAt    time.Time `json:"createdAt"`
+	Role         string    `json:"role,omitempty"`
 }
 
 func toDiveCenterResponse(dc divecenter.DiveCenter) diveCenterResponse {
-	return diveCenterResponse{ID: dc.ID, Name: dc.Name, CreatedAt: dc.CreatedAt}
+	return diveCenterResponse{
+		ID:           dc.ID,
+		Name:         dc.Name,
+		Location:     nullStringPtr(dc.Location),
+		Description:  nullStringPtr(dc.Description),
+		LogoURL:      nullStringPtr(dc.LogoURL),
+		Agency:       nullStringPtr(dc.Agency),
+		AgencyDetail: nullStringPtr(dc.AgencyDetail),
+		Languages:    dc.Languages,
+		Website:      nullStringPtr(dc.Website),
+		Phone:        nullStringPtr(dc.Phone),
+		CreatedAt:    dc.CreatedAt,
+	}
 }
 
 type memberResponse struct {
@@ -53,7 +73,15 @@ func toMemberResponse(m divecenter.Member) memberResponse {
 }
 
 type createDiveCenterRequest struct {
-	Name string `json:"name"`
+	Name         string  `json:"name"`
+	Location     *string `json:"location"`
+	Description  *string `json:"description"`
+	LogoURL      *string `json:"logoUrl"`
+	Agency       *string `json:"agency"`
+	AgencyDetail *string `json:"agencyDetail"`
+	Languages    *string `json:"languages"`
+	Website      *string `json:"website"`
+	Phone        *string `json:"phone"`
 }
 
 func handleCreateDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -65,7 +93,17 @@ func handleCreateDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *
 			return
 		}
 
-		dc, err := svc.Create(r.Context(), req.Name, userID)
+		dc, err := svc.Create(r.Context(), divecenter.CreateParams{
+			Name:         req.Name,
+			Location:     req.Location,
+			Description:  req.Description,
+			LogoURL:      req.LogoURL,
+			Agency:       req.Agency,
+			AgencyDetail: req.AgencyDetail,
+			Languages:    req.Languages,
+			Website:      req.Website,
+			Phone:        req.Phone,
+		}, userID)
 		if err != nil {
 			if errors.Is(err, divecenter.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, "name is required")
@@ -233,7 +271,7 @@ func handleAddDiveCenterMember(svc *divecenter.Service) func(http.ResponseWriter
 
 		m, err := svc.AddMember(r.Context(), id, userID, req.UserID, req.Role)
 		if err != nil {
-			if errors.Is(err, divecenter.ErrOnlyOwnerCanManageMembers) {
+			if errors.Is(err, divecenter.ErrOnlyOwner) {
 				writeError(w, http.StatusForbidden, "only an owner can add members")
 				return
 			}
@@ -258,7 +296,7 @@ func handleRemoveDiveCenterMember(svc *divecenter.Service) func(http.ResponseWri
 		}
 
 		if err := svc.RemoveMember(r.Context(), id, userID, targetID); err != nil {
-			if errors.Is(err, divecenter.ErrOnlyOwnerCanManageMembers) {
+			if errors.Is(err, divecenter.ErrOnlyOwner) {
 				writeError(w, http.StatusForbidden, "only an owner can remove members")
 				return
 			}

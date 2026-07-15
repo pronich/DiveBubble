@@ -4,11 +4,36 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 )
 
 var ErrNotFound = errors.New("dive center not found")
+
+var diveCenterColumnNames = []string{
+	"id", "name", "location", "description", "logo_url",
+	"agency", "agency_detail", "languages", "website", "phone", "created_at",
+}
+
+var diveCenterColumns = strings.Join(diveCenterColumnNames, ", ")
+
+func diveCenterColumnsPrefixed(alias string) string {
+	prefixed := make([]string, len(diveCenterColumnNames))
+	for i, c := range diveCenterColumnNames {
+		prefixed[i] = alias + "." + c
+	}
+	return strings.Join(prefixed, ", ")
+}
+
+func scanDiveCenter(row interface{ Scan(...any) error }) (DiveCenter, error) {
+	var dc DiveCenter
+	err := row.Scan(
+		&dc.ID, &dc.Name, &dc.Location, &dc.Description, &dc.LogoURL,
+		&dc.Agency, &dc.AgencyDetail, &dc.Languages, &dc.Website, &dc.Phone, &dc.CreatedAt,
+	)
+	return dc, err
+}
 
 type Repository struct {
 	DB *sql.DB
@@ -18,20 +43,36 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{DB: db}
 }
 
+// CreateParams — optional fields are nil pointers when not provided, same convention as
+// trip.CreateParams.
+type CreateParams struct {
+	Name         string
+	Location     *string
+	Description  *string
+	LogoURL      *string
+	Agency       *string
+	AgencyDetail *string
+	Languages    *string
+	Website      *string
+	Phone        *string
+}
+
 // Create and the owner's membership row happen together — a dive center with zero owners
 // would be immediately unmanageable, so there's never a moment where one exists without the other.
-func (r *Repository) Create(ctx context.Context, name string, ownerUserID uuid.UUID) (DiveCenter, error) {
+func (r *Repository) Create(ctx context.Context, p CreateParams, ownerUserID uuid.UUID) (DiveCenter, error) {
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return DiveCenter{}, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	var dc DiveCenter
-	if err := tx.QueryRowContext(ctx, `
-		INSERT INTO dive_centers (name) VALUES ($1)
-		RETURNING id, name, created_at
-	`, name).Scan(&dc.ID, &dc.Name, &dc.CreatedAt); err != nil {
+	dc, err := scanDiveCenter(tx.QueryRowContext(ctx, `
+		INSERT INTO dive_centers (name, location, description, logo_url, agency, agency_detail, languages, website, phone)
+		VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, ''), $8, $9)
+		RETURNING `+diveCenterColumns,
+		p.Name, p.Location, p.Description, p.LogoURL, p.Agency, p.AgencyDetail, p.Languages, p.Website, p.Phone,
+	))
+	if err != nil {
 		return DiveCenter{}, err
 	}
 
@@ -48,10 +89,9 @@ func (r *Repository) Create(ctx context.Context, name string, ownerUserID uuid.U
 }
 
 func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (DiveCenter, error) {
-	var dc DiveCenter
-	err := r.DB.QueryRowContext(ctx, `
-		SELECT id, name, created_at FROM dive_centers WHERE id = $1
-	`, id).Scan(&dc.ID, &dc.Name, &dc.CreatedAt)
+	dc, err := scanDiveCenter(r.DB.QueryRowContext(ctx, `
+		SELECT `+diveCenterColumns+` FROM dive_centers WHERE id = $1
+	`, id))
 	if errors.Is(err, sql.ErrNoRows) {
 		return DiveCenter{}, ErrNotFound
 	}
@@ -60,7 +100,7 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (DiveCenter, err
 
 func (r *Repository) ListByUser(ctx context.Context, userID uuid.UUID) ([]MembershipView, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-		SELECT dc.id, dc.name, dc.created_at, dcm.role
+		SELECT `+diveCenterColumnsPrefixed("dc")+`, dcm.role
 		FROM dive_center_members dcm
 		JOIN dive_centers dc ON dc.id = dcm.dive_center_id
 		WHERE dcm.user_id = $1
@@ -74,12 +114,22 @@ func (r *Repository) ListByUser(ctx context.Context, userID uuid.UUID) ([]Member
 	views := []MembershipView{}
 	for rows.Next() {
 		var v MembershipView
-		if err := rows.Scan(&v.DiveCenter.ID, &v.DiveCenter.Name, &v.DiveCenter.CreatedAt, &v.Role); err != nil {
+		dc := &v.DiveCenter
+		if err := rows.Scan(
+			&dc.ID, &dc.Name, &dc.Location, &dc.Description, &dc.LogoURL,
+			&dc.Agency, &dc.AgencyDetail, &dc.Languages, &dc.Website, &dc.Phone, &dc.CreatedAt,
+			&v.Role,
+		); err != nil {
 			return nil, err
 		}
 		views = append(views, v)
 	}
 	return views, rows.Err()
+}
+
+func (r *Repository) SetLogoURL(ctx context.Context, id uuid.UUID, url string) error {
+	_, err := r.DB.ExecContext(ctx, `UPDATE dive_centers SET logo_url = $1 WHERE id = $2`, url, id)
+	return err
 }
 
 func (r *Repository) IsMember(ctx context.Context, diveCenterID, userID uuid.UUID) (bool, error) {
