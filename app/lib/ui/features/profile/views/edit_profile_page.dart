@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/services/location_service.dart';
 import '../../../../domain/entities/profile.dart';
 import '../view_models/profile_view_model.dart';
 import 'language_picker_page.dart';
@@ -23,6 +24,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ? []
       : widget.profile.languages.split(',').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
 
+  final _locationService = LocationService();
+  bool _locating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Best-effort auto-fill on first open (covers the brand-new-account flow, and anyone
+    // who never set a location) — never overwrites a value the diver already typed.
+    if (_locationController.text.isEmpty) {
+      _detectLocation();
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -30,6 +44,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _bioController.dispose();
     _diveCountController.dispose();
     super.dispose();
+  }
+
+  Future<void> _detectLocation() async {
+    setState(() => _locating = true);
+    final result = await _locationService.currentCityCountry();
+    if (mounted && result != null) {
+      setState(() => _locationController.text = result);
+    }
+    if (mounted) setState(() => _locating = false);
   }
 
   Future<void> _pickLanguages() async {
@@ -72,7 +95,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
               const SizedBox(height: 12),
               TextField(
                 controller: _locationController,
-                decoration: const InputDecoration(labelText: 'Location'),
+                decoration: InputDecoration(
+                  labelText: 'Location',
+                  suffixIcon: _locating
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.my_location, size: 20),
+                          tooltip: 'Use current location',
+                          onPressed: _detectLocation,
+                        ),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(

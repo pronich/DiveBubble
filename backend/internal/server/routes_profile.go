@@ -16,6 +16,7 @@ import (
 func registerProfileRoutes(mux *http.ServeMux, svc *profile.Service, authIssuer *auth.TokenIssuer) {
 	mux.HandleFunc("GET /me", withAuth(authIssuer, handleGetProfile(svc)))
 	mux.HandleFunc("PATCH /me", withAuth(authIssuer, handleUpdateProfile(svc)))
+	mux.HandleFunc("GET /users/{id}", withAuth(authIssuer, handleGetPublicProfile(svc)))
 }
 
 type profileResponse struct {
@@ -60,6 +61,52 @@ func handleGetProfile(svc *profile.Service) func(http.ResponseWriter, *http.Requ
 			return
 		}
 		writeJSON(w, http.StatusOK, toProfileResponse(p))
+	}
+}
+
+// publicProfileResponse is a trimmed projection of profileResponse — no certification
+// agency/number/photo/verified (private, only the diver themselves sees those) and no
+// specialties/gear at all. Signed in required (see registerProfileRoutes) — viewing another
+// diver's profile is an in-app interaction (organizer/participant taps), not open browsing.
+type publicProfileResponse struct {
+	ID                 uuid.UUID `json:"id"`
+	DisplayName        *string   `json:"displayName,omitempty"`
+	AvatarURL          *string   `json:"avatarUrl,omitempty"`
+	Location           *string   `json:"location,omitempty"`
+	Bio                *string   `json:"bio,omitempty"`
+	DiveCount          int       `json:"diveCount"`
+	CertificationLevel *string   `json:"certificationLevel,omitempty"`
+	Languages          string    `json:"languages"`
+	MemberSince        time.Time `json:"memberSince"`
+}
+
+func toPublicProfileResponse(p profile.Profile) publicProfileResponse {
+	return publicProfileResponse{
+		ID:                 p.UserID,
+		DisplayName:        nullStringPtr(p.DisplayName),
+		AvatarURL:          nullStringPtr(p.AvatarURL),
+		Location:           nullStringPtr(p.Location),
+		Bio:                nullStringPtr(p.Bio),
+		DiveCount:          p.DiveCount,
+		CertificationLevel: nullStringPtr(p.CertificationLevel),
+		Languages:          p.Languages,
+		MemberSince:        p.MemberSince,
+	}
+}
+
+func handleGetPublicProfile(svc *profile.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, _ uuid.UUID) {
+		targetID, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid user id")
+			return
+		}
+		p, err := svc.Get(r.Context(), targetID)
+		if err != nil {
+			writeError(w, http.StatusNotFound, "user not found")
+			return
+		}
+		writeJSON(w, http.StatusOK, toPublicProfileResponse(p))
 	}
 }
 
