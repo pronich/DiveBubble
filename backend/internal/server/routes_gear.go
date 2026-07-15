@@ -16,6 +16,7 @@ import (
 func registerGearRoutes(mux *http.ServeMux, svc *gear.Service, authIssuer *auth.TokenIssuer) {
 	mux.HandleFunc("GET /me/gear", withAuth(authIssuer, handleListGear(svc)))
 	mux.HandleFunc("PUT /me/gear/{itemKey}", withAuth(authIssuer, handleSetGearStatus(svc)))
+	mux.HandleFunc("DELETE /me/gear/{itemKey}", withAuth(authIssuer, handleRemoveGear(svc)))
 }
 
 type gearOwnershipResponse struct {
@@ -70,5 +71,20 @@ func handleSetGearStatus(svc *gear.Service) func(http.ResponseWriter, *http.Requ
 			return
 		}
 		writeJSON(w, http.StatusOK, toGearOwnershipResponse(o))
+	}
+}
+
+func handleRemoveGear(svc *gear.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		found, err := svc.Remove(r.Context(), userID, r.PathValue("itemKey"))
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not remove gear item")
+			return
+		}
+		if !found {
+			writeError(w, http.StatusNotFound, "gear item not found")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

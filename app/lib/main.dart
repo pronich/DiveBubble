@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/chat_repository.dart';
+import 'data/repositories/gear_repository.dart';
 import 'data/repositories/profile_repository.dart';
+import 'data/repositories/specialty_repository.dart';
 import 'data/repositories/transport_repository.dart';
 import 'data/repositories/trip_repository.dart';
 import 'data/services/auth_api_service.dart';
 import 'data/services/chat_api_service.dart';
+import 'data/services/gear_api_service.dart';
 import 'data/services/profile_api_service.dart';
 import 'data/services/realtime_service.dart';
+import 'data/services/specialty_api_service.dart';
 import 'data/services/token_storage_service.dart';
 import 'data/services/transport_api_service.dart';
 import 'data/services/trip_api_service.dart';
@@ -56,6 +60,12 @@ class MyApp extends StatelessWidget {
     final profileRepository = ProfileRepository(
       service: ProfileApiService(baseUrl: _apiBaseUrl, getAccessToken: authRepository.getValidAccessToken),
     );
+    final specialtyRepository = SpecialtyRepository(
+      service: SpecialtyApiService(baseUrl: _apiBaseUrl, getAccessToken: authRepository.getValidAccessToken),
+    );
+    final gearRepository = GearRepository(
+      service: GearApiService(baseUrl: _apiBaseUrl, getAccessToken: authRepository.getValidAccessToken),
+    );
 
     return MaterialApp(
       title: 'DiveBubble',
@@ -70,6 +80,8 @@ class MyApp extends StatelessWidget {
           realtimeService: realtimeService,
           authRepository: authRepository,
           profileRepository: profileRepository,
+          specialtyRepository: specialtyRepository,
+          gearRepository: gearRepository,
           currentUserId: currentUserId,
         ),
       ),

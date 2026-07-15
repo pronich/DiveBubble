@@ -5,6 +5,7 @@ const List<String> kCertificationLevels = [
   'Open Water',
   'Advanced Open Water',
   'Rescue Diver',
+  'Master Scuba Diver',
   'Divemaster',
   'Instructor',
 ];

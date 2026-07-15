@@ -13,6 +13,10 @@ abstract class ProfileApiModel with _$ProfileApiModel {
     String? bio,
     @Default(0) int diveCount,
     String? certificationLevel,
+    String? certificationAgency,
+    String? certificationNumber,
+    String? certificationPhotoUrl,
+    @Default(false) bool certificationVerified,
     @Default('') String languages,
     required DateTime memberSince,
   }) = _ProfileApiModel;

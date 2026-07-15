@@ -35,6 +35,8 @@ class ProfileApiService {
     String? bio,
     int? diveCount,
     String? certificationLevel,
+    String? certificationAgency,
+    String? certificationNumber,
     String? languages,
   }) async {
     final body = <String, dynamic>{
@@ -44,6 +46,8 @@ class ProfileApiService {
       if (bio != null) 'bio': bio,
       if (diveCount != null) 'diveCount': diveCount,
       if (certificationLevel != null) 'certificationLevel': certificationLevel,
+      if (certificationAgency != null) 'certificationAgency': certificationAgency,
+      if (certificationNumber != null) 'certificationNumber': certificationNumber,
       if (languages != null) 'languages': languages,
     };
     final res = await _client.patch(

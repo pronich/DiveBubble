@@ -47,3 +47,15 @@ func (r *Repository) Upsert(ctx context.Context, userID uuid.UUID, itemKey, stat
 	`, userID, itemKey, status).Scan(&o.UserID, &o.ItemKey, &o.Status, &o.UpdatedAt)
 	return o, err
 }
+
+// Delete returns false (no error) if no row matched — either it didn't exist or belonged to another user.
+func (r *Repository) Delete(ctx context.Context, userID uuid.UUID, itemKey string) (bool, error) {
+	res, err := r.DB.ExecContext(ctx, `
+		DELETE FROM gear_ownership WHERE user_id = $1 AND item_key = $2
+	`, userID, itemKey)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
+}

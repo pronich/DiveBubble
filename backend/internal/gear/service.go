@@ -30,3 +30,11 @@ func (s *Service) SetStatus(ctx context.Context, userID uuid.UUID, itemKey, stat
 	}
 	return s.Repo.Upsert(ctx, userID, itemKey, status)
 }
+
+func (s *Service) Remove(ctx context.Context, userID uuid.UUID, itemKey string) (bool, error) {
+	itemKey = strings.TrimSpace(itemKey)
+	if itemKey == "" {
+		return false, ErrInvalidArgument
+	}
+	return s.Repo.Delete(ctx, userID, itemKey)
+}

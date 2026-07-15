@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/profile.dart';
 import '../view_models/profile_view_model.dart';
 import 'language_picker_page.dart';
@@ -20,11 +19,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late final _locationController = TextEditingController(text: widget.profile.location);
   late final _bioController = TextEditingController(text: widget.profile.bio);
   late final _diveCountController = TextEditingController(text: widget.profile.diveCount.toString());
-  // Guards against a stored value that predates the canonical list (e.g. old free-text data) —
-  // DropdownButtonFormField asserts if initialValue isn't exactly one of its items.
-  late String? _certificationLevel = kCertificationLevels.contains(widget.profile.certificationLevel)
-      ? widget.profile.certificationLevel
-      : null;
   late List<String> _languages = widget.profile.languages.isEmpty
       ? []
       : widget.profile.languages.split(',').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
@@ -51,7 +45,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       location: _locationController.text.trim(),
       bio: _bioController.text.trim(),
       diveCount: int.tryParse(_diveCountController.text.trim()) ?? 0,
-      certificationLevel: _certificationLevel ?? '',
       languages: _languages.join(', '),
     );
     if (success && mounted) Navigator.of(context).pop();
@@ -92,18 +85,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 controller: _diveCountController,
                 decoration: const InputDecoration(labelText: 'Dives'),
                 keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String?>(
-                initialValue: _certificationLevel,
-                decoration: const InputDecoration(labelText: 'Certification / level'),
-                style: theme.textTheme.bodyLarge,
-                hint: const Text('Not set'),
-                items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('Not set')),
-                  ...kCertificationLevels.map((level) => DropdownMenuItem<String?>(value: level, child: Text(level))),
-                ],
-                onChanged: (value) => setState(() => _certificationLevel = value),
               ),
               const SizedBox(height: 12),
               InkWell(

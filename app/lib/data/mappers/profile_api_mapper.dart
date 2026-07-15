@@ -10,6 +10,10 @@ extension ProfileApiMapper on ProfileApiModel {
         bio: bio,
         diveCount: diveCount,
         certificationLevel: certificationLevel,
+        certificationAgency: certificationAgency,
+        certificationNumber: certificationNumber,
+        certificationPhotoUrl: certificationPhotoUrl,
+        certificationVerified: certificationVerified,
         languages: languages,
         memberSince: memberSince,
       );
