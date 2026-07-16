@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
 
-class DashboardViewModel extends ChangeNotifier {
-  DashboardViewModel({required TripRepository repository, required this.diveCenterId}) : _repository = repository;
+class TripsViewModel extends ChangeNotifier {
+  TripsViewModel({required TripRepository repository, required this.diveCenterId}) : _repository = repository;
 
   final TripRepository _repository;
   final String diveCenterId;

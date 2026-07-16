@@ -148,20 +148,34 @@ func (r *Repository) IsOwner(ctx context.Context, diveCenterID, userID uuid.UUID
 	return exists, err
 }
 
-func (r *Repository) ListMembers(ctx context.Context, diveCenterID uuid.UUID) ([]Member, error) {
+// ListMembers joins users (display_name/avatar_url/certification_level) and, since a
+// member can only ever have been added via the exact-email search in the first place (see
+// FindUserIDByEmail), auth_identities (provider_email) — an owner viewing their own
+// roster already knows every teammate's email, so surfacing it back here isn't a new
+// disclosure. LEFT JOIN on auth_identities: a user could in principle have none yet
+// (identity rows aren't created until first login), so a member row shouldn't vanish for it.
+func (r *Repository) ListMembers(ctx context.Context, diveCenterID uuid.UUID) ([]MemberView, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-		SELECT dive_center_id, user_id, role, joined_at FROM dive_center_members
-		WHERE dive_center_id = $1 ORDER BY joined_at ASC
+		SELECT dcm.dive_center_id, dcm.user_id, dcm.role, dcm.joined_at,
+			u.display_name, u.avatar_url, u.certification_level, ai.provider_email
+		FROM dive_center_members dcm
+		JOIN users u ON u.id = dcm.user_id
+		LEFT JOIN auth_identities ai ON ai.user_id = dcm.user_id
+		WHERE dcm.dive_center_id = $1
+		ORDER BY dcm.joined_at ASC
 	`, diveCenterID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	members := []Member{}
+	members := []MemberView{}
 	for rows.Next() {
-		var m Member
-		if err := rows.Scan(&m.DiveCenterID, &m.UserID, &m.Role, &m.JoinedAt); err != nil {
+		var m MemberView
+		if err := rows.Scan(
+			&m.DiveCenterID, &m.UserID, &m.Role, &m.JoinedAt,
+			&m.DisplayName, &m.AvatarURL, &m.CertificationLevel, &m.Email,
+		); err != nil {
 			return nil, err
 		}
 		members = append(members, m)

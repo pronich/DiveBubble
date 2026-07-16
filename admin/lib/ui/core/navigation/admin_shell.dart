@@ -1,0 +1,242 @@
+import 'package:flutter/material.dart';
+
+import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/dive_center_repository.dart';
+import '../../../data/repositories/profile_repository.dart';
+import '../../../data/repositories/trip_repository.dart';
+import '../../../domain/entities/dive_center.dart';
+import '../../../domain/entities/my_profile.dart';
+import '../../features/company/views/company_page.dart';
+import '../../features/messages/views/messages_page.dart';
+import '../../features/trips/views/trips_page.dart';
+import '../../features/users/views/users_page.dart';
+
+/// The whole app's persistent frame once signed in: a fixed left sidebar (nav + account
+/// footer) with a swappable content area on the right — replaces the old
+/// one-screen-per-Scaffold navigation (see CLAUDE.md's admin/ scaffolding notes). Every
+/// section is body-only (no own Scaffold/AppBar), same "embedded, not pushed" pattern
+/// app/'s ChatView/TransportView use inside TripConversationPage.
+class AdminShell extends StatefulWidget {
+  const AdminShell({
+    super.key,
+    required this.diveCenter,
+    required this.diveCenterRepository,
+    required this.tripRepository,
+    required this.profileRepository,
+    required this.authRepository,
+    required this.onSignedOut,
+  });
+
+  final DiveCenter diveCenter;
+  final DiveCenterRepository diveCenterRepository;
+  final TripRepository tripRepository;
+  final ProfileRepository profileRepository;
+  final AuthRepository authRepository;
+  final VoidCallback onSignedOut;
+
+  @override
+  State<AdminShell> createState() => _AdminShellState();
+}
+
+class _AdminShellState extends State<AdminShell> {
+  int _selectedIndex = 0;
+  MyProfile? _profile;
+
+  // Built once each, not inline in build() — an IndexedStack still rebuilds its children on
+  // every parent rebuild if they're constructed inline, which would wipe each section's own
+  // state on every sidebar tap (same gotcha app/'s RootShell already hit once — see CLAUDE.md).
+  late final _pages = [
+    TripsPage(tripRepository: widget.tripRepository, diveCenterId: widget.diveCenter.id),
+    const MessagesPage(),
+    UsersPage(diveCenterRepository: widget.diveCenterRepository, diveCenterId: widget.diveCenter.id),
+    CompanyPage(diveCenter: widget.diveCenter, diveCenterRepository: widget.diveCenterRepository),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    widget.profileRepository.getMe().then((p) {
+      if (mounted) setState(() => _profile = p);
+    }).catchError((_) {
+      // Best-effort — the account footer just falls back to email-less initials if this fails.
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Row(
+        children: [
+          _Sidebar(
+            selectedIndex: _selectedIndex,
+            onSelect: (i) => setState(() => _selectedIndex = i),
+            diveCenter: widget.diveCenter,
+            profile: _profile,
+            onAccountTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Personal profile editing is coming soon')),
+              );
+            },
+            onSignOut: () async {
+              await widget.authRepository.signOut();
+              widget.onSignedOut();
+            },
+          ),
+          Expanded(child: IndexedStack(index: _selectedIndex, children: _pages)),
+        ],
+      ),
+    );
+  }
+}
+
+class _Sidebar extends StatelessWidget {
+  const _Sidebar({
+    required this.selectedIndex,
+    required this.onSelect,
+    required this.diveCenter,
+    required this.profile,
+    required this.onAccountTap,
+    required this.onSignOut,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+  final DiveCenter diveCenter;
+  final MyProfile? profile;
+  final VoidCallback onAccountTap;
+  final VoidCallback onSignOut;
+
+  static const _items = [
+    (icon: Icons.calendar_today_outlined, label: 'Trips'),
+    (icon: Icons.chat_bubble_outline, label: 'Messages'),
+    (icon: Icons.people_outline, label: 'Users'),
+    (icon: Icons.apartment_outlined, label: 'Company'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final name = profile?.displayName?.trim();
+    final displayName = (name == null || name.isEmpty) ? 'Account' : name;
+    final initials = displayName.trim().isEmpty
+        ? '?'
+        : displayName.trim().split(RegExp(r'\s+')).map((w) => w[0]).take(2).join().toUpperCase();
+
+    return Container(
+      width: 260,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(right: BorderSide(color: theme.colorScheme.outlineVariant)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.anchor, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('DiveBubble', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text(
+                      'FOR ORGANIZATIONS',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          for (final (i, item) in _items.indexed)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+              child: Material(
+                color: i == selectedIndex ? theme.colorScheme.primaryContainer : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => onSelect(i),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          item.icon,
+                          size: 20,
+                          color: i == selectedIndex ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          item.label,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: i == selectedIndex ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface,
+                            fontWeight: i == selectedIndex ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          const Spacer(),
+          Divider(height: 1, color: theme.colorScheme.outlineVariant),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onAccountTap,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: theme.colorScheme.primary,
+                      backgroundImage: profile?.avatarUrl != null ? NetworkImage(profile!.avatarUrl!) : null,
+                      child: profile?.avatarUrl == null
+                          ? Text(initials, style: const TextStyle(color: Colors.white, fontSize: 13))
+                          : null,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(displayName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                          Text(
+                            diveCenter.name,
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Sign out',
+                      icon: const Icon(Icons.logout, size: 18),
+                      onPressed: onSignOut,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

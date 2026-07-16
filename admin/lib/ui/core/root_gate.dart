@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/dive_center_repository.dart';
+import '../../data/repositories/profile_repository.dart';
 import '../../data/repositories/trip_repository.dart';
 import '../../domain/entities/dive_center.dart';
 import '../features/auth/views/login_page.dart';
-import '../features/dashboard/views/dashboard_page.dart';
 import '../features/onboarding/views/onboarding_page.dart';
+import 'navigation/admin_shell.dart';
 
 enum _GateState { loading, loggedOut, needsOnboarding, ready }
 
@@ -21,11 +22,13 @@ class RootGate extends StatefulWidget {
     required this.authRepository,
     required this.diveCenterRepository,
     required this.tripRepository,
+    required this.profileRepository,
   });
 
   final AuthRepository authRepository;
   final DiveCenterRepository diveCenterRepository;
   final TripRepository tripRepository;
+  final ProfileRepository profileRepository;
 
   @override
   State<RootGate> createState() => _RootGateState();
@@ -76,10 +79,11 @@ class _RootGateState extends State<RootGate> {
           }),
         );
       case _GateState.ready:
-        return DashboardPage(
+        return AdminShell(
           diveCenter: _diveCenters.first,
           diveCenterRepository: widget.diveCenterRepository,
           tripRepository: widget.tripRepository,
+          profileRepository: widget.profileRepository,
           authRepository: widget.authRepository,
           onSignedOut: _recheck,
         );

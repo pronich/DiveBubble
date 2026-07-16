@@ -58,7 +58,7 @@ func (s *Service) SetLogoURL(ctx context.Context, id, callerID uuid.UUID, url st
 }
 
 // ListMembers is member-gated (any role) — staff can see their own roster, not just owners.
-func (s *Service) ListMembers(ctx context.Context, diveCenterID, callerID uuid.UUID) ([]Member, error) {
+func (s *Service) ListMembers(ctx context.Context, diveCenterID, callerID uuid.UUID) ([]MemberView, error) {
 	isMember, err := s.Repo.IsMember(ctx, diveCenterID, callerID)
 	if err != nil {
 		return nil, err
