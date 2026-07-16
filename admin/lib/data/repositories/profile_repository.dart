@@ -7,4 +7,6 @@ class ProfileRepository {
   final ProfileApiService _service;
 
   Future<MyProfile> getMe() => _service.fetchMe();
+
+  Future<MyProfile> getById(String userId) => _service.fetchById(userId);
 }

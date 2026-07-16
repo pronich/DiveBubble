@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/dive_center_repository.dart';
+import '../../../data/repositories/message_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
 import '../../../data/repositories/trip_repository.dart';
 import '../../../domain/entities/dive_center.dart';
 import '../../../domain/entities/my_profile.dart';
+import '../../features/bubbles/views/bubbles_page.dart';
 import '../../features/company/views/company_page.dart';
-import '../../features/messages/views/messages_page.dart';
 import '../../features/trips/views/trips_page.dart';
 import '../../features/users/views/users_page.dart';
 
@@ -22,6 +23,7 @@ class AdminShell extends StatefulWidget {
     required this.diveCenter,
     required this.diveCenterRepository,
     required this.tripRepository,
+    required this.messageRepository,
     required this.profileRepository,
     required this.authRepository,
     required this.onSignedOut,
@@ -30,6 +32,7 @@ class AdminShell extends StatefulWidget {
   final DiveCenter diveCenter;
   final DiveCenterRepository diveCenterRepository;
   final TripRepository tripRepository;
+  final MessageRepository messageRepository;
   final ProfileRepository profileRepository;
   final AuthRepository authRepository;
   final VoidCallback onSignedOut;
@@ -47,7 +50,13 @@ class _AdminShellState extends State<AdminShell> {
   // state on every sidebar tap (same gotcha app/'s RootShell already hit once — see CLAUDE.md).
   late final _pages = [
     TripsPage(tripRepository: widget.tripRepository, diveCenterId: widget.diveCenter.id),
-    const MessagesPage(),
+    BubblesPage(
+      tripRepository: widget.tripRepository,
+      messageRepository: widget.messageRepository,
+      profileRepository: widget.profileRepository,
+      diveCenterId: widget.diveCenter.id,
+      getCurrentUserId: widget.authRepository.currentUserId,
+    ),
     UsersPage(diveCenterRepository: widget.diveCenterRepository, diveCenterId: widget.diveCenter.id),
     CompanyPage(diveCenter: widget.diveCenter, diveCenterRepository: widget.diveCenterRepository),
   ];
@@ -106,11 +115,13 @@ class _Sidebar extends StatelessWidget {
   final VoidCallback onAccountTap;
   final VoidCallback onSignOut;
 
+  // Bubbles' icon pair (bubble_chart_outlined/bubble_chart) matches app/'s own bottom-nav
+  // Bubbles tab exactly (root_shell.dart) — same brand concept, same glyph, on purpose.
   static const _items = [
-    (icon: Icons.calendar_today_outlined, label: 'Trips'),
-    (icon: Icons.chat_bubble_outline, label: 'Messages'),
-    (icon: Icons.people_outline, label: 'Users'),
-    (icon: Icons.apartment_outlined, label: 'Company'),
+    (icon: Icons.calendar_today_outlined, selectedIcon: Icons.calendar_today, label: 'Trips'),
+    (icon: Icons.bubble_chart_outlined, selectedIcon: Icons.bubble_chart, label: 'Bubbles'),
+    (icon: Icons.people_outline, selectedIcon: Icons.people, label: 'Users'),
+    (icon: Icons.apartment_outlined, selectedIcon: Icons.apartment, label: 'Company'),
   ];
 
   @override
@@ -174,7 +185,7 @@ class _Sidebar extends StatelessWidget {
                     child: Row(
                       children: [
                         Icon(
-                          item.icon,
+                          i == selectedIndex ? item.selectedIcon : item.icon,
                           size: 20,
                           color: i == selectedIndex ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurfaceVariant,
                         ),

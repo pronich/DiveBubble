@@ -81,4 +81,6 @@ class TripRepository {
     );
     return apiModel.toDomain();
   }
+
+  Future<void> markRead(String tripId) => _service.markRead(tripId);
 }
