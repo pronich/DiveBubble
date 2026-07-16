@@ -5,6 +5,7 @@ import '../../../../data/repositories/gear_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/specialty_repository.dart';
 import '../../../../data/services/location_service.dart';
+import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../core/widgets/dashed_divider.dart';
 import '../../../core/widgets/pick_image.dart';
@@ -330,7 +331,7 @@ class _SignedInBody extends StatelessWidget {
               ),
               _hasLevel
                   ? LevelCard(
-                      level: profile.certificationLevel!,
+                      level: certificationLevelAbbreviation(profile.certificationLevel),
                       agency: profile.certificationAgency,
                       number: profile.certificationNumber,
                       verified: profile.certificationVerified,

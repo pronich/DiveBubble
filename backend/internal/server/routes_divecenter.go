@@ -25,6 +25,7 @@ func registerDiveCenterRoutes(
 	mux.HandleFunc("POST /dive-centers", withAuth(authIssuer, handleCreateDiveCenter(svc)))
 	mux.HandleFunc("GET /dive-centers/mine", withAuth(authIssuer, handleListMyDiveCenters(svc)))
 	mux.HandleFunc("GET /dive-centers/{id}", withAuth(authIssuer, handleGetDiveCenter(svc)))
+	mux.HandleFunc("GET /dive-centers/{id}/membership", withAuth(authIssuer, handleGetDiveCenterMembership(svc)))
 	mux.HandleFunc("PATCH /dive-centers/{id}", withAuth(authIssuer, handleUpdateDiveCenter(svc)))
 	mux.HandleFunc("GET /dive-centers/{id}/members", withAuth(authIssuer, handleListDiveCenterMembers(svc)))
 	mux.HandleFunc("GET /dive-centers/{id}/members/search", withAuth(authIssuer, handleSearchDiveCenterMember(svc, identityRepo, profileSvc)))
@@ -173,6 +174,47 @@ func handleGetDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *htt
 			return
 		}
 		writeJSON(w, http.StatusOK, toDiveCenterResponse(dc))
+	}
+}
+
+type membershipResponse struct {
+	IsMember bool   `json:"isMember"`
+	Role     string `json:"role,omitempty"`
+}
+
+// handleGetDiveCenterMembership is the caller-scoped counterpart to the now-public
+// GET /dive-centers/{id}: since that endpoint stopped implying membership (see its own
+// comment), any client that needs to know "am I actually staff here" — e.g. app/'s Trip
+// Page deciding whether to show organizer-only actions to a dive-center employee who
+// didn't personally create the trip — needs an explicit check instead of inferring it.
+// Scoped to the caller only, not a member-lookup-by-id, so it can't be used to probe
+// anyone else's membership.
+func handleGetDiveCenterMembership(svc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			return
+		}
+		isMember, err := svc.IsMember(r.Context(), id, userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not check membership")
+			return
+		}
+		if !isMember {
+			writeJSON(w, http.StatusOK, membershipResponse{IsMember: false})
+			return
+		}
+		isOwner, err := svc.IsOwner(r.Context(), id, userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not check membership")
+			return
+		}
+		role := "staff"
+		if isOwner {
+			role = "owner"
+		}
+		writeJSON(w, http.StatusOK, membershipResponse{IsMember: true, Role: role})
 	}
 }
 

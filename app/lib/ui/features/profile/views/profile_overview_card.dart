@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/profile.dart';
 
 /// Shared Overview block (avatar/name/location, bio, dive count + level stats,
@@ -117,7 +118,7 @@ class ProfileOverviewCard extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: ProfileStatCard(
-                value: _hasLevel ? profile.certificationLevel! : (onLevelStatTap != null ? 'Add certificate' : '—'),
+                value: _hasLevel ? certificationLevelAbbreviation(profile.certificationLevel) : (onLevelStatTap != null ? 'Add certificate' : '—'),
                 label: 'Level',
                 onTap: _hasLevel ? null : onLevelStatTap,
               ),

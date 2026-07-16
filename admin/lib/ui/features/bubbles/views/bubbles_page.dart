@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../data/repositories/message_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
@@ -108,15 +109,26 @@ class _BubblesPageState extends State<BubblesPage> {
   }
 }
 
-class _Inbox extends StatelessWidget {
+class _Inbox extends StatefulWidget {
   const _Inbox({required this.viewModel, required this.onSelect});
 
   final BubblesViewModel viewModel;
   final ValueChanged<String> onSelect;
 
   @override
+  State<_Inbox> createState() => _InboxState();
+}
+
+class _InboxState extends State<_Inbox> {
+  String _search = '';
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final viewModel = widget.viewModel;
+    final query = _search.trim().toLowerCase();
+    final trips = query.isEmpty ? viewModel.trips : viewModel.trips.where((t) => t.title.toLowerCase().contains(query)).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -134,6 +146,14 @@ class _Inbox extends StatelessWidget {
             ],
           ),
         ),
+        if (viewModel.trips.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: TextField(
+              decoration: const InputDecoration(hintText: 'Search trips', prefixIcon: Icon(Icons.search), isDense: true),
+              onChanged: (value) => setState(() => _search = value),
+            ),
+          ),
         Expanded(
           child: viewModel.isLoadingTrips
               ? const Center(child: CircularProgressIndicator())
@@ -145,12 +165,17 @@ class _Inbox extends StatelessWidget {
                         style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),
                     )
-                  : ListView(
-                      children: [
-                        for (final trip in viewModel.trips)
-                          _InboxRow(trip: trip, selected: trip.id == viewModel.selectedTripId, onTap: () => onSelect(trip.id)),
-                      ],
-                    ),
+                  : trips.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Text('No matches.', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                        )
+                      : ListView(
+                          children: [
+                            for (final trip in trips)
+                              _InboxRow(trip: trip, selected: trip.id == viewModel.selectedTripId, onTap: () => widget.onSelect(trip.id)),
+                          ],
+                        ),
         ),
       ],
     );
@@ -309,12 +334,27 @@ class _Conversation extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: controller,
-                    decoration: InputDecoration(hintText: 'Message ${trip.title} as organization'),
-                    minLines: 1,
-                    maxLines: 5,
-                    onSubmitted: (_) => onSend(),
+                  // Enter alone sends (and is swallowed here so it never lands as a
+                  // newline first); Shift+Enter falls through to the TextField and
+                  // inserts a newline normally — needs keyboardType: multiline, since a
+                  // single-line field never lets Enter produce a newline to begin with.
+                  child: Focus(
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent &&
+                          event.logicalKey == LogicalKeyboardKey.enter &&
+                          !HardwareKeyboard.instance.isShiftPressed) {
+                        onSend();
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: TextField(
+                      controller: controller,
+                      decoration: InputDecoration(hintText: 'Message ${trip.title} as organization'),
+                      keyboardType: TextInputType.multiline,
+                      minLines: 1,
+                      maxLines: 5,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),

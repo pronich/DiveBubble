@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/trip_repository.dart';
+import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/formatting/date_format.dart';
 import '../view_models/trips_view_model.dart';
 import 'create_trip_page.dart';
+import 'trip_detail_page.dart';
 
 enum _TripFilter { all, upcoming, past }
 
@@ -24,6 +26,15 @@ class TripsPage extends StatefulWidget {
 class _TripsPageState extends State<TripsPage> {
   late final _viewModel = TripsViewModel(repository: widget.tripRepository, diveCenterId: widget.diveCenterId);
   _TripFilter _filter = _TripFilter.all;
+  String _search = '';
+  bool _searchExpanded = false;
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -39,28 +50,29 @@ class _TripsPageState extends State<TripsPage> {
     if (created == true) _viewModel.load();
   }
 
-  Future<void> _openEditTrip(Trip trip) async {
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (_) => CreateTripPage(
-        tripRepository: widget.tripRepository,
-        diveCenterId: widget.diveCenterId,
-        existingTrip: trip,
+  Future<void> _openManageTrip(Trip trip) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TripDetailPage(trip: trip, tripRepository: widget.tripRepository, diveCenterId: widget.diveCenterId),
       ),
     );
-    if (saved == true) _viewModel.load();
+    // The detail page may have edited the trip (price, dates, ...) — reload so the grid
+    // reflects it without the diver having to manually refresh.
+    _viewModel.load();
   }
 
   List<Trip> _filtered(List<Trip> trips) {
     final now = DateTime.now();
-    switch (_filter) {
-      case _TripFilter.all:
-        return trips;
-      case _TripFilter.upcoming:
-        return trips.where((t) => t.bookingStatus != 'cancelled' && t.startTime.isAfter(now)).toList();
-      case _TripFilter.past:
-        return trips.where((t) => t.startTime.isBefore(now)).toList();
+    var result = switch (_filter) {
+      _TripFilter.all => trips,
+      _TripFilter.upcoming => trips.where((t) => t.bookingStatus != 'cancelled' && t.startTime.isAfter(now)).toList(),
+      _TripFilter.past => trips.where((t) => t.startTime.isBefore(now)).toList(),
+    };
+    final query = _search.trim().toLowerCase();
+    if (query.isNotEmpty) {
+      result = result.where((t) => t.title.toLowerCase().contains(query) || t.location.toLowerCase().contains(query)).toList();
     }
+    return result;
   }
 
   @override
@@ -123,6 +135,39 @@ class _TripsPageState extends State<TripsPage> {
                     ),
                     const SizedBox(width: 8),
                     _FilterPill(label: 'Past', selected: _filter == _TripFilter.past, onTap: () => setState(() => _filter = _TripFilter.past)),
+                    const Spacer(),
+                    // Collapsed to an icon by default — not worth a permanent input box
+                    // for something used rarely (per explicit feedback; Bubbles' own
+                    // search stays always-visible since that list grows unbounded faster).
+                    if (_searchExpanded)
+                      SizedBox(
+                        width: 260,
+                        height: 40,
+                        child: TextField(
+                          controller: _searchController,
+                          autofocus: true,
+                          decoration: InputDecoration(
+                            isDense: true,
+                            hintText: 'Search trips...',
+                            prefixIcon: const Icon(Icons.search, size: 18),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.close, size: 18),
+                              onPressed: () => setState(() {
+                                _searchExpanded = false;
+                                _search = '';
+                                _searchController.clear();
+                              }),
+                            ),
+                          ),
+                          onChanged: (value) => setState(() => _search = value),
+                        ),
+                      )
+                    else
+                      IconButton(
+                        tooltip: 'Search trips',
+                        icon: const Icon(Icons.search),
+                        onPressed: () => setState(() => _searchExpanded = true),
+                      ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -139,20 +184,20 @@ class _TripsPageState extends State<TripsPage> {
                     ),
                   )
                 else
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      const spacing = 24.0;
-                      final twoColumns = constraints.maxWidth >= 900;
-                      final cardWidth = twoColumns ? (constraints.maxWidth - spacing) / 2 : constraints.maxWidth;
-                      return Wrap(
-                        spacing: spacing,
-                        runSpacing: spacing,
-                        children: [
-                          for (final trip in trips)
-                            SizedBox(width: cardWidth, child: _TripCard(trip: trip, onManage: () => _openEditTrip(trip))),
-                        ],
-                      );
-                    },
+                  // Single column, thin rows — tried a 2-column card grid first (matching
+                  // app/'s Explore) but admin/'s trip fields vary a lot more per trip than a
+                  // fixed-aspect-ratio grid can absorb gracefully, so rows ended up uneven
+                  // heights. A thin single-line row sidesteps that: every trip's tags share
+                  // one scrollable row regardless of how many are present, so every row is
+                  // the same height no matter what.
+                  Column(
+                    children: [
+                      for (final trip in trips)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _TripRow(trip: trip, onManage: () => _openManageTrip(trip)),
+                        ),
+                    ],
                   ),
               ],
             ),
@@ -194,8 +239,14 @@ class _FilterPill extends StatelessWidget {
   }
 }
 
-class _TripCard extends StatelessWidget {
-  const _TripCard({required this.trip, required this.onManage});
+String _rangeText(int? min, int? max, String unit) {
+  if (min != null && max != null) return '$min–$max$unit';
+  if (min != null) return '$min+$unit';
+  return '${max!}$unit';
+}
+
+class _TripRow extends StatelessWidget {
+  const _TripRow({required this.trip, required this.onManage});
 
   final Trip trip;
   final VoidCallback onManage;
@@ -209,106 +260,100 @@ class _TripCard extends StatelessWidget {
 
     return Material(
       color: theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       clipBehavior: Clip.antiAlias,
       elevation: 0,
       child: InkWell(
         onTap: onManage,
         child: Container(
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(border: Border.all(color: theme.colorScheme.outlineVariant)),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SizedBox(
-                  width: 140,
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 56,
+                  height: 56,
                   child: photoUrl != null
                       ? Image.network(photoUrl, fit: BoxFit.cover)
                       : Container(
                           color: theme.colorScheme.primaryContainer,
-                          child: Icon(Icons.image_outlined, color: theme.colorScheme.onPrimaryContainer),
+                          child: Icon(Icons.image_outlined, size: 20, color: theme.colorScheme.onPrimaryContainer),
                         ),
                 ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            _Badge(
-                              text: cancelled ? 'Cancelled' : (trip.minCertification ?? 'Open to all'),
-                              color: cancelled ? theme.colorScheme.errorContainer : theme.colorScheme.secondaryContainer,
-                              onColor: cancelled ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSecondaryContainer,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          trip.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
-                            const SizedBox(width: 4),
-                            Text(trip.location, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                            const SizedBox(width: 12),
-                            Icon(Icons.calendar_today_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
-                            const SizedBox(width: 4),
-                            Text(
-                              formatShortDate(trip.startTime),
-                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(Icons.people_outline, size: 14, color: theme.colorScheme.onSurfaceVariant),
-                            const SizedBox(width: 4),
-                            Text(
-                              trip.maxParticipants != null
-                                  ? '${trip.participantCount}/${trip.maxParticipants} booked'
-                                  : '${trip.participantCount} booked',
-                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            priceMinor != null
-                                ? Text(
-                                    '${formatPriceMinor(priceMinor)} ${trip.currency}',
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.primary,
-                                    ),
-                                  )
-                                : Text(
-                                    'No price',
-                                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                                  ),
-                            TextButton.icon(
-                              onPressed: onManage,
-                              icon: const Icon(Icons.arrow_forward, size: 16),
-                              label: const Text('Manage'),
-                            ),
-                          ],
-                        ),
-                      ],
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      trip.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                     ),
-                  ),
+                    const SizedBox(height: 4),
+                    // One scrollable row rather than a Wrap — keeps every row exactly one
+                    // line tall regardless of how many optional fields a given trip has
+                    // (see the Column above's own comment on why this replaced the grid).
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const ClampingScrollPhysics(),
+                      child: Row(
+                        children: [
+                          _Badge(
+                            icon: cancelled ? null : Icons.badge_outlined,
+                            text: cancelled ? 'Cancelled' : certificationLevelAbbreviation(trip.minCertification),
+                            color: cancelled ? theme.colorScheme.errorContainer : theme.colorScheme.secondaryContainer,
+                            onColor: cancelled ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSecondaryContainer,
+                          ),
+                          const SizedBox(width: 10),
+                          _Tag(icon: Icons.location_on_outlined, text: trip.location),
+                          const SizedBox(width: 10),
+                          _Tag(icon: Icons.calendar_today_outlined, text: formatShortDate(trip.startTime)),
+                          const SizedBox(width: 10),
+                          _Tag(
+                            icon: Icons.people_outline,
+                            text: trip.maxParticipants != null
+                                ? '${trip.participantCount}/${trip.maxParticipants} booked'
+                                : '${trip.participantCount} booked',
+                          ),
+                          if (trip.depthMinM != null || trip.depthMaxM != null) ...[
+                            const SizedBox(width: 10),
+                            _Tag(icon: Icons.waves, text: _rangeText(trip.depthMinM, trip.depthMaxM, 'm')),
+                          ],
+                          if (trip.diveCountMin != null || trip.diveCountMax != null) ...[
+                            const SizedBox(width: 10),
+                            _Tag(icon: Icons.scuba_diving_outlined, text: _rangeText(trip.diveCountMin, trip.diveCountMax, '')),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  priceMinor != null
+                      ? Text(
+                          '${formatPriceMinor(priceMinor)} ${trip.currency}',
+                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+                        )
+                      : Text('No price', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 32)),
+                    onPressed: onManage,
+                    icon: const Icon(Icons.arrow_forward, size: 14),
+                    label: const Text('Manage'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -316,9 +361,30 @@ class _TripCard extends StatelessWidget {
   }
 }
 
-class _Badge extends StatelessWidget {
-  const _Badge({required this.text, required this.color, required this.onColor});
+class _Tag extends StatelessWidget {
+  const _Tag({required this.icon, required this.text});
 
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: theme.colorScheme.onSurfaceVariant),
+        const SizedBox(width: 4),
+        Text(text, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+      ],
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({this.icon, required this.text, required this.color, required this.onColor});
+
+  final IconData? icon;
   final String text;
   final Color color;
   final Color onColor;
@@ -328,9 +394,18 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: onColor, fontWeight: FontWeight.bold),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: onColor),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            text,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: onColor, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }
