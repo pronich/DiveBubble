@@ -13,13 +13,18 @@ import '../view_models/chat_view_model.dart';
 const _groupingWindow = Duration(minutes: 5);
 
 class ChatView extends StatefulWidget {
-  const ChatView({super.key, required this.viewModel, this.isCancelled = false});
+  const ChatView({super.key, required this.viewModel, this.isCancelled = false, this.businessName});
 
   final ChatViewModel viewModel;
 
-  /// Trip Page (see TripConversationPage._refreshCancelledStatus) is the source of truth —
+  /// Trip Page (see TripConversationPage._refreshTripDerivedState) is the source of truth —
   /// cancelling freezes the input, but history stays fully visible either way.
   final bool isCancelled;
+
+  /// Set when this Bubble's trip is organized by a dive center — every non-own message
+  /// gets "Name | Dive Center" instead of just "Name" (see _MessageRow), since the
+  /// organization is the organizer, not one specific employee.
+  final String? businessName;
 
   @override
   State<ChatView> createState() => _ChatViewState();
@@ -174,6 +179,7 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
                         isFirstInCluster: item.isFirstInCluster,
                         isLastInCluster: item.isLastInCluster,
                         profile: _profiles[message.userId],
+                        businessName: widget.businessName,
                         onTapSender: () => _openProfile(message.userId),
                       );
                     },
@@ -373,6 +379,7 @@ class _MessageRow extends StatelessWidget {
     required this.isLastInCluster,
     required this.profile,
     required this.onTapSender,
+    this.businessName,
   });
 
   final ChatMessage message;
@@ -381,6 +388,11 @@ class _MessageRow extends StatelessWidget {
   final bool isLastInCluster;
   final Profile? profile;
   final VoidCallback onTapSender;
+
+  /// Never applied to the diver's own messages (see isMine below) — you know which
+  /// business you're posting as, that's what admin/ is for; this label is for everyone
+  /// *reading* the message.
+  final String? businessName;
 
   @override
   Widget build(BuildContext context) {
@@ -417,7 +429,8 @@ class _MessageRow extends StatelessWidget {
       );
     }
 
-    final name = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
+    final baseName = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
+    final name = (businessName?.isNotEmpty ?? false) ? '$baseName | $businessName' : baseName;
 
     return Padding(
       padding: EdgeInsets.only(top: isFirstInCluster ? 14 : 2, bottom: 2),

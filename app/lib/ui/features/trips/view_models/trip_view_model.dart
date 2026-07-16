@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
+import '../../../../domain/entities/dive_center.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/trip.dart';
 
@@ -11,6 +13,7 @@ class TripViewModel extends ChangeNotifier {
     required TripRepository repository,
     required this.authRepository,
     required this.profileRepository,
+    required this.diveCenterRepository,
     required String tripId,
     required this.currentUserId,
   })  : _repository = repository,
@@ -20,6 +23,7 @@ class TripViewModel extends ChangeNotifier {
   final String _tripId;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final DiveCenterRepository diveCenterRepository;
   final String currentUserId;
 
   Trip? _trip;
@@ -27,6 +31,9 @@ class TripViewModel extends ChangeNotifier {
 
   Profile? _organizerProfile;
   Profile? get organizerProfile => _organizerProfile;
+
+  DiveCenter? _organizerDiveCenter;
+  DiveCenter? get organizerDiveCenter => _organizerDiveCenter;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -54,12 +61,23 @@ class TripViewModel extends ChangeNotifier {
     try {
       _trip = await _repository.getTrip(_tripId);
       final creatorId = _trip?.creatorUserId;
-      // Best-effort — an organizer profile fetch failing shouldn't block viewing the trip.
+      final diveCenterId = _trip?.diveCenterId;
+      // Best-effort — an organizer profile/dive-center fetch failing shouldn't block
+      // viewing the trip. Both are fetched when present (not mutually exclusive) — the UI
+      // decides which one to actually display (see TripPage's _OrganizerCard: dive center
+      // takes priority when the trip is business-organized).
       if (creatorId != null) {
         try {
           _organizerProfile = await profileRepository.getPublicProfile(creatorId);
         } catch (_) {
           _organizerProfile = null;
+        }
+      }
+      if (diveCenterId != null) {
+        try {
+          _organizerDiveCenter = await diveCenterRepository.getById(diveCenterId);
+        } catch (_) {
+          _organizerDiveCenter = null;
         }
       }
     } catch (e) {

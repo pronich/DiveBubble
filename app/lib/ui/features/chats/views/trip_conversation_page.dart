@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
@@ -28,6 +29,7 @@ class TripConversationPage extends StatefulWidget {
     required this.realtimeService,
     required this.authRepository,
     required this.profileRepository,
+    required this.diveCenterRepository,
   });
 
   final ChatViewModel chatViewModel;
@@ -39,6 +41,7 @@ class TripConversationPage extends StatefulWidget {
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final DiveCenterRepository diveCenterRepository;
 
   @override
   State<TripConversationPage> createState() => _TripConversationPageState();
@@ -47,6 +50,7 @@ class TripConversationPage extends StatefulWidget {
 class _TripConversationPageState extends State<TripConversationPage> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   bool _isCancelled = false;
+  String? _businessName;
 
   @override
   void initState() {
@@ -59,16 +63,31 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
     // the diver actually switches to Transport, which re-checks and (now correctly) finds
     // nothing, hiding it — "seen the badge" isn't the same as "went and looked."
     widget.transportViewModel.checkAlert();
-    _refreshCancelledStatus();
+    _refreshTripDerivedState();
   }
 
-  // Owned here, not by ChatViewModel/TransportViewModel — both tabs just need a plain
-  // bool, and a single fetch avoids duplicating "am I cancelled" logic (and its own
-  // realtime-subscription-shaped footguns, see RealtimeService) into two ViewModels.
-  Future<void> _refreshCancelledStatus() async {
+  // Owned here, not by ChatViewModel/TransportViewModel — both tabs (plus the message
+  // attribution below) just need plain read-only values derived from the trip, and a
+  // single fetch avoids duplicating this (and its own realtime-subscription-shaped
+  // footguns, see RealtimeService) into multiple ViewModels.
+  Future<void> _refreshTripDerivedState() async {
     try {
       final trip = await widget.tripRepository.getTrip(widget.chatViewModel.tripId);
-      if (mounted) setState(() => _isCancelled = trip.bookingStatus == 'cancelled');
+      final diveCenterId = trip.diveCenterId;
+      String? businessName;
+      if (diveCenterId != null) {
+        try {
+          businessName = (await widget.diveCenterRepository.getById(diveCenterId)).name;
+        } catch (_) {
+          // Best-effort — chat messages just fall back to the sender's plain name.
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _isCancelled = trip.bookingStatus == 'cancelled';
+          _businessName = businessName;
+        });
+      }
     } catch (_) {
       // Best-effort — worst case the input stays enabled until the next successful check,
       // and the server-side guards (EnsureNotCancelled) still reject the action either way.
@@ -125,7 +144,7 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
       body: TabBarView(
         controller: _tabController,
         children: [
-          ChatView(viewModel: widget.chatViewModel, isCancelled: _isCancelled),
+          ChatView(viewModel: widget.chatViewModel, isCancelled: _isCancelled, businessName: _businessName),
           TransportView(viewModel: widget.transportViewModel, isCancelled: _isCancelled),
         ],
       ),
@@ -140,6 +159,7 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
             repository: widget.tripRepository,
             authRepository: widget.authRepository,
             profileRepository: widget.profileRepository,
+            diveCenterRepository: widget.diveCenterRepository,
             tripId: widget.chatViewModel.tripId,
             currentUserId: widget.chatViewModel.currentUserId,
           ),
@@ -147,12 +167,13 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
           chatRepository: widget.chatRepository,
           transportRepository: widget.transportRepository,
           realtimeService: widget.realtimeService,
+          diveCenterRepository: widget.diveCenterRepository,
           openedFromConversation: true,
         ),
       ),
     );
     // Trip Page is the only place bookingStatus can change (Cancel Trip) — refresh once
     // back, since ChatView/TransportView otherwise have no reason to know it changed.
-    if (mounted) _refreshCancelledStatus();
+    if (mounted) _refreshTripDerivedState();
   }
 }

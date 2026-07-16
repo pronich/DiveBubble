@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
+import '../../../../domain/entities/dive_center.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
@@ -29,6 +31,7 @@ class TripPage extends StatefulWidget {
     required this.chatRepository,
     required this.transportRepository,
     required this.realtimeService,
+    required this.diveCenterRepository,
     this.openedFromConversation = false,
   });
 
@@ -37,6 +40,7 @@ class TripPage extends StatefulWidget {
   final ChatRepository chatRepository;
   final TransportRepository transportRepository;
   final RealtimeService realtimeService;
+  final DiveCenterRepository diveCenterRepository;
 
   /// True when reached by tapping the header of an already-open Bubble (chat) —
   /// "Dive in to Bubble" would just navigate back into the conversation the diver is
@@ -187,6 +191,7 @@ class _TripPageState extends State<TripPage> {
                       profile: widget.viewModel.organizerProfile,
                       creatorUserId: trip.creatorUserId,
                       profileRepository: widget.viewModel.profileRepository,
+                      diveCenter: widget.viewModel.organizerDiveCenter,
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -222,6 +227,7 @@ class _TripPageState extends State<TripPage> {
                         tripRepository: widget.tripRepository,
                         authRepository: widget.viewModel.authRepository,
                         profileRepository: widget.viewModel.profileRepository,
+                        diveCenterRepository: widget.diveCenterRepository,
                         currentUserId: widget.viewModel.currentUserId,
                       )
                     else if (!trip.joined && trip.bookingStatus == 'open')
@@ -441,6 +447,7 @@ class _OrganizerCard extends StatelessWidget {
     required this.profile,
     required this.creatorUserId,
     required this.profileRepository,
+    this.diveCenter,
   });
 
   final bool isOrganizer;
@@ -448,9 +455,50 @@ class _OrganizerCard extends StatelessWidget {
   final String? creatorUserId;
   final ProfileRepository profileRepository;
 
+  /// Set for a business trip — the dive center's own identity is shown instead of the
+  /// specific staff member who happened to create it (see CLAUDE.md's Business/dive
+  /// centers section: the organization is the organizer, not one employee).
+  final DiveCenter? diveCenter;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final dc = diveCenter;
+
+    if (dc != null) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: theme.colorScheme.secondaryContainer,
+              backgroundImage: (dc.logoUrl?.isNotEmpty ?? false) ? NetworkImage(dc.logoUrl!) : null,
+              child: (dc.logoUrl?.isNotEmpty ?? false)
+                  ? null
+                  : Icon(Icons.storefront_outlined, color: theme.colorScheme.onSecondaryContainer),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(dc.name, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Dive center',
+                    style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final name = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Organizer';
 
     return InkWell(
@@ -703,6 +751,7 @@ class _DiveInButton extends StatelessWidget {
     required this.tripRepository,
     required this.authRepository,
     required this.profileRepository,
+    required this.diveCenterRepository,
     required this.currentUserId,
   });
 
@@ -713,6 +762,7 @@ class _DiveInButton extends StatelessWidget {
   final TripRepository tripRepository;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final DiveCenterRepository diveCenterRepository;
   final String currentUserId;
 
   @override
@@ -746,6 +796,7 @@ class _DiveInButton extends StatelessWidget {
                 realtimeService: realtimeService,
                 authRepository: authRepository,
                 profileRepository: profileRepository,
+                diveCenterRepository: diveCenterRepository,
               ),
             ),
           );

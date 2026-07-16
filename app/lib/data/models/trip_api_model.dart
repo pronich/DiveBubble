@@ -27,6 +27,9 @@ abstract class TripApiModel with _$TripApiModel {
     int? maxParticipants,
     @Default('open') String bookingStatus,
     String? photoUrl,
+    String? diveCenterId,
+    int? priceMinor,
+    @Default('DKK') String currency,
   }) = _TripApiModel;
 
   factory TripApiModel.fromJson(Map<String, dynamic> json) =>

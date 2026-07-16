@@ -136,20 +136,16 @@ func handleListMyDiveCenters(svc *divecenter.Service) func(http.ResponseWriter, 
 	}
 }
 
+// handleGetDiveCenter is deliberately not member-gated (unlike ListMembers) — every field
+// a dive center's profile carries (name, location, agency, logo, contacts) was collected
+// specifically to be shown to divers considering a trip (see CLAUDE.md's onboarding-fields
+// note), so this is the same "any signed-in user" posture as GET /users/{id}'s public
+// profile projection, not membership-gated the way roster/management endpoints are.
 func handleGetDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "invalid dive center id")
-			return
-		}
-		isMember, err := svc.IsMember(r.Context(), id, userID)
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not verify membership")
-			return
-		}
-		if !isMember {
-			writeError(w, http.StatusForbidden, "not a member of this dive center")
 			return
 		}
 		dc, err := svc.Get(r.Context(), id)
