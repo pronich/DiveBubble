@@ -86,4 +86,15 @@ class CreateTripViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Best-effort — the trip itself already exists by the time this is called (create-only,
+  /// see CreateTripPage — editing uses TripDetailPage's own gallery instead), so a failed
+  /// photo upload shouldn't block navigating to it; the owner can retry from there.
+  Future<void> uploadPhoto(String tripId, List<int> bytes, String filename) async {
+    try {
+      await _repository.addTripPhoto(tripId, bytes, filename);
+    } catch (_) {
+      // ignore — see above
+    }
+  }
 }

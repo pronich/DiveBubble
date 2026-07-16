@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../core/widgets/pick_image.dart';
 import '../../../core/widgets/simple_date_picker.dart';
 import '../view_models/create_trip_view_model.dart';
 
@@ -46,6 +47,10 @@ class _CreateTripPageState extends State<CreateTripPage> {
   TimeOfDay? _startTimeOfDay;
   DateTime? _endDate;
   String? _minCertification;
+
+  // Create-only — an existing trip's photos are managed through TripDetailPage's own
+  // gallery instead (see AdminShell's Manage flow), so this stays null while editing.
+  PickedImage? _pickedPhoto;
 
   @override
   void initState() {
@@ -109,6 +114,11 @@ class _CreateTripPageState extends State<CreateTripPage> {
     if (picked != null) setState(() => _startTimeOfDay = picked);
   }
 
+  Future<void> _pickPhoto() async {
+    final picked = await pickImage();
+    if (picked != null && mounted) setState(() => _pickedPhoto = picked);
+  }
+
   Future<void> _pickEndDate() async {
     final picked = await showSimpleDatePicker(
       context: context,
@@ -154,7 +164,14 @@ class _CreateTripPageState extends State<CreateTripPage> {
       bookingUrl: _textOrNull(_bookingUrlController),
     );
 
-    if (trip != null && mounted) Navigator.of(context).pop(true);
+    if (trip == null) return;
+    // Awaited before popping — TripDetailPage's own gallery fetch on mount would otherwise
+    // race a still-in-flight upload, same ordering precedent as app/'s CreateTripPage.
+    final picked = _pickedPhoto;
+    if (picked != null) {
+      await _viewModel.uploadPhoto(trip.id, picked.bytes, picked.filename);
+    }
+    if (mounted) Navigator.of(context).pop(true);
   }
 
   String? _textOrNull(TextEditingController controller) {
@@ -214,6 +231,14 @@ class _CreateTripPageState extends State<CreateTripPage> {
                     padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
                     child: Column(
                       children: [
+                        if (!_viewModel.isEditing) ...[
+                          _CoverPhotoPicker(
+                            photo: _pickedPhoto,
+                            onPick: _pickPhoto,
+                            onRemove: () => setState(() => _pickedPhoto = null),
+                          ),
+                          const SizedBox(height: 20),
+                        ],
                         TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
                         const SizedBox(height: 12),
                         TextField(
@@ -372,6 +397,80 @@ class _CreateTripPageState extends State<CreateTripPage> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _CoverPhotoPicker extends StatelessWidget {
+  const _CoverPhotoPicker({required this.photo, required this.onPick, required this.onRemove});
+
+  final PickedImage? photo;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final photo = this.photo;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: AspectRatio(
+        aspectRatio: 4 / 3,
+        child: photo == null
+            ? InkWell(
+                onTap: onPick,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_a_photo_outlined, color: theme.colorScheme.onSurfaceVariant),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Add cover photo (optional)',
+                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.memory(photo.bytes, fit: BoxFit.cover),
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Material(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: onRemove,
+                        child: const Padding(padding: EdgeInsets.all(6), child: Icon(Icons.close, color: Colors.white, size: 18)),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 8,
+                    bottom: 8,
+                    child: Material(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: const CircleBorder(),
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: onPick,
+                        child: const Padding(padding: EdgeInsets.all(6), child: Icon(Icons.camera_alt, color: Colors.white, size: 18)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
