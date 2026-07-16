@@ -17,7 +17,9 @@ mixin _$Trip {
  String get id; String get title; String get location; DateTime get startTime; bool get joined; String? get creatorUserId; int get participantCount; int get unreadCount; DateTime? get endDate; String? get description; String? get meetingPoint; int? get diveCountMin; int? get diveCountMax; int? get depthMinM; int? get depthMaxM; String? get minCertification; String? get bookingCode; int? get maxParticipants; String get bookingStatus; String? get photoUrl;// Business fields — always present for a trip created from admin/, since admin never
 // creates an individual trip. Not yet read by app/'s own Trip entity (see CLAUDE.md's
 // Business/dive centers section) — that's a separate, still-pending piece of work.
- String? get diveCenterId; int? get priceMinor; String get currency;
+ String? get diveCenterId; int? get priceMinor; String get currency;// The trip's own external checkout page — distinct from the dive center's general
+// website (see CLAUDE.md's Booking Code flow section).
+ String? get bookingUrl;
 /// Create a copy of Trip
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +30,16 @@ $TripCopyWith<Trip> get copyWith => _$TripCopyWithImpl<Trip>(this as Trip, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Trip&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.diveCenterId, diveCenterId) || other.diveCenterId == diveCenterId)&&(identical(other.priceMinor, priceMinor) || other.priceMinor == priceMinor)&&(identical(other.currency, currency) || other.currency == currency));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Trip&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.diveCenterId, diveCenterId) || other.diveCenterId == diveCenterId)&&(identical(other.priceMinor, priceMinor) || other.priceMinor == priceMinor)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.bookingUrl, bookingUrl) || other.bookingUrl == bookingUrl));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,joined,creatorUserId,participantCount,unreadCount,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus,photoUrl,diveCenterId,priceMinor,currency]);
+int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,joined,creatorUserId,participantCount,unreadCount,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus,photoUrl,diveCenterId,priceMinor,currency,bookingUrl]);
 
 @override
 String toString() {
-  return 'Trip(id: $id, title: $title, location: $location, startTime: $startTime, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, unreadCount: $unreadCount, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus, photoUrl: $photoUrl, diveCenterId: $diveCenterId, priceMinor: $priceMinor, currency: $currency)';
+  return 'Trip(id: $id, title: $title, location: $location, startTime: $startTime, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, unreadCount: $unreadCount, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus, photoUrl: $photoUrl, diveCenterId: $diveCenterId, priceMinor: $priceMinor, currency: $currency, bookingUrl: $bookingUrl)';
 }
 
 
@@ -48,7 +50,7 @@ abstract mixin class $TripCopyWith<$Res>  {
   factory $TripCopyWith(Trip value, $Res Function(Trip) _then) = _$TripCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, String location, DateTime startTime, bool joined, String? creatorUserId, int participantCount, int unreadCount, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus, String? photoUrl, String? diveCenterId, int? priceMinor, String currency
+ String id, String title, String location, DateTime startTime, bool joined, String? creatorUserId, int participantCount, int unreadCount, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus, String? photoUrl, String? diveCenterId, int? priceMinor, String currency, String? bookingUrl
 });
 
 
@@ -65,7 +67,7 @@ class _$TripCopyWithImpl<$Res>
 
 /// Create a copy of Trip
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? unreadCount = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,Object? photoUrl = freezed,Object? diveCenterId = freezed,Object? priceMinor = freezed,Object? currency = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? unreadCount = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,Object? photoUrl = freezed,Object? diveCenterId = freezed,Object? priceMinor = freezed,Object? currency = null,Object? bookingUrl = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -90,7 +92,8 @@ as String,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: c
 as String?,diveCenterId: freezed == diveCenterId ? _self.diveCenterId : diveCenterId // ignore: cast_nullable_to_non_nullable
 as String?,priceMinor: freezed == priceMinor ? _self.priceMinor : priceMinor // ignore: cast_nullable_to_non_nullable
 as int?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
-as String,
+as String,bookingUrl: freezed == bookingUrl ? _self.bookingUrl : bookingUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -175,10 +178,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency,  String? bookingUrl)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Trip() when $default != null:
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency,_that.bookingUrl);case _:
   return orElse();
 
 }
@@ -196,10 +199,10 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency,  String? bookingUrl)  $default,) {final _that = this;
 switch (_that) {
 case _Trip():
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency,_that.bookingUrl);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -216,10 +219,10 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String location,  DateTime startTime,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String location,  DateTime startTime,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency,  String? bookingUrl)?  $default,) {final _that = this;
 switch (_that) {
 case _Trip() when $default != null:
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency,_that.bookingUrl);case _:
   return null;
 
 }
@@ -231,7 +234,7 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.joined
 
 
 class _Trip implements Trip {
-  const _Trip({required this.id, required this.title, required this.location, required this.startTime, required this.joined, this.creatorUserId, this.participantCount = 0, this.unreadCount = 0, this.endDate, this.description, this.meetingPoint, this.diveCountMin, this.diveCountMax, this.depthMinM, this.depthMaxM, this.minCertification, this.bookingCode, this.maxParticipants, this.bookingStatus = 'open', this.photoUrl, this.diveCenterId, this.priceMinor, this.currency = 'DKK'});
+  const _Trip({required this.id, required this.title, required this.location, required this.startTime, required this.joined, this.creatorUserId, this.participantCount = 0, this.unreadCount = 0, this.endDate, this.description, this.meetingPoint, this.diveCountMin, this.diveCountMax, this.depthMinM, this.depthMaxM, this.minCertification, this.bookingCode, this.maxParticipants, this.bookingStatus = 'open', this.photoUrl, this.diveCenterId, this.priceMinor, this.currency = 'DKK', this.bookingUrl});
   
 
 @override final  String id;
@@ -260,6 +263,9 @@ class _Trip implements Trip {
 @override final  String? diveCenterId;
 @override final  int? priceMinor;
 @override@JsonKey() final  String currency;
+// The trip's own external checkout page — distinct from the dive center's general
+// website (see CLAUDE.md's Booking Code flow section).
+@override final  String? bookingUrl;
 
 /// Create a copy of Trip
 /// with the given fields replaced by the non-null parameter values.
@@ -271,16 +277,16 @@ _$TripCopyWith<_Trip> get copyWith => __$TripCopyWithImpl<_Trip>(this, _$identit
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Trip&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.diveCenterId, diveCenterId) || other.diveCenterId == diveCenterId)&&(identical(other.priceMinor, priceMinor) || other.priceMinor == priceMinor)&&(identical(other.currency, currency) || other.currency == currency));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Trip&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.diveCenterId, diveCenterId) || other.diveCenterId == diveCenterId)&&(identical(other.priceMinor, priceMinor) || other.priceMinor == priceMinor)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.bookingUrl, bookingUrl) || other.bookingUrl == bookingUrl));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,joined,creatorUserId,participantCount,unreadCount,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus,photoUrl,diveCenterId,priceMinor,currency]);
+int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,joined,creatorUserId,participantCount,unreadCount,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus,photoUrl,diveCenterId,priceMinor,currency,bookingUrl]);
 
 @override
 String toString() {
-  return 'Trip(id: $id, title: $title, location: $location, startTime: $startTime, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, unreadCount: $unreadCount, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus, photoUrl: $photoUrl, diveCenterId: $diveCenterId, priceMinor: $priceMinor, currency: $currency)';
+  return 'Trip(id: $id, title: $title, location: $location, startTime: $startTime, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, unreadCount: $unreadCount, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus, photoUrl: $photoUrl, diveCenterId: $diveCenterId, priceMinor: $priceMinor, currency: $currency, bookingUrl: $bookingUrl)';
 }
 
 
@@ -291,7 +297,7 @@ abstract mixin class _$TripCopyWith<$Res> implements $TripCopyWith<$Res> {
   factory _$TripCopyWith(_Trip value, $Res Function(_Trip) _then) = __$TripCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, String location, DateTime startTime, bool joined, String? creatorUserId, int participantCount, int unreadCount, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus, String? photoUrl, String? diveCenterId, int? priceMinor, String currency
+ String id, String title, String location, DateTime startTime, bool joined, String? creatorUserId, int participantCount, int unreadCount, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus, String? photoUrl, String? diveCenterId, int? priceMinor, String currency, String? bookingUrl
 });
 
 
@@ -308,7 +314,7 @@ class __$TripCopyWithImpl<$Res>
 
 /// Create a copy of Trip
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? unreadCount = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,Object? photoUrl = freezed,Object? diveCenterId = freezed,Object? priceMinor = freezed,Object? currency = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? unreadCount = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,Object? photoUrl = freezed,Object? diveCenterId = freezed,Object? priceMinor = freezed,Object? currency = null,Object? bookingUrl = freezed,}) {
   return _then(_Trip(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -333,7 +339,8 @@ as String,photoUrl: freezed == photoUrl ? _self.photoUrl : photoUrl // ignore: c
 as String?,diveCenterId: freezed == diveCenterId ? _self.diveCenterId : diveCenterId // ignore: cast_nullable_to_non_nullable
 as String?,priceMinor: freezed == priceMinor ? _self.priceMinor : priceMinor // ignore: cast_nullable_to_non_nullable
 as int?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
-as String,
+as String,bookingUrl: freezed == bookingUrl ? _self.bookingUrl : bookingUrl // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

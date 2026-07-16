@@ -18,6 +18,7 @@ import '../view_models/create_trip_view_model.dart';
 import '../view_models/trip_view_model.dart';
 import '../view_models/trips_list_view_model.dart';
 import 'create_trip_page.dart';
+import 'join_by_code_dialog.dart';
 import 'trip_page.dart';
 
 class TripsListView extends StatefulWidget {
@@ -87,6 +88,7 @@ class _TripsListViewState extends State<TripsListView> {
           children: [
             _ExploreHeader(
               onCreateTrip: () => _openCreateTrip(context),
+              onJoinByCode: () => _openJoinByCode(context),
               showShadow: _isScrolled,
             ),
             Expanded(
@@ -220,6 +222,35 @@ class _TripsListViewState extends State<TripsListView> {
       ),
     );
   }
+
+  Future<void> _openJoinByCode(BuildContext context) async {
+    final userId = await ensureSignedIn(context, widget.authRepository, widget.profileRepository);
+    if (userId == null || !context.mounted) return;
+
+    final trip = await showJoinByCodeDialog(context, widget.tripRepository);
+    if (trip == null || !context.mounted) return;
+
+    widget.viewModel.loadTrips();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TripPage(
+          viewModel: TripViewModel(
+            repository: widget.tripRepository,
+            authRepository: widget.authRepository,
+            profileRepository: widget.profileRepository,
+            diveCenterRepository: widget.diveCenterRepository,
+            tripId: trip.id,
+            currentUserId: userId,
+          ),
+          tripRepository: widget.tripRepository,
+          chatRepository: widget.chatRepository,
+          transportRepository: widget.transportRepository,
+          realtimeService: widget.realtimeService,
+          diveCenterRepository: widget.diveCenterRepository,
+        ),
+      ),
+    );
+  }
 }
 
 // Search is a visual mock only (no query/filter logic exists yet) — the two quick actions below
@@ -227,9 +258,10 @@ class _TripsListViewState extends State<TripsListView> {
 // ElevatedButton style, since Create/Join are secondary entry points most divers will ignore
 // in favor of just browsing, the same way Airbnb's category chips stay quiet under its search bar.
 class _ExploreHeader extends StatelessWidget {
-  const _ExploreHeader({required this.onCreateTrip, required this.showShadow});
+  const _ExploreHeader({required this.onCreateTrip, required this.onJoinByCode, required this.showShadow});
 
   final VoidCallback onCreateTrip;
+  final VoidCallback onJoinByCode;
   final bool showShadow;
 
   @override
@@ -302,7 +334,7 @@ class _ExploreHeader extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () => _showComingSoon(context),
+                  onPressed: onJoinByCode,
                   icon: const Icon(
                     Icons.confirmation_number_outlined,
                     size: 18,

@@ -35,6 +35,7 @@ class CreateTripViewModel extends ChangeNotifier {
     String? minCertification,
     int? maxParticipants,
     int? priceMinor,
+    String? bookingUrl,
   }) async {
     _isSubmitting = true;
     _error = null;
@@ -57,6 +58,7 @@ class CreateTripViewModel extends ChangeNotifier {
           minCertification: minCertification,
           maxParticipants: maxParticipants,
           priceMinor: priceMinor,
+          bookingUrl: bookingUrl,
         );
       }
       return await _repository.createTrip(
@@ -74,6 +76,7 @@ class CreateTripViewModel extends ChangeNotifier {
         minCertification: minCertification,
         maxParticipants: maxParticipants,
         priceMinor: priceMinor,
+        bookingUrl: bookingUrl,
       );
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');

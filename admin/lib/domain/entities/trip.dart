@@ -31,5 +31,8 @@ abstract class Trip with _$Trip {
     String? diveCenterId,
     int? priceMinor,
     @Default('DKK') String currency,
+    // The trip's own external checkout page — distinct from the dive center's general
+    // website (see CLAUDE.md's Booking Code flow section).
+    String? bookingUrl,
   }) = _Trip;
 }

@@ -17,7 +17,7 @@ var tripColumnNames = []string{
 	"end_date", "description", "meeting_point",
 	"dive_count_min", "dive_count_max", "depth_min_m", "depth_max_m",
 	"min_certification", "booking_code", "max_participants", "booking_status", "photo_url",
-	"dive_center_id", "price_minor", "currency",
+	"dive_center_id", "price_minor", "currency", "booking_url",
 }
 
 var tripColumns = strings.Join(tripColumnNames, ", ")
@@ -46,9 +46,20 @@ func scanTrip(row interface{ Scan(...any) error }) (Trip, error) {
 		&t.EndDate, &t.Description, &t.MeetingPoint,
 		&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
 		&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus, &t.PhotoURL,
-		&t.DiveCenterID, &t.PriceMinor, &t.Currency,
+		&t.DiveCenterID, &t.PriceMinor, &t.Currency, &t.BookingURL,
 	)
 	return t, err
+}
+
+func (r *Repository) GetByBookingCode(ctx context.Context, code string) (Trip, error) {
+	t, err := scanTrip(r.DB.QueryRowContext(ctx, `SELECT `+tripColumns+` FROM trips WHERE booking_code = $1`, code))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return Trip{}, ErrNotFound
+		}
+		return Trip{}, err
+	}
+	return t, nil
 }
 
 func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Trip, error) {
@@ -81,9 +92,12 @@ type CreateParams struct {
 
 	// Business fields — nil DiveCenterID means an individual-organizer trip (the common
 	// case). PriceMinor is minor currency units (øre); currency isn't yet settable per
-	// trip (always defaults to DKK at the DB level — see migration 000023).
+	// trip (always defaults to DKK at the DB level — see migration 000023). BookingCode is
+	// server-generated for business trips (see trip.Service.CreateTrip), never client-set;
+	// BookingURL is the trip's own external checkout page.
 	DiveCenterID *uuid.UUID
 	PriceMinor   *int
+	BookingURL   *string
 }
 
 func (r *Repository) Create(ctx context.Context, p CreateParams) (Trip, error) {
@@ -93,15 +107,15 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Trip, error) {
 			end_date, description, meeting_point,
 			dive_count_min, dive_count_max, depth_min_m, depth_max_m,
 			min_certification, booking_code, max_participants,
-			dive_center_id, price_minor
+			dive_center_id, price_minor, booking_url
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 		RETURNING `+tripColumns,
 		p.Title, p.Location, p.StartTime, p.CreatorUserID,
 		p.EndDate, p.Description, p.MeetingPoint,
 		p.DiveCountMin, p.DiveCountMax, p.DepthMinM, p.DepthMaxM,
 		p.MinCertification, p.BookingCode, p.MaxParticipants,
-		p.DiveCenterID, p.PriceMinor,
+		p.DiveCenterID, p.PriceMinor, p.BookingURL,
 	))
 }
 
@@ -127,6 +141,7 @@ type UpdateParams struct {
 	MinCertification *string
 	MaxParticipants  *int
 	PriceMinor       *int
+	BookingURL       *string
 }
 
 func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (Trip, error) {
@@ -144,12 +159,13 @@ func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (
 			depth_max_m = COALESCE($11, depth_max_m),
 			min_certification = COALESCE($12, min_certification),
 			max_participants = COALESCE($13, max_participants),
-			price_minor = COALESCE($14, price_minor)
+			price_minor = COALESCE($14, price_minor),
+			booking_url = COALESCE($15, booking_url)
 		WHERE id = $1
 		RETURNING `+tripColumns,
 		id, p.Title, p.Location, p.StartTime, p.EndDate, p.Description, p.MeetingPoint,
 		p.DiveCountMin, p.DiveCountMax, p.DepthMinM, p.DepthMaxM,
-		p.MinCertification, p.MaxParticipants, p.PriceMinor,
+		p.MinCertification, p.MaxParticipants, p.PriceMinor, p.BookingURL,
 	))
 }
 
@@ -265,7 +281,7 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 			&t.EndDate, &t.Description, &t.MeetingPoint,
 			&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
 			&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus, &t.PhotoURL,
-			&t.DiveCenterID, &t.PriceMinor, &t.Currency,
+			&t.DiveCenterID, &t.PriceMinor, &t.Currency, &t.BookingURL,
 			&t.UnreadCount,
 		)
 		if err != nil {

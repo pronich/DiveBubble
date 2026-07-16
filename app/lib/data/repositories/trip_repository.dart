@@ -19,6 +19,11 @@ class TripRepository {
 
   Future<void> joinTrip(String id) => _service.joinTrip(id);
 
+  Future<Trip> joinTripByCode(String code) async {
+    final apiModel = await _service.joinTripByCode(code);
+    return apiModel.toDomain();
+  }
+
   Future<void> leaveTrip(String id) => _service.leaveTrip(id);
 
   Future<void> cancelTrip(String id) => _service.cancelTrip(id);

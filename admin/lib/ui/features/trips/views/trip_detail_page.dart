@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/certification_level.dart';
@@ -114,6 +116,10 @@ class _TripDetailPageState extends State<TripDetailPage> {
               ),
               const SizedBox(height: 20),
               _InfoGrid(trip: trip),
+              if (trip.diveCenterId != null) ...[
+                const SizedBox(height: 20),
+                _BookingCodeCard(trip: trip),
+              ],
               if (trip.meetingPoint?.isNotEmpty ?? false) ...[
                 const SizedBox(height: 20),
                 Text('Meeting point', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
@@ -197,6 +203,80 @@ class _InfoTile extends StatelessWidget {
           const SizedBox(height: 6),
           Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, letterSpacing: 0.5)),
           Text(value, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+/// Only rendered for business trips (trip.diveCenterId != null) — individual trips never
+/// get a booking code (see trip.Service.CreateTrip). This is the whole reason join-by-code
+/// exists: a diver pays on bookingUrl, gets this code from the dive center some other way
+/// (email, their own site's confirmation), and redeems it back in app/ — we never see the
+/// actual transaction.
+class _BookingCodeCard extends StatelessWidget {
+  const _BookingCodeCard({required this.trip});
+
+  final Trip trip;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final code = trip.bookingCode;
+    final url = trip.bookingUrl;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'BOOKING CODE',
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer, letterSpacing: 0.5),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(
+                code ?? '—',
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: theme.colorScheme.onSecondaryContainer,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                  fontFamily: 'monospace',
+                ),
+              ),
+              if (code != null) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Copy code',
+                  icon: Icon(Icons.copy, size: 18, color: theme.colorScheme.onSecondaryContainer),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: code));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking code copied')));
+                  },
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Give this code to divers after they book on your own site — they redeem it in the app to join this trip.',
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSecondaryContainer.withValues(alpha: 0.85)),
+          ),
+          if (url != null) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: Text(url, overflow: TextOverflow.ellipsis),
+            ),
+          ],
         ],
       ),
     );

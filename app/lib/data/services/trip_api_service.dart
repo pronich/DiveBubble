@@ -65,6 +65,28 @@ class TripApiService {
     }
   }
 
+  // The marketplace redemption path for business trips (see CLAUDE.md's Booking Code flow
+  // section) — no trip id needed, the code alone resolves it. Returns the resolved trip so
+  // the caller can navigate straight to it.
+  Future<TripApiModel> joinTripByCode(String code) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/join-by-code'),
+      headers: {...await _requiredAuthHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode({'code': code}),
+    );
+    if (res.statusCode != 200) {
+      String message = 'joinTripByCode failed: ${res.statusCode}';
+      try {
+        final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+        if (decoded['error'] is String) message = decoded['error'] as String;
+      } catch (_) {
+        // best-effort — fall back to the generic message above
+      }
+      throw Exception(message);
+    }
+    return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   // 403 (mapped to an Exception here) if the caller is the trip's organizer — they cancel
   // the trip instead of leaving it.
   Future<void> leaveTrip(String id) async {

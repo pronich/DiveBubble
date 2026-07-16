@@ -27,6 +27,7 @@ class TripRepository {
     String? minCertification,
     int? maxParticipants,
     int? priceMinor,
+    String? bookingUrl,
   }) async {
     final apiModel = await _service.createTrip(
       title: title,
@@ -43,6 +44,7 @@ class TripRepository {
       minCertification: minCertification,
       maxParticipants: maxParticipants,
       priceMinor: priceMinor,
+      bookingUrl: bookingUrl,
     );
     return apiModel.toDomain();
   }
@@ -62,6 +64,7 @@ class TripRepository {
     String? minCertification,
     int? maxParticipants,
     int? priceMinor,
+    String? bookingUrl,
   }) async {
     final apiModel = await _service.updateTrip(
       id: id,
@@ -78,6 +81,7 @@ class TripRepository {
       minCertification: minCertification,
       maxParticipants: maxParticipants,
       priceMinor: priceMinor,
+      bookingUrl: bookingUrl,
     );
     return apiModel.toDomain();
   }

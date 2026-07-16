@@ -39,6 +39,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
   final _diveCountMaxController = TextEditingController();
   final _maxParticipantsController = TextEditingController();
   final _priceController = TextEditingController();
+  final _bookingUrlController = TextEditingController();
 
   DateTime? _startDate;
   TimeOfDay? _startTimeOfDay;
@@ -61,6 +62,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
     _maxParticipantsController.text = trip.maxParticipants?.toString() ?? '';
     final priceMinor = trip.priceMinor;
     _priceController.text = priceMinor == null ? '' : (priceMinor / 100).toStringAsFixed(2);
+    _bookingUrlController.text = trip.bookingUrl ?? '';
     _startDate = DateTime(trip.startTime.year, trip.startTime.month, trip.startTime.day);
     _startTimeOfDay = TimeOfDay(hour: trip.startTime.hour, minute: trip.startTime.minute);
     _endDate = trip.endDate;
@@ -79,6 +81,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
     _diveCountMaxController.dispose();
     _maxParticipantsController.dispose();
     _priceController.dispose();
+    _bookingUrlController.dispose();
     _viewModel.dispose();
     super.dispose();
   }
@@ -140,6 +143,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
       diveCountMax: _intOrNull(_diveCountMaxController),
       maxParticipants: _intOrNull(_maxParticipantsController),
       priceMinor: _priceMinorOrNull(_priceController),
+      bookingUrl: _textOrNull(_bookingUrlController),
     );
 
     if (trip != null && mounted) Navigator.of(context).pop(true);
@@ -242,6 +246,15 @@ class _CreateTripPageState extends State<CreateTripPage> {
                           controller: _priceController,
                           decoration: const InputDecoration(labelText: 'Price (optional)', prefixText: 'DKK '),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _bookingUrlController,
+                          decoration: const InputDecoration(
+                            labelText: 'Booking URL (optional)',
+                            hintText: 'Where divers pay to get their booking code',
+                          ),
+                          keyboardType: TextInputType.url,
                         ),
                         const SizedBox(height: 20),
                         TextField(

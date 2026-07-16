@@ -30,6 +30,7 @@ abstract class TripApiModel with _$TripApiModel {
     String? diveCenterId,
     int? priceMinor,
     @Default('DKK') String currency,
+    String? bookingUrl,
   }) = _TripApiModel;
 
   factory TripApiModel.fromJson(Map<String, dynamic> json) =>

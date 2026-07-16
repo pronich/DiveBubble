@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
@@ -23,6 +24,7 @@ import '../../chats/views/trip_conversation_page.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../view_models/trip_view_model.dart';
+import 'join_by_code_dialog.dart';
 
 class TripPage extends StatefulWidget {
   const TripPage({
@@ -232,7 +234,18 @@ class _TripPageState extends State<TripPage> {
                         currentUserId: widget.viewModel.currentUserId,
                       )
                     else if (!trip.joined && !isOrganizer && trip.bookingStatus == 'open')
-                      _JoinButton(trip: trip, viewModel: widget.viewModel)
+                      trip.diveCenterId != null
+                          ? _BookNowSection(
+                              trip: trip,
+                              diveCenter: widget.viewModel.organizerDiveCenter,
+                              viewModel: widget.viewModel,
+                              tripRepository: widget.tripRepository,
+                              chatRepository: widget.chatRepository,
+                              transportRepository: widget.transportRepository,
+                              realtimeService: widget.realtimeService,
+                              diveCenterRepository: widget.diveCenterRepository,
+                            )
+                          : _JoinButton(trip: trip, viewModel: widget.viewModel)
                     else if (widget.openedFromConversation && trip.joined && !isOrganizer)
                       _LeaveButton(viewModel: widget.viewModel)
                     else if (widget.openedFromConversation && isOrganizer && trip.bookingStatus != 'cancelled')
@@ -573,6 +586,98 @@ class _JoinButton extends StatelessWidget {
     final userId = await ensureSignedIn(context, viewModel.authRepository, viewModel.profileRepository);
     if (userId == null) return;
     await viewModel.join();
+  }
+}
+
+/// Replaces _JoinButton for business trips — we're a marketplace, not the ones taking the
+/// diver's money, so there's no direct Join here (see trip.Service.Join's own server-side
+/// rejection of this for business trips). "Book now" sends the diver to actually pay
+/// (trip.bookingUrl, falling back to the dive center's general website); "I have a booking
+/// code" is the way back in once they've got one — see CLAUDE.md's Booking Code flow section.
+class _BookNowSection extends StatelessWidget {
+  const _BookNowSection({
+    required this.trip,
+    required this.diveCenter,
+    required this.viewModel,
+    required this.tripRepository,
+    required this.chatRepository,
+    required this.transportRepository,
+    required this.realtimeService,
+    required this.diveCenterRepository,
+  });
+
+  final Trip trip;
+  final DiveCenter? diveCenter;
+  final TripViewModel viewModel;
+  final TripRepository tripRepository;
+  final ChatRepository chatRepository;
+  final TransportRepository transportRepository;
+  final RealtimeService realtimeService;
+  final DiveCenterRepository diveCenterRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = trip.bookingUrl ?? diveCenter?.website;
+    final priceMinor = trip.priceMinor;
+    final label = priceMinor != null ? 'Book now — ${(priceMinor / 100).toStringAsFixed(2)} ${trip.currency}' : 'Book now';
+
+    return Column(
+      children: [
+        if (url != null)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: Text(label),
+            ),
+          ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () => _handleEnterCode(context),
+            child: const Text('I have a booking code'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleEnterCode(BuildContext context) async {
+    final userId = await ensureSignedIn(context, viewModel.authRepository, viewModel.profileRepository);
+    if (userId == null || !context.mounted) return;
+
+    final resolved = await showJoinByCodeDialog(context, tripRepository);
+    if (resolved == null) return;
+
+    // Same trip this page is already showing — just refresh in place. A code for a
+    // *different* trip (a mistaken paste, most likely) instead opens that trip directly,
+    // since there's nothing more useful to do with it from here.
+    if (resolved.id == trip.id) {
+      await viewModel.load();
+      return;
+    }
+    if (!context.mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TripPage(
+          viewModel: TripViewModel(
+            repository: tripRepository,
+            authRepository: viewModel.authRepository,
+            profileRepository: viewModel.profileRepository,
+            diveCenterRepository: diveCenterRepository,
+            tripId: resolved.id,
+            currentUserId: userId,
+          ),
+          tripRepository: tripRepository,
+          chatRepository: chatRepository,
+          transportRepository: transportRepository,
+          realtimeService: realtimeService,
+          diveCenterRepository: diveCenterRepository,
+        ),
+      ),
+    );
   }
 }
 

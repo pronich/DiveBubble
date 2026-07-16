@@ -49,6 +49,7 @@ class TripApiService {
     String? minCertification,
     int? maxParticipants,
     int? priceMinor,
+    String? bookingUrl,
   }) async {
     final body = <String, dynamic>{
       'title': title,
@@ -65,6 +66,7 @@ class TripApiService {
       if (minCertification != null) 'minCertification': minCertification,
       if (maxParticipants != null) 'maxParticipants': maxParticipants,
       if (priceMinor != null) 'priceMinor': priceMinor,
+      if (bookingUrl != null) 'bookingUrl': bookingUrl,
     };
     final res = await _client.post(
       Uri.parse('$baseUrl/trips'),
@@ -95,6 +97,7 @@ class TripApiService {
     String? minCertification,
     int? maxParticipants,
     int? priceMinor,
+    String? bookingUrl,
   }) async {
     final body = <String, dynamic>{
       if (title != null) 'title': title,
@@ -110,6 +113,7 @@ class TripApiService {
       if (minCertification != null) 'minCertification': minCertification,
       if (maxParticipants != null) 'maxParticipants': maxParticipants,
       if (priceMinor != null) 'priceMinor': priceMinor,
+      if (bookingUrl != null) 'bookingUrl': bookingUrl,
     };
     final res = await _client.patch(
       Uri.parse('$baseUrl/trips/$id'),

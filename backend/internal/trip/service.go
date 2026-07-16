@@ -17,6 +17,10 @@ var ErrOnlyOrganizerCanEditTrip = errors.New("only the organizer can edit this t
 var ErrTripNotOpen = errors.New("trip is not open")
 var ErrTripCancelled = errors.New("trip has been cancelled")
 var ErrNotDiveCenterMember = errors.New("not a member of that dive center")
+var ErrRequiresBookingCode = errors.New("this trip requires a booking code to join")
+var ErrInvalidBookingCode = errors.New("invalid booking code")
+
+const maxBookingCodeAttempts = 5
 
 type Service struct {
 	Repo          *Repository
@@ -87,7 +91,24 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 			return Trip{}, ErrNotDiveCenterMember
 		}
 	}
-	t, err := s.Repo.Create(ctx, p)
+	// Business trips get a server-generated code, retried on the rare unique-constraint
+	// collision — never client-supplied, since the whole point is that only the dive
+	// center (via this trip's own creation) controls who can redeem it. Individual trips
+	// never get one: direct Join stays open for them (see Join below).
+	var t Trip
+	var err error
+	if p.DiveCenterID != nil {
+		for attempt := 0; attempt < maxBookingCodeAttempts; attempt++ {
+			code := generateBookingCode()
+			p.BookingCode = &code
+			t, err = s.Repo.Create(ctx, p)
+			if err == nil || !uniqueViolation(err) {
+				break
+			}
+		}
+	} else {
+		t, err = s.Repo.Create(ctx, p)
+	}
 	if err != nil {
 		return Trip{}, err
 	}
@@ -133,7 +154,38 @@ func (s *Service) Join(ctx context.Context, id string, userID uuid.UUID) error {
 	if t.BookingStatus != "open" {
 		return ErrTripNotOpen
 	}
+	// Business trips are a marketplace listing, not a direct join — a diver has to actually
+	// pay on the dive center's own site and come back with the code it gave them (see
+	// JoinByCode below). Rejecting this server-side (not just hiding the button) matters:
+	// nothing stops a diver from calling this endpoint directly otherwise.
+	if t.DiveCenterID.Valid {
+		return ErrRequiresBookingCode
+	}
 	return s.Repo.Join(ctx, tripID, userID)
+}
+
+// JoinByCode resolves a trip purely from its booking code — no trip id needed, since the
+// code alone is what a diver actually has in hand after paying externally (see Explore's
+// "Join trip" entry point, which doesn't know which trip in advance either).
+func (s *Service) JoinByCode(ctx context.Context, code string, userID uuid.UUID) (Trip, error) {
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if code == "" {
+		return Trip{}, ErrInvalidArgument
+	}
+	t, err := s.Repo.GetByBookingCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return Trip{}, ErrInvalidBookingCode
+		}
+		return Trip{}, err
+	}
+	if t.BookingStatus != "open" {
+		return Trip{}, ErrTripNotOpen
+	}
+	if err := s.Repo.Join(ctx, t.ID, userID); err != nil {
+		return Trip{}, err
+	}
+	return t, nil
 }
 
 // Leave rejects the trip's organizer — other participants are relying on them, so their

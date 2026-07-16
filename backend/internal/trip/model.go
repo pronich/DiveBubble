@@ -35,4 +35,9 @@ type Trip struct {
 	DiveCenterID uuid.NullUUID
 	PriceMinor   sql.NullInt32 // minor currency units (øre) — nil means price not set/shown
 	Currency     string
+
+	// BookingURL is the trip's own external checkout page (distinct from the dive center's
+	// general website) — see CLAUDE.md's Booking Code flow section for why the two aren't
+	// the same field.
+	BookingURL sql.NullString
 }
