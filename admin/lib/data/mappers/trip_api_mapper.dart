@@ -26,5 +26,6 @@ extension TripApiMapper on TripApiModel {
         diveCenterId: diveCenterId,
         priceMinor: priceMinor,
         currency: currency,
+        bookingUrl: bookingUrl,
       );
 }

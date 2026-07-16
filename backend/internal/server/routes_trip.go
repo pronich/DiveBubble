@@ -22,6 +22,7 @@ func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, transportSvc *tra
 	// Detail stays browsable without an account — "joined" is just false for anonymous viewers.
 	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
 	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc)))
+	mux.HandleFunc("POST /trips/join-by-code", withAuth(authIssuer, handleJoinTripByCode(svc)))
 	mux.HandleFunc("POST /trips/{id}/leave", withAuth(authIssuer, handleLeaveTrip(svc, transportSvc)))
 	mux.HandleFunc("POST /trips/{id}/cancel", withAuth(authIssuer, handleCancelTrip(svc)))
 	mux.HandleFunc("PATCH /trips/{id}", withAuth(authIssuer, handleUpdateTrip(svc)))
@@ -56,6 +57,7 @@ type tripResponse struct {
 	DiveCenterID *uuid.UUID `json:"diveCenterId,omitempty"`
 	PriceMinor   *int       `json:"priceMinor,omitempty"`
 	Currency     string     `json:"currency"`
+	BookingURL   *string    `json:"bookingUrl,omitempty"`
 }
 
 func nullStringPtr(v sql.NullString) *string {
@@ -104,6 +106,7 @@ func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse
 		PhotoURL:         nullStringPtr(t.PhotoURL),
 		PriceMinor:       nullInt32Ptr(t.PriceMinor),
 		Currency:         t.Currency,
+		BookingURL:       nullStringPtr(t.BookingURL),
 	}
 	if t.CreatorUserID.Valid {
 		resp.CreatorUserID = &t.CreatorUserID.UUID
@@ -133,8 +136,11 @@ type createTripRequest struct {
 	// DiveCenterID set means this is a business trip — the caller must be a member of that
 	// dive center (checked in trip.Service.CreateTrip), and the creator doesn't get
 	// auto-joined the way an individual organizer does (see CreateTrip's own comment).
+	// BookingCode above is ignored for business trips either way — trip.Service.CreateTrip
+	// always overwrites it with a fresh server-generated code (see booking_code.go).
 	DiveCenterID *uuid.UUID `json:"diveCenterId"`
 	PriceMinor   *int       `json:"priceMinor"`
+	BookingURL   *string    `json:"bookingUrl"`
 }
 
 func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -163,6 +169,7 @@ func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 			MaxParticipants:  req.MaxParticipants,
 			DiveCenterID:     req.DiveCenterID,
 			PriceMinor:       req.PriceMinor,
+			BookingURL:       req.BookingURL,
 		})
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
@@ -233,11 +240,58 @@ func handleJoinTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, 
 				writeError(w, http.StatusConflict, "trip is not open to join")
 				return
 			}
+			if errors.Is(err, trip.ErrRequiresBookingCode) {
+				writeError(w, http.StatusConflict, "this trip requires a booking code — use join-by-code instead")
+				return
+			}
 			writeError(w, http.StatusInternalServerError, "could not join trip")
 			return
 		}
 
 		writeJSON(w, http.StatusOK, map[string]bool{"joined": true})
+	}
+}
+
+type joinByCodeRequest struct {
+	Code string `json:"code"`
+}
+
+// handleJoinTripByCode is the marketplace redemption path for business trips (see
+// trip.Service.JoinByCode) — no trip id in the URL, since the code alone is what the diver
+// actually has after paying on the dive center's own site.
+func handleJoinTripByCode(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		var req joinByCodeRequest
+		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
+		if err := dec.Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+
+		t, err := svc.JoinByCode(r.Context(), req.Code, userID)
+		if err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "code is required")
+				return
+			}
+			if errors.Is(err, trip.ErrInvalidBookingCode) {
+				writeError(w, http.StatusNotFound, "invalid booking code")
+				return
+			}
+			if errors.Is(err, trip.ErrTripNotOpen) {
+				writeError(w, http.StatusConflict, "trip is not open to join")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not join trip")
+			return
+		}
+
+		participantCount, err := svc.CountParticipants(r.Context(), t.ID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not join trip")
+			return
+		}
+		writeJSON(w, http.StatusOK, toTripResponse(t, true, participantCount))
 	}
 }
 
@@ -284,6 +338,7 @@ type updateTripRequest struct {
 	MinCertification *string    `json:"minCertification"`
 	MaxParticipants  *int       `json:"maxParticipants"`
 	PriceMinor       *int       `json:"priceMinor"`
+	BookingURL       *string    `json:"bookingUrl"`
 }
 
 // handleUpdateTrip is organizer-only (enforced inside svc.Update, same isOrganizer check as
@@ -313,6 +368,7 @@ func handleUpdateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 			MinCertification: req.MinCertification,
 			MaxParticipants:  req.MaxParticipants,
 			PriceMinor:       req.PriceMinor,
+			BookingURL:       req.BookingURL,
 		})
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {

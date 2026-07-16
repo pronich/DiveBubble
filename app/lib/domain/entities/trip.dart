@@ -30,5 +30,9 @@ abstract class Trip with _$Trip {
     String? diveCenterId,
     int? priceMinor,
     @Default('DKK') String currency,
+    // The trip's own external checkout page — where a diver actually pays to get a
+    // bookingCode, since a business trip can't be joined directly (see TripPage's
+    // organizer-card-adjacent Book-now button and CLAUDE.md's Booking Code flow section).
+    String? bookingUrl,
   }) = _Trip;
 }
