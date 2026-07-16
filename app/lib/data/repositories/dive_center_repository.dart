@@ -11,4 +11,6 @@ class DiveCenterRepository {
     final apiModel = await _service.fetchById(id);
     return apiModel.toDomain();
   }
+
+  Future<bool> isMember(String id) => _service.fetchIsMember(id);
 }

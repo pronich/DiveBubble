@@ -30,4 +30,16 @@ class DiveCenterApiService {
     }
     return DiveCenterApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
+
+  // Caller-scoped: whether *I* am staff of this dive center — GET /dive-centers/{id} itself
+  // is public now, so a successful fetch no longer implies membership (see backend's own
+  // comment on handleGetDiveCenterMembership).
+  Future<bool> fetchIsMember(String id) async {
+    final res = await _client.get(Uri.parse('$baseUrl/dive-centers/$id/membership'), headers: await _authHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('fetchIsMember failed: ${res.statusCode} ${res.body}');
+    }
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    return json['isMember'] as bool;
+  }
 }

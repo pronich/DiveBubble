@@ -35,6 +35,13 @@ class TripViewModel extends ChangeNotifier {
   DiveCenter? _organizerDiveCenter;
   DiveCenter? get organizerDiveCenter => _organizerDiveCenter;
 
+  bool _isDiveCenterStaff = false;
+
+  /// True for the trip's literal creator *or* any member of the dive center running it —
+  /// matches the backend's own trip.Service.isOrganizer exactly (see CLAUDE.md's
+  /// Business/dive centers section). Gates Cancel/photo-upload/Join visibility below.
+  bool get isOrganizer => (_trip?.creatorUserId == currentUserId) || _isDiveCenterStaff;
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -79,6 +86,13 @@ class TripViewModel extends ChangeNotifier {
         } catch (_) {
           _organizerDiveCenter = null;
         }
+        try {
+          _isDiveCenterStaff = await diveCenterRepository.isMember(diveCenterId);
+        } catch (_) {
+          _isDiveCenterStaff = false;
+        }
+      } else {
+        _isDiveCenterStaff = false;
       }
     } catch (e) {
       _error = e.toString();

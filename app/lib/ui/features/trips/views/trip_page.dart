@@ -7,6 +7,7 @@ import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
+import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/dive_center.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/trip.dart';
@@ -96,7 +97,7 @@ class _TripPageState extends State<TripPage> {
           }
 
           final theme = Theme.of(context);
-          final isOrganizer = trip.creatorUserId == widget.viewModel.currentUserId;
+          final isOrganizer = widget.viewModel.isOrganizer;
 
           return ListView(
             padding: EdgeInsets.zero,
@@ -230,7 +231,7 @@ class _TripPageState extends State<TripPage> {
                         diveCenterRepository: widget.diveCenterRepository,
                         currentUserId: widget.viewModel.currentUserId,
                       )
-                    else if (!trip.joined && trip.bookingStatus == 'open')
+                    else if (!trip.joined && !isOrganizer && trip.bookingStatus == 'open')
                       _JoinButton(trip: trip, viewModel: widget.viewModel)
                     else if (widget.openedFromConversation && trip.joined && !isOrganizer)
                       _LeaveButton(viewModel: widget.viewModel)
@@ -349,7 +350,7 @@ class _InfoGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = <Widget>[
-      _InfoTile(icon: Icons.badge_outlined, label: 'LEVEL', value: trip.minCertification ?? 'Open to all'),
+      _InfoTile(icon: Icons.badge_outlined, label: 'LEVEL', value: certificationLevelAbbreviation(trip.minCertification)),
       if (_depthText(trip) != null) _InfoTile(icon: Icons.waves, label: 'DEPTH', value: _depthText(trip)!),
       if (_diveCountText(trip) != null) _InfoTile(icon: Icons.scuba_diving_outlined, label: 'DIVES', value: _diveCountText(trip)!),
       _InfoTile(icon: Icons.schedule, label: 'DURATION', value: _durationText(trip)),

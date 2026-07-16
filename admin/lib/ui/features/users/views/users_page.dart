@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/dive_center_repository.dart';
+import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/dive_center_member.dart';
 import '../view_models/users_view_model.dart';
 import 'add_member_dialog.dart';
@@ -203,7 +204,7 @@ class _MembersTable extends StatelessWidget {
                   Expanded(
                     flex: 2,
                     child: Text(
-                      member.certificationLevel ?? '—',
+                      member.certificationLevel != null ? certificationLevelAbbreviation(member.certificationLevel) : '—',
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),

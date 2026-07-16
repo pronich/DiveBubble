@@ -51,6 +51,7 @@ class MyTripsView extends StatefulWidget {
 class _MyTripsViewState extends State<MyTripsView> {
   // Refreshes on app resume too — trips/messages may have changed while backgrounded.
   late final _lifecycleListener = AppLifecycleListener(onResume: widget.viewModel.load);
+  String _search = '';
 
   @override
   void initState() {
@@ -103,8 +104,8 @@ class _MyTripsViewState extends State<MyTripsView> {
             return Center(child: Text('Error: $error'));
           }
 
-          final trips = widget.viewModel.trips;
-          if (trips.isEmpty) {
+          final allTrips = widget.viewModel.trips;
+          if (allTrips.isEmpty) {
             return EmptyStateView(
               icon: Icons.luggage_outlined,
               title: 'No Bubbles yet',
@@ -114,17 +115,43 @@ class _MyTripsViewState extends State<MyTripsView> {
             );
           }
 
-          return RefreshIndicator(
-            onRefresh: widget.viewModel.load,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: trips.length,
-              separatorBuilder: (context, _) => const Divider(height: 1, indent: 76),
-              itemBuilder: (context, index) => _TripRow(
-                trip: trips[index],
-                onTap: () => _openChat(context, trips[index]),
+          final query = _search.trim().toLowerCase();
+          final trips = query.isEmpty ? allTrips : allTrips.where((t) => t.title.toLowerCase().contains(query)).toList();
+
+          return Column(
+            children: [
+              // Only shown once there's more than a handful to search through — a single
+              // Bubble doesn't need a search box sitting above it.
+              if (allTrips.length > 5)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: TextField(
+                    decoration: const InputDecoration(hintText: 'Search Bubbles', prefixIcon: Icon(Icons.search), isDense: true),
+                    onChanged: (value) => setState(() => _search = value),
+                  ),
+                ),
+              Expanded(
+                child: trips.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No matches.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: widget.viewModel.load,
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: trips.length,
+                          separatorBuilder: (context, _) => const Divider(height: 1, indent: 76),
+                          itemBuilder: (context, index) => _TripRow(
+                            trip: trips[index],
+                            onTap: () => _openChat(context, trips[index]),
+                          ),
+                        ),
+                      ),
               ),
-            ),
+            ],
           );
         },
       ),

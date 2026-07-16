@@ -7,6 +7,7 @@ import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
+import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/auth/ensure_signed_in.dart';
@@ -363,6 +364,11 @@ class _TripCard extends StatelessWidget {
                     bottom: 8,
                     child: _DatePill(date: trip.startTime),
                   ),
+                  Positioned(
+                    left: 8,
+                    top: 8,
+                    child: _OrganizerTypePill(isDiveCenter: trip.diveCenterId != null),
+                  ),
                 ],
               ),
             ),
@@ -455,7 +461,7 @@ class _TripCardBadges extends StatelessWidget {
       children: [
         _Badge(
           icon: Icons.badge_outlined,
-          text: trip.minCertification ?? 'Open to all',
+          text: certificationLevelAbbreviation(trip.minCertification),
           color: color,
           style: style,
         ),
@@ -524,6 +530,34 @@ class _Badge extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// A quick "who's running this" signal — same top-left corner Airbnb-style listings use for
+// a superhost/guest-favorite badge. Deliberately reuses _DatePill's exact pill styling
+// (inverseSurface pill, labelSmall text) just mirrored to the opposite corner, so the two
+// badges read as one visual family rather than two different treatments competing for
+// attention on the same photo.
+class _OrganizerTypePill extends StatelessWidget {
+  const _OrganizerTypePill({required this.isDiveCenter});
+
+  final bool isDiveCenter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.inverseSurface,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        isDiveCenter ? 'Dive Center' : 'Individual',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: Theme.of(context).colorScheme.onInverseSurface,
+        ),
+      ),
     );
   }
 }
