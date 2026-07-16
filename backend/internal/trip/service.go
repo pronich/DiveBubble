@@ -178,8 +178,7 @@ func (s *Service) Cancel(ctx context.Context, id string, userID uuid.UUID) error
 	return s.Repo.SetBookingStatus(ctx, tripID, "cancelled")
 }
 
-// SetPhotoURL is organizer-only — matches Cancel's ownership check, since nothing about a
-// trip other than its photo is editable yet either.
+// SetPhotoURL is organizer-only — same ownership check as Update below.
 func (s *Service) SetPhotoURL(ctx context.Context, id string, userID uuid.UUID, url string) error {
 	tripID, err := uuid.Parse(id)
 	if err != nil {
@@ -197,6 +196,44 @@ func (s *Service) SetPhotoURL(ctx context.Context, id string, userID uuid.UUID, 
 		return ErrOnlyOrganizerCanEditTrip
 	}
 	return s.Repo.SetPhotoURL(ctx, tripID, url)
+}
+
+// Update is organizer-only (same isOrganizer check as Cancel/SetPhotoURL — any dive-center
+// member, not just the trip's literal creator). Trims/validates Title and Location the
+// same way CreateTrip does, since a blank one would slip through Repository.Update's
+// COALESCE(nil-is-untouched) semantics if not caught here first — an empty *string* isn't
+// nil, so it would overwrite the field with blank rather than leaving it alone.
+func (s *Service) Update(ctx context.Context, id string, userID uuid.UUID, p UpdateParams) (Trip, error) {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return Trip{}, ErrInvalidArgument
+	}
+	t, err := s.Repo.GetByID(ctx, tripID)
+	if err != nil {
+		return Trip{}, err
+	}
+	ok, err := s.isOrganizer(ctx, t, userID)
+	if err != nil {
+		return Trip{}, err
+	}
+	if !ok {
+		return Trip{}, ErrOnlyOrganizerCanEditTrip
+	}
+	if p.Title != nil {
+		trimmed := strings.TrimSpace(*p.Title)
+		if trimmed == "" {
+			return Trip{}, ErrInvalidArgument
+		}
+		p.Title = &trimmed
+	}
+	if p.Location != nil {
+		trimmed := strings.TrimSpace(*p.Location)
+		if trimmed == "" {
+			return Trip{}, ErrInvalidArgument
+		}
+		p.Location = &trimmed
+	}
+	return s.Repo.Update(ctx, tripID, p)
 }
 
 // EnsureNotCancelled is the shared guard for actions that freeze once a trip is

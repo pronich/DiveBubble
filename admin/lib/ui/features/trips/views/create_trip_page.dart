@@ -2,20 +2,32 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/certification_level.dart';
+import '../../../../domain/entities/trip.dart';
 import '../view_models/create_trip_view_model.dart';
 
+/// Opened via `showDialog` (not pushed as a route) — the full Create/Edit form fits
+/// comfortably in a popup since there aren't many fields, and the user explicitly asked
+/// for the full form here rather than a stripped-down quick-create modal.
 class CreateTripPage extends StatefulWidget {
-  const CreateTripPage({super.key, required this.tripRepository, required this.diveCenterId});
+  const CreateTripPage({super.key, required this.tripRepository, required this.diveCenterId, this.existingTrip});
 
   final TripRepository tripRepository;
   final String diveCenterId;
+
+  // Non-null reuses this same form to edit an already-created trip instead of creating a
+  // new one — prefilled from its current values (see initState below).
+  final Trip? existingTrip;
 
   @override
   State<CreateTripPage> createState() => _CreateTripPageState();
 }
 
 class _CreateTripPageState extends State<CreateTripPage> {
-  late final _viewModel = CreateTripViewModel(repository: widget.tripRepository, diveCenterId: widget.diveCenterId);
+  late final _viewModel = CreateTripViewModel(
+    repository: widget.tripRepository,
+    diveCenterId: widget.diveCenterId,
+    existingTripId: widget.existingTrip?.id,
+  );
 
   final _titleController = TextEditingController();
   final _locationController = TextEditingController();
@@ -32,6 +44,28 @@ class _CreateTripPageState extends State<CreateTripPage> {
   TimeOfDay? _startTimeOfDay;
   DateTime? _endDate;
   String? _minCertification;
+
+  @override
+  void initState() {
+    super.initState();
+    final trip = widget.existingTrip;
+    if (trip == null) return;
+    _titleController.text = trip.title;
+    _locationController.text = trip.location;
+    _descriptionController.text = trip.description ?? '';
+    _meetingPointController.text = trip.meetingPoint ?? '';
+    _depthMinController.text = trip.depthMinM?.toString() ?? '';
+    _depthMaxController.text = trip.depthMaxM?.toString() ?? '';
+    _diveCountMinController.text = trip.diveCountMin?.toString() ?? '';
+    _diveCountMaxController.text = trip.diveCountMax?.toString() ?? '';
+    _maxParticipantsController.text = trip.maxParticipants?.toString() ?? '';
+    final priceMinor = trip.priceMinor;
+    _priceController.text = priceMinor == null ? '' : (priceMinor / 100).toStringAsFixed(2);
+    _startDate = DateTime(trip.startTime.year, trip.startTime.month, trip.startTime.day);
+    _startTimeOfDay = TimeOfDay(hour: trip.startTime.hour, minute: trip.startTime.minute);
+    _endDate = trip.endDate;
+    _minCertification = kCertificationLevels.contains(trip.minCertification) ? trip.minCertification : null;
+  }
 
   @override
   void dispose() {
@@ -130,133 +164,193 @@ class _CreateTripPageState extends State<CreateTripPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Create trip')),
-      body: ListenableBuilder(
-        listenable: _viewModel,
-        builder: (context, _) {
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
-                  const SizedBox(height: 12),
-                  TextField(controller: _locationController, decoration: const InputDecoration(labelText: 'Location')),
-                  const SizedBox(height: 12),
-                  Row(
+    final theme = Theme.of(context);
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: 560, maxHeight: MediaQuery.sizeOf(context).height * 0.85),
+        child: ListenableBuilder(
+          listenable: _viewModel,
+          builder: (context, _) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 12, 4),
+                  child: Row(
                     children: [
                       Expanded(
-                        child: _PickerField(
-                          label: 'Date',
-                          value: _startDate == null ? null : '${_startDate!.year}-${_startDate!.month}-${_startDate!.day}',
-                          onTap: _pickStartDate,
+                        child: Text(
+                          _viewModel.isEditing ? 'Edit trip' : 'Create a trip',
+                          style: theme.textTheme.headlineSmall,
+                        ),
+                      ),
+                      IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.of(context).pop(false)),
+                    ],
+                  ),
+                ),
+                if (!_viewModel.isEditing)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                    child: Text(
+                      'Publish a new dive to your team and members.',
+                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+                    child: Column(
+                      children: [
+                        TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _locationController,
+                          decoration: const InputDecoration(labelText: 'Location'),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _PickerField(
+                                label: 'Date',
+                                value: _startDate == null
+                                    ? null
+                                    : '${_startDate!.year}-${_startDate!.month}-${_startDate!.day}',
+                                onTap: _pickStartDate,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _PickerField(
+                                label: 'Start time',
+                                value: _startTimeOfDay?.format(context),
+                                onTap: _pickStartTime,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _PickerField(
+                          label: 'End date (optional, multi-day trips)',
+                          value: _endDate == null ? null : '${_endDate!.year}-${_endDate!.month}-${_endDate!.day}',
+                          onTap: _pickEndDate,
+                          onClear: _endDate == null ? null : () => setState(() => _endDate = null),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _priceController,
+                          decoration: const InputDecoration(labelText: 'Price (optional)', prefixText: 'DKK '),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        ),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _meetingPointController,
+                          decoration: const InputDecoration(labelText: 'Meeting point (optional)'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _descriptionController,
+                          decoration: const InputDecoration(labelText: 'Description (optional)'),
+                          maxLines: 3,
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String?>(
+                          initialValue: _minCertification,
+                          decoration: const InputDecoration(labelText: 'Required level (optional)'),
+                          hint: const Text('Open to all'),
+                          items: [
+                            const DropdownMenuItem<String?>(value: null, child: Text('Open to all')),
+                            ...kCertificationLevels.map(
+                              (level) => DropdownMenuItem<String?>(value: level, child: Text(level)),
+                            ),
+                          ],
+                          onChanged: (value) => setState(() => _minCertification = value),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _depthMinController,
+                                decoration: const InputDecoration(labelText: 'Min depth (m)'),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                controller: _depthMaxController,
+                                decoration: const InputDecoration(labelText: 'Max depth (m)'),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _diveCountMinController,
+                                decoration: const InputDecoration(labelText: 'Min dives'),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                controller: _diveCountMaxController,
+                                decoration: const InputDecoration(labelText: 'Max dives'),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _maxParticipantsController,
+                          decoration: const InputDecoration(labelText: 'Seats (optional)'),
+                          keyboardType: TextInputType.number,
+                        ),
+                        if (_viewModel.error != null) ...[
+                          const SizedBox(height: 16),
+                          Text('Error: ${_viewModel.error}', style: TextStyle(color: theme.colorScheme.error)),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Cancel'),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _PickerField(label: 'Start time', value: _startTimeOfDay?.format(context), onTap: _pickStartTime),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _PickerField(
-                    label: 'End date (optional, multi-day trips)',
-                    value: _endDate == null ? null : '${_endDate!.year}-${_endDate!.month}-${_endDate!.day}',
-                    onTap: _pickEndDate,
-                    onClear: _endDate == null ? null : () => setState(() => _endDate = null),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _priceController,
-                    decoration: const InputDecoration(labelText: 'Price (optional)', prefixText: 'DKK '),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: _meetingPointController,
-                    decoration: const InputDecoration(labelText: 'Meeting point (optional)'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _descriptionController,
-                    decoration: const InputDecoration(labelText: 'Description (optional)'),
-                    maxLines: 3,
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String?>(
-                    initialValue: _minCertification,
-                    decoration: const InputDecoration(labelText: 'Required level (optional)'),
-                    hint: const Text('Open to all'),
-                    items: [
-                      const DropdownMenuItem<String?>(value: null, child: Text('Open to all')),
-                      ...kCertificationLevels.map((level) => DropdownMenuItem<String?>(value: level, child: Text(level))),
-                    ],
-                    onChanged: (value) => setState(() => _minCertification = value),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _depthMinController,
-                          decoration: const InputDecoration(labelText: 'Min depth (m)'),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _depthMaxController,
-                          decoration: const InputDecoration(labelText: 'Max depth (m)'),
-                          keyboardType: TextInputType.number,
+                        child: FilledButton(
+                          onPressed: _viewModel.isSubmitting ? null : _submit,
+                          child: _viewModel.isSubmitting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : Text(_viewModel.isEditing ? 'Save changes' : 'Publish'),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _diveCountMinController,
-                          decoration: const InputDecoration(labelText: 'Min dives'),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _diveCountMaxController,
-                          decoration: const InputDecoration(labelText: 'Max dives'),
-                          keyboardType: TextInputType.number,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _maxParticipantsController,
-                    decoration: const InputDecoration(labelText: 'Seats (optional)'),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 24),
-                  if (_viewModel.error != null) ...[
-                    Text('Error: ${_viewModel.error}', style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                    const SizedBox(height: 12),
-                  ],
-                  ElevatedButton(
-                    onPressed: _viewModel.isSubmitting ? null : _submit,
-                    child: _viewModel.isSubmitting
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('Create trip'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

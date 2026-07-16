@@ -24,6 +24,7 @@ func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, transportSvc *tra
 	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc)))
 	mux.HandleFunc("POST /trips/{id}/leave", withAuth(authIssuer, handleLeaveTrip(svc, transportSvc)))
 	mux.HandleFunc("POST /trips/{id}/cancel", withAuth(authIssuer, handleCancelTrip(svc)))
+	mux.HandleFunc("PATCH /trips/{id}", withAuth(authIssuer, handleUpdateTrip(svc)))
 	mux.HandleFunc("GET /trips/{id}/participants", withAuth(authIssuer, handleListParticipants(svc)))
 	mux.HandleFunc("POST /trips/{id}/read", withAuth(authIssuer, handleMarkRead(svc)))
 }
@@ -266,6 +267,81 @@ func handleCancelTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 		}
 
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+type updateTripRequest struct {
+	Title            *string    `json:"title"`
+	Location         *string    `json:"location"`
+	StartTime        *time.Time `json:"startTime"`
+	EndDate          *time.Time `json:"endDate"`
+	Description      *string    `json:"description"`
+	MeetingPoint     *string    `json:"meetingPoint"`
+	DiveCountMin     *int       `json:"diveCountMin"`
+	DiveCountMax     *int       `json:"diveCountMax"`
+	DepthMinM        *int       `json:"depthMinM"`
+	DepthMaxM        *int       `json:"depthMaxM"`
+	MinCertification *string    `json:"minCertification"`
+	MaxParticipants  *int       `json:"maxParticipants"`
+	PriceMinor       *int       `json:"priceMinor"`
+}
+
+// handleUpdateTrip is organizer-only (enforced inside svc.Update, same isOrganizer check as
+// Cancel/SetPhotoURL). Every field is optional — a nil pointer leaves that column untouched
+// (see trip.UpdateParams), so callers only send the fields they actually changed.
+func handleUpdateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+		var req updateTripRequest
+		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
+		if err := dec.Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+
+		t, err := svc.Update(r.Context(), id, userID, trip.UpdateParams{
+			Title:            req.Title,
+			Location:         req.Location,
+			StartTime:        req.StartTime,
+			EndDate:          req.EndDate,
+			Description:      req.Description,
+			MeetingPoint:     req.MeetingPoint,
+			DiveCountMin:     req.DiveCountMin,
+			DiveCountMax:     req.DiveCountMax,
+			DepthMinM:        req.DepthMinM,
+			DepthMaxM:        req.DepthMaxM,
+			MinCertification: req.MinCertification,
+			MaxParticipants:  req.MaxParticipants,
+			PriceMinor:       req.PriceMinor,
+		})
+		if err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id or field value")
+				return
+			}
+			if errors.Is(err, trip.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "trip not found")
+				return
+			}
+			if errors.Is(err, trip.ErrOnlyOrganizerCanEditTrip) {
+				writeError(w, http.StatusForbidden, "only the organizer can edit this trip")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not update trip")
+			return
+		}
+
+		joined, err := svc.IsJoined(r.Context(), id, userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not update trip")
+			return
+		}
+		participantCount, err := svc.CountParticipants(r.Context(), t.ID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not update trip")
+			return
+		}
+		writeJSON(w, http.StatusOK, toTripResponse(t, joined, participantCount))
 	}
 }
 

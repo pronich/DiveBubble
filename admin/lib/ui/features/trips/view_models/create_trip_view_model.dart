@@ -4,10 +4,16 @@ import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
 
 class CreateTripViewModel extends ChangeNotifier {
-  CreateTripViewModel({required TripRepository repository, required this.diveCenterId}) : _repository = repository;
+  CreateTripViewModel({required TripRepository repository, required this.diveCenterId, this.existingTripId})
+      : _repository = repository;
 
   final TripRepository _repository;
   final String diveCenterId;
+
+  // Non-null means this form is editing an existing trip rather than creating one — same
+  // form, same submit() call site, just routed to a different repository call (see below).
+  final String? existingTripId;
+  bool get isEditing => existingTripId != null;
 
   bool _isSubmitting = false;
   bool get isSubmitting => _isSubmitting;
@@ -35,6 +41,24 @@ class CreateTripViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      if (existingTripId != null) {
+        return await _repository.updateTrip(
+          id: existingTripId!,
+          title: title,
+          location: location,
+          startTime: startTime,
+          endDate: endDate,
+          description: description,
+          meetingPoint: meetingPoint,
+          diveCountMin: diveCountMin,
+          diveCountMax: diveCountMax,
+          depthMinM: depthMinM,
+          depthMaxM: depthMaxM,
+          minCertification: minCertification,
+          maxParticipants: maxParticipants,
+          priceMinor: priceMinor,
+        );
+      }
       return await _repository.createTrip(
         title: title,
         location: location,

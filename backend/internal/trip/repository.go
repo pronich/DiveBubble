@@ -108,6 +108,51 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Trip, error) {
 // List excludes cancelled trips — Explore is a marketplace of things you could join, and a
 // cancelled trip no longer qualifies. Full trips stay listed (capacity isn't dead, just
 // full); only the Join action itself is what's actually blocked for those.
+// UpdateParams uses pointers so a nil field is left unchanged rather than cleared — same
+// convention (and same can't-null-an-optional-field-back-out limitation) as profile.UpdateParams.
+// Deliberately excludes booking_status (Cancel is its own flow), dive_center_id/
+// creator_user_id (ownership doesn't change via an edit), and currency (not yet settable
+// per trip — see migration 000023's own comment).
+type UpdateParams struct {
+	Title            *string
+	Location         *string
+	StartTime        *time.Time
+	EndDate          *time.Time
+	Description      *string
+	MeetingPoint     *string
+	DiveCountMin     *int
+	DiveCountMax     *int
+	DepthMinM        *int
+	DepthMaxM        *int
+	MinCertification *string
+	MaxParticipants  *int
+	PriceMinor       *int
+}
+
+func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (Trip, error) {
+	return scanTrip(r.DB.QueryRowContext(ctx, `
+		UPDATE trips SET
+			title = COALESCE($2, title),
+			location = COALESCE($3, location),
+			start_time = COALESCE($4, start_time),
+			end_date = COALESCE($5, end_date),
+			description = COALESCE($6, description),
+			meeting_point = COALESCE($7, meeting_point),
+			dive_count_min = COALESCE($8, dive_count_min),
+			dive_count_max = COALESCE($9, dive_count_max),
+			depth_min_m = COALESCE($10, depth_min_m),
+			depth_max_m = COALESCE($11, depth_max_m),
+			min_certification = COALESCE($12, min_certification),
+			max_participants = COALESCE($13, max_participants),
+			price_minor = COALESCE($14, price_minor)
+		WHERE id = $1
+		RETURNING `+tripColumns,
+		id, p.Title, p.Location, p.StartTime, p.EndDate, p.Description, p.MeetingPoint,
+		p.DiveCountMin, p.DiveCountMax, p.DepthMinM, p.DepthMaxM,
+		p.MinCertification, p.MaxParticipants, p.PriceMinor,
+	))
+}
+
 func (r *Repository) List(ctx context.Context) ([]Trip, error) {
 	rows, err := r.DB.QueryContext(ctx, `SELECT `+tripColumns+` FROM trips WHERE booking_status != 'cancelled' ORDER BY start_time ASC`)
 	if err != nil {

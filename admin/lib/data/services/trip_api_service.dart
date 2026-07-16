@@ -76,4 +76,49 @@ class TripApiService {
     }
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
+
+  // diveCenterId isn't here — ownership doesn't change via an edit (see trip.UpdateParams'
+  // own comment on the backend). Every other field is nullable/optional, matching PATCH
+  // semantics: only fields present in the body get changed.
+  Future<TripApiModel> updateTrip({
+    required String id,
+    String? title,
+    String? location,
+    DateTime? startTime,
+    DateTime? endDate,
+    String? description,
+    String? meetingPoint,
+    int? diveCountMin,
+    int? diveCountMax,
+    int? depthMinM,
+    int? depthMaxM,
+    String? minCertification,
+    int? maxParticipants,
+    int? priceMinor,
+  }) async {
+    final body = <String, dynamic>{
+      if (title != null) 'title': title,
+      if (location != null) 'location': location,
+      if (startTime != null) 'startTime': startTime.toUtc().toIso8601String(),
+      if (endDate != null) 'endDate': endDate.toUtc().toIso8601String(),
+      if (description != null) 'description': description,
+      if (meetingPoint != null) 'meetingPoint': meetingPoint,
+      if (diveCountMin != null) 'diveCountMin': diveCountMin,
+      if (diveCountMax != null) 'diveCountMax': diveCountMax,
+      if (depthMinM != null) 'depthMinM': depthMinM,
+      if (depthMaxM != null) 'depthMaxM': depthMaxM,
+      if (minCertification != null) 'minCertification': minCertification,
+      if (maxParticipants != null) 'maxParticipants': maxParticipants,
+      if (priceMinor != null) 'priceMinor': priceMinor,
+    };
+    final res = await _client.patch(
+      Uri.parse('$baseUrl/trips/$id'),
+      headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('updateTrip failed: ${res.statusCode} ${res.body}');
+    }
+    return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
 }
