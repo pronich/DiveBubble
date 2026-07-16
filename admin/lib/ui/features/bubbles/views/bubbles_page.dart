@@ -4,13 +4,17 @@ import 'package:flutter/services.dart';
 
 import '../../../../data/repositories/message_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/chat_message.dart';
 import '../../../../domain/entities/my_profile.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/formatting/date_format.dart';
+import '../../transport/view_models/transport_view_model.dart';
+import '../../trips/views/trip_detail_page.dart';
 import '../view_models/bubbles_view_model.dart';
+import 'transport_tab.dart';
 
 // Same grouping window as app/'s ChatView — consecutive messages from the same sender on
 // the same day collapse into one visual cluster as long as the gap stays under this.
@@ -25,17 +29,20 @@ class BubblesPage extends StatefulWidget {
     required this.tripRepository,
     required this.messageRepository,
     required this.profileRepository,
+    required this.transportRepository,
     required this.realtimeService,
     required this.diveCenterId,
     required this.diveCenterName,
     required this.getCurrentUserId,
     required this.selectedTabIndex,
     required this.openTripId,
+    required this.onDiveIntoBubble,
   });
 
   final TripRepository tripRepository;
   final MessageRepository messageRepository;
   final ProfileRepository profileRepository;
+  final TransportRepository transportRepository;
   final RealtimeService realtimeService;
   final String diveCenterId;
 
@@ -53,6 +60,11 @@ class BubblesPage extends StatefulWidget {
   // back to null by this page (see _onOpenTripIdChanged). A ValueNotifier, not just
   // ValueListenable, since this page also writes the reset back.
   final ValueNotifier<String?> openTripId;
+
+  // Tapping the conversation header pushes TripDetailPage (see _Conversation) — its own
+  // "Dive into Bubble" button calls this to pop back here, same round-trip AdminShell wires
+  // up from the Trips tab.
+  final ValueChanged<String> onDiveIntoBubble;
 
   // AdminShell keeps every section alive in an IndexedStack built exactly once (`late final
   // _pages`, see its own comment on why) — so this widget's own constructor args, and
@@ -146,7 +158,18 @@ class _BubblesPageState extends State<BubblesPage> {
           children: [
             SizedBox(width: 320, child: _Inbox(viewModel: vm, onSelect: vm.selectTrip)),
             VerticalDivider(width: 1, color: Theme.of(context).colorScheme.outlineVariant),
-            Expanded(child: _Conversation(viewModel: vm, controller: _messageController, onSend: _send)),
+            Expanded(
+              child: _Conversation(
+                viewModel: vm,
+                controller: _messageController,
+                onSend: _send,
+                tripRepository: widget.tripRepository,
+                transportRepository: widget.transportRepository,
+                profileRepository: widget.profileRepository,
+                diveCenterId: widget.diveCenterId,
+                onDiveIntoBubble: widget.onDiveIntoBubble,
+              ),
+            ),
           ],
         );
       },
@@ -286,34 +309,82 @@ class _InboxRow extends StatelessWidget {
 }
 
 class _Conversation extends StatefulWidget {
-  const _Conversation({required this.viewModel, required this.controller, required this.onSend});
+  const _Conversation({
+    required this.viewModel,
+    required this.controller,
+    required this.onSend,
+    required this.tripRepository,
+    required this.transportRepository,
+    required this.profileRepository,
+    required this.diveCenterId,
+    required this.onDiveIntoBubble,
+  });
 
   final BubblesViewModel viewModel;
   final TextEditingController controller;
   final VoidCallback onSend;
+  final TripRepository tripRepository;
+  final TransportRepository transportRepository;
+  final ProfileRepository profileRepository;
+  final String diveCenterId;
+  final ValueChanged<String> onDiveIntoBubble;
 
   @override
   State<_Conversation> createState() => _ConversationState();
 }
 
-class _ConversationState extends State<_Conversation> {
+class _ConversationState extends State<_Conversation> with SingleTickerProviderStateMixin {
   final _scrollController = ScrollController();
+  late final _tabController = TabController(length: 2, vsync: this);
   String? _lastTripId;
   int _lastMessageCount = 0;
   bool _isNearBottom = true;
   bool _showNewMessagesPill = false;
 
+  // One instance per open Bubble, recreated whenever the selected trip changes (see build's
+  // trip.id != _lastTripId check) — same "per-trip, not shared across the whole tab" shape
+  // as app/'s own TransportViewModel, unlike BubblesViewModel itself.
+  TransportViewModel? _transportViewModel;
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _tabController.addListener(_onTabChanged);
+  }
+
+  // No realtime for transport offers yet (only chat has Centrifugo wired up) — an offer
+  // created from app/ while this Bubble is already open on the web wouldn't otherwise show
+  // up here without a full page reload. Reloading whenever the Transport tab is switched to
+  // is the same "REST-only, reload-on-select" stopgap Bubbles' own chat started with before
+  // it got realtime — cheap, and covers the actual reported case (staff checking the tab).
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    if (_tabController.index == 1) {
+      _transportViewModel?.load();
+    }
   }
 
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
     super.dispose();
+  }
+
+  void _openTripDetail(Trip trip) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TripDetailPage(
+          trip: trip,
+          tripRepository: widget.tripRepository,
+          diveCenterId: widget.diveCenterId,
+          onDiveIntoBubble: widget.onDiveIntoBubble,
+        ),
+      ),
+    );
   }
 
   // Reversed list (see build) means pixels near 0 is "near the bottom" — same convention
@@ -368,6 +439,13 @@ class _ConversationState extends State<_Conversation> {
       _lastMessageCount = 0;
       _isNearBottom = true;
       _showNewMessagesPill = false;
+      _tabController.index = 0;
+      _transportViewModel?.dispose();
+      _transportViewModel = TransportViewModel(
+        transportRepository: widget.transportRepository,
+        profileRepository: widget.profileRepository,
+        tripId: trip.id,
+      )..load();
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(animate: false));
     }
 
@@ -388,133 +466,156 @@ class _ConversationState extends State<_Conversation> {
 
     return Column(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant))),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: theme.colorScheme.primary,
-                child: Text(
-                  trip.title.trim().isEmpty ? '?' : trip.title.trim().substring(0, 1).toUpperCase(),
-                  style: const TextStyle(color: Colors.white),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(trip.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                    Text(
-                      '${formatShortDate(trip.startTime)} · ${trip.location}',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _openTripDetail(trip),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant))),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: theme.colorScheme.primary,
+                    child: Text(
+                      trip.title.trim().isEmpty ? '?' : trip.title.trim().substring(0, 1).toUpperCase(),
+                      style: const TextStyle(color: Colors.white),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(trip.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(
+                          '${formatShortDate(trip.startTime)} · ${trip.location}',
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+                ],
               ),
-            ],
+            ),
           ),
         ),
+        TabBar(
+          controller: _tabController,
+          tabs: const [Tab(text: 'Chat'), Tab(text: 'Transport')],
+        ),
         Expanded(
-          child: viewModel.isLoadingMessages
-              ? const Center(child: CircularProgressIndicator())
-              : messages.isEmpty
-                  ? Center(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              Column(
+                children: [
+                  Expanded(
+                    child: viewModel.isLoadingMessages
+                        ? const Center(child: CircularProgressIndicator())
+                        : messages.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No messages yet.',
+                                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                                ),
+                              )
+                            : Stack(
+                                children: [
+                                  ListView.builder(
+                                    controller: _scrollController,
+                                    reverse: true,
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                    itemCount: reversedItems.length,
+                                    itemBuilder: (context, index) {
+                                      final item = reversedItems[index];
+                                      if (item.date != null) {
+                                        return _DateSeparator(date: item.date!);
+                                      }
+                                      final message = item.message!;
+                                      return _MessageRow(
+                                        message: message,
+                                        isOwn: message.userId == viewModel.currentUserId,
+                                        isFirstInCluster: item.isFirstInCluster,
+                                        isLastInCluster: item.isLastInCluster,
+                                        profile: viewModel.senderProfiles[message.userId],
+                                        diveCenterName: viewModel.diveCenterName,
+                                      );
+                                    },
+                                  ),
+                                  if (_showNewMessagesPill)
+                                    Positioned(
+                                      left: 0,
+                                      right: 0,
+                                      bottom: 8,
+                                      child: Center(
+                                        child: _NewMessagesPill(
+                                          onTap: () {
+                                            setState(() => _showNewMessagesPill = false);
+                                            _scrollToBottom(animate: true);
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                  ),
+                  if (cancelled)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      color: theme.colorScheme.surfaceContainerHighest,
                       child: Text(
-                        'No messages yet.',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        'This trip has been cancelled — the conversation is read-only.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                       ),
                     )
-                  : Stack(
-                      children: [
-                        ListView.builder(
-                          controller: _scrollController,
-                          reverse: true,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          itemCount: reversedItems.length,
-                          itemBuilder: (context, index) {
-                            final item = reversedItems[index];
-                            if (item.date != null) {
-                              return _DateSeparator(date: item.date!);
-                            }
-                            final message = item.message!;
-                            return _MessageRow(
-                              message: message,
-                              isOwn: message.userId == viewModel.currentUserId,
-                              isFirstInCluster: item.isFirstInCluster,
-                              isLastInCluster: item.isLastInCluster,
-                              profile: viewModel.senderProfiles[message.userId],
-                              diveCenterName: viewModel.diveCenterName,
-                            );
-                          },
-                        ),
-                        if (_showNewMessagesPill)
-                          Positioned(
-                            left: 0,
-                            right: 0,
-                            bottom: 8,
-                            child: Center(
-                              child: _NewMessagesPill(
-                                onTap: () {
-                                  setState(() => _showNewMessagesPill = false);
-                                  _scrollToBottom(animate: true);
-                                },
+                  else
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant))),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            // Enter alone sends (and is swallowed here so it never lands as a
+                            // newline first); Shift+Enter falls through to the TextField and
+                            // inserts a newline normally — needs keyboardType: multiline, since a
+                            // single-line field never lets Enter produce a newline to begin with.
+                            child: Focus(
+                              onKeyEvent: (node, event) {
+                                if (event is KeyDownEvent &&
+                                    event.logicalKey == LogicalKeyboardKey.enter &&
+                                    !HardwareKeyboard.instance.isShiftPressed) {
+                                  widget.onSend();
+                                  return KeyEventResult.handled;
+                                }
+                                return KeyEventResult.ignored;
+                              },
+                              child: TextField(
+                                controller: widget.controller,
+                                decoration: InputDecoration(hintText: 'Message ${trip.title} as organization'),
+                                keyboardType: TextInputType.multiline,
+                                minLines: 1,
+                                maxLines: 5,
                               ),
                             ),
                           ),
-                      ],
+                          const SizedBox(width: 8),
+                          IconButton.filled(
+                            onPressed: viewModel.isSending ? null : widget.onSend,
+                            icon: const Icon(Icons.send),
+                          ),
+                        ],
+                      ),
                     ),
-        ),
-        if (cancelled)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            color: theme.colorScheme.surfaceContainerHighest,
-            child: Text(
-              'This trip has been cancelled — the conversation is read-only.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-          )
-        else
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant))),
-            child: Row(
-              children: [
-                Expanded(
-                  // Enter alone sends (and is swallowed here so it never lands as a
-                  // newline first); Shift+Enter falls through to the TextField and
-                  // inserts a newline normally — needs keyboardType: multiline, since a
-                  // single-line field never lets Enter produce a newline to begin with.
-                  child: Focus(
-                    onKeyEvent: (node, event) {
-                      if (event is KeyDownEvent &&
-                          event.logicalKey == LogicalKeyboardKey.enter &&
-                          !HardwareKeyboard.instance.isShiftPressed) {
-                        widget.onSend();
-                        return KeyEventResult.handled;
-                      }
-                      return KeyEventResult.ignored;
-                    },
-                    child: TextField(
-                      controller: widget.controller,
-                      decoration: InputDecoration(hintText: 'Message ${trip.title} as organization'),
-                      keyboardType: TextInputType.multiline,
-                      minLines: 1,
-                      maxLines: 5,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: viewModel.isSending ? null : widget.onSend,
-                  icon: const Icon(Icons.send),
-                ),
-              ],
-            ),
+                ],
+              ),
+              TransportTab(viewModel: _transportViewModel!),
+            ],
           ),
+        ),
       ],
     );
   }

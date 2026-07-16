@@ -4,6 +4,7 @@ import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/dive_center_repository.dart';
 import '../../../data/repositories/message_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
+import '../../../data/repositories/transport_repository.dart';
 import '../../../data/repositories/trip_repository.dart';
 import '../../../data/services/realtime_service.dart';
 import '../../../domain/entities/dive_center.dart';
@@ -26,6 +27,7 @@ class AdminShell extends StatefulWidget {
     required this.tripRepository,
     required this.messageRepository,
     required this.profileRepository,
+    required this.transportRepository,
     required this.realtimeService,
     required this.authRepository,
     required this.onSignedOut,
@@ -36,6 +38,7 @@ class AdminShell extends StatefulWidget {
   final TripRepository tripRepository;
   final MessageRepository messageRepository;
   final ProfileRepository profileRepository;
+  final TransportRepository transportRepository;
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final VoidCallback onSignedOut;
@@ -84,12 +87,14 @@ class _AdminShellState extends State<AdminShell> {
       tripRepository: widget.tripRepository,
       messageRepository: widget.messageRepository,
       profileRepository: widget.profileRepository,
+      transportRepository: widget.transportRepository,
       realtimeService: widget.realtimeService,
       diveCenterId: widget.diveCenter.id,
       diveCenterName: widget.diveCenter.name,
       getCurrentUserId: widget.authRepository.currentUserId,
       selectedTabIndex: _selectedIndexNotifier,
       openTripId: _pendingBubbleTripId,
+      onDiveIntoBubble: _diveIntoBubble,
     ),
     UsersPage(diveCenterRepository: widget.diveCenterRepository, diveCenterId: widget.diveCenter.id),
     CompanyPage(

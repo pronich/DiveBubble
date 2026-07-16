@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TransportOfferApiModel {
 
- String get id; String get tripId; String get userId; String get type; int? get seats; String? get details; DateTime get createdAt; int get joinedCount; bool get joined;
+ String get id; String get tripId; String get userId; String get type; int? get seats; String? get details; DateTime get createdAt; int get joinedCount; bool get joined; bool get isDiveCenterStaff;
 /// Create a copy of TransportOfferApiModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $TransportOfferApiModelCopyWith<TransportOfferApiModel> get copyWith => _$Transp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransportOfferApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.type, type) || other.type == type)&&(identical(other.seats, seats) || other.seats == seats)&&(identical(other.details, details) || other.details == details)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransportOfferApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.type, type) || other.type == type)&&(identical(other.seats, seats) || other.seats == seats)&&(identical(other.details, details) || other.details == details)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,type,seats,details,createdAt,joinedCount,joined);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,type,seats,details,createdAt,joinedCount,joined,isDiveCenterStaff);
 
 @override
 String toString() {
-  return 'TransportOfferApiModel(id: $id, tripId: $tripId, userId: $userId, type: $type, seats: $seats, details: $details, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined)';
+  return 'TransportOfferApiModel(id: $id, tripId: $tripId, userId: $userId, type: $type, seats: $seats, details: $details, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined, isDiveCenterStaff: $isDiveCenterStaff)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $TransportOfferApiModelCopyWith<$Res>  {
   factory $TransportOfferApiModelCopyWith(TransportOfferApiModel value, $Res Function(TransportOfferApiModel) _then) = _$TransportOfferApiModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String tripId, String userId, String type, int? seats, String? details, DateTime createdAt, int joinedCount, bool joined
+ String id, String tripId, String userId, String type, int? seats, String? details, DateTime createdAt, int joinedCount, bool joined, bool isDiveCenterStaff
 });
 
 
@@ -65,7 +65,7 @@ class _$TransportOfferApiModelCopyWithImpl<$Res>
 
 /// Create a copy of TransportOfferApiModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? type = null,Object? seats = freezed,Object? details = freezed,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? type = null,Object? seats = freezed,Object? details = freezed,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,Object? isDiveCenterStaff = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
@@ -76,6 +76,7 @@ as int?,details: freezed == details ? _self.details : details // ignore: cast_nu
 as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,joinedCount: null == joinedCount ? _self.joinedCount : joinedCount // ignore: cast_nullable_to_non_nullable
 as int,joined: null == joined ? _self.joined : joined // ignore: cast_nullable_to_non_nullable
+as bool,isDiveCenterStaff: null == isDiveCenterStaff ? _self.isDiveCenterStaff : isDiveCenterStaff // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -161,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined,  bool isDiveCenterStaff)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TransportOfferApiModel() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined,_that.isDiveCenterStaff);case _:
   return orElse();
 
 }
@@ -182,10 +183,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined,  bool isDiveCenterStaff)  $default,) {final _that = this;
 switch (_that) {
 case _TransportOfferApiModel():
-return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined,_that.isDiveCenterStaff);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -202,10 +203,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined,  bool isDiveCenterStaff)?  $default,) {final _that = this;
 switch (_that) {
 case _TransportOfferApiModel() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined,_that.isDiveCenterStaff);case _:
   return null;
 
 }
@@ -217,7 +218,7 @@ return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.
 @JsonSerializable()
 
 class _TransportOfferApiModel implements TransportOfferApiModel {
-  const _TransportOfferApiModel({required this.id, required this.tripId, required this.userId, required this.type, this.seats, this.details, required this.createdAt, this.joinedCount = 0, this.joined = false});
+  const _TransportOfferApiModel({required this.id, required this.tripId, required this.userId, required this.type, this.seats, this.details, required this.createdAt, this.joinedCount = 0, this.joined = false, this.isDiveCenterStaff = false});
   factory _TransportOfferApiModel.fromJson(Map<String, dynamic> json) => _$TransportOfferApiModelFromJson(json);
 
 @override final  String id;
@@ -229,6 +230,7 @@ class _TransportOfferApiModel implements TransportOfferApiModel {
 @override final  DateTime createdAt;
 @override@JsonKey() final  int joinedCount;
 @override@JsonKey() final  bool joined;
+@override@JsonKey() final  bool isDiveCenterStaff;
 
 /// Create a copy of TransportOfferApiModel
 /// with the given fields replaced by the non-null parameter values.
@@ -243,16 +245,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TransportOfferApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.type, type) || other.type == type)&&(identical(other.seats, seats) || other.seats == seats)&&(identical(other.details, details) || other.details == details)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TransportOfferApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.type, type) || other.type == type)&&(identical(other.seats, seats) || other.seats == seats)&&(identical(other.details, details) || other.details == details)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,type,seats,details,createdAt,joinedCount,joined);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,type,seats,details,createdAt,joinedCount,joined,isDiveCenterStaff);
 
 @override
 String toString() {
-  return 'TransportOfferApiModel(id: $id, tripId: $tripId, userId: $userId, type: $type, seats: $seats, details: $details, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined)';
+  return 'TransportOfferApiModel(id: $id, tripId: $tripId, userId: $userId, type: $type, seats: $seats, details: $details, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined, isDiveCenterStaff: $isDiveCenterStaff)';
 }
 
 
@@ -263,7 +265,7 @@ abstract mixin class _$TransportOfferApiModelCopyWith<$Res> implements $Transpor
   factory _$TransportOfferApiModelCopyWith(_TransportOfferApiModel value, $Res Function(_TransportOfferApiModel) _then) = __$TransportOfferApiModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String tripId, String userId, String type, int? seats, String? details, DateTime createdAt, int joinedCount, bool joined
+ String id, String tripId, String userId, String type, int? seats, String? details, DateTime createdAt, int joinedCount, bool joined, bool isDiveCenterStaff
 });
 
 
@@ -280,7 +282,7 @@ class __$TransportOfferApiModelCopyWithImpl<$Res>
 
 /// Create a copy of TransportOfferApiModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? type = null,Object? seats = freezed,Object? details = freezed,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? type = null,Object? seats = freezed,Object? details = freezed,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,Object? isDiveCenterStaff = null,}) {
   return _then(_TransportOfferApiModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
@@ -291,6 +293,7 @@ as int?,details: freezed == details ? _self.details : details // ignore: cast_nu
 as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,joinedCount: null == joinedCount ? _self.joinedCount : joinedCount // ignore: cast_nullable_to_non_nullable
 as int,joined: null == joined ? _self.joined : joined // ignore: cast_nullable_to_non_nullable
+as bool,isDiveCenterStaff: null == isDiveCenterStaff ? _self.isDiveCenterStaff : isDiveCenterStaff // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

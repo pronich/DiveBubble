@@ -145,7 +145,7 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
         controller: _tabController,
         children: [
           ChatView(viewModel: widget.chatViewModel, isCancelled: _isCancelled, businessName: _businessName),
-          TransportView(viewModel: widget.transportViewModel, isCancelled: _isCancelled),
+          TransportView(viewModel: widget.transportViewModel, isCancelled: _isCancelled, businessName: _businessName),
         ],
       ),
     );

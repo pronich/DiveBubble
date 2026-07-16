@@ -14,5 +14,8 @@ abstract class TransportOffer with _$TransportOffer {
     required DateTime createdAt,
     @Default(0) int joinedCount,
     @Default(false) bool joined,
+    // True when the creator is a member of the trip's dive center — mirrors
+    // ChatMessage.isDiveCenterStaff, same "Name | Dive Center" attribution precedent.
+    @Default(false) bool isDiveCenterStaff,
   }) = _TransportOffer;
 }

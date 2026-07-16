@@ -8,50 +8,65 @@ import (
 	"time"
 
 	"divebubble_be/internal/auth"
+	"divebubble_be/internal/divecenter"
 	"divebubble_be/internal/transport"
 	"divebubble_be/internal/trip"
 
 	"github.com/google/uuid"
 )
 
-func registerTransportRoutes(mux *http.ServeMux, svc *transport.Service, tripSvc *trip.Service, authIssuer *auth.TokenIssuer) {
-	mux.HandleFunc("GET /trips/{id}/transport", withAuth(authIssuer, handleListTransportOffers(svc, tripSvc)))
-	mux.HandleFunc("POST /trips/{id}/transport", withAuth(authIssuer, handleCreateTransportOffer(svc, tripSvc)))
+func registerTransportRoutes(
+	mux *http.ServeMux,
+	svc *transport.Service,
+	tripSvc *trip.Service,
+	diveCenterSvc *divecenter.Service,
+	authIssuer *auth.TokenIssuer,
+) {
+	mux.HandleFunc("GET /trips/{id}/transport", withAuth(authIssuer, handleListTransportOffers(svc, tripSvc, diveCenterSvc)))
+	mux.HandleFunc("POST /trips/{id}/transport", withAuth(authIssuer, handleCreateTransportOffer(svc, tripSvc, diveCenterSvc)))
 	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/join", withAuth(authIssuer, handleJoinTransportOffer(svc, tripSvc)))
 	mux.HandleFunc("GET /trips/{id}/transport/{offerId}/joins", withAuth(authIssuer, handleListTransportOfferJoins(svc, tripSvc)))
 	mux.HandleFunc("GET /trips/{id}/transport/alert", withAuth(authIssuer, handleGetTransportAlert(svc, tripSvc)))
 }
 
 type transportOfferResponse struct {
-	ID          uuid.UUID `json:"id"`
-	TripID      uuid.UUID `json:"tripId"`
-	UserID      uuid.UUID `json:"userId"`
-	Type        string    `json:"type"`
-	Seats       *int      `json:"seats,omitempty"`
-	Details     *string   `json:"details,omitempty"`
-	CreatedAt   time.Time `json:"createdAt"`
-	JoinedCount int       `json:"joinedCount"`
-	Joined      bool      `json:"joined"`
+	ID                uuid.UUID `json:"id"`
+	TripID            uuid.UUID `json:"tripId"`
+	UserID            uuid.UUID `json:"userId"`
+	Type              string    `json:"type"`
+	Seats             *int      `json:"seats,omitempty"`
+	Details           *string   `json:"details,omitempty"`
+	CreatedAt         time.Time `json:"createdAt"`
+	JoinedCount       int       `json:"joinedCount"`
+	Joined            bool      `json:"joined"`
+	IsDiveCenterStaff bool      `json:"isDiveCenterStaff"`
 }
 
-func toTransportOfferResponse(o transport.Offer) transportOfferResponse {
+func toTransportOfferResponse(o transport.Offer, isDiveCenterStaff bool) transportOfferResponse {
 	return transportOfferResponse{
-		ID:          o.ID,
-		TripID:      o.TripID,
-		UserID:      o.UserID,
-		Type:        string(o.Type),
-		Seats:       nullInt32Ptr(o.Seats),
-		Details:     nullStringPtr(o.Details),
-		CreatedAt:   o.CreatedAt,
-		JoinedCount: o.JoinedCount,
-		Joined:      o.Joined,
+		ID:                o.ID,
+		TripID:            o.TripID,
+		UserID:            o.UserID,
+		Type:              string(o.Type),
+		Seats:             nullInt32Ptr(o.Seats),
+		Details:           nullStringPtr(o.Details),
+		CreatedAt:         o.CreatedAt,
+		JoinedCount:       o.JoinedCount,
+		Joined:            o.Joined,
+		IsDiveCenterStaff: isDiveCenterStaff,
 	}
 }
 
-func handleListTransportOffers(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleListTransportOffers(svc *transport.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
 		if !ok {
+			return
+		}
+
+		t, err := tripSvc.GetTrip(r.Context(), tripID.String())
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not list transport offers")
 			return
 		}
 
@@ -61,9 +76,12 @@ func handleListTransportOffers(svc *transport.Service, tripSvc *trip.Service) fu
 			return
 		}
 
+		// diveCenterStaffChecker is defined in routes_message.go — same "who wrote this"
+		// attribution concern as chat, reused as-is rather than duplicated.
+		checker := newDiveCenterStaffChecker(diveCenterSvc, t.DiveCenterID)
 		out := make([]transportOfferResponse, 0, len(offers))
 		for _, o := range offers {
-			out = append(out, toTransportOfferResponse(o))
+			out = append(out, toTransportOfferResponse(o, checker.isStaff(r.Context(), o.UserID)))
 		}
 		writeJSON(w, http.StatusOK, out)
 	}
@@ -75,7 +93,7 @@ type createTransportOfferRequest struct {
 	Details *string `json:"details"`
 }
 
-func handleCreateTransportOffer(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleCreateTransportOffer(svc *transport.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
 		if !ok {
@@ -87,6 +105,12 @@ func handleCreateTransportOffer(svc *transport.Service, tripSvc *trip.Service) f
 				writeError(w, http.StatusConflict, "trip has been cancelled")
 				return
 			}
+			writeError(w, http.StatusInternalServerError, "could not create transport offer")
+			return
+		}
+
+		t, err := tripSvc.GetTrip(r.Context(), tripID.String())
+		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not create transport offer")
 			return
 		}
@@ -108,7 +132,14 @@ func handleCreateTransportOffer(svc *transport.Service, tripSvc *trip.Service) f
 			return
 		}
 
-		writeJSON(w, http.StatusCreated, toTransportOfferResponse(o))
+		isDiveCenterStaff := false
+		if t.DiveCenterID.Valid {
+			isDiveCenterStaff, err = diveCenterSvc.IsMember(r.Context(), t.DiveCenterID.UUID, userID)
+			if err != nil {
+				isDiveCenterStaff = false
+			}
+		}
+		writeJSON(w, http.StatusCreated, toTransportOfferResponse(o, isDiveCenterStaff))
 	}
 }
 

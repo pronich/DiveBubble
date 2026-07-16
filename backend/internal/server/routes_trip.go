@@ -484,7 +484,7 @@ func handleListMyTrips(svc *trip.Service) func(http.ResponseWriter, *http.Reques
 
 		out := make([]tripResponse, 0, len(trips))
 		for _, t := range trips {
-			out = append(out, toTripResponse(t, true, 0))
+			out = append(out, toTripResponse(t, true, t.ParticipantCount))
 		}
 		writeJSON(w, http.StatusOK, out)
 	}

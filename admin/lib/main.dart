@@ -4,6 +4,7 @@ import 'data/repositories/auth_repository.dart';
 import 'data/repositories/dive_center_repository.dart';
 import 'data/repositories/message_repository.dart';
 import 'data/repositories/profile_repository.dart';
+import 'data/repositories/transport_repository.dart';
 import 'data/repositories/trip_repository.dart';
 import 'data/services/auth_api_service.dart';
 import 'data/services/dive_center_api_service.dart';
@@ -11,6 +12,7 @@ import 'data/services/message_api_service.dart';
 import 'data/services/profile_api_service.dart';
 import 'data/services/realtime_service.dart';
 import 'data/services/token_storage_service.dart';
+import 'data/services/transport_api_service.dart';
 import 'data/services/trip_api_service.dart';
 import 'ui/core/root_gate.dart';
 import 'ui/core/theme/app_theme.dart';
@@ -48,6 +50,9 @@ class AdminApp extends StatelessWidget {
     final messageRepository = MessageRepository(
       service: MessageApiService(baseUrl: _apiBaseUrl, getAccessToken: authRepository.getValidAccessToken),
     );
+    final transportRepository = TransportRepository(
+      service: TransportApiService(baseUrl: _apiBaseUrl, getAccessToken: authRepository.getValidAccessToken),
+    );
     final realtimeService = RealtimeService(
       wsUrl: _centrifugoWsUrl,
       getToken: messageRepository.getRealtimeToken,
@@ -63,6 +68,7 @@ class AdminApp extends StatelessWidget {
         tripRepository: tripRepository,
         profileRepository: profileRepository,
         messageRepository: messageRepository,
+        transportRepository: transportRepository,
         realtimeService: realtimeService,
       ),
     );

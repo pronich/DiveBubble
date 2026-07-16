@@ -19,13 +19,18 @@ const _typeIcons = {
 };
 
 class TransportView extends StatefulWidget {
-  const TransportView({super.key, required this.viewModel, this.isCancelled = false});
+  const TransportView({super.key, required this.viewModel, this.isCancelled = false, this.businessName});
 
   final TransportViewModel viewModel;
 
   /// See ChatView.isCancelled — same source of truth (TripConversationPage), same idea:
   /// existing offers/joins stay visible, but nothing new can be created or joined.
   final bool isCancelled;
+
+  /// Same "Name | Dive Center" attribution precedent as ChatView.businessName — only ever
+  /// combined with offer.isDiveCenterStaff, so a regular diver's own offer never looks like
+  /// it came from the organization.
+  final String? businessName;
 
   @override
   State<TransportView> createState() => _TransportViewState();
@@ -112,6 +117,7 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
         offerId: offer.id,
         viewModel: widget.viewModel,
         isCancelled: widget.isCancelled,
+        businessName: widget.businessName,
       ),
     );
   }
@@ -195,11 +201,13 @@ class _TransportOfferDetailSheet extends StatefulWidget {
     required this.offerId,
     required this.viewModel,
     this.isCancelled = false,
+    this.businessName,
   });
 
   final String offerId;
   final TransportViewModel viewModel;
   final bool isCancelled;
+  final String? businessName;
 
   @override
   State<_TransportOfferDetailSheet> createState() =>
@@ -319,9 +327,12 @@ class _TransportOfferDetailSheetState
                 const SizedBox(height: 16),
                 Builder(builder: (context) {
                   final organizerProfile = _profiles[offer.userId];
-                  final organizerName = (organizerProfile?.displayName?.isNotEmpty ?? false)
+                  final baseOrganizerName = (organizerProfile?.displayName?.isNotEmpty ?? false)
                       ? organizerProfile!.displayName!
                       : 'Organizer';
+                  final organizerName = (offer.isDiveCenterStaff && (widget.businessName?.isNotEmpty ?? false))
+                      ? '$baseOrganizerName | ${widget.businessName}'
+                      : baseOrganizerName;
                   return InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: () => _openProfile(offer.userId),

@@ -18,6 +18,7 @@ _TransportOfferApiModel _$TransportOfferApiModelFromJson(
   createdAt: DateTime.parse(json['createdAt'] as String),
   joinedCount: (json['joinedCount'] as num?)?.toInt() ?? 0,
   joined: json['joined'] as bool? ?? false,
+  isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$TransportOfferApiModelToJson(
@@ -32,4 +33,5 @@ Map<String, dynamic> _$TransportOfferApiModelToJson(
   'createdAt': instance.createdAt.toIso8601String(),
   'joinedCount': instance.joinedCount,
   'joined': instance.joined,
+  'isDiveCenterStaff': instance.isDiveCenterStaff,
 };

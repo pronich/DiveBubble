@@ -15,6 +15,7 @@ abstract class TransportOfferApiModel with _$TransportOfferApiModel {
     required DateTime createdAt,
     @Default(0) int joinedCount,
     @Default(false) bool joined,
+    @Default(false) bool isDiveCenterStaff,
   }) = _TransportOfferApiModel;
 
   factory TransportOfferApiModel.fromJson(Map<String, dynamic> json) =>

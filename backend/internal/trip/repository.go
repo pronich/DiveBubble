@@ -258,7 +258,8 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 		SELECT `+tripColumnsPrefixed("t")+`,
 			(SELECT COUNT(*) FROM chat_messages cm
 			 WHERE cm.trip_id = t.id AND cm.user_id != $1
-			   AND cm.created_at > COALESCE(tp.last_read_at, '-infinity'::timestamptz))
+			   AND cm.created_at > COALESCE(tp.last_read_at, '-infinity'::timestamptz)),
+			(SELECT COUNT(*) FROM trip_participants tp2 WHERE tp2.trip_id = t.id)
 		FROM trips t
 		LEFT JOIN trip_participants tp ON tp.trip_id = t.id AND tp.user_id = $1
 		WHERE tp.user_id = $1
@@ -282,7 +283,7 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 			&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
 			&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus, &t.PhotoURL,
 			&t.DiveCenterID, &t.PriceMinor, &t.Currency, &t.BookingURL,
-			&t.UnreadCount,
+			&t.UnreadCount, &t.ParticipantCount,
 		)
 		if err != nil {
 			return nil, err
