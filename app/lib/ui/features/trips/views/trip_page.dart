@@ -24,6 +24,7 @@ import '../../chats/views/trip_conversation_page.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../view_models/trip_view_model.dart';
+import 'dive_center_card.dart';
 import 'join_by_code_dialog.dart';
 
 class TripPage extends StatefulWidget {
@@ -480,35 +481,39 @@ class _OrganizerCard extends StatelessWidget {
     final dc = diveCenter;
 
     if (dc != null) {
-      return Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: theme.colorScheme.secondaryContainer,
-              backgroundImage: (dc.logoUrl?.isNotEmpty ?? false) ? NetworkImage(dc.logoUrl!) : null,
-              child: (dc.logoUrl?.isNotEmpty ?? false)
-                  ? null
-                  : Icon(Icons.storefront_outlined, color: theme.colorScheme.onSecondaryContainer),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(dc.name, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                  Text(
-                    'Dive center',
-                    style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ],
+      return InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => showDiveCenterCard(context, dc),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: theme.colorScheme.secondaryContainer,
+                backgroundImage: (dc.logoUrl?.isNotEmpty ?? false) ? NetworkImage(dc.logoUrl!) : null,
+                child: (dc.logoUrl?.isNotEmpty ?? false)
+                    ? null
+                    : Icon(Icons.storefront_outlined, color: theme.colorScheme.onSecondaryContainer),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(dc.name, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                    Text(
+                      'Dive center',
+                      style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
