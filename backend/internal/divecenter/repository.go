@@ -13,7 +13,7 @@ var ErrNotFound = errors.New("dive center not found")
 
 var diveCenterColumnNames = []string{
 	"id", "name", "location", "description", "logo_url",
-	"agency", "agency_detail", "languages", "website", "phone", "created_at",
+	"agency", "agency_detail", "languages", "website", "phone", "email", "created_at",
 }
 
 var diveCenterColumns = strings.Join(diveCenterColumnNames, ", ")
@@ -30,7 +30,7 @@ func scanDiveCenter(row interface{ Scan(...any) error }) (DiveCenter, error) {
 	var dc DiveCenter
 	err := row.Scan(
 		&dc.ID, &dc.Name, &dc.Location, &dc.Description, &dc.LogoURL,
-		&dc.Agency, &dc.AgencyDetail, &dc.Languages, &dc.Website, &dc.Phone, &dc.CreatedAt,
+		&dc.Agency, &dc.AgencyDetail, &dc.Languages, &dc.Website, &dc.Phone, &dc.Email, &dc.CreatedAt,
 	)
 	return dc, err
 }
@@ -55,6 +55,7 @@ type CreateParams struct {
 	Languages    *string
 	Website      *string
 	Phone        *string
+	Email        *string
 }
 
 // Create and the owner's membership row happen together — a dive center with zero owners
@@ -67,10 +68,10 @@ func (r *Repository) Create(ctx context.Context, p CreateParams, ownerUserID uui
 	defer func() { _ = tx.Rollback() }()
 
 	dc, err := scanDiveCenter(tx.QueryRowContext(ctx, `
-		INSERT INTO dive_centers (name, location, description, logo_url, agency, agency_detail, languages, website, phone)
-		VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, ''), $8, $9)
+		INSERT INTO dive_centers (name, location, description, logo_url, agency, agency_detail, languages, website, phone, email)
+		VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, ''), $8, $9, $10)
 		RETURNING `+diveCenterColumns,
-		p.Name, p.Location, p.Description, p.LogoURL, p.Agency, p.AgencyDetail, p.Languages, p.Website, p.Phone,
+		p.Name, p.Location, p.Description, p.LogoURL, p.Agency, p.AgencyDetail, p.Languages, p.Website, p.Phone, p.Email,
 	))
 	if err != nil {
 		return DiveCenter{}, err
@@ -117,7 +118,7 @@ func (r *Repository) ListByUser(ctx context.Context, userID uuid.UUID) ([]Member
 		dc := &v.DiveCenter
 		if err := rows.Scan(
 			&dc.ID, &dc.Name, &dc.Location, &dc.Description, &dc.LogoURL,
-			&dc.Agency, &dc.AgencyDetail, &dc.Languages, &dc.Website, &dc.Phone, &dc.CreatedAt,
+			&dc.Agency, &dc.AgencyDetail, &dc.Languages, &dc.Website, &dc.Phone, &dc.Email, &dc.CreatedAt,
 			&v.Role,
 		); err != nil {
 			return nil, err
@@ -130,6 +131,40 @@ func (r *Repository) ListByUser(ctx context.Context, userID uuid.UUID) ([]Member
 func (r *Repository) SetLogoURL(ctx context.Context, id uuid.UUID, url string) error {
 	_, err := r.DB.ExecContext(ctx, `UPDATE dive_centers SET logo_url = $1 WHERE id = $2`, url, id)
 	return err
+}
+
+// UpdateParams uses pointers so a nil field is left unchanged rather than cleared — same
+// COALESCE convention (and same can't-null-an-optional-field-back-out limitation) as
+// trip.UpdateParams/profile.UpdateParams. Name excluded from the pointer treatment: it's
+// required, so an empty request just means "don't touch it" at the service layer instead.
+type UpdateParams struct {
+	Name         *string
+	Location     *string
+	Description  *string
+	Agency       *string
+	AgencyDetail *string
+	Languages    *string
+	Website      *string
+	Phone        *string
+	Email        *string
+}
+
+func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (DiveCenter, error) {
+	return scanDiveCenter(r.DB.QueryRowContext(ctx, `
+		UPDATE dive_centers SET
+			name = COALESCE($2, name),
+			location = COALESCE($3, location),
+			description = COALESCE($4, description),
+			agency = COALESCE($5, agency),
+			agency_detail = COALESCE($6, agency_detail),
+			languages = COALESCE($7, languages),
+			website = COALESCE($8, website),
+			phone = COALESCE($9, phone),
+			email = COALESCE($10, email)
+		WHERE id = $1
+		RETURNING `+diveCenterColumns,
+		id, p.Name, p.Location, p.Description, p.Agency, p.AgencyDetail, p.Languages, p.Website, p.Phone, p.Email,
+	))
 }
 
 func (r *Repository) IsMember(ctx context.Context, diveCenterID, userID uuid.UUID) (bool, error) {

@@ -18,6 +18,7 @@ _DiveCenterApiModel _$DiveCenterApiModelFromJson(Map<String, dynamic> json) =>
       languages: json['languages'] as String? ?? '',
       website: json['website'] as String?,
       phone: json['phone'] as String?,
+      email: json['email'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       role: json['role'] as String?,
     );
@@ -34,6 +35,7 @@ Map<String, dynamic> _$DiveCenterApiModelToJson(_DiveCenterApiModel instance) =>
       'languages': instance.languages,
       'website': instance.website,
       'phone': instance.phone,
+      'email': instance.email,
       'createdAt': instance.createdAt.toIso8601String(),
       'role': instance.role,
     };

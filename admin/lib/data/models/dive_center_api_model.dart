@@ -16,6 +16,7 @@ abstract class DiveCenterApiModel with _$DiveCenterApiModel {
     @Default('') String languages,
     String? website,
     String? phone,
+    String? email,
     required DateTime createdAt,
     String? role,
   }) = _DiveCenterApiModel;

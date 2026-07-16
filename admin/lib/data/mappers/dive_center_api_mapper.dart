@@ -13,6 +13,7 @@ extension DiveCenterApiMapper on DiveCenterApiModel {
         languages: languages,
         website: website,
         phone: phone,
+        email: email,
         createdAt: createdAt,
         role: role ?? '',
       );

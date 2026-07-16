@@ -15,6 +15,7 @@ abstract class DiveCenter with _$DiveCenter {
     @Default('') String languages,
     String? website,
     String? phone,
+    String? email,
     required DateTime createdAt,
     // '' when the API omits it (e.g. a plain GET by id) — only ListMine/Create populate a
     // real role, since "your role" only makes sense in the context of the caller.

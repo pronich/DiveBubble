@@ -45,6 +45,11 @@ class _AdminShellState extends State<AdminShell> {
   int _selectedIndex = 0;
   MyProfile? _profile;
 
+  // Sidebar-only display state — kept separate from _pages below so a Company edit can
+  // refresh the account-footer company name without rebuilding (and losing the state of)
+  // every other section.
+  late String _companyName = widget.diveCenter.name;
+
   // Built once each, not inline in build() — an IndexedStack still rebuilds its children on
   // every parent rebuild if they're constructed inline, which would wipe each section's own
   // state on every sidebar tap (same gotcha app/'s RootShell already hit once — see CLAUDE.md).
@@ -58,7 +63,11 @@ class _AdminShellState extends State<AdminShell> {
       getCurrentUserId: widget.authRepository.currentUserId,
     ),
     UsersPage(diveCenterRepository: widget.diveCenterRepository, diveCenterId: widget.diveCenter.id),
-    CompanyPage(diveCenter: widget.diveCenter, diveCenterRepository: widget.diveCenterRepository),
+    CompanyPage(
+      diveCenter: widget.diveCenter,
+      diveCenterRepository: widget.diveCenterRepository,
+      onUpdated: (dc) => setState(() => _companyName = dc.name),
+    ),
   ];
 
   @override
@@ -79,7 +88,7 @@ class _AdminShellState extends State<AdminShell> {
           _Sidebar(
             selectedIndex: _selectedIndex,
             onSelect: (i) => setState(() => _selectedIndex = i),
-            diveCenter: widget.diveCenter,
+            companyName: _companyName,
             profile: _profile,
             onAccountTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -102,7 +111,7 @@ class _Sidebar extends StatelessWidget {
   const _Sidebar({
     required this.selectedIndex,
     required this.onSelect,
-    required this.diveCenter,
+    required this.companyName,
     required this.profile,
     required this.onAccountTap,
     required this.onSignOut,
@@ -110,7 +119,7 @@ class _Sidebar extends StatelessWidget {
 
   final int selectedIndex;
   final ValueChanged<int> onSelect;
-  final DiveCenter diveCenter;
+  final String companyName;
   final MyProfile? profile;
   final VoidCallback onAccountTap;
   final VoidCallback onSignOut;
@@ -229,7 +238,7 @@ class _Sidebar extends StatelessWidget {
                         children: [
                           Text(displayName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                           Text(
-                            diveCenter.name,
+                            companyName,
                             style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                             overflow: TextOverflow.ellipsis,
                           ),
