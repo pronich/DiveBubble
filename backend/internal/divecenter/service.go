@@ -57,6 +57,28 @@ func (s *Service) SetLogoURL(ctx context.Context, id, callerID uuid.UUID, url st
 	return s.Repo.SetLogoURL(ctx, id, url)
 }
 
+// Update is owner-only — same ownership posture as SetLogoURL, since both are edits to the
+// business's own public profile. Name is trimmed/validated same as Create when present,
+// since an empty *string* would otherwise slip through Repository.Update's
+// COALESCE(nil-is-untouched) semantics and blank out a required field.
+func (s *Service) Update(ctx context.Context, id, callerID uuid.UUID, p UpdateParams) (DiveCenter, error) {
+	isOwner, err := s.Repo.IsOwner(ctx, id, callerID)
+	if err != nil {
+		return DiveCenter{}, err
+	}
+	if !isOwner {
+		return DiveCenter{}, ErrOnlyOwner
+	}
+	if p.Name != nil {
+		trimmed := strings.TrimSpace(*p.Name)
+		if trimmed == "" {
+			return DiveCenter{}, ErrInvalidArgument
+		}
+		p.Name = &trimmed
+	}
+	return s.Repo.Update(ctx, id, p)
+}
+
 // ListMembers is member-gated (any role) — staff can see their own roster, not just owners.
 func (s *Service) ListMembers(ctx context.Context, diveCenterID, callerID uuid.UUID) ([]MemberView, error) {
 	isMember, err := s.Repo.IsMember(ctx, diveCenterID, callerID)

@@ -21,6 +21,7 @@ type DiveCenter struct {
 	Languages    string // comma-separated, matching users.languages
 	Website      sql.NullString
 	Phone        sql.NullString
+	Email        sql.NullString
 
 	CreatedAt time.Time
 }

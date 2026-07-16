@@ -77,6 +77,40 @@ class DiveCenterApiService {
     return DiveCenterApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
+  Future<DiveCenterApiModel> update(
+    String id, {
+    String? name,
+    String? location,
+    String? description,
+    String? agency,
+    String? agencyDetail,
+    String? languages,
+    String? website,
+    String? phone,
+    String? email,
+  }) async {
+    final body = <String, dynamic>{
+      if (name != null) 'name': name,
+      if (location != null) 'location': location,
+      if (description != null) 'description': description,
+      if (agency != null) 'agency': agency,
+      if (agencyDetail != null) 'agencyDetail': agencyDetail,
+      if (languages != null) 'languages': languages,
+      if (website != null) 'website': website,
+      if (phone != null) 'phone': phone,
+      if (email != null) 'email': email,
+    };
+    final res = await _client.patch(
+      Uri.parse('$baseUrl/dive-centers/$id'),
+      headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('update failed: ${res.statusCode} ${res.body}');
+    }
+    return DiveCenterApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   Future<List<DiveCenterMember>> fetchMembers(String diveCenterId) async {
     final res = await _client.get(Uri.parse('$baseUrl/dive-centers/$diveCenterId/members'), headers: await _authHeaders());
     if (res.statusCode != 200) {

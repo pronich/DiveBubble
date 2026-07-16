@@ -25,6 +25,7 @@ func registerDiveCenterRoutes(
 	mux.HandleFunc("POST /dive-centers", withAuth(authIssuer, handleCreateDiveCenter(svc)))
 	mux.HandleFunc("GET /dive-centers/mine", withAuth(authIssuer, handleListMyDiveCenters(svc)))
 	mux.HandleFunc("GET /dive-centers/{id}", withAuth(authIssuer, handleGetDiveCenter(svc)))
+	mux.HandleFunc("PATCH /dive-centers/{id}", withAuth(authIssuer, handleUpdateDiveCenter(svc)))
 	mux.HandleFunc("GET /dive-centers/{id}/members", withAuth(authIssuer, handleListDiveCenterMembers(svc)))
 	mux.HandleFunc("GET /dive-centers/{id}/members/search", withAuth(authIssuer, handleSearchDiveCenterMember(svc, identityRepo, profileSvc)))
 	mux.HandleFunc("POST /dive-centers/{id}/members", withAuth(authIssuer, handleAddDiveCenterMember(svc)))
@@ -42,6 +43,7 @@ type diveCenterResponse struct {
 	Languages    string    `json:"languages"`
 	Website      *string   `json:"website,omitempty"`
 	Phone        *string   `json:"phone,omitempty"`
+	Email        *string   `json:"email,omitempty"`
 	CreatedAt    time.Time `json:"createdAt"`
 	Role         string    `json:"role,omitempty"`
 }
@@ -58,6 +60,7 @@ func toDiveCenterResponse(dc divecenter.DiveCenter) diveCenterResponse {
 		Languages:    dc.Languages,
 		Website:      nullStringPtr(dc.Website),
 		Phone:        nullStringPtr(dc.Phone),
+		Email:        nullStringPtr(dc.Email),
 		CreatedAt:    dc.CreatedAt,
 	}
 }
@@ -167,6 +170,63 @@ func handleGetDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *htt
 				return
 			}
 			writeError(w, http.StatusInternalServerError, "could not get dive center")
+			return
+		}
+		writeJSON(w, http.StatusOK, toDiveCenterResponse(dc))
+	}
+}
+
+type updateDiveCenterRequest struct {
+	Name         *string `json:"name"`
+	Location     *string `json:"location"`
+	Description  *string `json:"description"`
+	Agency       *string `json:"agency"`
+	AgencyDetail *string `json:"agencyDetail"`
+	Languages    *string `json:"languages"`
+	Website      *string `json:"website"`
+	Phone        *string `json:"phone"`
+	Email        *string `json:"email"`
+}
+
+// handleUpdateDiveCenter is owner-only (enforced inside svc.Update) — every field optional,
+// a nil pointer leaves that column untouched (see divecenter.UpdateParams). Logo has its
+// own dedicated upload endpoint (POST /dive-centers/{id}/logo) rather than a field here,
+// same split as trip photo vs. trip field edits.
+func handleUpdateDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			return
+		}
+		var req updateDiveCenterRequest
+		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
+		if err := dec.Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+
+		dc, err := svc.Update(r.Context(), id, userID, divecenter.UpdateParams{
+			Name:         req.Name,
+			Location:     req.Location,
+			Description:  req.Description,
+			Agency:       req.Agency,
+			AgencyDetail: req.AgencyDetail,
+			Languages:    req.Languages,
+			Website:      req.Website,
+			Phone:        req.Phone,
+			Email:        req.Email,
+		})
+		if err != nil {
+			if errors.Is(err, divecenter.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "name cannot be blank")
+				return
+			}
+			if errors.Is(err, divecenter.ErrOnlyOwner) {
+				writeError(w, http.StatusForbidden, "only an owner can edit the company profile")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not update dive center")
 			return
 		}
 		writeJSON(w, http.StatusOK, toDiveCenterResponse(dc))

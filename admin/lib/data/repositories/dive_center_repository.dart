@@ -41,6 +41,33 @@ class DiveCenterRepository {
     return apiModel.toDomain();
   }
 
+  Future<DiveCenter> update(
+    String id, {
+    String? name,
+    String? location,
+    String? description,
+    String? agency,
+    String? agencyDetail,
+    String? languages,
+    String? website,
+    String? phone,
+    String? email,
+  }) async {
+    final apiModel = await _service.update(
+      id,
+      name: name,
+      location: location,
+      description: description,
+      agency: agency,
+      agencyDetail: agencyDetail,
+      languages: languages,
+      website: website,
+      phone: phone,
+      email: email,
+    );
+    return apiModel.toDomain();
+  }
+
   Future<String> uploadLogo(String id, List<int> bytes, String filename) => _service.uploadLogo(id, bytes, filename);
 
   Future<List<DiveCenterMember>> getMembers(String diveCenterId) => _service.fetchMembers(diveCenterId);
