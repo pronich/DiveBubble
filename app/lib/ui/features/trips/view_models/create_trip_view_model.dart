@@ -61,7 +61,7 @@ class CreateTripViewModel extends ChangeNotifier {
   /// Page's own hero-image camera button.
   Future<void> uploadPhoto(String tripId, String filePath) async {
     try {
-      await _repository.uploadTripPhoto(tripId, filePath);
+      await _repository.addTripPhoto(tripId, filePath);
     } catch (_) {
       // ignore — see above
     }

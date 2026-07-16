@@ -55,21 +55,44 @@ class TripPage extends StatefulWidget {
   State<TripPage> createState() => _TripPageState();
 }
 
+// Mirrors trip.MaxPhotosPerTrip server-side — hides/disables the "+" affordance once
+// reached instead of letting the diver hit the 409 the hard way.
+const _maxTripPhotos = 10;
+
 class _TripPageState extends State<TripPage> {
+  final _photoPageController = PageController();
+  int _currentPhotoIndex = 0;
+
   @override
   void initState() {
     super.initState();
     widget.viewModel.load();
   }
 
-  Future<void> _pickAndUploadPhoto(BuildContext context) async {
+  @override
+  void dispose() {
+    _photoPageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addPhoto(BuildContext context) async {
     final filePath = await pickImage(context);
     if (filePath == null || !context.mounted) return;
 
-    final error = await widget.viewModel.uploadPhoto(filePath);
+    final error = await widget.viewModel.addPhoto(filePath);
     if (!context.mounted) return;
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    }
+  }
+
+  Future<void> _removePhoto(BuildContext context, String photoId) async {
+    final error = await widget.viewModel.removePhoto(photoId);
+    if (!context.mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    } else if (_currentPhotoIndex > 0) {
+      setState(() => _currentPhotoIndex -= 1);
     }
   }
 
@@ -105,43 +128,105 @@ class _TripPageState extends State<TripPage> {
           return ListView(
             padding: EdgeInsets.zero,
             children: [
-              AspectRatio(
-                aspectRatio: 4 / 3,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    (trip.photoUrl?.isNotEmpty ?? false)
-                        ? Image.network(trip.photoUrl!, fit: BoxFit.cover)
-                        : Image.asset(AppAssets.tripPlaceholder, fit: BoxFit.cover),
-                    const DecoratedBox(
-                      decoration: BoxDecoration(gradient: AppGradients.imageScrim),
-                    ),
-                    if (isOrganizer)
-                      Positioned(
-                        right: 16,
-                        bottom: 16,
-                        child: Material(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: widget.viewModel.isUploadingPhoto ? null : () => _pickAndUploadPhoto(context),
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: widget.viewModel.isUploadingPhoto
-                                  ? const SizedBox(
-                                      width: 18,
-                                      height: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                    )
-                                  : const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+              Builder(builder: (context) {
+                final photos = widget.viewModel.photos;
+                final hasPhotos = photos.isNotEmpty;
+                if (hasPhotos && _currentPhotoIndex >= photos.length) {
+                  _currentPhotoIndex = photos.length - 1;
+                }
+                final currentPhoto = hasPhotos ? photos[_currentPhotoIndex] : null;
+
+                return AspectRatio(
+                  aspectRatio: 4 / 3,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      hasPhotos
+                          ? PageView.builder(
+                              controller: _photoPageController,
+                              itemCount: photos.length,
+                              onPageChanged: (i) => setState(() => _currentPhotoIndex = i),
+                              itemBuilder: (context, i) => Image.network(photos[i].url, fit: BoxFit.cover),
+                            )
+                          : Image.asset(AppAssets.tripPlaceholder, fit: BoxFit.cover),
+                      const DecoratedBox(
+                        decoration: BoxDecoration(gradient: AppGradients.imageScrim),
+                      ),
+                      // Dot page indicator — only worth showing once there's more than one
+                      // photo to swipe between.
+                      if (photos.length > 1)
+                        Positioned(
+                          bottom: 16,
+                          left: 0,
+                          right: 0,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              for (var i = 0; i < photos.length; i++)
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withValues(alpha: i == _currentPhotoIndex ? 1 : 0.4),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      if (isOrganizer && currentPhoto != null)
+                        Positioned(
+                          left: 16,
+                          bottom: 16,
+                          child: Material(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: widget.viewModel.isRemovingPhoto(currentPhoto.id)
+                                  ? null
+                                  : () => _removePhoto(context, currentPhoto.id),
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: widget.viewModel.isRemovingPhoto(currentPhoto.id)
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Icon(Icons.close, color: Colors.white, size: 20),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
+                      if (isOrganizer && photos.length < _maxTripPhotos)
+                        Positioned(
+                          right: 16,
+                          bottom: 16,
+                          child: Material(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: widget.viewModel.isUploadingPhoto ? null : () => _addPhoto(context),
+                              child: Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: widget.viewModel.isUploadingPhoto
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(

@@ -7,6 +7,7 @@ import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/dive_center.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../../domain/entities/trip_photo.dart';
 
 class TripViewModel extends ChangeNotifier {
   TripViewModel({
@@ -28,6 +29,9 @@ class TripViewModel extends ChangeNotifier {
 
   Trip? _trip;
   Trip? get trip => _trip;
+
+  List<TripPhoto> _photos = [];
+  List<TripPhoto> get photos => _photos;
 
   Profile? _organizerProfile;
   Profile? get organizerProfile => _organizerProfile;
@@ -67,6 +71,12 @@ class TripViewModel extends ChangeNotifier {
 
     try {
       _trip = await _repository.getTrip(_tripId);
+      try {
+        _photos = await _repository.getTripPhotos(_tripId);
+      } catch (_) {
+        // Best-effort — a failed gallery fetch shouldn't block viewing the trip itself.
+        _photos = [];
+      }
       final creatorId = _trip?.creatorUserId;
       final diveCenterId = _trip?.diveCenterId;
       // Best-effort — an organizer profile/dive-center fetch failing shouldn't block
@@ -154,21 +164,43 @@ class TripViewModel extends ChangeNotifier {
     }
   }
 
-  /// Returns null on success, or an error message on failure. Organizer-only server-side
-  /// (see trip.ErrOnlyOrganizerCanEditTrip) — the UI only ever surfaces the picker to the
-  /// organizer in the first place, so a rejection here would mean something's out of sync.
-  Future<String?> uploadPhoto(String filePath) async {
+  /// Returns null on success, or an error message on failure — organizer-only and capped at
+  /// trip.MaxPhotosPerTrip server-side (see trip.ErrOnlyOrganizerCanEditTrip/ErrTooManyPhotos);
+  /// the UI only ever surfaces the "+" tile to the organizer and hides it once already at the
+  /// cap, so a rejection here would mean something's out of sync rather than an expected path.
+  Future<String?> addPhoto(String filePath) async {
     _isUploadingPhoto = true;
     notifyListeners();
 
     try {
-      await _repository.uploadTripPhoto(_tripId, filePath);
-      _trip = await _repository.getTrip(_tripId);
+      final photo = await _repository.addTripPhoto(_tripId, filePath);
+      _photos = [..._photos, photo];
       return null;
     } catch (e) {
       return e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isUploadingPhoto = false;
+      notifyListeners();
+    }
+  }
+
+  final Set<String> _removingPhotoIds = {};
+  bool isRemovingPhoto(String photoId) => _removingPhotoIds.contains(photoId);
+
+  /// Returns null on success, or an error message on failure — same organizer-only posture
+  /// as [addPhoto].
+  Future<String?> removePhoto(String photoId) async {
+    _removingPhotoIds.add(photoId);
+    notifyListeners();
+
+    try {
+      await _repository.removeTripPhoto(_tripId, photoId);
+      _photos = _photos.where((p) => p.id != photoId).toList();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _removingPhotoIds.remove(photoId);
       notifyListeners();
     }
   }

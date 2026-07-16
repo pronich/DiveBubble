@@ -28,6 +28,21 @@ func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, transportSvc *tra
 	mux.HandleFunc("PATCH /trips/{id}", withAuth(authIssuer, handleUpdateTrip(svc)))
 	mux.HandleFunc("GET /trips/{id}/participants", withAuth(authIssuer, handleListParticipants(svc)))
 	mux.HandleFunc("POST /trips/{id}/read", withAuth(authIssuer, handleMarkRead(svc)))
+	// Same "browsable without an account" posture as GET /trips/{id} — the gallery is part
+	// of the trip's own public detail, not gated behind participation. Adding a photo (POST)
+	// is a multipart upload, so it's registered in routes_upload.go alongside the others.
+	mux.HandleFunc("GET /trips/{id}/photos", optionalAuth(authIssuer, handleListTripPhotos(svc)))
+	mux.HandleFunc("DELETE /trips/{id}/photos/{photoId}", withAuth(authIssuer, handleDeleteTripPhoto(svc)))
+}
+
+type tripPhotoResponse struct {
+	ID       uuid.UUID `json:"id"`
+	URL      string    `json:"url"`
+	Position int       `json:"position"`
+}
+
+func toTripPhotoResponse(p trip.Photo) tripPhotoResponse {
+	return tripPhotoResponse{ID: p.ID, URL: p.URL, Position: p.Position}
 }
 
 type tripResponse struct {
@@ -503,5 +518,59 @@ func handleListTrips(svc *trip.Service) http.HandlerFunc {
 			out = append(out, toTripResponse(t, false, 0))
 		}
 		writeJSON(w, http.StatusOK, out)
+	}
+}
+
+func handleListTripPhotos(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, _ uuid.UUID) {
+		id := r.PathValue("id")
+		photos, err := svc.ListPhotos(r.Context(), id)
+		if err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not list trip photos")
+			return
+		}
+
+		out := make([]tripPhotoResponse, 0, len(photos))
+		for _, p := range photos {
+			out = append(out, toTripPhotoResponse(p))
+		}
+		writeJSON(w, http.StatusOK, out)
+	}
+}
+
+func handleDeleteTripPhoto(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+		photoID, err := uuid.Parse(r.PathValue("photoId"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid photo id")
+			return
+		}
+
+		if err := svc.RemovePhoto(r.Context(), id, userID, photoID); err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			if errors.Is(err, trip.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "trip not found")
+				return
+			}
+			if errors.Is(err, trip.ErrOnlyOrganizerCanEditTrip) {
+				writeError(w, http.StatusForbidden, "only the organizer can edit this trip")
+				return
+			}
+			if errors.Is(err, trip.ErrPhotoNotFound) {
+				writeError(w, http.StatusNotFound, "photo not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not remove trip photo")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

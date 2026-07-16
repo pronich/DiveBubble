@@ -19,6 +19,7 @@ var ErrTripCancelled = errors.New("trip has been cancelled")
 var ErrNotDiveCenterMember = errors.New("not a member of that dive center")
 var ErrRequiresBookingCode = errors.New("this trip requires a booking code to join")
 var ErrInvalidBookingCode = errors.New("invalid booking code")
+var ErrTooManyPhotos = errors.New("trip already has the maximum number of photos")
 
 const maxBookingCodeAttempts = 5
 
@@ -230,8 +231,47 @@ func (s *Service) Cancel(ctx context.Context, id string, userID uuid.UUID) error
 	return s.Repo.SetBookingStatus(ctx, tripID, "cancelled")
 }
 
-// SetPhotoURL is organizer-only — same ownership check as Update below.
-func (s *Service) SetPhotoURL(ctx context.Context, id string, userID uuid.UUID, url string) error {
+// ListPhotos has no organizer gate — a trip's gallery is shown to anyone viewing the trip
+// (same posture as GetTrip), only adding/removing is restricted.
+func (s *Service) ListPhotos(ctx context.Context, id string) ([]Photo, error) {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, ErrInvalidArgument
+	}
+	return s.Repo.ListPhotos(ctx, tripID)
+}
+
+// AddPhoto is organizer-only (same ownership check as Update below) and caps the gallery at
+// MaxPhotosPerTrip — enforced here, not in the repository, so the check-then-insert reads as
+// one clear business rule rather than being buried in a SQL constraint.
+func (s *Service) AddPhoto(ctx context.Context, id string, userID uuid.UUID, url string) (Photo, error) {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return Photo{}, ErrInvalidArgument
+	}
+	t, err := s.Repo.GetByID(ctx, tripID)
+	if err != nil {
+		return Photo{}, err
+	}
+	ok, err := s.isOrganizer(ctx, t, userID)
+	if err != nil {
+		return Photo{}, err
+	}
+	if !ok {
+		return Photo{}, ErrOnlyOrganizerCanEditTrip
+	}
+	count, err := s.Repo.CountPhotos(ctx, tripID)
+	if err != nil {
+		return Photo{}, err
+	}
+	if count >= MaxPhotosPerTrip {
+		return Photo{}, ErrTooManyPhotos
+	}
+	return s.Repo.AddPhoto(ctx, tripID, url)
+}
+
+// RemovePhoto is organizer-only — same ownership check as AddPhoto.
+func (s *Service) RemovePhoto(ctx context.Context, id string, userID uuid.UUID, photoID uuid.UUID) error {
 	tripID, err := uuid.Parse(id)
 	if err != nil {
 		return ErrInvalidArgument
@@ -247,7 +287,7 @@ func (s *Service) SetPhotoURL(ctx context.Context, id string, userID uuid.UUID, 
 	if !ok {
 		return ErrOnlyOrganizerCanEditTrip
 	}
-	return s.Repo.SetPhotoURL(ctx, tripID, url)
+	return s.Repo.RemovePhoto(ctx, tripID, photoID)
 }
 
 // Update is organizer-only (same isOrganizer check as Cancel/SetPhotoURL — any dive-center

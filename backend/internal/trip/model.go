@@ -29,7 +29,10 @@ type Trip struct {
 	BookingCode      sql.NullString
 	MaxParticipants  sql.NullInt32
 	BookingStatus    string
-	PhotoURL         sql.NullString
+
+	// PhotoURL is derived, not stored — the first photo in trip_photos (position 0), via a
+	// subquery in every SELECT that populates it. See Photo below for the full ordered list.
+	PhotoURL sql.NullString
 
 	// Business fields — nil/DKK for every individual-organizer trip. See divecenter package.
 	DiveCenterID uuid.NullUUID
@@ -41,3 +44,18 @@ type Trip struct {
 	// the same field.
 	BookingURL sql.NullString
 }
+
+// Photo is one entry in a trip's ordered gallery (trip_photos) — Position is upload order,
+// dense from 0, no gaps or manual reordering in this round (see AddPhoto/RemovePhoto).
+type Photo struct {
+	ID        uuid.UUID
+	TripID    uuid.UUID
+	URL       string
+	Position  int
+	CreatedAt time.Time
+}
+
+// MaxPhotosPerTrip caps a trip's gallery — enforced in Service.AddPhoto, not the database
+// (Postgres has no clean "max N rows per group" constraint), so it's the one source of truth
+// both AddPhoto and any client-side "disable the + button" logic should reference.
+const MaxPhotosPerTrip = 10

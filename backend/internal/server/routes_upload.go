@@ -27,7 +27,7 @@ func registerUploadRoutes(
 	mux.HandleFunc("POST /me/avatar", withAuth(authIssuer, handleUploadAvatar(uploadSvc, profileSvc)))
 	mux.HandleFunc("POST /me/certification-photo", withAuth(authIssuer, handleUploadCertificationPhoto(uploadSvc, profileSvc)))
 	mux.HandleFunc("POST /me/specialties/{id}/photo", withAuth(authIssuer, handleUploadSpecialtyPhoto(uploadSvc, certificationSvc)))
-	mux.HandleFunc("POST /trips/{id}/photo", withAuth(authIssuer, handleUploadTripPhoto(uploadSvc, tripSvc)))
+	mux.HandleFunc("POST /trips/{id}/photos", withAuth(authIssuer, handleUploadTripPhoto(uploadSvc, tripSvc)))
 	mux.HandleFunc("POST /dive-centers/{id}/logo", withAuth(authIssuer, handleUploadDiveCenterLogo(uploadSvc, diveCenterSvc)))
 }
 
@@ -184,7 +184,8 @@ func handleUploadTripPhoto(uploadSvc *upload.Service, tripSvc *trip.Service) fun
 			return
 		}
 
-		if err := tripSvc.SetPhotoURL(r.Context(), id, userID, url); err != nil {
+		photo, err := tripSvc.AddPhoto(r.Context(), id, userID, url)
+		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, "invalid trip id")
 				return
@@ -197,9 +198,17 @@ func handleUploadTripPhoto(uploadSvc *upload.Service, tripSvc *trip.Service) fun
 				writeError(w, http.StatusForbidden, "only the organizer can edit this trip")
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not update trip photo")
+			if errors.Is(err, trip.ErrTooManyPhotos) {
+				writeError(w, http.StatusConflict, "trip already has the maximum number of photos")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not add trip photo")
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"photoUrl": url})
+		// 200, not 201 — every other upload endpoint in this file (avatar, certification
+		// photo, specialty photo, dive-center logo) returns 200, and both clients' shared
+		// multipart-upload helpers (uploadImageFile/uploadImageBytes) hardcode checking for
+		// it, so a 201 here would look like a failure to them.
+		writeJSON(w, http.StatusOK, toTripPhotoResponse(photo))
 	}
 }

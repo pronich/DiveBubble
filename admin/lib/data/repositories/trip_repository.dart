@@ -1,4 +1,5 @@
 import '../../domain/entities/trip.dart';
+import '../../domain/entities/trip_photo.dart';
 import '../mappers/trip_api_mapper.dart';
 import '../services/trip_api_service.dart';
 
@@ -87,4 +88,11 @@ class TripRepository {
   }
 
   Future<void> markRead(String tripId) => _service.markRead(tripId);
+
+  Future<List<TripPhoto>> getTripPhotos(String tripId) => _service.fetchTripPhotos(tripId);
+
+  Future<TripPhoto> addTripPhoto(String tripId, List<int> bytes, String filename) =>
+      _service.addTripPhoto(tripId, bytes, filename);
+
+  Future<void> removeTripPhoto(String tripId, String photoId) => _service.removeTripPhoto(tripId, photoId);
 }

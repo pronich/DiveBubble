@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/trip_api_model.dart';
+import '../models/trip_photo_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
 import 'multipart_upload.dart';
@@ -115,14 +116,32 @@ class TripApiService {
     return decoded.cast<String>();
   }
 
-  // 403 if the caller isn't the trip's organizer (mapped to an Exception here).
-  Future<String> uploadTripPhoto(String id, String filePath) async {
+  // Same optional-auth posture as fetchTrip — a trip's gallery is part of its public detail.
+  Future<List<TripPhotoApiModel>> fetchTripPhotos(String id) async {
+    final res = await _client.get(Uri.parse('$baseUrl/trips/$id/photos'), headers: await _optionalAuthHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('fetchTripPhotos failed: ${res.statusCode} ${res.body}');
+    }
+    final decoded = jsonDecode(res.body) as List<dynamic>;
+    return decoded.map((e) => TripPhotoApiModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // 403 if the caller isn't the trip's organizer, 409 if the trip is already at the cap
+  // (trip.MaxPhotosPerTrip server-side) — both mapped to a plain Exception here.
+  Future<TripPhotoApiModel> addTripPhoto(String id, String filePath) async {
     final json = await uploadImageFile(
-      Uri.parse('$baseUrl/trips/$id/photo'),
+      Uri.parse('$baseUrl/trips/$id/photos'),
       filePath: filePath,
       headers: await _requiredAuthHeaders(),
     );
-    return json['photoUrl'] as String;
+    return TripPhotoApiModel.fromJson(json);
+  }
+
+  Future<void> removeTripPhoto(String id, String photoId) async {
+    final res = await _client.delete(Uri.parse('$baseUrl/trips/$id/photos/$photoId'), headers: await _requiredAuthHeaders());
+    if (res.statusCode != 204) {
+      throw Exception('removeTripPhoto failed: ${res.statusCode} ${res.body}');
+    }
   }
 
   Future<void> markRead(String id) async {

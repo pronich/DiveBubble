@@ -1,5 +1,7 @@
 import '../../domain/entities/trip.dart';
+import '../../domain/entities/trip_photo.dart';
 import '../mappers/trip_api_mapper.dart';
+import '../mappers/trip_photo_api_mapper.dart';
 import '../services/trip_api_service.dart';
 
 class TripRepository {
@@ -32,7 +34,17 @@ class TripRepository {
 
   Future<void> markRead(String id) => _service.markRead(id);
 
-  Future<String> uploadTripPhoto(String id, String filePath) => _service.uploadTripPhoto(id, filePath);
+  Future<List<TripPhoto>> getTripPhotos(String id) async {
+    final apiModels = await _service.fetchTripPhotos(id);
+    return apiModels.map((m) => m.toDomain()).toList();
+  }
+
+  Future<TripPhoto> addTripPhoto(String id, String filePath) async {
+    final apiModel = await _service.addTripPhoto(id, filePath);
+    return apiModel.toDomain();
+  }
+
+  Future<void> removeTripPhoto(String id, String photoId) => _service.removeTripPhoto(id, photoId);
 
   Future<List<Trip>> getMyTrips() async {
     final apiModels = await _service.fetchMyTrips();

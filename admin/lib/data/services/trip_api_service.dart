@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../domain/entities/trip_photo.dart';
 import '../models/trip_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'multipart_upload.dart';
 
 /// Trimmed to what admin/ actually needs — no join/leave/cancel/participants here, those
 /// stay diver-facing actions in app/. Business trip creation/listing only.
@@ -133,6 +135,33 @@ class TripApiService {
     final res = await _client.post(Uri.parse('$baseUrl/trips/$tripId/read'), headers: await _authHeaders());
     if (res.statusCode != 204) {
       throw Exception('markRead failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
+  Future<List<TripPhoto>> fetchTripPhotos(String tripId) async {
+    final res = await _client.get(Uri.parse('$baseUrl/trips/$tripId/photos'), headers: await _authHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('fetchTripPhotos failed: ${res.statusCode} ${res.body}');
+    }
+    final decoded = jsonDecode(res.body) as List<dynamic>;
+    return decoded.map((e) => TripPhoto.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // 409 if the trip is already at trip.MaxPhotosPerTrip server-side.
+  Future<TripPhoto> addTripPhoto(String tripId, List<int> bytes, String filename) async {
+    final json = await uploadImageBytes(
+      Uri.parse('$baseUrl/trips/$tripId/photos'),
+      bytes: bytes,
+      filename: filename,
+      headers: await _authHeaders(),
+    );
+    return TripPhoto.fromJson(json);
+  }
+
+  Future<void> removeTripPhoto(String tripId, String photoId) async {
+    final res = await _client.delete(Uri.parse('$baseUrl/trips/$tripId/photos/$photoId'), headers: await _authHeaders());
+    if (res.statusCode != 204) {
+      throw Exception('removeTripPhoto failed: ${res.statusCode} ${res.body}');
     }
   }
 }

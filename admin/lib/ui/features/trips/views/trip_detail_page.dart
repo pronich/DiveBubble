@@ -5,8 +5,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../../domain/entities/trip_photo.dart';
 import '../../../core/formatting/date_format.dart';
+import '../../../core/widgets/pick_image.dart';
 import 'create_trip_page.dart';
+
+// Mirrors trip.MaxPhotosPerTrip server-side — hides/disables the "+" affordance once
+// reached instead of letting the staff member hit the 409 the hard way.
+const _maxTripPhotos = 10;
 
 /// "Manage" now pushes here instead of opening the edit form directly — a real page (not a
 /// popup), reachable from TripsPage's card, showing everything about the trip with an Edit
@@ -36,6 +42,71 @@ class TripDetailPage extends StatefulWidget {
 
 class _TripDetailPageState extends State<TripDetailPage> {
   late Trip _trip = widget.trip;
+  final _photoPageController = PageController();
+  int _currentPhotoIndex = 0;
+  List<TripPhoto> _photos = [];
+  bool _isLoadingPhotos = true;
+  bool _isUploadingPhoto = false;
+  final Set<String> _removingPhotoIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPhotos();
+  }
+
+  @override
+  void dispose() {
+    _photoPageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPhotos() async {
+    try {
+      final photos = await widget.tripRepository.getTripPhotos(_trip.id);
+      if (mounted) setState(() => _photos = photos);
+    } catch (_) {
+      // Best-effort — a failed gallery fetch shouldn't block viewing the trip itself.
+    } finally {
+      if (mounted) setState(() => _isLoadingPhotos = false);
+    }
+  }
+
+  Future<void> _addPhoto() async {
+    final picked = await pickImage();
+    if (picked == null) return;
+
+    setState(() => _isUploadingPhoto = true);
+    try {
+      final photo = await widget.tripRepository.addTripPhoto(_trip.id, picked.bytes, picked.filename);
+      if (mounted) setState(() => _photos = [..._photos, photo]);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
+  }
+
+  Future<void> _removePhoto(String photoId) async {
+    setState(() => _removingPhotoIds.add(photoId));
+    try {
+      await widget.tripRepository.removeTripPhoto(_trip.id, photoId);
+      if (mounted) {
+        setState(() {
+          _photos = _photos.where((p) => p.id != photoId).toList();
+          if (_currentPhotoIndex > 0) _currentPhotoIndex -= 1;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _removingPhotoIds.remove(photoId));
+    }
+  }
 
   Future<void> _openEdit() async {
     final saved = await showDialog<bool>(
@@ -92,18 +163,107 @@ class _TripDetailPageState extends State<TripDetailPage> {
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: trip.photoUrl != null
-                      ? Image.network(trip.photoUrl!, fit: BoxFit.cover)
-                      : Container(
-                          color: theme.colorScheme.primaryContainer,
-                          child: Icon(Icons.image_outlined, size: 40, color: theme.colorScheme.onPrimaryContainer),
-                        ),
-                ),
-              ),
+              Builder(builder: (context) {
+                final hasPhotos = _photos.isNotEmpty;
+                if (hasPhotos && _currentPhotoIndex >= _photos.length) {
+                  _currentPhotoIndex = _photos.length - 1;
+                }
+                final currentPhoto = hasPhotos ? _photos[_currentPhotoIndex] : null;
+
+                return AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        hasPhotos
+                            ? PageView.builder(
+                                controller: _photoPageController,
+                                itemCount: _photos.length,
+                                onPageChanged: (i) => setState(() => _currentPhotoIndex = i),
+                                itemBuilder: (context, i) => Image.network(_photos[i].url, fit: BoxFit.cover),
+                              )
+                            : Container(
+                                color: theme.colorScheme.primaryContainer,
+                                child: _isLoadingPhotos
+                                    ? const Center(child: CircularProgressIndicator())
+                                    : Icon(Icons.image_outlined, size: 40, color: theme.colorScheme.onPrimaryContainer),
+                              ),
+                        // Dot page indicator — only worth showing once there's more than
+                        // one photo to swipe between.
+                        if (_photos.length > 1)
+                          Positioned(
+                            bottom: 12,
+                            left: 0,
+                            right: 0,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                for (var i = 0; i < _photos.length; i++)
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white.withValues(alpha: i == _currentPhotoIndex ? 1 : 0.4),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        if (currentPhoto != null)
+                          Positioned(
+                            left: 12,
+                            bottom: 12,
+                            child: Material(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              shape: const CircleBorder(),
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: _removingPhotoIds.contains(currentPhoto.id) ? null : () => _removePhoto(currentPhoto.id),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: _removingPhotoIds.contains(currentPhoto.id)
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        )
+                                      : const Icon(Icons.close, color: Colors.white, size: 18),
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (_photos.length < _maxTripPhotos)
+                          Positioned(
+                            right: 12,
+                            bottom: 12,
+                            child: Material(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              shape: const CircleBorder(),
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: _isUploadingPhoto ? null : _addPhoto,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: _isUploadingPhoto
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        )
+                                      : const Icon(Icons.add_a_photo_outlined, color: Colors.white, size: 18),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
               const SizedBox(height: 16),
               Row(
                 children: [

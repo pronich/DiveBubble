@@ -11,16 +11,25 @@ import (
 )
 
 var ErrNotFound = errors.New("trip not found")
+var ErrPhotoNotFound = errors.New("photo not found")
 
 var tripColumnNames = []string{
 	"id", "title", "location", "start_time", "created_at", "creator_user_id",
 	"end_date", "description", "meeting_point",
 	"dive_count_min", "dive_count_max", "depth_min_m", "depth_max_m",
-	"min_certification", "booking_code", "max_participants", "booking_status", "photo_url",
+	"min_certification", "booking_code", "max_participants", "booking_status",
 	"dive_center_id", "price_minor", "currency", "booking_url",
 }
 
-var tripColumns = strings.Join(tripColumnNames, ", ")
+// coverPhotoExpr is the trip's first photo (trip_photos, position 0) — photo_url isn't a
+// real trips column anymore (see migration 000027), just a value derived at read time. Kept
+// as the last column (not interleaved back at its old spot) so it can be appended once here
+// rather than threaded through every column-order computation.
+func coverPhotoExpr(alias string) string {
+	return "(SELECT tp.url FROM trip_photos tp WHERE tp.trip_id = " + alias + ".id ORDER BY tp.position LIMIT 1)"
+}
+
+var tripColumns = strings.Join(tripColumnNames, ", ") + ", " + coverPhotoExpr("trips")
 
 // tripColumnsPrefixed qualifies each column with a table alias, for queries that join other tables.
 func tripColumnsPrefixed(alias string) string {
@@ -28,7 +37,7 @@ func tripColumnsPrefixed(alias string) string {
 	for i, c := range tripColumnNames {
 		prefixed[i] = alias + "." + c
 	}
-	return strings.Join(prefixed, ", ")
+	return strings.Join(prefixed, ", ") + ", " + coverPhotoExpr(alias)
 }
 
 type Repository struct {
@@ -45,8 +54,9 @@ func scanTrip(row interface{ Scan(...any) error }) (Trip, error) {
 		&t.ID, &t.Title, &t.Location, &t.StartTime, &t.CreatedAt, &t.CreatorUserID,
 		&t.EndDate, &t.Description, &t.MeetingPoint,
 		&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
-		&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus, &t.PhotoURL,
+		&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus,
 		&t.DiveCenterID, &t.PriceMinor, &t.Currency, &t.BookingURL,
+		&t.PhotoURL,
 	)
 	return t, err
 }
@@ -210,9 +220,73 @@ func (r *Repository) SetBookingStatus(ctx context.Context, tripID uuid.UUID, sta
 	return err
 }
 
-func (r *Repository) SetPhotoURL(ctx context.Context, tripID uuid.UUID, url string) error {
-	_, err := r.DB.ExecContext(ctx, `UPDATE trips SET photo_url = $1 WHERE id = $2`, url, tripID)
-	return err
+func (r *Repository) CountPhotos(ctx context.Context, tripID uuid.UUID) (int, error) {
+	var count int
+	err := r.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM trip_photos WHERE trip_id = $1`, tripID).Scan(&count)
+	return count, err
+}
+
+func (r *Repository) ListPhotos(ctx context.Context, tripID uuid.UUID) ([]Photo, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT id, trip_id, url, position, created_at FROM trip_photos WHERE trip_id = $1 ORDER BY position ASC
+	`, tripID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	photos := []Photo{}
+	for rows.Next() {
+		var p Photo
+		if err := rows.Scan(&p.ID, &p.TripID, &p.URL, &p.Position, &p.CreatedAt); err != nil {
+			return nil, err
+		}
+		photos = append(photos, p)
+	}
+	return photos, rows.Err()
+}
+
+// AddPhoto appends at the end (position = current count) — the max-10 cap is enforced by
+// Service.AddPhoto via CountPhotos above, not here, same "repository does data ops, service
+// enforces the business rule" split as transport's one-booking-per-trip check.
+func (r *Repository) AddPhoto(ctx context.Context, tripID uuid.UUID, url string) (Photo, error) {
+	var p Photo
+	err := r.DB.QueryRowContext(ctx, `
+		INSERT INTO trip_photos (trip_id, url, position)
+		VALUES ($1, $2, (SELECT COUNT(*) FROM trip_photos WHERE trip_id = $1))
+		RETURNING id, trip_id, url, position, created_at
+	`, tripID, url).Scan(&p.ID, &p.TripID, &p.URL, &p.Position, &p.CreatedAt)
+	return p, err
+}
+
+// RemovePhoto also closes the position gap it leaves — positions stay dense from 0 (no
+// reordering feature in this round), since AddPhoto's "next position = current count" relies
+// on that invariant holding.
+func (r *Repository) RemovePhoto(ctx context.Context, tripID, photoID uuid.UUID) error {
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var position int
+	err = tx.QueryRowContext(ctx, `
+		DELETE FROM trip_photos WHERE id = $1 AND trip_id = $2 RETURNING position
+	`, photoID, tripID).Scan(&position)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrPhotoNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE trip_photos SET position = position - 1 WHERE trip_id = $1 AND position > $2
+	`, tripID, position); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *Repository) ListParticipantUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
@@ -281,8 +355,9 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 			&t.ID, &t.Title, &t.Location, &t.StartTime, &t.CreatedAt, &t.CreatorUserID,
 			&t.EndDate, &t.Description, &t.MeetingPoint,
 			&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
-			&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus, &t.PhotoURL,
+			&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus,
 			&t.DiveCenterID, &t.PriceMinor, &t.Currency, &t.BookingURL,
+			&t.PhotoURL,
 			&t.UnreadCount, &t.ParticipantCount,
 		)
 		if err != nil {
