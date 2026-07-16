@@ -19,6 +19,7 @@ abstract class DiveCenter with _$DiveCenter {
     @Default('') String languages,
     String? website,
     String? phone,
+    String? email,
     required DateTime createdAt,
   }) = _DiveCenter;
 }

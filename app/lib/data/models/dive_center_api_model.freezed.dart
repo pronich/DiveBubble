@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DiveCenterApiModel {
 
- String get id; String get name; String? get location; String? get description; String? get logoUrl; String? get agency; String? get agencyDetail; String get languages; String? get website; String? get phone; DateTime get createdAt; String? get role;
+ String get id; String get name; String? get location; String? get description; String? get logoUrl; String? get agency; String? get agencyDetail; String get languages; String? get website; String? get phone; String? get email; DateTime get createdAt; String? get role;
 /// Create a copy of DiveCenterApiModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $DiveCenterApiModelCopyWith<DiveCenterApiModel> get copyWith => _$DiveCenterApiM
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DiveCenterApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.location, location) || other.location == location)&&(identical(other.description, description) || other.description == description)&&(identical(other.logoUrl, logoUrl) || other.logoUrl == logoUrl)&&(identical(other.agency, agency) || other.agency == agency)&&(identical(other.agencyDetail, agencyDetail) || other.agencyDetail == agencyDetail)&&(identical(other.languages, languages) || other.languages == languages)&&(identical(other.website, website) || other.website == website)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.role, role) || other.role == role));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DiveCenterApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.location, location) || other.location == location)&&(identical(other.description, description) || other.description == description)&&(identical(other.logoUrl, logoUrl) || other.logoUrl == logoUrl)&&(identical(other.agency, agency) || other.agency == agency)&&(identical(other.agencyDetail, agencyDetail) || other.agencyDetail == agencyDetail)&&(identical(other.languages, languages) || other.languages == languages)&&(identical(other.website, website) || other.website == website)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.email, email) || other.email == email)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.role, role) || other.role == role));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,location,description,logoUrl,agency,agencyDetail,languages,website,phone,createdAt,role);
+int get hashCode => Object.hash(runtimeType,id,name,location,description,logoUrl,agency,agencyDetail,languages,website,phone,email,createdAt,role);
 
 @override
 String toString() {
-  return 'DiveCenterApiModel(id: $id, name: $name, location: $location, description: $description, logoUrl: $logoUrl, agency: $agency, agencyDetail: $agencyDetail, languages: $languages, website: $website, phone: $phone, createdAt: $createdAt, role: $role)';
+  return 'DiveCenterApiModel(id: $id, name: $name, location: $location, description: $description, logoUrl: $logoUrl, agency: $agency, agencyDetail: $agencyDetail, languages: $languages, website: $website, phone: $phone, email: $email, createdAt: $createdAt, role: $role)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $DiveCenterApiModelCopyWith<$Res>  {
   factory $DiveCenterApiModelCopyWith(DiveCenterApiModel value, $Res Function(DiveCenterApiModel) _then) = _$DiveCenterApiModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String? location, String? description, String? logoUrl, String? agency, String? agencyDetail, String languages, String? website, String? phone, DateTime createdAt, String? role
+ String id, String name, String? location, String? description, String? logoUrl, String? agency, String? agencyDetail, String languages, String? website, String? phone, String? email, DateTime createdAt, String? role
 });
 
 
@@ -65,7 +65,7 @@ class _$DiveCenterApiModelCopyWithImpl<$Res>
 
 /// Create a copy of DiveCenterApiModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? location = freezed,Object? description = freezed,Object? logoUrl = freezed,Object? agency = freezed,Object? agencyDetail = freezed,Object? languages = null,Object? website = freezed,Object? phone = freezed,Object? createdAt = null,Object? role = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? location = freezed,Object? description = freezed,Object? logoUrl = freezed,Object? agency = freezed,Object? agencyDetail = freezed,Object? languages = null,Object? website = freezed,Object? phone = freezed,Object? email = freezed,Object? createdAt = null,Object? role = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -77,6 +77,7 @@ as String?,agencyDetail: freezed == agencyDetail ? _self.agencyDetail : agencyDe
 as String?,languages: null == languages ? _self.languages : languages // ignore: cast_nullable_to_non_nullable
 as String,website: freezed == website ? _self.website : website // ignore: cast_nullable_to_non_nullable
 as String?,phone: freezed == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
+as String?,email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,role: freezed == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -164,10 +165,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String? location,  String? description,  String? logoUrl,  String? agency,  String? agencyDetail,  String languages,  String? website,  String? phone,  DateTime createdAt,  String? role)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String name,  String? location,  String? description,  String? logoUrl,  String? agency,  String? agencyDetail,  String languages,  String? website,  String? phone,  String? email,  DateTime createdAt,  String? role)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _DiveCenterApiModel() when $default != null:
-return $default(_that.id,_that.name,_that.location,_that.description,_that.logoUrl,_that.agency,_that.agencyDetail,_that.languages,_that.website,_that.phone,_that.createdAt,_that.role);case _:
+return $default(_that.id,_that.name,_that.location,_that.description,_that.logoUrl,_that.agency,_that.agencyDetail,_that.languages,_that.website,_that.phone,_that.email,_that.createdAt,_that.role);case _:
   return orElse();
 
 }
@@ -185,10 +186,10 @@ return $default(_that.id,_that.name,_that.location,_that.description,_that.logoU
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String? location,  String? description,  String? logoUrl,  String? agency,  String? agencyDetail,  String languages,  String? website,  String? phone,  DateTime createdAt,  String? role)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String name,  String? location,  String? description,  String? logoUrl,  String? agency,  String? agencyDetail,  String languages,  String? website,  String? phone,  String? email,  DateTime createdAt,  String? role)  $default,) {final _that = this;
 switch (_that) {
 case _DiveCenterApiModel():
-return $default(_that.id,_that.name,_that.location,_that.description,_that.logoUrl,_that.agency,_that.agencyDetail,_that.languages,_that.website,_that.phone,_that.createdAt,_that.role);case _:
+return $default(_that.id,_that.name,_that.location,_that.description,_that.logoUrl,_that.agency,_that.agencyDetail,_that.languages,_that.website,_that.phone,_that.email,_that.createdAt,_that.role);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -205,10 +206,10 @@ return $default(_that.id,_that.name,_that.location,_that.description,_that.logoU
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String? location,  String? description,  String? logoUrl,  String? agency,  String? agencyDetail,  String languages,  String? website,  String? phone,  DateTime createdAt,  String? role)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String name,  String? location,  String? description,  String? logoUrl,  String? agency,  String? agencyDetail,  String languages,  String? website,  String? phone,  String? email,  DateTime createdAt,  String? role)?  $default,) {final _that = this;
 switch (_that) {
 case _DiveCenterApiModel() when $default != null:
-return $default(_that.id,_that.name,_that.location,_that.description,_that.logoUrl,_that.agency,_that.agencyDetail,_that.languages,_that.website,_that.phone,_that.createdAt,_that.role);case _:
+return $default(_that.id,_that.name,_that.location,_that.description,_that.logoUrl,_that.agency,_that.agencyDetail,_that.languages,_that.website,_that.phone,_that.email,_that.createdAt,_that.role);case _:
   return null;
 
 }
@@ -220,7 +221,7 @@ return $default(_that.id,_that.name,_that.location,_that.description,_that.logoU
 @JsonSerializable()
 
 class _DiveCenterApiModel implements DiveCenterApiModel {
-  const _DiveCenterApiModel({required this.id, required this.name, this.location, this.description, this.logoUrl, this.agency, this.agencyDetail, this.languages = '', this.website, this.phone, required this.createdAt, this.role});
+  const _DiveCenterApiModel({required this.id, required this.name, this.location, this.description, this.logoUrl, this.agency, this.agencyDetail, this.languages = '', this.website, this.phone, this.email, required this.createdAt, this.role});
   factory _DiveCenterApiModel.fromJson(Map<String, dynamic> json) => _$DiveCenterApiModelFromJson(json);
 
 @override final  String id;
@@ -233,6 +234,7 @@ class _DiveCenterApiModel implements DiveCenterApiModel {
 @override@JsonKey() final  String languages;
 @override final  String? website;
 @override final  String? phone;
+@override final  String? email;
 @override final  DateTime createdAt;
 @override final  String? role;
 
@@ -249,16 +251,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DiveCenterApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.location, location) || other.location == location)&&(identical(other.description, description) || other.description == description)&&(identical(other.logoUrl, logoUrl) || other.logoUrl == logoUrl)&&(identical(other.agency, agency) || other.agency == agency)&&(identical(other.agencyDetail, agencyDetail) || other.agencyDetail == agencyDetail)&&(identical(other.languages, languages) || other.languages == languages)&&(identical(other.website, website) || other.website == website)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.role, role) || other.role == role));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DiveCenterApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.location, location) || other.location == location)&&(identical(other.description, description) || other.description == description)&&(identical(other.logoUrl, logoUrl) || other.logoUrl == logoUrl)&&(identical(other.agency, agency) || other.agency == agency)&&(identical(other.agencyDetail, agencyDetail) || other.agencyDetail == agencyDetail)&&(identical(other.languages, languages) || other.languages == languages)&&(identical(other.website, website) || other.website == website)&&(identical(other.phone, phone) || other.phone == phone)&&(identical(other.email, email) || other.email == email)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.role, role) || other.role == role));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,location,description,logoUrl,agency,agencyDetail,languages,website,phone,createdAt,role);
+int get hashCode => Object.hash(runtimeType,id,name,location,description,logoUrl,agency,agencyDetail,languages,website,phone,email,createdAt,role);
 
 @override
 String toString() {
-  return 'DiveCenterApiModel(id: $id, name: $name, location: $location, description: $description, logoUrl: $logoUrl, agency: $agency, agencyDetail: $agencyDetail, languages: $languages, website: $website, phone: $phone, createdAt: $createdAt, role: $role)';
+  return 'DiveCenterApiModel(id: $id, name: $name, location: $location, description: $description, logoUrl: $logoUrl, agency: $agency, agencyDetail: $agencyDetail, languages: $languages, website: $website, phone: $phone, email: $email, createdAt: $createdAt, role: $role)';
 }
 
 
@@ -269,7 +271,7 @@ abstract mixin class _$DiveCenterApiModelCopyWith<$Res> implements $DiveCenterAp
   factory _$DiveCenterApiModelCopyWith(_DiveCenterApiModel value, $Res Function(_DiveCenterApiModel) _then) = __$DiveCenterApiModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String? location, String? description, String? logoUrl, String? agency, String? agencyDetail, String languages, String? website, String? phone, DateTime createdAt, String? role
+ String id, String name, String? location, String? description, String? logoUrl, String? agency, String? agencyDetail, String languages, String? website, String? phone, String? email, DateTime createdAt, String? role
 });
 
 
@@ -286,7 +288,7 @@ class __$DiveCenterApiModelCopyWithImpl<$Res>
 
 /// Create a copy of DiveCenterApiModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? location = freezed,Object? description = freezed,Object? logoUrl = freezed,Object? agency = freezed,Object? agencyDetail = freezed,Object? languages = null,Object? website = freezed,Object? phone = freezed,Object? createdAt = null,Object? role = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? location = freezed,Object? description = freezed,Object? logoUrl = freezed,Object? agency = freezed,Object? agencyDetail = freezed,Object? languages = null,Object? website = freezed,Object? phone = freezed,Object? email = freezed,Object? createdAt = null,Object? role = freezed,}) {
   return _then(_DiveCenterApiModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -298,6 +300,7 @@ as String?,agencyDetail: freezed == agencyDetail ? _self.agencyDetail : agencyDe
 as String?,languages: null == languages ? _self.languages : languages // ignore: cast_nullable_to_non_nullable
 as String,website: freezed == website ? _self.website : website // ignore: cast_nullable_to_non_nullable
 as String?,phone: freezed == phone ? _self.phone : phone // ignore: cast_nullable_to_non_nullable
+as String?,email: freezed == email ? _self.email : email // ignore: cast_nullable_to_non_nullable
 as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,role: freezed == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as String?,
