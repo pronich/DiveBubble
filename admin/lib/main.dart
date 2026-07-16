@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/dive_center_repository.dart';
+import 'data/repositories/profile_repository.dart';
 import 'data/repositories/trip_repository.dart';
 import 'data/services/auth_api_service.dart';
 import 'data/services/dive_center_api_service.dart';
+import 'data/services/profile_api_service.dart';
 import 'data/services/token_storage_service.dart';
 import 'data/services/trip_api_service.dart';
 import 'ui/core/root_gate.dart';
@@ -36,6 +38,9 @@ class AdminApp extends StatelessWidget {
     final tripRepository = TripRepository(
       service: TripApiService(baseUrl: _apiBaseUrl, getAccessToken: authRepository.getValidAccessToken),
     );
+    final profileRepository = ProfileRepository(
+      service: ProfileApiService(baseUrl: _apiBaseUrl, getAccessToken: authRepository.getValidAccessToken),
+    );
 
     return MaterialApp(
       title: 'DiveBubble Business',
@@ -45,6 +50,7 @@ class AdminApp extends StatelessWidget {
         authRepository: authRepository,
         diveCenterRepository: diveCenterRepository,
         tripRepository: tripRepository,
+        profileRepository: profileRepository,
       ),
     );
   }

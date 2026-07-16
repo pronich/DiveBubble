@@ -1,4 +1,5 @@
 import '../../domain/entities/dive_center.dart';
+import '../../domain/entities/dive_center_member.dart';
 import '../mappers/dive_center_api_mapper.dart';
 import '../services/dive_center_api_service.dart';
 
@@ -41,4 +42,14 @@ class DiveCenterRepository {
   }
 
   Future<String> uploadLogo(String id, List<int> bytes, String filename) => _service.uploadLogo(id, bytes, filename);
+
+  Future<List<DiveCenterMember>> getMembers(String diveCenterId) => _service.fetchMembers(diveCenterId);
+
+  Future<MemberPreview> searchMemberByEmail(String diveCenterId, String email) =>
+      _service.searchMemberByEmail(diveCenterId, email);
+
+  Future<void> addMember(String diveCenterId, String userId, String role) =>
+      _service.addMember(diveCenterId, userId, role);
+
+  Future<void> removeMember(String diveCenterId, String userId) => _service.removeMember(diveCenterId, userId);
 }

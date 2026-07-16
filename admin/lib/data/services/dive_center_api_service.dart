@@ -2,10 +2,18 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../domain/entities/dive_center_member.dart';
 import '../models/dive_center_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
 import 'multipart_upload.dart';
+
+/// Thrown when a member search by email finds no matching DiveBubble account — a distinct
+/// type (not a generic Exception) so the Invite dialog can show "they need to sign up
+/// first" instead of a raw error, matching backend's 404 "no account found for that email".
+class MemberNotFoundException implements Exception {
+  const MemberNotFoundException();
+}
 
 class DiveCenterApiService {
   DiveCenterApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
@@ -67,6 +75,61 @@ class DiveCenterApiService {
       throw Exception('create failed: ${res.statusCode} ${res.body}');
     }
     return DiveCenterApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<List<DiveCenterMember>> fetchMembers(String diveCenterId) async {
+    final res = await _client.get(Uri.parse('$baseUrl/dive-centers/$diveCenterId/members'), headers: await _authHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('fetchMembers failed: ${res.statusCode} ${res.body}');
+    }
+    final list = jsonDecode(res.body) as List<dynamic>;
+    return list.map((e) => DiveCenterMember.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // Exact-email lookup only, owner-only on the backend — not a user directory. Used to
+  // confirm "is this the right person" before actually adding them via addMember below.
+  Future<MemberPreview> searchMemberByEmail(String diveCenterId, String email) async {
+    final uri = Uri.parse('$baseUrl/dive-centers/$diveCenterId/members/search').replace(queryParameters: {'email': email});
+    final res = await _client.get(uri, headers: await _authHeaders());
+    if (res.statusCode == 404) {
+      throw const MemberNotFoundException();
+    }
+    if (res.statusCode != 200) {
+      throw Exception('searchMemberByEmail failed: ${res.statusCode} ${res.body}');
+    }
+    return MemberPreview.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  // Also how an existing member's role changes — the backend upserts, so re-adding with a
+  // different role just updates it (see divecenter.Repository.AddMember's own comment).
+  Future<void> addMember(String diveCenterId, String userId, String role) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/dive-centers/$diveCenterId/members'),
+      headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId, 'role': role}),
+    );
+    if (res.statusCode != 201) {
+      throw Exception('addMember failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
+  Future<void> removeMember(String diveCenterId, String userId) async {
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/dive-centers/$diveCenterId/members/$userId'),
+      headers: await _authHeaders(),
+    );
+    if (res.statusCode != 204) {
+      // Surfaces backend's own message (e.g. "cannot remove the last owner", 409) directly
+      // rather than a raw status dump — the caller shows this in a SnackBar as-is.
+      String message = 'removeMember failed: ${res.statusCode}';
+      try {
+        final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+        if (decoded['error'] is String) message = decoded['error'] as String;
+      } catch (_) {
+        // best-effort — fall back to the generic message above
+      }
+      throw Exception(message);
+    }
   }
 
   Future<String> uploadLogo(String id, List<int> bytes, String filename) async {

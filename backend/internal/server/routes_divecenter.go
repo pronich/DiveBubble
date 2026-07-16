@@ -63,13 +63,25 @@ func toDiveCenterResponse(dc divecenter.DiveCenter) diveCenterResponse {
 }
 
 type memberResponse struct {
-	UserID   uuid.UUID `json:"userId"`
-	Role     string    `json:"role"`
-	JoinedAt time.Time `json:"joinedAt"`
+	UserID             uuid.UUID `json:"userId"`
+	Role               string    `json:"role"`
+	JoinedAt           time.Time `json:"joinedAt"`
+	DisplayName        *string   `json:"displayName,omitempty"`
+	AvatarURL          *string   `json:"avatarUrl,omitempty"`
+	CertificationLevel *string   `json:"certificationLevel,omitempty"`
+	Email              *string   `json:"email,omitempty"`
 }
 
-func toMemberResponse(m divecenter.Member) memberResponse {
-	return memberResponse{UserID: m.UserID, Role: m.Role, JoinedAt: m.JoinedAt}
+func toMemberResponse(m divecenter.MemberView) memberResponse {
+	return memberResponse{
+		UserID:             m.UserID,
+		Role:               m.Role,
+		JoinedAt:           m.JoinedAt,
+		DisplayName:        nullStringPtr(m.DisplayName),
+		AvatarURL:          nullStringPtr(m.AvatarURL),
+		CertificationLevel: nullStringPtr(m.CertificationLevel),
+		Email:              nullStringPtr(m.Email),
+	}
 }
 
 type createDiveCenterRequest struct {
@@ -274,7 +286,10 @@ func handleAddDiveCenterMember(svc *divecenter.Service) func(http.ResponseWriter
 			writeError(w, http.StatusInternalServerError, "could not add member")
 			return
 		}
-		writeJSON(w, http.StatusCreated, toMemberResponse(m))
+		// Bare Member, not the enriched MemberView ListMembers returns — admin/ reloads the
+		// full roster right after a successful add anyway, so this response doesn't need to
+		// carry name/avatar/email itself.
+		writeJSON(w, http.StatusCreated, toMemberResponse(divecenter.MemberView{Member: m}))
 	}
 }
 
