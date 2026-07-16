@@ -14,11 +14,21 @@ import 'create_trip_page.dart';
 /// app/'s Trip Page info grid (badge_outlined/waves/scuba_diving_outlined/schedule) for
 /// visual consistency between the two clients.
 class TripDetailPage extends StatefulWidget {
-  const TripDetailPage({super.key, required this.trip, required this.tripRepository, required this.diveCenterId});
+  const TripDetailPage({
+    super.key,
+    required this.trip,
+    required this.tripRepository,
+    required this.diveCenterId,
+    required this.onDiveIntoBubble,
+  });
 
   final Trip trip;
   final TripRepository tripRepository;
   final String diveCenterId;
+
+  // Threaded from AdminShell (via TripsPage) — pops this page and switches AdminShell to
+  // the Bubbles tab with this trip's conversation already selected.
+  final ValueChanged<String> onDiveIntoBubble;
 
   @override
   State<TripDetailPage> createState() => _TripDetailPageState();
@@ -59,6 +69,17 @@ class _TripDetailPageState extends State<TripDetailPage> {
       appBar: AppBar(
         title: Text(trip.title),
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FilledButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.onDiveIntoBubble(trip.id);
+              },
+              icon: const Icon(Icons.bubble_chart_outlined),
+              label: const Text('Dive into Bubble'),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: OutlinedButton.icon(onPressed: _openEdit, icon: const Icon(Icons.edit_outlined), label: const Text('Edit')),

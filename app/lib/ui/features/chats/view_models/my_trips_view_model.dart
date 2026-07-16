@@ -19,7 +19,12 @@ class MyTripsViewModel extends ChangeNotifier {
 
   final TripRepository _repository;
   final RealtimeService _realtimeService;
-  final String currentUserId;
+
+  // Not final — RootShell is built once (see its own `late final` comment) but the real
+  // signed-in id can change later (anonymous browsing followed by a login-gated sign-in, or
+  // a sign-out/sign-in cycle without an app restart), so RootShell pushes a fresh value in
+  // via didUpdateWidget whenever AppEntryGate re-resolves it.
+  String currentUserId;
 
   // One subscription per joined trip, kept alive for as long as this ViewModel is (the
   // whole Bubbles tab's lifetime) — this is what makes the list update live, WhatsApp/

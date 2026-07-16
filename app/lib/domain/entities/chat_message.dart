@@ -10,5 +10,9 @@ abstract class ChatMessage with _$ChatMessage {
     required String userId,
     required String body,
     required DateTime createdAt,
+    // True only when this specific sender is an actual member of the trip's dive center —
+    // not just "this trip was organized by a dive center" (see ChatView._MessageRow, which
+    // used to apply the "Name | Dive Center" label to every non-own message regardless).
+    @Default(false) bool isDiveCenterStaff,
   }) = _ChatMessage;
 }

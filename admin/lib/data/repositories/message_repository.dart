@@ -9,4 +9,6 @@ class MessageRepository {
   Future<List<ChatMessage>> getMessages(String tripId) => _service.fetchMessages(tripId);
 
   Future<ChatMessage> sendMessage(String tripId, String body) => _service.sendMessage(tripId, body);
+
+  Future<String> getRealtimeToken() => _service.fetchRealtimeToken();
 }

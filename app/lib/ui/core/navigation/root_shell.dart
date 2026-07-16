@@ -66,6 +66,17 @@ class _RootShellState extends State<RootShell> {
   }
 
   @override
+  void didUpdateWidget(RootShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // _myTripsViewModel itself is built once (see its own comment) — AppEntryGate can still
+    // hand this widget a fresher currentUserId later (see AppEntryGate's auth-change
+    // listener), so that update needs to be pushed into the already-built ViewModel by hand.
+    if (oldWidget.currentUserId != widget.currentUserId) {
+      _myTripsViewModel.currentUserId = widget.currentUserId;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(

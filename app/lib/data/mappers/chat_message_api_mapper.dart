@@ -8,5 +8,6 @@ extension ChatMessageApiMapper on ChatMessageApiModel {
         userId: userId,
         body: body,
         createdAt: createdAt,
+        isDiveCenterStaff: isDiveCenterStaff,
       );
 }

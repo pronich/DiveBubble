@@ -11,6 +11,7 @@ abstract class ChatMessageApiModel with _$ChatMessageApiModel {
     required String userId,
     required String body,
     required DateTime createdAt,
+    @Default(false) bool isDiveCenterStaff,
   }) = _ChatMessageApiModel;
 
   factory ChatMessageApiModel.fromJson(Map<String, dynamic> json) =>

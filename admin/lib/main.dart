@@ -9,12 +9,14 @@ import 'data/services/auth_api_service.dart';
 import 'data/services/dive_center_api_service.dart';
 import 'data/services/message_api_service.dart';
 import 'data/services/profile_api_service.dart';
+import 'data/services/realtime_service.dart';
 import 'data/services/token_storage_service.dart';
 import 'data/services/trip_api_service.dart';
 import 'ui/core/root_gate.dart';
 import 'ui/core/theme/app_theme.dart';
 
 const _apiBaseUrl = 'http://localhost:8080';
+const _centrifugoWsUrl = 'ws://localhost:8000/connection/websocket';
 
 // Same Web OAuth client app/ already uses for its own ID-token audience — a web build has
 // no separate native-app identity to keep distinct from it, unlike app/'s iOS client id.
@@ -46,6 +48,10 @@ class AdminApp extends StatelessWidget {
     final messageRepository = MessageRepository(
       service: MessageApiService(baseUrl: _apiBaseUrl, getAccessToken: authRepository.getValidAccessToken),
     );
+    final realtimeService = RealtimeService(
+      wsUrl: _centrifugoWsUrl,
+      getToken: messageRepository.getRealtimeToken,
+    );
 
     return MaterialApp(
       title: 'DiveBubble Business',
@@ -57,6 +63,7 @@ class AdminApp extends StatelessWidget {
         tripRepository: tripRepository,
         profileRepository: profileRepository,
         messageRepository: messageRepository,
+        realtimeService: realtimeService,
       ),
     );
   }

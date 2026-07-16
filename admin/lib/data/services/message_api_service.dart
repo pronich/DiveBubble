@@ -33,6 +33,14 @@ class MessageApiService {
     return list.map((e) => ChatMessage.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  Future<String> fetchRealtimeToken() async {
+    final res = await _client.get(Uri.parse('$baseUrl/realtime/token'), headers: await _authHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('fetchRealtimeToken failed: ${res.statusCode} ${res.body}');
+    }
+    return (jsonDecode(res.body) as Map<String, dynamic>)['token'] as String;
+  }
+
   Future<ChatMessage> sendMessage(String tripId, String body) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/trips/$tripId/messages'),

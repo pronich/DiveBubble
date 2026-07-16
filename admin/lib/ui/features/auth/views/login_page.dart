@@ -10,7 +10,7 @@ class LoginPage extends StatefulWidget {
   const LoginPage({super.key, required this.authRepository, required this.onSignedIn});
 
   final AuthRepository authRepository;
-  final VoidCallback onSignedIn;
+  final Future<void> Function() onSignedIn;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -50,7 +50,7 @@ class _LoginPageState extends State<LoginPage> {
     });
     try {
       await widget.authRepository.completeSignIn(event.user);
-      widget.onSignedIn();
+      await widget.onSignedIn();
     } catch (e) {
       if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {

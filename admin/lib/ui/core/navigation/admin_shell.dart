@@ -5,6 +5,7 @@ import '../../../data/repositories/dive_center_repository.dart';
 import '../../../data/repositories/message_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
 import '../../../data/repositories/trip_repository.dart';
+import '../../../data/services/realtime_service.dart';
 import '../../../domain/entities/dive_center.dart';
 import '../../../domain/entities/my_profile.dart';
 import '../../features/bubbles/views/bubbles_page.dart';
@@ -25,6 +26,7 @@ class AdminShell extends StatefulWidget {
     required this.tripRepository,
     required this.messageRepository,
     required this.profileRepository,
+    required this.realtimeService,
     required this.authRepository,
     required this.onSignedOut,
   });
@@ -34,6 +36,7 @@ class AdminShell extends StatefulWidget {
   final TripRepository tripRepository;
   final MessageRepository messageRepository;
   final ProfileRepository profileRepository;
+  final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final VoidCallback onSignedOut;
 
@@ -45,6 +48,24 @@ class _AdminShellState extends State<AdminShell> {
   int _selectedIndex = 0;
   MyProfile? _profile;
 
+  // Mirrors _selectedIndex for pages built once via `late final _pages` below (a plain
+  // constructor arg on those pages would only ever see the index's value at that first
+  // build) — BubblesPage listens to this directly to know when it becomes the active tab.
+  final _selectedIndexNotifier = ValueNotifier<int>(0);
+
+  // Set by "Dive into Bubble" (Trip Page → Bubbles) — BubblesPage listens and, once it's
+  // consumed the request (selected that trip), resets this back to null so switching tabs
+  // away and back doesn't reselect it.
+  final _pendingBubbleTripId = ValueNotifier<String?>(null);
+
+  void _diveIntoBubble(String tripId) {
+    setState(() {
+      _selectedIndex = 1;
+      _selectedIndexNotifier.value = 1;
+    });
+    _pendingBubbleTripId.value = tripId;
+  }
+
   // Sidebar-only display state — kept separate from _pages below so a Company edit can
   // refresh the account-footer company name without rebuilding (and losing the state of)
   // every other section.
@@ -54,13 +75,21 @@ class _AdminShellState extends State<AdminShell> {
   // every parent rebuild if they're constructed inline, which would wipe each section's own
   // state on every sidebar tap (same gotcha app/'s RootShell already hit once — see CLAUDE.md).
   late final _pages = [
-    TripsPage(tripRepository: widget.tripRepository, diveCenterId: widget.diveCenter.id),
+    TripsPage(
+      tripRepository: widget.tripRepository,
+      diveCenterId: widget.diveCenter.id,
+      onDiveIntoBubble: _diveIntoBubble,
+    ),
     BubblesPage(
       tripRepository: widget.tripRepository,
       messageRepository: widget.messageRepository,
       profileRepository: widget.profileRepository,
+      realtimeService: widget.realtimeService,
       diveCenterId: widget.diveCenter.id,
+      diveCenterName: widget.diveCenter.name,
       getCurrentUserId: widget.authRepository.currentUserId,
+      selectedTabIndex: _selectedIndexNotifier,
+      openTripId: _pendingBubbleTripId,
     ),
     UsersPage(diveCenterRepository: widget.diveCenterRepository, diveCenterId: widget.diveCenter.id),
     CompanyPage(
@@ -81,13 +110,23 @@ class _AdminShellState extends State<AdminShell> {
   }
 
   @override
+  void dispose() {
+    _selectedIndexNotifier.dispose();
+    _pendingBubbleTripId.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Row(
         children: [
           _Sidebar(
             selectedIndex: _selectedIndex,
-            onSelect: (i) => setState(() => _selectedIndex = i),
+            onSelect: (i) => setState(() {
+              _selectedIndex = i;
+              _selectedIndexNotifier.value = i;
+            }),
             companyName: _companyName,
             profile: _profile,
             onAccountTap: () {

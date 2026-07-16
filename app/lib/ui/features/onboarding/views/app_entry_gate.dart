@@ -43,6 +43,21 @@ class _AppEntryGateState extends State<AppEntryGate> {
       if (!mounted) return;
       setState(() => _phase = completed ? _Phase.staticSplash : _Phase.intro);
     });
+    // A login-gated action (ensureSignedIn) can sign the user in — or a session refresh can
+    // fail and sign them out — long after _enterApp() already ran once. Without this,
+    // _currentUserId stayed frozen at whatever it was resolved to on that first transition
+    // (e.g. '' for a browsing-then-later-signed-in session), and every isMine/currentUserId
+    // comparison downstream (chat bubbles, unread counts) would compare against the wrong id
+    // for the rest of the app's process lifetime.
+    widget.authRepository.addListener(_onAuthChanged);
+  }
+
+  void _onAuthChanged() {
+    if (_phase != _Phase.app) return;
+    widget.authRepository.currentUserId().then((userId) {
+      if (!mounted) return;
+      setState(() => _currentUserId = userId ?? '');
+    });
   }
 
   Future<void> _enterApp() async {
@@ -52,6 +67,12 @@ class _AppEntryGateState extends State<AppEntryGate> {
       _currentUserId = userId;
       _phase = _Phase.app;
     });
+  }
+
+  @override
+  void dispose() {
+    widget.authRepository.removeListener(_onAuthChanged);
+    super.dispose();
   }
 
   void _completeIntro() {

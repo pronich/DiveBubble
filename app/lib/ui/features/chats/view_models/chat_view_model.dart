@@ -69,6 +69,7 @@ class ChatViewModel extends ChangeNotifier {
         userId: json['userId'] as String,
         body: json['body'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
+        isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
       );
       if (_messages.any((m) => m.id == message.id)) return;
       _messages = [..._messages, message];

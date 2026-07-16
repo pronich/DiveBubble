@@ -14,10 +14,13 @@ enum _TripFilter { all, upcoming, past }
 /// Formerly DashboardPage/DashboardViewModel — renamed once this became specifically the
 /// Trips section of a multi-section shell rather than the app's only screen.
 class TripsPage extends StatefulWidget {
-  const TripsPage({super.key, required this.tripRepository, required this.diveCenterId});
+  const TripsPage({super.key, required this.tripRepository, required this.diveCenterId, required this.onDiveIntoBubble});
 
   final TripRepository tripRepository;
   final String diveCenterId;
+
+  // Threaded down to TripDetailPage's "Dive into Bubble" button — see AdminShell._diveIntoBubble.
+  final ValueChanged<String> onDiveIntoBubble;
 
   @override
   State<TripsPage> createState() => _TripsPageState();
@@ -53,7 +56,12 @@ class _TripsPageState extends State<TripsPage> {
   Future<void> _openManageTrip(Trip trip) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => TripDetailPage(trip: trip, tripRepository: widget.tripRepository, diveCenterId: widget.diveCenterId),
+        builder: (_) => TripDetailPage(
+          trip: trip,
+          tripRepository: widget.tripRepository,
+          diveCenterId: widget.diveCenterId,
+          onDiveIntoBubble: widget.onDiveIntoBubble,
+        ),
       ),
     );
     // The detail page may have edited the trip (price, dates, ...) — reload so the grid
@@ -245,6 +253,15 @@ String _rangeText(int? min, int? max, String unit) {
   return '${max!}$unit';
 }
 
+// Same "1d if no end date, otherwise inclusive day span" rule as TripDetailPage's _InfoGrid
+// and app/'s Explore card badges.
+String _durationText(Trip trip) {
+  final end = trip.endDate;
+  if (end == null) return '1d';
+  final days = end.difference(trip.startTime).inDays + 1;
+  return '${days}d';
+}
+
 class _TripRow extends StatelessWidget {
   const _TripRow({required this.trip, required this.onManage});
 
@@ -313,6 +330,8 @@ class _TripRow extends StatelessWidget {
                           _Tag(icon: Icons.location_on_outlined, text: trip.location),
                           const SizedBox(width: 10),
                           _Tag(icon: Icons.calendar_today_outlined, text: formatShortDate(trip.startTime)),
+                          const SizedBox(width: 10),
+                          _Tag(icon: Icons.schedule, text: _durationText(trip)),
                           const SizedBox(width: 10),
                           _Tag(
                             icon: Icons.people_outline,

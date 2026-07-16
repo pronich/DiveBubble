@@ -5,6 +5,7 @@ import '../../data/repositories/dive_center_repository.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../data/repositories/trip_repository.dart';
+import '../../data/services/realtime_service.dart';
 import '../../domain/entities/dive_center.dart';
 import '../features/auth/views/login_page.dart';
 import '../features/onboarding/views/onboarding_page.dart';
@@ -25,6 +26,7 @@ class RootGate extends StatefulWidget {
     required this.tripRepository,
     required this.profileRepository,
     required this.messageRepository,
+    required this.realtimeService,
   });
 
   final AuthRepository authRepository;
@@ -32,6 +34,7 @@ class RootGate extends StatefulWidget {
   final TripRepository tripRepository;
   final ProfileRepository profileRepository;
   final MessageRepository messageRepository;
+  final RealtimeService realtimeService;
 
   @override
   State<RootGate> createState() => _RootGateState();
@@ -88,6 +91,7 @@ class _RootGateState extends State<RootGate> {
           tripRepository: widget.tripRepository,
           profileRepository: widget.profileRepository,
           messageRepository: widget.messageRepository,
+          realtimeService: widget.realtimeService,
           authRepository: widget.authRepository,
           onSignedOut: _recheck,
         );

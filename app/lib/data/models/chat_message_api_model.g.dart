@@ -13,6 +13,7 @@ _ChatMessageApiModel _$ChatMessageApiModelFromJson(Map<String, dynamic> json) =>
       userId: json['userId'] as String,
       body: json['body'] as String,
       createdAt: DateTime.parse(json['createdAt'] as String),
+      isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$ChatMessageApiModelToJson(
@@ -23,4 +24,5 @@ Map<String, dynamic> _$ChatMessageApiModelToJson(
   'userId': instance.userId,
   'body': instance.body,
   'createdAt': instance.createdAt.toIso8601String(),
+  'isDiveCenterStaff': instance.isDiveCenterStaff,
 };

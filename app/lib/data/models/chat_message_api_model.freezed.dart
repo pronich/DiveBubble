@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ChatMessageApiModel {
 
- String get id; String get tripId; String get userId; String get body; DateTime get createdAt;
+ String get id; String get tripId; String get userId; String get body; DateTime get createdAt; bool get isDiveCenterStaff;
 /// Create a copy of ChatMessageApiModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $ChatMessageApiModelCopyWith<ChatMessageApiModel> get copyWith => _$ChatMessageA
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatMessageApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatMessageApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt,isDiveCenterStaff);
 
 @override
 String toString() {
-  return 'ChatMessageApiModel(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt)';
+  return 'ChatMessageApiModel(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt, isDiveCenterStaff: $isDiveCenterStaff)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $ChatMessageApiModelCopyWith<$Res>  {
   factory $ChatMessageApiModelCopyWith(ChatMessageApiModel value, $Res Function(ChatMessageApiModel) _then) = _$ChatMessageApiModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String tripId, String userId, String body, DateTime createdAt
+ String id, String tripId, String userId, String body, DateTime createdAt, bool isDiveCenterStaff
 });
 
 
@@ -65,14 +65,15 @@ class _$ChatMessageApiModelCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessageApiModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,Object? isDiveCenterStaff = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
 as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,isDiveCenterStaff: null == isDiveCenterStaff ? _self.isDiveCenterStaff : isDiveCenterStaff // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -157,10 +158,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ChatMessageApiModel() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff);case _:
   return orElse();
 
 }
@@ -178,10 +179,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff)  $default,) {final _that = this;
 switch (_that) {
 case _ChatMessageApiModel():
-return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -198,10 +199,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt);c
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff)?  $default,) {final _that = this;
 switch (_that) {
 case _ChatMessageApiModel() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff);case _:
   return null;
 
 }
@@ -213,7 +214,7 @@ return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt);c
 @JsonSerializable()
 
 class _ChatMessageApiModel implements ChatMessageApiModel {
-  const _ChatMessageApiModel({required this.id, required this.tripId, required this.userId, required this.body, required this.createdAt});
+  const _ChatMessageApiModel({required this.id, required this.tripId, required this.userId, required this.body, required this.createdAt, this.isDiveCenterStaff = false});
   factory _ChatMessageApiModel.fromJson(Map<String, dynamic> json) => _$ChatMessageApiModelFromJson(json);
 
 @override final  String id;
@@ -221,6 +222,7 @@ class _ChatMessageApiModel implements ChatMessageApiModel {
 @override final  String userId;
 @override final  String body;
 @override final  DateTime createdAt;
+@override@JsonKey() final  bool isDiveCenterStaff;
 
 /// Create a copy of ChatMessageApiModel
 /// with the given fields replaced by the non-null parameter values.
@@ -235,16 +237,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatMessageApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatMessageApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt,isDiveCenterStaff);
 
 @override
 String toString() {
-  return 'ChatMessageApiModel(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt)';
+  return 'ChatMessageApiModel(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt, isDiveCenterStaff: $isDiveCenterStaff)';
 }
 
 
@@ -255,7 +257,7 @@ abstract mixin class _$ChatMessageApiModelCopyWith<$Res> implements $ChatMessage
   factory _$ChatMessageApiModelCopyWith(_ChatMessageApiModel value, $Res Function(_ChatMessageApiModel) _then) = __$ChatMessageApiModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String tripId, String userId, String body, DateTime createdAt
+ String id, String tripId, String userId, String body, DateTime createdAt, bool isDiveCenterStaff
 });
 
 
@@ -272,14 +274,15 @@ class __$ChatMessageApiModelCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessageApiModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,Object? isDiveCenterStaff = null,}) {
   return _then(_ChatMessageApiModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
 as String,userId: null == userId ? _self.userId : userId // ignore: cast_nullable_to_non_nullable
 as String,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,isDiveCenterStaff: null == isDiveCenterStaff ? _self.isDiveCenterStaff : isDiveCenterStaff // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

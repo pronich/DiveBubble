@@ -21,9 +21,10 @@ class ChatView extends StatefulWidget {
   /// cancelling freezes the input, but history stays fully visible either way.
   final bool isCancelled;
 
-  /// Set when this Bubble's trip is organized by a dive center — every non-own message
-  /// gets "Name | Dive Center" instead of just "Name" (see _MessageRow), since the
-  /// organization is the organizer, not one specific employee.
+  /// Set when this Bubble's trip is organized by a dive center — a non-own message from an
+  /// actual staff member of that center (message.isDiveCenterStaff) gets "Name | Dive
+  /// Center" instead of just "Name" (see _MessageRow); other divers in the same Bubble
+  /// keep their plain name, since they aren't posting on the organization's behalf.
   final String? businessName;
 
   @override
@@ -389,9 +390,9 @@ class _MessageRow extends StatelessWidget {
   final Profile? profile;
   final VoidCallback onTapSender;
 
-  /// Never applied to the diver's own messages (see isMine below) — you know which
-  /// business you're posting as, that's what admin/ is for; this label is for everyone
-  /// *reading* the message.
+  /// Never applied to the diver's own messages (see isMine below), and only ever combined
+  /// with message.isDiveCenterStaff — a regular diver's message in a business trip's chat
+  /// must never look like it came from the organization.
   final String? businessName;
 
   @override
@@ -401,6 +402,14 @@ class _MessageRow extends StatelessWidget {
     final bubbleColor = isMine ? colorScheme.primary : colorScheme.secondaryContainer;
     final onBubbleColor = isMine ? colorScheme.onPrimary : colorScheme.onSecondaryContainer;
 
+    final baseName = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
+    final name = (message.isDiveCenterStaff && (businessName?.isNotEmpty ?? false)) ? '$baseName | $businessName' : baseName;
+    // Staff messages always carry a name, even mid-cluster — a trip's chat is effectively a
+    // group conversation (organizer + every diver) even though it's framed as one thread, so
+    // it should always be clear which staff member is replying, not just the first message
+    // in a burst. Regular divers keep the usual "only the first message in a cluster" rule.
+    final showName = !isMine && (isFirstInCluster || message.isDiveCenterStaff);
+
     final bubble = Container(
       constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -409,15 +418,18 @@ class _MessageRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(message.body, style: TextStyle(color: onBubbleColor)),
-          const SizedBox(height: 2),
-          Align(
-            alignment: Alignment.bottomRight,
-            child: Text(
-              formatTime(message.createdAt),
-              style: theme.textTheme.labelSmall?.copyWith(color: onBubbleColor.withValues(alpha: 0.7)),
+          if (showName)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: GestureDetector(
+                onTap: onTapSender,
+                child: Text(
+                  name,
+                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: onBubbleColor),
+                ),
+              ),
             ),
-          ),
+          _MessageBody(body: message.body, time: formatTime(message.createdAt), color: onBubbleColor),
         ],
       ),
     );
@@ -428,9 +440,6 @@ class _MessageRow extends StatelessWidget {
         child: Align(alignment: Alignment.centerRight, child: bubble),
       );
     }
-
-    final baseName = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
-    final name = (businessName?.isNotEmpty ?? false) ? '$baseName | $businessName' : baseName;
 
     return Padding(
       padding: EdgeInsets.only(top: isFirstInCluster ? 14 : 2, bottom: 2),
@@ -454,27 +463,50 @@ class _MessageRow extends StatelessWidget {
                 : null,
           ),
           const SizedBox(width: 8),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isFirstInCluster)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 2),
-                    child: GestureDetector(
-                      onTap: onTapSender,
-                      child: Text(
-                        name,
-                        style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.primary),
-                      ),
-                    ),
-                  ),
-                bubble,
-              ],
-            ),
-          ),
+          Flexible(child: bubble),
         ],
       ),
+    );
+  }
+}
+
+/// Message text with its timestamp trailing inline on the same line — like WhatsApp/Telegram,
+/// not stacked on its own row below. A zero-opacity copy of the timestamp is appended as a
+/// [WidgetSpan] so the paragraph's line-wrapping reserves room for it (falling to a new line
+/// if the last line is already full); the real, visible timestamp is then drawn on top at the
+/// bottom-right corner via [Stack]+[Positioned], landing in that reserved space.
+class _MessageBody extends StatelessWidget {
+  const _MessageBody({required this.body, required this.time, required this.color});
+
+  final String body;
+  final String time;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bodyStyle = TextStyle(color: color);
+    final timeStyle = theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.7), fontSize: 11);
+    return Stack(
+      children: [
+        Text.rich(
+          TextSpan(
+            style: bodyStyle,
+            children: [
+              TextSpan(text: body),
+              WidgetSpan(
+                alignment: PlaceholderAlignment.baseline,
+                baseline: TextBaseline.alphabetic,
+                child: Opacity(
+                  opacity: 0,
+                  child: Padding(padding: const EdgeInsets.only(left: 8), child: Text(time, style: timeStyle)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Positioned(right: 0, bottom: 0, child: Text(time, style: timeStyle)),
+      ],
     );
   }
 }

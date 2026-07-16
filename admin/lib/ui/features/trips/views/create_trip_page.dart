@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../core/widgets/simple_date_picker.dart';
 import '../view_models/create_trip_view_model.dart';
 
 /// Opened via `showDialog` (not pushed as a route) — the full Create/Edit form fits
@@ -87,7 +88,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
   }
 
   Future<void> _pickStartDate() async {
-    final picked = await showDatePicker(
+    final picked = await showSimpleDatePicker(
       context: context,
       initialDate: _startDate ?? DateTime.now(),
       firstDate: DateTime.now().subtract(const Duration(days: 1)),
@@ -96,13 +97,20 @@ class _CreateTripPageState extends State<CreateTripPage> {
     if (picked != null) setState(() => _startDate = picked);
   }
 
+  // TimePickerEntryMode.input skips Flutter's default analog clock face in favor of a
+  // typed HH:MM field from the start — closer to what was actually asked for ("just an
+  // input, like Apple") than building a custom text-entry time widget from scratch.
   Future<void> _pickStartTime() async {
-    final picked = await showTimePicker(context: context, initialTime: _startTimeOfDay ?? TimeOfDay.now());
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _startTimeOfDay ?? TimeOfDay.now(),
+      initialEntryMode: TimePickerEntryMode.input,
+    );
     if (picked != null) setState(() => _startTimeOfDay = picked);
   }
 
   Future<void> _pickEndDate() async {
-    final picked = await showDatePicker(
+    final picked = await showSimpleDatePicker(
       context: context,
       initialDate: _endDate ?? _startDate ?? DateTime.now(),
       firstDate: _startDate ?? DateTime.now(),

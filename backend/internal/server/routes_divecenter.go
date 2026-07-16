@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -125,6 +126,7 @@ func handleCreateDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *
 				writeError(w, http.StatusBadRequest, "name is required")
 				return
 			}
+			log.Printf("create dive center failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not create dive center")
 			return
 		}
@@ -139,6 +141,7 @@ func handleListMyDiveCenters(svc *divecenter.Service) func(http.ResponseWriter, 
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		views, err := svc.ListMine(r.Context(), userID)
 		if err != nil {
+			log.Printf("list my dive centers failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not list dive centers")
 			return
 		}
@@ -170,6 +173,7 @@ func handleGetDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *htt
 				writeError(w, http.StatusNotFound, "dive center not found")
 				return
 			}
+			log.Printf("get dive center failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not get dive center")
 			return
 		}
@@ -198,6 +202,7 @@ func handleGetDiveCenterMembership(svc *divecenter.Service) func(http.ResponseWr
 		}
 		isMember, err := svc.IsMember(r.Context(), id, userID)
 		if err != nil {
+			log.Printf("check dive center membership failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not check membership")
 			return
 		}
@@ -207,6 +212,7 @@ func handleGetDiveCenterMembership(svc *divecenter.Service) func(http.ResponseWr
 		}
 		isOwner, err := svc.IsOwner(r.Context(), id, userID)
 		if err != nil {
+			log.Printf("check dive center ownership failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not check membership")
 			return
 		}
@@ -268,6 +274,7 @@ func handleUpdateDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *
 				writeError(w, http.StatusForbidden, "only an owner can edit the company profile")
 				return
 			}
+			log.Printf("update dive center failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not update dive center")
 			return
 		}
@@ -290,6 +297,7 @@ func handleListDiveCenterMembers(svc *divecenter.Service) func(http.ResponseWrit
 				writeError(w, http.StatusForbidden, "not a member of this dive center")
 				return
 			}
+			log.Printf("list dive center members failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not list members")
 			return
 		}
@@ -319,6 +327,7 @@ func handleSearchDiveCenterMember(svc *divecenter.Service, identityRepo *auth.Id
 		}
 		isOwner, err := svc.IsOwner(r.Context(), id, userID)
 		if err != nil {
+			log.Printf("verify dive center ownership failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not verify membership")
 			return
 		}
@@ -339,12 +348,14 @@ func handleSearchDiveCenterMember(svc *divecenter.Service, identityRepo *auth.Id
 				writeError(w, http.StatusNotFound, "no account found for that email")
 				return
 			}
+			log.Printf("search dive center member failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not search for member")
 			return
 		}
 
 		p, err := profileSvc.Get(r.Context(), targetID)
 		if err != nil {
+			log.Printf("load profile for dive center member search failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not load profile")
 			return
 		}
@@ -385,6 +396,7 @@ func handleAddDiveCenterMember(svc *divecenter.Service) func(http.ResponseWriter
 				writeError(w, http.StatusForbidden, "only an owner can add members")
 				return
 			}
+			log.Printf("add dive center member failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not add member")
 			return
 		}
@@ -421,6 +433,7 @@ func handleRemoveDiveCenterMember(svc *divecenter.Service) func(http.ResponseWri
 				writeError(w, http.StatusNotFound, "member not found")
 				return
 			}
+			log.Printf("remove dive center member failed: %v", err)
 			writeError(w, http.StatusInternalServerError, "could not remove member")
 			return
 		}
