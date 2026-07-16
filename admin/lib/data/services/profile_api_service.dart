@@ -26,4 +26,17 @@ class ProfileApiService {
     final json = jsonDecode(res.body) as Map<String, dynamic>;
     return MyProfile(displayName: json['displayName'] as String?, avatarUrl: json['avatarUrl'] as String?);
   }
+
+  // Trimmed public-profile projection (GET /users/{id}) — used to resolve a chat message
+  // sender's name/avatar, same shape as MyProfile since the fields overlap exactly.
+  Future<MyProfile> fetchById(String userId) async {
+    final token = await getAccessToken();
+    if (token == null) throw const AuthRequiredException();
+    final res = await _client.get(Uri.parse('$baseUrl/users/$userId'), headers: {'Authorization': 'Bearer $token'});
+    if (res.statusCode != 200) {
+      throw Exception('fetchById failed: ${res.statusCode} ${res.body}');
+    }
+    final json = jsonDecode(res.body) as Map<String, dynamic>;
+    return MyProfile(displayName: json['displayName'] as String?, avatarUrl: json['avatarUrl'] as String?);
+  }
 }

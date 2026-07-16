@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/dive_center_repository.dart';
+import '../../data/repositories/message_repository.dart';
 import '../../data/repositories/profile_repository.dart';
 import '../../data/repositories/trip_repository.dart';
 import '../../domain/entities/dive_center.dart';
@@ -23,12 +24,14 @@ class RootGate extends StatefulWidget {
     required this.diveCenterRepository,
     required this.tripRepository,
     required this.profileRepository,
+    required this.messageRepository,
   });
 
   final AuthRepository authRepository;
   final DiveCenterRepository diveCenterRepository;
   final TripRepository tripRepository;
   final ProfileRepository profileRepository;
+  final MessageRepository messageRepository;
 
   @override
   State<RootGate> createState() => _RootGateState();
@@ -84,6 +87,7 @@ class _RootGateState extends State<RootGate> {
           diveCenterRepository: widget.diveCenterRepository,
           tripRepository: widget.tripRepository,
           profileRepository: widget.profileRepository,
+          messageRepository: widget.messageRepository,
           authRepository: widget.authRepository,
           onSignedOut: _recheck,
         );

@@ -121,4 +121,14 @@ class TripApiService {
     }
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
+
+  // Same "opening a chat marks it read" behavior as app/'s ChatView — without this, a
+  // dive-center staff member's unreadCount would never clear (they have no
+  // trip_participants row, so last_read_at only ever moves via this call).
+  Future<void> markRead(String tripId) async {
+    final res = await _client.post(Uri.parse('$baseUrl/trips/$tripId/read'), headers: await _authHeaders());
+    if (res.statusCode != 204) {
+      throw Exception('markRead failed: ${res.statusCode} ${res.body}');
+    }
+  }
 }
