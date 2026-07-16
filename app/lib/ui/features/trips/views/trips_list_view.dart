@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
@@ -28,6 +29,7 @@ class TripsListView extends StatefulWidget {
     required this.realtimeService,
     required this.authRepository,
     required this.profileRepository,
+    required this.diveCenterRepository,
     required this.currentUserId,
   });
 
@@ -38,6 +40,7 @@ class TripsListView extends StatefulWidget {
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final DiveCenterRepository diveCenterRepository;
   final String currentUserId;
 
   @override
@@ -168,6 +171,7 @@ class _TripsListViewState extends State<TripsListView> {
             repository: widget.tripRepository,
             authRepository: widget.authRepository,
             profileRepository: widget.profileRepository,
+            diveCenterRepository: widget.diveCenterRepository,
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),
@@ -175,6 +179,7 @@ class _TripsListViewState extends State<TripsListView> {
           chatRepository: widget.chatRepository,
           transportRepository: widget.transportRepository,
           realtimeService: widget.realtimeService,
+          diveCenterRepository: widget.diveCenterRepository,
         ),
       ),
     );
@@ -197,6 +202,7 @@ class _TripsListViewState extends State<TripsListView> {
                     repository: widget.tripRepository,
                     authRepository: widget.authRepository,
                     profileRepository: widget.profileRepository,
+                    diveCenterRepository: widget.diveCenterRepository,
                     tripId: trip.id,
                     currentUserId: userId,
                   ),
@@ -204,6 +210,7 @@ class _TripsListViewState extends State<TripsListView> {
                   chatRepository: widget.chatRepository,
                   transportRepository: widget.transportRepository,
                   realtimeService: widget.realtimeService,
+                  diveCenterRepository: widget.diveCenterRepository,
                 ),
               ),
             );

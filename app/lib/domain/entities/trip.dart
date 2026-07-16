@@ -24,6 +24,11 @@ abstract class Trip with _$Trip {
     String? bookingCode,
     int? maxParticipants,
     @Default('open') String bookingStatus,
-    String? photoUrl, // unused until real photo upload/storage exists
+    String? photoUrl,
+    // Business fields — set when this trip was created from admin/, not the individual
+    // organizer flow. See CLAUDE.md's Business/dive centers section.
+    String? diveCenterId,
+    int? priceMinor,
+    @Default('DKK') String currency,
   }) = _Trip;
 }

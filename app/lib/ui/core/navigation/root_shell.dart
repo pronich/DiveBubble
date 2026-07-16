@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/chat_repository.dart';
+import '../../../data/repositories/dive_center_repository.dart';
 import '../../../data/repositories/gear_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
 import '../../../data/repositories/specialty_repository.dart';
@@ -26,6 +27,7 @@ class RootShell extends StatefulWidget {
     required this.profileRepository,
     required this.specialtyRepository,
     required this.gearRepository,
+    required this.diveCenterRepository,
     required this.currentUserId,
   });
 
@@ -37,6 +39,7 @@ class RootShell extends StatefulWidget {
   final ProfileRepository profileRepository;
   final SpecialtyRepository specialtyRepository;
   final GearRepository gearRepository;
+  final DiveCenterRepository diveCenterRepository;
   final String currentUserId;
 
   @override
@@ -76,6 +79,7 @@ class _RootShellState extends State<RootShell> {
             realtimeService: widget.realtimeService,
             authRepository: widget.authRepository,
             profileRepository: widget.profileRepository,
+            diveCenterRepository: widget.diveCenterRepository,
             currentUserId: widget.currentUserId,
           ),
           MyTripsView(
@@ -86,6 +90,7 @@ class _RootShellState extends State<RootShell> {
             realtimeService: widget.realtimeService,
             authRepository: widget.authRepository,
             profileRepository: widget.profileRepository,
+            diveCenterRepository: widget.diveCenterRepository,
             currentUserId: widget.currentUserId,
             onGoToExplore: () => setState(() => _index = 0),
           ),

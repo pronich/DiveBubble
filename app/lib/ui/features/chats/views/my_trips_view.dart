@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
@@ -27,6 +28,7 @@ class MyTripsView extends StatefulWidget {
     required this.realtimeService,
     required this.authRepository,
     required this.profileRepository,
+    required this.diveCenterRepository,
     required this.currentUserId,
     required this.onGoToExplore,
   });
@@ -38,6 +40,7 @@ class MyTripsView extends StatefulWidget {
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final DiveCenterRepository diveCenterRepository;
   final String currentUserId;
   final VoidCallback onGoToExplore;
 
@@ -156,6 +159,7 @@ class _MyTripsViewState extends State<MyTripsView> {
           realtimeService: widget.realtimeService,
           authRepository: widget.authRepository,
           profileRepository: widget.profileRepository,
+          diveCenterRepository: widget.diveCenterRepository,
         ),
       ),
     );

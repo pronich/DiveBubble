@@ -54,7 +54,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	// referenced from a profile/trip card — dev-only local disk today, swappable for
 	// object storage (DigitalOcean Spaces) later without callers noticing.
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadDir))))
-	return mux
+	return withCORS(cfg.CORSAllowedOrigins, mux)
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {

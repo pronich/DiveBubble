@@ -21,6 +21,7 @@ type Config struct {
 	RefreshSessionTTL     time.Duration
 	UploadDir             string
 	PublicBaseURL         string
+	CORSAllowedOrigins    []string
 }
 
 func Load() Config {
@@ -52,6 +53,13 @@ func Load() Config {
 		publicBaseURL = "http://localhost:" + port
 	}
 
+	// "*" by default — safe for Bearer-token auth (no cookies/credentials involved), and
+	// local dev's Flutter web port varies run to run. Set explicitly in production.
+	corsAllowedOrigins := []string{"*"}
+	if raw := os.Getenv("CORS_ALLOWED_ORIGINS"); raw != "" {
+		corsAllowedOrigins = strings.Split(raw, ",")
+	}
+
 	return Config{
 		Port:                  port,
 		DatabaseURL:           databaseURL,
@@ -64,6 +72,7 @@ func Load() Config {
 		RefreshSessionTTL:     refreshSessionTTL,
 		UploadDir:             uploadDir,
 		PublicBaseURL:         publicBaseURL,
+		CORSAllowedOrigins:    corsAllowedOrigins,
 	}
 }
 
