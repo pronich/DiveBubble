@@ -180,6 +180,7 @@ class _MyTripsViewState extends State<MyTripsView> {
             currentUserId: widget.currentUserId,
           ),
           tripTitle: trip.title,
+          tripPhotoUrl: trip.photoUrl,
           tripRepository: widget.tripRepository,
           chatRepository: widget.chatRepository,
           transportRepository: widget.transportRepository,

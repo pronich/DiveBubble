@@ -213,23 +213,13 @@ class _InboxState extends State<_Inbox> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'INBOX',
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, letterSpacing: 0.5),
-              ),
-              const SizedBox(height: 4),
-              Text('Bubbles', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
-            ],
-          ),
+          child: Text('Bubbles', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
         ),
         if (viewModel.trips.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: TextField(
-              decoration: const InputDecoration(hintText: 'Search trips', prefixIcon: Icon(Icons.search), isDense: true),
+              decoration: const InputDecoration(hintText: 'Search Bubble', prefixIcon: Icon(Icons.search), isDense: true),
               onChanged: (value) => setState(() => _search = value),
             ),
           ),
@@ -282,7 +272,8 @@ class _InboxRow extends StatelessWidget {
             children: [
               CircleAvatar(
                 backgroundColor: theme.colorScheme.primary,
-                child: Text(initials, style: const TextStyle(color: Colors.white)),
+                backgroundImage: (trip.photoUrl?.isNotEmpty ?? false) ? NetworkImage(trip.photoUrl!) : null,
+                child: (trip.photoUrl?.isNotEmpty ?? false) ? null : Text(initials, style: const TextStyle(color: Colors.white)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -488,17 +479,20 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                 children: [
                   CircleAvatar(
                     backgroundColor: theme.colorScheme.primary,
-                    child: Text(
-                      trip.title.trim().isEmpty ? '?' : trip.title.trim().substring(0, 1).toUpperCase(),
-                      style: const TextStyle(color: Colors.white),
-                    ),
+                    backgroundImage: (trip.photoUrl?.isNotEmpty ?? false) ? NetworkImage(trip.photoUrl!) : null,
+                    child: (trip.photoUrl?.isNotEmpty ?? false)
+                        ? null
+                        : Text(
+                            trip.title.trim().isEmpty ? '?' : trip.title.trim().substring(0, 1).toUpperCase(),
+                            style: const TextStyle(color: Colors.white),
+                          ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(trip.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(trip.title, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600)),
                         Text(
                           '${formatShortDate(trip.startTime)} · ${trip.location}',
                           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),

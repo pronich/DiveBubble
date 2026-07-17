@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/transport_offer.dart';
+import '../../../core/widgets/empty_state_view.dart';
 import '../../transport/view_models/transport_view_model.dart';
 
 const _typeLabels = {'offer_ride': 'Offering a ride', 'share_rental': 'Sharing a rental'};
@@ -54,11 +55,12 @@ class TransportTab extends StatelessWidget {
               child: viewModel.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : offers.isEmpty
-                      ? Center(
-                          child: Text(
-                            'No transport offered for this trip yet.',
-                            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                          ),
+                      ? EmptyStateView(
+                          icon: Icons.directions_car_outlined,
+                          title: 'No transport offers yet',
+                          subtitle: 'Add one so divers on this trip can coordinate rides.',
+                          ctaLabel: 'New offer',
+                          onCtaPressed: () => _openAddOfferDialog(context),
                         )
                       : ListView.separated(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

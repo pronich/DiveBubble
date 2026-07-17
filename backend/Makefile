@@ -1,4 +1,4 @@
-.PHONY: dev dev-build dev-run dev-stop dev-logs compose-up compose-down compose-logs migrate-up migrate-down clean
+.PHONY: dev dev-build dev-run dev-stop dev-logs compose-up compose-down compose-logs deploy-up deploy-down deploy-logs migrate-up migrate-down clean
 
 dev:
 	go run .
@@ -40,6 +40,21 @@ compose-down:
 
 compose-logs:
 	docker compose logs -f --tail=200
+
+# Production stack (postgres + migrate + centrifugo + api, no nginx of its own — see
+# nginx/api.divebubble.io.conf) — run on the droplet, loads .env for every required secret
+# docker-compose.prod.yml's own ${VAR:?...} placeholders will error on if missing.
+deploy-up:
+	docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+	@echo "api: 127.0.0.1:$${API_PORT:-8081} / centrifugo: 127.0.0.1:$${CENTRIFUGO_PORT:-8090} (loopback only)"
+	@echo "point the shared droplet nginx at these — see nginx/api.divebubble.io.conf"
+	@echo "stop: make deploy-down"
+
+deploy-down:
+	docker compose -f docker-compose.prod.yml --env-file .env down
+
+deploy-logs:
+	docker compose -f docker-compose.prod.yml --env-file .env logs -f --tail=200
 
 # Requires golang-migrate CLI: brew install golang-migrate
 # Loads DATABASE_URL from `.env` when present (same pattern as the app).

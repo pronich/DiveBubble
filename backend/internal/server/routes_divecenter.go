@@ -315,9 +315,10 @@ type memberPreviewResponse struct {
 	AvatarURL   *string   `json:"avatarUrl,omitempty"`
 }
 
-// handleSearchDiveCenterMember is a deliberately narrow exact-email lookup, not a user
-// directory — owner-only, and returns just enough (name/avatar) to confirm "is this the
-// right person" before actually adding them via handleAddDiveCenterMember.
+// handleSearchDiveCenterMember is a deliberately narrow prefix-email lookup (see
+// auth.IdentityRepository.FindUserIDByEmail), not a user directory — owner-only, and returns
+// just enough (name/avatar) to confirm "is this the right person" before actually adding
+// them via handleAddDiveCenterMember.
 func handleSearchDiveCenterMember(svc *divecenter.Service, identityRepo *auth.IdentityRepository, profileSvc *profile.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
@@ -346,6 +347,10 @@ func handleSearchDiveCenterMember(svc *divecenter.Service, identityRepo *auth.Id
 		if err != nil {
 			if errors.Is(err, auth.ErrIdentityNotFound) {
 				writeError(w, http.StatusNotFound, "no account found for that email")
+				return
+			}
+			if errors.Is(err, auth.ErrIdentityAmbiguous) {
+				writeError(w, http.StatusConflict, "more than one account matches that email — type more of it")
 				return
 			}
 			log.Printf("search dive center member failed: %v", err)

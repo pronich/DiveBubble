@@ -91,7 +91,7 @@ class _UsersPageState extends State<UsersPage> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text('Users', style: theme.textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold)),
+                        Text('Team', style: theme.textTheme.headlineLarge?.copyWith(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
                         Text(
                           'Manage who has access to your organization.',
@@ -210,15 +210,21 @@ class _MembersTable extends StatelessWidget {
                   ),
                   Expanded(
                     flex: 2,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'Active',
-                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+                    // Align — without it, Container stretches to fill the whole flex:2
+                    // column width (Expanded gives it tight width constraints), turning
+                    // the pill into a wide bar instead of a compact chip hugging its text.
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          'Active',
+                          style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+                        ),
                       ),
                     ),
                   ),

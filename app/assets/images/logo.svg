@@ -1,0 +1,36 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="1024" height="1024" fill="url(#paint0_linear_5_60)"/>
+<circle cx="311.5" cy="236.5" r="37.5" fill="white"/>
+<circle cx="424" cy="209" r="75" fill="white"/>
+<circle cx="657.5" cy="356.5" r="62.5" fill="white"/>
+<circle cx="348.5" cy="750.5" r="62.5" fill="white"/>
+<circle cx="622" cy="467" r="55" fill="white"/>
+<circle cx="435" cy="840" r="55" fill="white"/>
+<circle cx="694" cy="776" r="55" fill="white"/>
+<circle cx="614" cy="857" r="50" fill="white"/>
+<circle cx="533" cy="514" r="40" fill="white"/>
+<circle cx="453" cy="512" r="30" fill="white"/>
+<circle cx="505" cy="604" r="30" fill="white"/>
+<circle cx="454.5" cy="622.5" r="17.5" fill="white"/>
+<circle cx="693.5" cy="429.5" r="17.5" fill="white"/>
+<circle cx="500.5" cy="133.5" r="17.5" fill="white"/>
+<circle cx="303.5" cy="889.5" r="17.5" fill="white"/>
+<circle cx="303.5" cy="491.5" r="17.5" fill="white"/>
+<circle cx="318" cy="444" r="25" fill="white"/>
+<circle cx="349" cy="865" r="25" fill="white"/>
+<circle cx="525" cy="877" r="30" fill="white"/>
+<circle cx="383" cy="482" r="40" fill="white"/>
+<circle cx="570.5" cy="236.5" r="87.5" fill="white"/>
+<circle cx="639" cy="634" r="100" fill="white"/>
+<circle cx="349" cy="344" r="75" fill="white"/>
+<circle cx="354" cy="608" r="80" fill="white"/>
+<path d="M567.768 166.196C568.333 165.426 569.155 164.893 570.104 164.78C574.955 164.2 591.309 163.455 610 176C629.045 188.783 631.86 205.722 632.276 210.45C632.349 211.281 632.082 212.085 631.588 212.758C629.588 215.486 625.031 214.645 623.823 211.486C620.833 203.665 614.943 191.986 604.5 184C593.782 175.804 579.977 173.596 571.237 173.083C567.915 172.888 565.8 168.88 567.768 166.196Z" fill="#1479D1"/>
+<path d="M630.698 554.271C631.468 553.221 632.655 552.576 633.956 552.624C640.177 552.857 659.994 555.023 684.816 572.082C710.001 589.392 716.621 608.525 718.117 614.349C718.409 615.484 718.118 616.655 717.425 617.601C715.346 620.435 710.795 619.907 709.198 616.775C704.539 607.64 694.928 591.889 679.402 580.145C663.532 568.143 644.387 563.451 633.872 561.685C630.484 561.115 628.666 557.041 630.698 554.271Z" fill="#1479D1"/>
+<defs>
+<linearGradient id="paint0_linear_5_60" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+<stop stop-color="#061F4A"/>
+<stop offset="0.6" stop-color="#0B3D91"/>
+<stop offset="1" stop-color="#1479D1"/>
+</linearGradient>
+</defs>
+</svg>
