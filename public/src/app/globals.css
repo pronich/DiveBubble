@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* Same hex values as app/'s AppGradients.brand and AppColors.buttonPrimary — one fixed
+   dark-blue identity regardless of the visitor's OS theme, same "only a light theme exists,
+   don't invent a dark one" stance app/'s own AppTheme takes. */
+:root {
+  --brand-navy: #061f4a;
+  --brand-blue: #0b3d91;
+  --brand-light-blue: #1479d1;
+}
+
+@theme inline {
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-light-blue: var(--brand-light-blue);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-fraunces);
+}
+
+body {
+  font-family: var(--font-sans);
+}
