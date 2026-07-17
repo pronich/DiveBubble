@@ -134,6 +134,7 @@ class BubblesViewModel extends ChangeNotifier {
         body: json['body'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
         isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
+        mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
       );
       // Only this trip's own messages matter here — the shared channel this listener is
       // attached to is scoped to exactly one trip at a time already, but a stale listener

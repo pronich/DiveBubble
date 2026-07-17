@@ -7,9 +7,10 @@ import (
 )
 
 type Message struct {
-	ID        uuid.UUID
-	TripID    uuid.UUID
-	UserID    uuid.UUID
-	Body      string
-	CreatedAt time.Time
+	ID                 uuid.UUID
+	TripID             uuid.UUID
+	UserID             uuid.UUID
+	Body               string
+	CreatedAt          time.Time
+	MentionsDiveCenter bool
 }

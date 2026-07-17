@@ -14,5 +14,9 @@ abstract class ChatMessage with _$ChatMessage {
     // not just "this trip was organized by a dive center" (see ChatView._MessageRow, which
     // used to apply the "Name | Dive Center" label to every non-own message regardless).
     @Default(false) bool isDiveCenterStaff,
+    // Diver-armed "@DiveCenter" flag on this specific message — see ChatView's mention
+    // chip. Only ever true on a business trip; Stage 2 push will gate staff notifications
+    // on it instead of pushing every message.
+    @Default(false) bool mentionsDiveCenter,
   }) = _ChatMessage;
 }

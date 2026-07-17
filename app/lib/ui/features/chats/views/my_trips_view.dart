@@ -187,6 +187,8 @@ class _MyTripsViewState extends State<MyTripsView> {
           authRepository: widget.authRepository,
           profileRepository: widget.profileRepository,
           diveCenterRepository: widget.diveCenterRepository,
+          initialHasTransportAlert: trip.hasTransportAlert,
+          onTransportAlertCleared: () => widget.viewModel.markTransportAlertCleared(trip.id),
         ),
       ),
     );
@@ -247,6 +249,10 @@ class _TripRow extends StatelessWidget {
                         const SizedBox(width: 6),
                         _UnreadBadge(count: trip.unreadCount),
                       ],
+                      if (trip.hasTransportAlert) ...[
+                        const SizedBox(width: 6),
+                        const _TransportAlertDot(),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -298,6 +304,24 @@ class _UnreadBadge extends StatelessWidget {
           height: 1,
         ),
       ),
+    );
+  }
+}
+
+// Distinct from _UnreadBadge on purpose — a dissolved transport offer isn't an unread
+// message, so it gets its own visual language (info, not the error-red unread pill).
+class _TransportAlertDot extends StatelessWidget {
+  const _TransportAlertDot();
+
+  @override
+  Widget build(BuildContext context) {
+    final semantic = Theme.of(context).extension<SemanticColors>()!;
+    return Container(
+      width: 18,
+      height: 18,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: semantic.infoContainer, shape: BoxShape.circle),
+      child: Icon(Icons.directions_car, size: 12, color: semantic.onInfoContainer),
     );
   }
 }

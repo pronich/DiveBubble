@@ -13,6 +13,9 @@ abstract class Trip with _$Trip {
     String? creatorUserId,
     @Default(0) int participantCount,
     @Default(0) int unreadCount,
+    // A dissolved transport offer this diver had joined — see CLAUDE.md's Leave Bubble
+    // section. Cleared by visiting the Transport tab (see TransportViewModel.checkAlert).
+    @Default(false) bool hasTransportAlert,
     DateTime? endDate,
     String? description,
     String? meetingPoint,

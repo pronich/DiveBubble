@@ -31,22 +31,24 @@ func registerMessageRoutes(
 }
 
 type messageResponse struct {
-	ID                uuid.UUID `json:"id"`
-	TripID            uuid.UUID `json:"tripId"`
-	UserID            uuid.UUID `json:"userId"`
-	Body              string    `json:"body"`
-	CreatedAt         time.Time `json:"createdAt"`
-	IsDiveCenterStaff bool      `json:"isDiveCenterStaff"`
+	ID                 uuid.UUID `json:"id"`
+	TripID             uuid.UUID `json:"tripId"`
+	UserID             uuid.UUID `json:"userId"`
+	Body               string    `json:"body"`
+	CreatedAt          time.Time `json:"createdAt"`
+	IsDiveCenterStaff  bool      `json:"isDiveCenterStaff"`
+	MentionsDiveCenter bool      `json:"mentionsDiveCenter"`
 }
 
 func toMessageResponse(m message.Message, isDiveCenterStaff bool) messageResponse {
 	return messageResponse{
-		ID:                m.ID,
-		TripID:            m.TripID,
-		UserID:            m.UserID,
-		Body:              m.Body,
-		CreatedAt:         m.CreatedAt,
-		IsDiveCenterStaff: isDiveCenterStaff,
+		ID:                 m.ID,
+		TripID:             m.TripID,
+		UserID:             m.UserID,
+		Body:               m.Body,
+		CreatedAt:          m.CreatedAt,
+		IsDiveCenterStaff:  isDiveCenterStaff,
+		MentionsDiveCenter: m.MentionsDiveCenter,
 	}
 }
 
@@ -126,7 +128,8 @@ func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterS
 }
 
 type sendMessageRequest struct {
-	Body string `json:"body"`
+	Body               string `json:"body"`
+	MentionsDiveCenter bool   `json:"mentionsDiveCenter"`
 }
 
 func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -159,7 +162,10 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 			return
 		}
 
-		m, err := svc.Send(r.Context(), tripID, userID, req.Body)
+		// A mention only means something on a business trip — there's no dive center to
+		// notify on an individual one, so the flag is silently dropped rather than erroring.
+		mentionsDiveCenter := req.MentionsDiveCenter && t.DiveCenterID.Valid
+		m, err := svc.Send(r.Context(), tripID, userID, req.Body, mentionsDiveCenter)
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, "body is required")

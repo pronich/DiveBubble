@@ -333,7 +333,8 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 			(SELECT COUNT(*) FROM chat_messages cm
 			 WHERE cm.trip_id = t.id AND cm.user_id != $1
 			   AND cm.created_at > COALESCE(tp.last_read_at, '-infinity'::timestamptz)),
-			(SELECT COUNT(*) FROM trip_participants tp2 WHERE tp2.trip_id = t.id)
+			(SELECT COUNT(*) FROM trip_participants tp2 WHERE tp2.trip_id = t.id),
+			(SELECT EXISTS(SELECT 1 FROM transport_alerts ta WHERE ta.trip_id = t.id AND ta.user_id = $1))
 		FROM trips t
 		LEFT JOIN trip_participants tp ON tp.trip_id = t.id AND tp.user_id = $1
 		WHERE tp.user_id = $1
@@ -358,7 +359,7 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 			&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus,
 			&t.DiveCenterID, &t.PriceMinor, &t.Currency, &t.BookingURL,
 			&t.PhotoURL,
-			&t.UnreadCount, &t.ParticipantCount,
+			&t.UnreadCount, &t.ParticipantCount, &t.HasTransportAlert,
 		)
 		if err != nil {
 			return nil, err

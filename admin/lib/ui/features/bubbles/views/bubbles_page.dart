@@ -790,6 +790,16 @@ class _MessageRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // A diver flagged this one for staff attention — surfaced here so scrolling
+          // history makes it obvious which messages were actually meant to be noticed.
+          if (message.mentionsDiveCenter && diveCenterName.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(
+                '@$diveCenterName',
+                style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
+              ),
+            ),
           if (showName)
             Padding(
               padding: const EdgeInsets.only(bottom: 2),

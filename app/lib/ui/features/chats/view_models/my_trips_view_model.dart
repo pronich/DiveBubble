@@ -35,6 +35,8 @@ class MyTripsViewModel extends ChangeNotifier {
   List<Trip> _trips = [];
   List<Trip> get trips => _trips;
 
+  bool get hasAnyAttention => _trips.any((t) => t.unreadCount > 0 || t.hasTransportAlert);
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -103,6 +105,13 @@ class MyTripsViewModel extends ChangeNotifier {
 
     // Move to the front, same "most recent activity" ordering the backend applies.
     _trips = [updated, ..._trips.where((t) => t.id != tripId)];
+    notifyListeners();
+  }
+
+  void markTransportAlertCleared(String tripId) {
+    final index = _trips.indexWhere((t) => t.id == tripId);
+    if (index == -1) return;
+    _trips[index] = _trips[index].copyWith(hasTransportAlert: false);
     notifyListeners();
   }
 

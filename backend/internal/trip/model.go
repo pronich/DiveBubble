@@ -8,14 +8,15 @@ import (
 )
 
 type Trip struct {
-	ID               uuid.UUID
-	Title            string
-	Location         string
-	StartTime        time.Time
-	CreatedAt        time.Time
-	CreatorUserID    uuid.NullUUID
-	ParticipantCount int
-	UnreadCount      int // only populated by ListJoinedByUser
+	ID                uuid.UUID
+	Title             string
+	Location          string
+	StartTime         time.Time
+	CreatedAt         time.Time
+	CreatorUserID     uuid.NullUUID
+	ParticipantCount  int
+	UnreadCount       int  // only populated by ListJoinedByUser
+	HasTransportAlert bool // only populated by ListJoinedByUser — see transport_alerts
 
 	// Enrichment fields — all optional except BookingStatus, which always has a value.
 	EndDate          sql.NullTime

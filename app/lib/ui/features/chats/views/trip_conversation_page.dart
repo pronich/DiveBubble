@@ -30,6 +30,8 @@ class TripConversationPage extends StatefulWidget {
     required this.authRepository,
     required this.profileRepository,
     required this.diveCenterRepository,
+    required this.initialHasTransportAlert,
+    this.onTransportAlertCleared,
   });
 
   final ChatViewModel chatViewModel;
@@ -42,6 +44,14 @@ class TripConversationPage extends StatefulWidget {
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
   final DiveCenterRepository diveCenterRepository;
+  // Seeds TransportViewModel.hasAlert from the already-loaded Trip — the Bubble is only
+  // ever reached by tapping a row from that loaded list, so this is always available and
+  // skips a redundant GET /trips/{id}/transport/alert on every chat open.
+  final bool initialHasTransportAlert;
+  // Fired once the Transport tab is actually visited and the alert clears server-side —
+  // lets MyTripsViewModel flip the same flag locally so the bottom-nav dot and Bubbles
+  // row indicator update immediately, without MyTripsView refetching the whole list.
+  final VoidCallback? onTransportAlertCleared;
 
   @override
   State<TripConversationPage> createState() => _TripConversationPageState();
@@ -57,12 +67,10 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
-    // Checked once up front too — the dot itself lives in the AppBar, always visible
-    // regardless of which tab is active, so this is what actually surfaces it. Clearing
-    // it server-side here is fine: the local hasAlert flag keeps the dot showing until
-    // the diver actually switches to Transport, which re-checks and (now correctly) finds
-    // nothing, hiding it — "seen the badge" isn't the same as "went and looked."
-    widget.transportViewModel.checkAlert();
+    // Seeded from the Trip already in hand (see the field's own comment) — the dot itself
+    // lives in the AppBar, always visible regardless of which tab is active, so this is
+    // what actually surfaces it before the diver ever switches to Transport.
+    widget.transportViewModel.seedAlert(widget.initialHasTransportAlert);
     _refreshTripDerivedState();
   }
 
@@ -97,7 +105,7 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
     if (_tabController.index == 1) {
-      widget.transportViewModel.checkAlert();
+      widget.transportViewModel.checkAlert().then((_) => widget.onTransportAlertCleared?.call());
     }
   }
 

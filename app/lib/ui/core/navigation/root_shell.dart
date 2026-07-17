@@ -58,6 +58,14 @@ class _RootShellState extends State<RootShell> {
     currentUserId: widget.currentUserId,
   );
 
+  @override
+  void initState() {
+    super.initState();
+    // Proactive — the Bubbles bottom-nav dot needs trips loaded from a cold start, not just
+    // after the diver's first tap into the tab (see _onDestinationSelected's own load() call).
+    _myTripsViewModel.load();
+  }
+
   void _onDestinationSelected(int i) {
     setState(() => _index = i);
     // MyTripsViewModel only loads once via IndexedStack's initState — a trip joined
@@ -114,19 +122,24 @@ class _RootShellState extends State<RootShell> {
           ),
         ],
       ),
-      // TODO(notifications-rework): the Bubbles destination needs a red-dot badge when
-      // _myTripsViewModel.trips has any unreadCount > 0 and the tab isn't currently active.
-      // Not wiring it up piecemeal here — this, the per-trip unread badge, and the
-      // Transport alert dot are three separate ad-hoc notification signals that should
-      // become one coherent in-app notifications system instead of growing a fourth.
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: _onDestinationSelected,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.explore_outlined), selectedIcon: Icon(Icons.explore), label: 'Explore'),
-          NavigationDestination(icon: Icon(Icons.bubble_chart_outlined), selectedIcon: Icon(Icons.bubble_chart), label: 'Bubbles'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
-        ],
+      bottomNavigationBar: ListenableBuilder(
+        listenable: _myTripsViewModel,
+        builder: (context, _) {
+          final showDot = _index != 1 && _myTripsViewModel.hasAnyAttention;
+          return NavigationBar(
+            selectedIndex: _index,
+            onDestinationSelected: _onDestinationSelected,
+            destinations: [
+              const NavigationDestination(icon: Icon(Icons.explore_outlined), selectedIcon: Icon(Icons.explore), label: 'Explore'),
+              NavigationDestination(
+                icon: Badge(isLabelVisible: showDot, child: const Icon(Icons.bubble_chart_outlined)),
+                selectedIcon: Badge(isLabelVisible: showDot, child: const Icon(Icons.bubble_chart)),
+                label: 'Bubbles',
+              ),
+              const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+            ],
+          );
+        },
       ),
     );
   }
