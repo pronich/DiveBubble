@@ -260,6 +260,13 @@ class _CreateTripPageState extends State<CreateTripPage> {
                     child: Column(
                       children: [
                         if (!_viewModel.isEditing) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Text(
+                              'Upload up to $_maxTripPhotos photos.',
+                              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          ),
                           PhotoManagerGrid(
                             items: [
                               for (final pending in _pickedPhotos)

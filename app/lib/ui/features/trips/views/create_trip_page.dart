@@ -65,6 +65,13 @@ class _CreateTripPageState extends State<CreateTripPage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  'Upload up to $_maxTripPhotos photos.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                ),
+              ),
               PhotoManagerGrid(
                 items: [
                   for (final path in _photoPaths) PhotoManagerItem(id: path, imageProvider: FileImage(File(path))),
