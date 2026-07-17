@@ -61,9 +61,6 @@ class TripViewModel extends ChangeNotifier {
   bool _isCancelling = false;
   bool get isCancelling => _isCancelling;
 
-  bool _isUploadingPhoto = false;
-  bool get isUploadingPhoto => _isUploadingPhoto;
-
   Future<void> load() async {
     _isLoading = true;
     _error = null;
@@ -169,18 +166,13 @@ class TripViewModel extends ChangeNotifier {
   /// the UI only ever surfaces the "+" tile to the organizer and hides it once already at the
   /// cap, so a rejection here would mean something's out of sync rather than an expected path.
   Future<String?> addPhoto(String filePath) async {
-    _isUploadingPhoto = true;
-    notifyListeners();
-
     try {
       final photo = await _repository.addTripPhoto(_tripId, filePath);
       _photos = [..._photos, photo];
+      notifyListeners();
       return null;
     } catch (e) {
       return e.toString().replaceFirst('Exception: ', '');
-    } finally {
-      _isUploadingPhoto = false;
-      notifyListeners();
     }
   }
 

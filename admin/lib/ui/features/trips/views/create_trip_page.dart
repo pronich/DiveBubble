@@ -3,9 +3,25 @@ import 'package:flutter/material.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../core/widgets/photo_manager_grid.dart';
 import '../../../core/widgets/pick_image.dart';
 import '../../../core/widgets/simple_date_picker.dart';
 import '../view_models/create_trip_view_model.dart';
+
+// Mirrors trip.MaxPhotosPerTrip server-side — same precedent as TripDetailPage's own copy.
+const _maxTripPhotos = 10;
+
+// Browser-picked filenames aren't guaranteed unique (unlike app/'s local file paths, which
+// image_picker copies to fresh temp names) — this counter gives each pending pick a stable
+// grid item id regardless of what the original file was called.
+int _nextPendingPhotoId = 0;
+
+class _PendingPhoto {
+  _PendingPhoto(this.image) : id = 'pending-${_nextPendingPhotoId++}';
+
+  final PickedImage image;
+  final String id;
+}
 
 /// Opened via `showDialog` (not pushed as a route) — the full Create/Edit form fits
 /// comfortably in a popup since there aren't many fields, and the user explicitly asked
@@ -49,8 +65,9 @@ class _CreateTripPageState extends State<CreateTripPage> {
   String? _minCertification;
 
   // Create-only — an existing trip's photos are managed through TripDetailPage's own
-  // gallery instead (see AdminShell's Manage flow), so this stays null while editing.
-  PickedImage? _pickedPhoto;
+  // gallery instead (see AdminShell's Manage flow), so this stays empty while editing.
+  List<_PendingPhoto> _pickedPhotos = [];
+  bool _isPickingPhotos = false;
 
   @override
   void initState() {
@@ -114,9 +131,19 @@ class _CreateTripPageState extends State<CreateTripPage> {
     if (picked != null) setState(() => _startTimeOfDay = picked);
   }
 
-  Future<void> _pickPhoto() async {
-    final picked = await pickImage();
-    if (picked != null && mounted) setState(() => _pickedPhoto = picked);
+  Future<void> _addPhotos() async {
+    setState(() => _isPickingPhotos = true);
+    try {
+      final picked = await pickMultipleImages();
+      if (!mounted || picked.isEmpty) return;
+      final room = _maxTripPhotos - _pickedPhotos.length;
+      setState(() => _pickedPhotos = [..._pickedPhotos, ...picked.take(room).map(_PendingPhoto.new)]);
+      if (picked.length > room) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Only $_maxTripPhotos photos allowed per trip')));
+      }
+    } finally {
+      if (mounted) setState(() => _isPickingPhotos = false);
+    }
   }
 
   Future<void> _pickEndDate() async {
@@ -165,11 +192,12 @@ class _CreateTripPageState extends State<CreateTripPage> {
     );
 
     if (trip == null) return;
-    // Awaited before popping — TripDetailPage's own gallery fetch on mount would otherwise
-    // race a still-in-flight upload, same ordering precedent as app/'s CreateTripPage.
-    final picked = _pickedPhoto;
-    if (picked != null) {
-      await _viewModel.uploadPhoto(trip.id, picked.bytes, picked.filename);
+    // Sequential, not parallel — the backend assigns each photo's position as "current row
+    // count" at insert time, so concurrent uploads could race for the same position. Also
+    // awaited in full before popping — TripDetailPage's own gallery fetch on mount would
+    // otherwise race a still-in-flight upload.
+    for (final pending in _pickedPhotos) {
+      await _viewModel.uploadPhoto(trip.id, pending.image.bytes, pending.image.filename);
     }
     if (mounted) Navigator.of(context).pop(true);
   }
@@ -232,10 +260,15 @@ class _CreateTripPageState extends State<CreateTripPage> {
                     child: Column(
                       children: [
                         if (!_viewModel.isEditing) ...[
-                          _CoverPhotoPicker(
-                            photo: _pickedPhoto,
-                            onPick: _pickPhoto,
-                            onRemove: () => setState(() => _pickedPhoto = null),
+                          PhotoManagerGrid(
+                            items: [
+                              for (final pending in _pickedPhotos)
+                                PhotoManagerItem(id: pending.id, imageProvider: MemoryImage(pending.image.bytes)),
+                            ],
+                            maxItems: _maxTripPhotos,
+                            isAdding: _isPickingPhotos,
+                            onAdd: _addPhotos,
+                            onRemove: (id) => setState(() => _pickedPhotos = _pickedPhotos.where((p) => p.id != id).toList()),
                           ),
                           const SizedBox(height: 20),
                         ],
@@ -397,80 +430,6 @@ class _CreateTripPageState extends State<CreateTripPage> {
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-class _CoverPhotoPicker extends StatelessWidget {
-  const _CoverPhotoPicker({required this.photo, required this.onPick, required this.onRemove});
-
-  final PickedImage? photo;
-  final VoidCallback onPick;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final photo = this.photo;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: AspectRatio(
-        aspectRatio: 4 / 3,
-        child: photo == null
-            ? InkWell(
-                onTap: onPick,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add_a_photo_outlined, color: theme.colorScheme.onSurfaceVariant),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Add cover photo (optional)',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.memory(photo.bytes, fit: BoxFit.cover),
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Material(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: onRemove,
-                        child: const Padding(padding: EdgeInsets.all(6), child: Icon(Icons.close, color: Colors.white, size: 18)),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 8,
-                    bottom: 8,
-                    child: Material(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: onPick,
-                        child: const Padding(padding: EdgeInsets.all(6), child: Icon(Icons.camera_alt, color: Colors.white, size: 18)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
       ),
     );
   }

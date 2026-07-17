@@ -18,3 +18,14 @@ Future<PickedImage?> pickImage() async {
   final bytes = await picked.readAsBytes();
   return PickedImage(bytes: bytes, filename: picked.name);
 }
+
+/// Multi-select for the photo-grid manager (Create Trip, Trip Detail gallery) — same
+/// bytes-based shape as [pickImage], just several at once.
+Future<List<PickedImage>> pickMultipleImages() async {
+  final picked = await ImagePicker().pickMultiImage(maxWidth: 1600, imageQuality: 85);
+  final result = <PickedImage>[];
+  for (final file in picked) {
+    result.add(PickedImage(bytes: await file.readAsBytes(), filename: file.name));
+  }
+  return result;
+}

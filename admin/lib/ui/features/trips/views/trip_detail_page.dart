@@ -7,6 +7,7 @@ import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../../domain/entities/trip_photo.dart';
 import '../../../core/formatting/date_format.dart';
+import '../../../core/widgets/photo_manager_grid.dart';
 import '../../../core/widgets/pick_image.dart';
 import 'create_trip_page.dart';
 
@@ -46,8 +47,6 @@ class _TripDetailPageState extends State<TripDetailPage> {
   int _currentPhotoIndex = 0;
   List<TripPhoto> _photos = [];
   bool _isLoadingPhotos = true;
-  bool _isUploadingPhoto = false;
-  final Set<String> _removingPhotoIds = {};
 
   @override
   void initState() {
@@ -72,40 +71,15 @@ class _TripDetailPageState extends State<TripDetailPage> {
     }
   }
 
-  Future<void> _addPhoto() async {
-    final picked = await pickImage();
-    if (picked == null) return;
-
-    setState(() => _isUploadingPhoto = true);
-    try {
-      final photo = await widget.tripRepository.addTripPhoto(_trip.id, picked.bytes, picked.filename);
-      if (mounted) setState(() => _photos = [..._photos, photo]);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
-      }
-    } finally {
-      if (mounted) setState(() => _isUploadingPhoto = false);
-    }
-  }
-
-  Future<void> _removePhoto(String photoId) async {
-    setState(() => _removingPhotoIds.add(photoId));
-    try {
-      await widget.tripRepository.removeTripPhoto(_trip.id, photoId);
-      if (mounted) {
-        setState(() {
-          _photos = _photos.where((p) => p.id != photoId).toList();
-          if (_currentPhotoIndex > 0) _currentPhotoIndex -= 1;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
-      }
-    } finally {
-      if (mounted) setState(() => _removingPhotoIds.remove(photoId));
-    }
+  // The hero stays a pure slider (see build) — actual add/remove happens in its own grid
+  // dialog, same "Manage photos" split as app/'s Trip Page. Refreshes the hero's own photo
+  // list on close since the dialog manages its own copy independently.
+  Future<void> _openManagePhotos() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _ManagePhotosDialog(tripRepository: widget.tripRepository, tripId: _trip.id),
+    );
+    if (mounted) _loadPhotos();
   }
 
   Future<void> _openEdit() async {
@@ -168,7 +142,6 @@ class _TripDetailPageState extends State<TripDetailPage> {
                 if (hasPhotos && _currentPhotoIndex >= _photos.length) {
                   _currentPhotoIndex = _photos.length - 1;
                 }
-                final currentPhoto = hasPhotos ? _photos[_currentPhotoIndex] : null;
 
                 return AspectRatio(
                   aspectRatio: 16 / 9,
@@ -213,52 +186,31 @@ class _TripDetailPageState extends State<TripDetailPage> {
                               ],
                             ),
                           ),
-                        if (currentPhoto != null)
-                          Positioned(
-                            left: 12,
-                            bottom: 12,
-                            child: Material(
-                              color: Colors.black.withValues(alpha: 0.45),
-                              shape: const CircleBorder(),
-                              child: InkWell(
-                                customBorder: const CircleBorder(),
-                                onTap: _removingPhotoIds.contains(currentPhoto.id) ? null : () => _removePhoto(currentPhoto.id),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: _removingPhotoIds.contains(currentPhoto.id)
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                        )
-                                      : const Icon(Icons.close, color: Colors.white, size: 18),
+                        // A single "Manage photos" entry point, not inline add/remove
+                        // controls on the slider itself — same split as app/'s Trip Page.
+                        Positioned(
+                          right: 12,
+                          bottom: 12,
+                          child: Material(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(18),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(18),
+                              onTap: _openManagePhotos,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.photo_library_outlined, color: Colors.white, size: 16),
+                                    SizedBox(width: 6),
+                                    Text('Manage photos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                        if (_photos.length < _maxTripPhotos)
-                          Positioned(
-                            right: 12,
-                            bottom: 12,
-                            child: Material(
-                              color: Colors.black.withValues(alpha: 0.45),
-                              shape: const CircleBorder(),
-                              child: InkWell(
-                                customBorder: const CircleBorder(),
-                                onTap: _isUploadingPhoto ? null : _addPhoto,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: _isUploadingPhoto
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                        )
-                                      : const Icon(Icons.add_a_photo_outlined, color: Colors.white, size: 18),
-                                ),
-                              ),
-                            ),
-                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -460,6 +412,107 @@ class _BookingCodeCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// The staff member's actual photo-editing surface — a grid instead of one-at-a-time
+/// controls overlaid on the hero slider, with multi-select add (see pick_image.dart's
+/// pickMultipleImages) instead of picking one file per tap. Manages its own copy of the
+/// photo list; TripDetailPage refreshes its own hero from scratch once this closes.
+class _ManagePhotosDialog extends StatefulWidget {
+  const _ManagePhotosDialog({required this.tripRepository, required this.tripId});
+
+  final TripRepository tripRepository;
+  final String tripId;
+
+  @override
+  State<_ManagePhotosDialog> createState() => _ManagePhotosDialogState();
+}
+
+class _ManagePhotosDialogState extends State<_ManagePhotosDialog> {
+  List<TripPhoto> _photos = [];
+  bool _isLoading = true;
+  bool _isAdding = false;
+  final Set<String> _removingIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final photos = await widget.tripRepository.getTripPhotos(widget.tripId);
+      if (mounted) setState(() => _photos = photos);
+    } catch (_) {
+      // Best-effort — an empty grid with the add tile still lets the staff member try again.
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _addPhotos() async {
+    setState(() => _isAdding = true);
+    try {
+      final picked = await pickMultipleImages();
+      if (picked.isEmpty) return;
+      final room = _maxTripPhotos - _photos.length;
+      // Sequential, not parallel — the backend assigns each photo's position as "current
+      // row count" at insert time, so concurrent uploads could race for the same position.
+      for (final image in picked.take(room)) {
+        try {
+          final photo = await widget.tripRepository.addTripPhoto(widget.tripId, image.bytes, image.filename);
+          if (mounted) setState(() => _photos = [..._photos, photo]);
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+          }
+          break;
+        }
+      }
+      if (picked.length > room && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Only $_maxTripPhotos photos allowed per trip')));
+      }
+    } finally {
+      if (mounted) setState(() => _isAdding = false);
+    }
+  }
+
+  Future<void> _removePhoto(String photoId) async {
+    setState(() => _removingIds.add(photoId));
+    try {
+      await widget.tripRepository.removeTripPhoto(widget.tripId, photoId);
+      if (mounted) setState(() => _photos = _photos.where((p) => p.id != photoId).toList());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    } finally {
+      if (mounted) setState(() => _removingIds.remove(photoId));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Manage photos'),
+      content: SizedBox(
+        width: 480,
+        child: _isLoading
+            ? const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()))
+            : PhotoManagerGrid(
+                items: [
+                  for (final p in _photos) PhotoManagerItem(id: p.id, imageProvider: NetworkImage(p.url), isBusy: _removingIds.contains(p.id)),
+                ],
+                maxItems: _maxTripPhotos,
+                isAdding: _isAdding,
+                onAdd: _addPhotos,
+                onRemove: _removePhoto,
+              ),
+      ),
+      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))],
     );
   }
 }

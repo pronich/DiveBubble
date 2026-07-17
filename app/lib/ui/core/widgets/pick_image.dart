@@ -30,3 +30,11 @@ Future<String?> pickImage(BuildContext context) async {
   final picked = await ImagePicker().pickImage(source: source, maxWidth: 1600, imageQuality: 85);
   return picked?.path;
 }
+
+/// Multi-select for the photo-grid manager (Create Trip, Trip Page gallery) — gallery-only,
+/// since there's no "take multiple photos" in one action with a camera. Returns local file
+/// paths, same as [pickImage]; empty if the diver picked nothing or backed out.
+Future<List<String>> pickMultipleImages() async {
+  final picked = await ImagePicker().pickMultiImage(maxWidth: 1600, imageQuality: 85);
+  return picked.map((f) => f.path).toList();
+}

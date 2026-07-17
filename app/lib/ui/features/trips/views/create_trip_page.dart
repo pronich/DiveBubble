@@ -6,8 +6,12 @@ import 'package:flutter/material.dart';
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/formatting/date_format.dart';
+import '../../../core/widgets/photo_manager_grid.dart';
 import '../../../core/widgets/pick_image.dart';
 import '../view_models/create_trip_view_model.dart';
+
+// Mirrors trip.MaxPhotosPerTrip server-side — same precedent as TripPage's own copy.
+const _maxTripPhotos = 10;
 
 class CreateTripPage extends StatefulWidget {
   const CreateTripPage({super.key, required this.viewModel, required this.onCreated});
@@ -34,7 +38,8 @@ class _CreateTripPageState extends State<CreateTripPage> {
   TimeOfDay? _startTimeOfDay;
   DateTime? _endDate;
   String? _minCertification;
-  String? _photoPath;
+  List<String> _photoPaths = [];
+  bool _isPickingPhotos = false;
 
   @override
   void dispose() {
@@ -60,10 +65,14 @@ class _CreateTripPageState extends State<CreateTripPage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _CoverPhotoPicker(
-                photoPath: _photoPath,
-                onPick: _pickPhoto,
-                onRemove: () => setState(() => _photoPath = null),
+              PhotoManagerGrid(
+                items: [
+                  for (final path in _photoPaths) PhotoManagerItem(id: path, imageProvider: FileImage(File(path))),
+                ],
+                maxItems: _maxTripPhotos,
+                isAdding: _isPickingPhotos,
+                onAdd: _addPhotos,
+                onRemove: (path) => setState(() => _photoPaths = _photoPaths.where((p) => p != path).toList()),
               ),
               const SizedBox(height: 20),
               TextField(
@@ -182,9 +191,19 @@ class _CreateTripPageState extends State<CreateTripPage> {
     );
   }
 
-  Future<void> _pickPhoto() async {
-    final path = await pickImage(context);
-    if (path != null && mounted) setState(() => _photoPath = path);
+  Future<void> _addPhotos() async {
+    setState(() => _isPickingPhotos = true);
+    try {
+      final picked = await pickMultipleImages();
+      if (!mounted || picked.isEmpty) return;
+      final room = _maxTripPhotos - _photoPaths.length;
+      setState(() => _photoPaths = [..._photoPaths, ...picked.take(room)]);
+      if (picked.length > room) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Only $_maxTripPhotos photos allowed per trip')));
+      }
+    } finally {
+      if (mounted) setState(() => _isPickingPhotos = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -221,12 +240,12 @@ class _CreateTripPageState extends State<CreateTripPage> {
     );
 
     if (trip != null) {
-      // Awaited before navigating away — Trip Page's own TripViewModel.load() fetches
-      // fresh data on mount, so the photo needs to already be persisted by then, not
-      // still racing in the background.
-      final photoPath = _photoPath;
-      if (photoPath != null) {
-        await widget.viewModel.uploadPhoto(trip.id, photoPath);
+      // Sequential, not parallel — the backend assigns each photo's position as "current
+      // row count" at insert time, so concurrent uploads could race for the same position.
+      // Also awaited in full before navigating away — Trip Page's own TripViewModel.load()
+      // fetches fresh data on mount, so every photo needs to already be persisted by then.
+      for (final path in _photoPaths) {
+        await widget.viewModel.uploadPhoto(trip.id, path);
       }
       widget.onCreated(trip);
     }
@@ -238,82 +257,6 @@ class _CreateTripPageState extends State<CreateTripPage> {
   }
 
   int? _intOrNull(TextEditingController controller) => int.tryParse(controller.text.trim());
-}
-
-/// Local-file preview, not a network one — the trip doesn't exist yet, so there's nothing
-/// to upload to until after submit() succeeds (see _submit's photoPath handling). Same 4:3
-/// aspect ratio as Trip Page's own hero image, so the preview matches what it'll look like once live.
-class _CoverPhotoPicker extends StatelessWidget {
-  const _CoverPhotoPicker({required this.photoPath, required this.onPick, required this.onRemove});
-
-  final String? photoPath;
-  final VoidCallback onPick;
-  final VoidCallback onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: AspectRatio(
-        aspectRatio: 4 / 3,
-        child: photoPath == null
-            ? InkWell(
-                onTap: onPick,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.add_a_photo_outlined, color: theme.colorScheme.onSurfaceVariant),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Add cover photo (optional)',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            : Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.file(File(photoPath!), fit: BoxFit.cover),
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Material(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: onRemove,
-                        child: const Padding(padding: EdgeInsets.all(6), child: Icon(Icons.close, color: Colors.white, size: 18)),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 8,
-                    bottom: 8,
-                    child: Material(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: onPick,
-                        child: const Padding(padding: EdgeInsets.all(6), child: Icon(Icons.camera_alt, color: Colors.white, size: 18)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
 }
 
 /// iOS-style wheel picker in a bottom sheet — Material's `showDatePicker`/`showTimePicker`

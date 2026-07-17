@@ -18,6 +18,7 @@ import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/semantic_colors.dart';
+import '../../../core/widgets/photo_manager_grid.dart';
 import '../../../core/widgets/pick_image.dart';
 import '../../chats/view_models/chat_view_model.dart';
 import '../../chats/views/trip_conversation_page.dart';
@@ -75,25 +76,8 @@ class _TripPageState extends State<TripPage> {
     super.dispose();
   }
 
-  Future<void> _addPhoto(BuildContext context) async {
-    final filePath = await pickImage(context);
-    if (filePath == null || !context.mounted) return;
-
-    final error = await widget.viewModel.addPhoto(filePath);
-    if (!context.mounted) return;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-    }
-  }
-
-  Future<void> _removePhoto(BuildContext context, String photoId) async {
-    final error = await widget.viewModel.removePhoto(photoId);
-    if (!context.mounted) return;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-    } else if (_currentPhotoIndex > 0) {
-      setState(() => _currentPhotoIndex -= 1);
-    }
+  void _openManagePhotos(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => _ManagePhotosPage(viewModel: widget.viewModel)));
   }
 
   @override
@@ -134,7 +118,6 @@ class _TripPageState extends State<TripPage> {
                 if (hasPhotos && _currentPhotoIndex >= photos.length) {
                   _currentPhotoIndex = photos.length - 1;
                 }
-                final currentPhoto = hasPhotos ? photos[_currentPhotoIndex] : null;
 
                 return AspectRatio(
                   aspectRatio: 4 / 3,
@@ -175,50 +158,30 @@ class _TripPageState extends State<TripPage> {
                             ],
                           ),
                         ),
-                      if (isOrganizer && currentPhoto != null)
-                        Positioned(
-                          left: 16,
-                          bottom: 16,
-                          child: Material(
-                            color: Colors.black.withValues(alpha: 0.45),
-                            shape: const CircleBorder(),
-                            child: InkWell(
-                              customBorder: const CircleBorder(),
-                              onTap: widget.viewModel.isRemovingPhoto(currentPhoto.id)
-                                  ? null
-                                  : () => _removePhoto(context, currentPhoto.id),
-                              child: Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: widget.viewModel.isRemovingPhoto(currentPhoto.id)
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                      )
-                                    : const Icon(Icons.close, color: Colors.white, size: 20),
-                              ),
-                            ),
-                          ),
-                        ),
-                      if (isOrganizer && photos.length < _maxTripPhotos)
+                      // A single "Manage photos" entry point, not inline add/remove
+                      // controls on the slider itself — editing now happens in its own
+                      // grid (see _ManagePhotosPage), so this hero is a pure viewer for
+                      // every visitor, organizer included.
+                      if (isOrganizer)
                         Positioned(
                           right: 16,
                           bottom: 16,
                           child: Material(
                             color: Colors.black.withValues(alpha: 0.45),
-                            shape: const CircleBorder(),
+                            borderRadius: BorderRadius.circular(20),
                             child: InkWell(
-                              customBorder: const CircleBorder(),
-                              onTap: widget.viewModel.isUploadingPhoto ? null : () => _addPhoto(context),
-                              child: Padding(
-                                padding: const EdgeInsets.all(10),
-                                child: widget.viewModel.isUploadingPhoto
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                      )
-                                    : const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => _openManagePhotos(context),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.photo_library_outlined, color: Colors.white, size: 18),
+                                    SizedBox(width: 6),
+                                    Text('Manage photos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -1002,6 +965,78 @@ class _DiveInButton extends StatelessWidget {
         },
         icon: const Icon(Icons.chat_bubble_outline, size: 18),
         label: const Text('Dive in to Bubble'),
+      ),
+    );
+  }
+}
+
+/// The organizer's actual photo-editing surface — a grid instead of one-at-a-time controls
+/// overlaid on the hero slider, with multi-select add (see pick_image.dart's
+/// pickMultipleImages) instead of picking one file per tap.
+class _ManagePhotosPage extends StatefulWidget {
+  const _ManagePhotosPage({required this.viewModel});
+
+  final TripViewModel viewModel;
+
+  @override
+  State<_ManagePhotosPage> createState() => _ManagePhotosPageState();
+}
+
+class _ManagePhotosPageState extends State<_ManagePhotosPage> {
+  bool _isAdding = false;
+
+  Future<void> _addPhotos() async {
+    setState(() => _isAdding = true);
+    try {
+      final paths = await pickMultipleImages();
+      if (paths.isEmpty) return;
+      final room = _maxTripPhotos - widget.viewModel.photos.length;
+      for (final path in paths.take(room)) {
+        // Sequential, not parallel — same position-race reasoning as CreateTripPage's own
+        // multi-upload loop.
+        final error = await widget.viewModel.addPhoto(path);
+        if (error != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+          break;
+        }
+      }
+      if (paths.length > room && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Only $_maxTripPhotos photos allowed per trip')));
+      }
+    } finally {
+      if (mounted) setState(() => _isAdding = false);
+    }
+  }
+
+  Future<void> _removePhoto(String photoId) async {
+    final error = await widget.viewModel.removePhoto(photoId);
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Manage photos')),
+      body: ListenableBuilder(
+        listenable: widget.viewModel,
+        builder: (context, _) {
+          final photos = widget.viewModel.photos;
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: PhotoManagerGrid(
+              items: [
+                for (final p in photos)
+                  PhotoManagerItem(id: p.id, imageProvider: NetworkImage(p.url), isBusy: widget.viewModel.isRemovingPhoto(p.id)),
+              ],
+              maxItems: _maxTripPhotos,
+              isAdding: _isAdding,
+              onAdd: _addPhotos,
+              onRemove: _removePhoto,
+            ),
+          );
+        },
       ),
     );
   }
