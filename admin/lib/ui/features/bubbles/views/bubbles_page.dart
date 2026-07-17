@@ -156,6 +156,11 @@ class _BubblesPageState extends State<BubblesPage> {
     }
   }
 
+  // Same breakpoint as AdminShell's own sidebar-to-drawer switch — a permanent 320px inbox
+  // pane alongside a conversation is just as cramped on a phone-width browser as a 260px
+  // sidebar was.
+  static const _mobileBreakpoint = 760.0;
+
   @override
   Widget build(BuildContext context) {
     final vm = _viewModel;
@@ -165,22 +170,41 @@ class _BubblesPageState extends State<BubblesPage> {
     return ListenableBuilder(
       listenable: vm,
       builder: (context, _) {
+        final conversation = _Conversation(
+          viewModel: vm,
+          controller: _messageController,
+          onSend: _send,
+          tripRepository: widget.tripRepository,
+          transportRepository: widget.transportRepository,
+          profileRepository: widget.profileRepository,
+          diveCenterId: widget.diveCenterId,
+          onDiveIntoBubble: widget.onDiveIntoBubble,
+        );
+
+        if (MediaQuery.sizeOf(context).width < _mobileBreakpoint) {
+          // One pane at a time — the inbox list until a Bubble is selected, then the
+          // conversation full-width with a back button (see _Conversation.onBack) to
+          // return, Telegram-Web-mobile style rather than a permanently split view.
+          return vm.selectedTripId == null
+              ? _Inbox(viewModel: vm, onSelect: vm.selectTrip)
+              : _Conversation(
+                  viewModel: vm,
+                  controller: _messageController,
+                  onSend: _send,
+                  tripRepository: widget.tripRepository,
+                  transportRepository: widget.transportRepository,
+                  profileRepository: widget.profileRepository,
+                  diveCenterId: widget.diveCenterId,
+                  onDiveIntoBubble: widget.onDiveIntoBubble,
+                  onBack: vm.clearSelection,
+                );
+        }
+
         return Row(
           children: [
             SizedBox(width: 320, child: _Inbox(viewModel: vm, onSelect: vm.selectTrip)),
             VerticalDivider(width: 1, color: Theme.of(context).colorScheme.outlineVariant),
-            Expanded(
-              child: _Conversation(
-                viewModel: vm,
-                controller: _messageController,
-                onSend: _send,
-                tripRepository: widget.tripRepository,
-                transportRepository: widget.transportRepository,
-                profileRepository: widget.profileRepository,
-                diveCenterId: widget.diveCenterId,
-                onDiveIntoBubble: widget.onDiveIntoBubble,
-              ),
-            ),
+            Expanded(child: conversation),
           ],
         );
       },
@@ -320,6 +344,7 @@ class _Conversation extends StatefulWidget {
     required this.profileRepository,
     required this.diveCenterId,
     required this.onDiveIntoBubble,
+    this.onBack,
   });
 
   final BubblesViewModel viewModel;
@@ -330,6 +355,11 @@ class _Conversation extends StatefulWidget {
   final ProfileRepository profileRepository;
   final String diveCenterId;
   final ValueChanged<String> onDiveIntoBubble;
+
+  // Mobile layout only (see BubblesPage.build) — renders a back button in the header that
+  // returns to the full-width inbox list. Null on desktop, where the inbox stays visible
+  // alongside the conversation and there's nothing to "go back" to.
+  final VoidCallback? onBack;
 
   @override
   State<_Conversation> createState() => _ConversationState();
@@ -477,6 +507,11 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
               decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant))),
               child: Row(
                 children: [
+                  if (widget.onBack != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
+                    ),
                   CircleAvatar(
                     backgroundColor: theme.colorScheme.primary,
                     backgroundImage: (trip.photoUrl?.isNotEmpty ?? false) ? NetworkImage(trip.photoUrl!) : null,
