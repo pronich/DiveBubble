@@ -135,6 +135,38 @@ class _TripPageState extends State<TripPage> {
                       const DecoratedBox(
                         decoration: BoxDecoration(gradient: AppGradients.imageScrim),
                       ),
+                      // Tap-left/tap-right to advance, same convention as Instagram Stories
+                      // — no visible arrow (unlike admin/'s hover chevrons, touch UI doesn't
+                      // need one), just a wide invisible hit zone on each third of the image.
+                      // Also works around trackpad two-finger "swipes" not reliably
+                      // registering as a touch drag in the iOS Simulator — tapping always
+                      // works regardless of that.
+                      if (photos.length > 1) ...[
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: MediaQuery.sizeOf(context).width / 3,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: _currentPhotoIndex > 0
+                                ? () => _photoPageController.previousPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut)
+                                : null,
+                          ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: MediaQuery.sizeOf(context).width / 3,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: _currentPhotoIndex < photos.length - 1
+                                ? () => _photoPageController.nextPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut)
+                                : null,
+                          ),
+                        ),
+                      ],
                       // Dot page indicator — only worth showing once there's more than one
                       // photo to swipe between.
                       if (photos.length > 1)
@@ -1017,23 +1049,42 @@ class _ManagePhotosPageState extends State<_ManagePhotosPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Manage photos')),
+      appBar: AppBar(
+        title: const Text('Manage photos'),
+        // Not functionally different from the back button — every add/remove already
+        // commits immediately — but "Save" reads as a clearer "I'm done here" than relying
+        // on an implicit back-arrow, same reasoning as admin/'s matching dialog.
+        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Save'))],
+      ),
       body: ListenableBuilder(
         listenable: widget.viewModel,
         builder: (context, _) {
           final photos = widget.viewModel.photos;
           return Padding(
             padding: const EdgeInsets.all(16),
-            child: PhotoManagerGrid(
-              items: [
-                for (final p in photos)
-                  PhotoManagerItem(id: p.id, imageProvider: NetworkImage(p.url), isBusy: widget.viewModel.isRemovingPhoto(p.id)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    'Upload up to $_maxTripPhotos photos.',
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+                PhotoManagerGrid(
+                  items: [
+                    for (final p in photos)
+                      PhotoManagerItem(id: p.id, imageProvider: NetworkImage(p.url), isBusy: widget.viewModel.isRemovingPhoto(p.id)),
+                  ],
+                  maxItems: _maxTripPhotos,
+                  isAdding: _isAdding,
+                  onAdd: _addPhotos,
+                  onRemove: _removePhoto,
+                ),
               ],
-              maxItems: _maxTripPhotos,
-              isAdding: _isAdding,
-              onAdd: _addPhotos,
-              onRemove: _removePhoto,
             ),
           );
         },

@@ -186,6 +186,27 @@ class _TripDetailPageState extends State<TripDetailPage> {
                               ],
                             ),
                           ),
+                        // Trackpad/mouse edge navigation — a web admin panel has no swipe
+                        // gesture the way a touch device does, so clicking the left/right
+                        // edge is the primary way to move between photos here. The chevron
+                        // itself only shows up on hover (see _EdgeNavZone) so the slider
+                        // doesn't look cluttered with permanent arrows.
+                        if (_photos.length > 1) ...[
+                          _EdgeNavZone(
+                            alignment: Alignment.centerLeft,
+                            icon: Icons.chevron_left,
+                            onTap: _currentPhotoIndex > 0
+                                ? () => _photoPageController.previousPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut)
+                                : null,
+                          ),
+                          _EdgeNavZone(
+                            alignment: Alignment.centerRight,
+                            icon: Icons.chevron_right,
+                            onTap: _currentPhotoIndex < _photos.length - 1
+                                ? () => _photoPageController.nextPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut)
+                                : null,
+                          ),
+                        ],
                         // A single "Manage photos" entry point, not inline add/remove
                         // controls on the slider itself — same split as app/'s Trip Page.
                         Positioned(
@@ -273,6 +294,60 @@ class _TripDetailPageState extends State<TripDetailPage> {
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A ~15% hit zone at one edge of the hero image — always clickable (when [onTap] isn't
+/// null), but the chevron itself only fades in on hover so it doesn't clutter the slider
+/// permanently. Web-only interaction pattern (mouse hover has no touch-device equivalent),
+/// which is exactly why admin/'s hero needs this and app/'s doesn't.
+class _EdgeNavZone extends StatefulWidget {
+  const _EdgeNavZone({required this.alignment, required this.icon, required this.onTap});
+
+  final Alignment alignment;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  State<_EdgeNavZone> createState() => _EdgeNavZoneState();
+}
+
+class _EdgeNavZoneState extends State<_EdgeNavZone> {
+  bool _hovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: widget.alignment == Alignment.centerLeft ? 0 : null,
+      right: widget.alignment == Alignment.centerRight ? 0 : null,
+      top: 0,
+      bottom: 0,
+      width: 64,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovering = true),
+        onExit: (_) => setState(() => _hovering = false),
+        cursor: widget.onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          behavior: HitTestBehavior.translucent,
+          child: AnimatedOpacity(
+            opacity: _hovering && widget.onTap != null ? 1 : 0,
+            duration: const Duration(milliseconds: 150),
+            child: Align(
+              alignment: widget.alignment,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.45), shape: BoxShape.circle),
+                  child: Icon(widget.icon, color: Colors.white, size: 22),
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -500,19 +575,35 @@ class _ManagePhotosDialogState extends State<_ManagePhotosDialog> {
       title: const Text('Manage photos'),
       content: SizedBox(
         width: 480,
-        child: _isLoading
-            ? const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()))
-            : PhotoManagerGrid(
-                items: [
-                  for (final p in _photos) PhotoManagerItem(id: p.id, imageProvider: NetworkImage(p.url), isBusy: _removingIds.contains(p.id)),
-                ],
-                maxItems: _maxTripPhotos,
-                isAdding: _isAdding,
-                onAdd: _addPhotos,
-                onRemove: _removePhoto,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Upload up to $_maxTripPhotos photos.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
+            ),
+            _isLoading
+                ? const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()))
+                : PhotoManagerGrid(
+                    items: [
+                      for (final p in _photos) PhotoManagerItem(id: p.id, imageProvider: NetworkImage(p.url), isBusy: _removingIds.contains(p.id)),
+                    ],
+                    maxItems: _maxTripPhotos,
+                    isAdding: _isAdding,
+                    onAdd: _addPhotos,
+                    onRemove: _removePhoto,
+                  ),
+          ],
+        ),
       ),
-      actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))],
+      // "Save", not "Close" — every add/remove already commits immediately (there's no
+      // deferred/batched write to actually save), but the label reads more like "I'm done
+      // here" than "did closing just discard something?".
+      actions: [FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Save'))],
     );
   }
 }
