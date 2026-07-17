@@ -325,17 +325,26 @@ func (r *Repository) IsJoined(ctx context.Context, tripID, userID uuid.UUID) (bo
 // Also includes trips organized by any dive center this user is a *member* of, even
 // without a trip_participants row — staff never get one (see trip.Service.CreateTrip),
 // access is membership-based instead. tp is LEFT JOINed (not INNER) so those rows still
-// come back; last_read_at/joined_at fall back to '-infinity'/created_at when tp is absent,
-// so an unvisited business trip reads as fully unread rather than erroring on a null join column.
+// come back; joined_at falls back to created_at when tp is absent, so an unvisited business
+// trip sorts sensibly rather than erroring on a null join column. last_read_at falls back to
+// trip_read_state (trs) before '-infinity' — staff have no trip_participants row for
+// MarkRead's UPDATE to touch, so trs is the only place their read marker actually lands.
+// HasUnreadMention reuses the exact same read-marker COALESCE — a mention is just an unread
+// message with mentions_dive_center set, not a separately tracked read state.
 func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]Trip, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT `+tripColumnsPrefixed("t")+`,
 			(SELECT COUNT(*) FROM chat_messages cm
 			 WHERE cm.trip_id = t.id AND cm.user_id != $1
-			   AND cm.created_at > COALESCE(tp.last_read_at, '-infinity'::timestamptz)),
-			(SELECT COUNT(*) FROM trip_participants tp2 WHERE tp2.trip_id = t.id)
+			   AND cm.created_at > COALESCE(tp.last_read_at, trs.last_read_at, '-infinity'::timestamptz)),
+			(SELECT COUNT(*) FROM trip_participants tp2 WHERE tp2.trip_id = t.id),
+			(SELECT EXISTS(SELECT 1 FROM transport_alerts ta WHERE ta.trip_id = t.id AND ta.user_id = $1)),
+			(SELECT EXISTS(SELECT 1 FROM chat_messages cm
+			 WHERE cm.trip_id = t.id AND cm.user_id != $1 AND cm.mentions_dive_center
+			   AND cm.created_at > COALESCE(tp.last_read_at, trs.last_read_at, '-infinity'::timestamptz)))
 		FROM trips t
 		LEFT JOIN trip_participants tp ON tp.trip_id = t.id AND tp.user_id = $1
+		LEFT JOIN trip_read_state trs ON trs.trip_id = t.id AND trs.user_id = $1
 		WHERE tp.user_id = $1
 		   OR EXISTS (
 		       SELECT 1 FROM dive_center_members dcm
@@ -358,7 +367,7 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 			&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus,
 			&t.DiveCenterID, &t.PriceMinor, &t.Currency, &t.BookingURL,
 			&t.PhotoURL,
-			&t.UnreadCount, &t.ParticipantCount,
+			&t.UnreadCount, &t.ParticipantCount, &t.HasTransportAlert, &t.HasUnreadMention,
 		)
 		if err != nil {
 			return nil, err
@@ -368,9 +377,20 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 	return trips, rows.Err()
 }
 
+// Writes to both trip_participants (used by ListJoinedByUser whenever a participant row
+// exists) and trip_read_state (the only place a dive-center staff member's read marker can
+// land, since they have no trip_participants row at all) — cheaper than checking which one
+// applies first, and a redundant write to the unused one is harmless.
 func (r *Repository) MarkRead(ctx context.Context, tripID, userID uuid.UUID) error {
-	_, err := r.DB.ExecContext(ctx, `
+	if _, err := r.DB.ExecContext(ctx, `
 		UPDATE trip_participants SET last_read_at = now() WHERE trip_id = $1 AND user_id = $2
+	`, tripID, userID); err != nil {
+		return err
+	}
+	_, err := r.DB.ExecContext(ctx, `
+		INSERT INTO trip_read_state (trip_id, user_id, last_read_at)
+		VALUES ($1, $2, now())
+		ON CONFLICT (trip_id, user_id) DO UPDATE SET last_read_at = now()
 	`, tripID, userID)
 	return err
 }

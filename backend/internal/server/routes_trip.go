@@ -46,15 +46,17 @@ func toTripPhotoResponse(p trip.Photo) tripPhotoResponse {
 }
 
 type tripResponse struct {
-	ID               uuid.UUID  `json:"id"`
-	Title            string     `json:"title"`
-	Location         string     `json:"location"`
-	StartTime        time.Time  `json:"startTime"`
-	CreatedAt        time.Time  `json:"createdAt"`
-	Joined           bool       `json:"joined"`
-	CreatorUserID    *uuid.UUID `json:"creatorUserId,omitempty"`
-	ParticipantCount int        `json:"participantCount"`
-	UnreadCount      int        `json:"unreadCount"`
+	ID                uuid.UUID  `json:"id"`
+	Title             string     `json:"title"`
+	Location          string     `json:"location"`
+	StartTime         time.Time  `json:"startTime"`
+	CreatedAt         time.Time  `json:"createdAt"`
+	Joined            bool       `json:"joined"`
+	CreatorUserID     *uuid.UUID `json:"creatorUserId,omitempty"`
+	ParticipantCount  int        `json:"participantCount"`
+	UnreadCount       int        `json:"unreadCount"`
+	HasTransportAlert bool       `json:"hasTransportAlert"`
+	HasUnreadMention  bool       `json:"hasUnreadMention"`
 
 	EndDate          *time.Time `json:"endDate,omitempty"`
 	Description      *string    `json:"description,omitempty"`
@@ -99,29 +101,31 @@ func nullTimePtr(v sql.NullTime) *time.Time {
 
 func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse {
 	resp := tripResponse{
-		ID:               t.ID,
-		Title:            t.Title,
-		Location:         t.Location,
-		StartTime:        t.StartTime,
-		CreatedAt:        t.CreatedAt,
-		Joined:           joined,
-		ParticipantCount: participantCount,
-		UnreadCount:      t.UnreadCount,
-		EndDate:          nullTimePtr(t.EndDate),
-		Description:      nullStringPtr(t.Description),
-		MeetingPoint:     nullStringPtr(t.MeetingPoint),
-		DiveCountMin:     nullInt32Ptr(t.DiveCountMin),
-		DiveCountMax:     nullInt32Ptr(t.DiveCountMax),
-		DepthMinM:        nullInt32Ptr(t.DepthMinM),
-		DepthMaxM:        nullInt32Ptr(t.DepthMaxM),
-		MinCertification: nullStringPtr(t.MinCertification),
-		BookingCode:      nullStringPtr(t.BookingCode),
-		MaxParticipants:  nullInt32Ptr(t.MaxParticipants),
-		BookingStatus:    t.BookingStatus,
-		PhotoURL:         nullStringPtr(t.PhotoURL),
-		PriceMinor:       nullInt32Ptr(t.PriceMinor),
-		Currency:         t.Currency,
-		BookingURL:       nullStringPtr(t.BookingURL),
+		ID:                t.ID,
+		Title:             t.Title,
+		Location:          t.Location,
+		StartTime:         t.StartTime,
+		CreatedAt:         t.CreatedAt,
+		Joined:            joined,
+		ParticipantCount:  participantCount,
+		UnreadCount:       t.UnreadCount,
+		HasTransportAlert: t.HasTransportAlert,
+		HasUnreadMention:  t.HasUnreadMention,
+		EndDate:           nullTimePtr(t.EndDate),
+		Description:       nullStringPtr(t.Description),
+		MeetingPoint:      nullStringPtr(t.MeetingPoint),
+		DiveCountMin:      nullInt32Ptr(t.DiveCountMin),
+		DiveCountMax:      nullInt32Ptr(t.DiveCountMax),
+		DepthMinM:         nullInt32Ptr(t.DepthMinM),
+		DepthMaxM:         nullInt32Ptr(t.DepthMaxM),
+		MinCertification:  nullStringPtr(t.MinCertification),
+		BookingCode:       nullStringPtr(t.BookingCode),
+		MaxParticipants:   nullInt32Ptr(t.MaxParticipants),
+		BookingStatus:     t.BookingStatus,
+		PhotoURL:          nullStringPtr(t.PhotoURL),
+		PriceMinor:        nullInt32Ptr(t.PriceMinor),
+		Currency:          t.Currency,
+		BookingURL:        nullStringPtr(t.BookingURL),
 	}
 	if t.CreatorUserID.Valid {
 		resp.CreatorUserID = &t.CreatorUserID.UUID

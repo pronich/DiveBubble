@@ -39,11 +39,11 @@ class ChatApiService {
     return (jsonDecode(res.body) as Map<String, dynamic>)['token'] as String;
   }
 
-  Future<void> sendMessage(String tripId, String body) async {
+  Future<void> sendMessage(String tripId, String body, {bool mentionsDiveCenter = false}) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/trips/$tripId/messages'),
       headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
-      body: jsonEncode({'body': body}),
+      body: jsonEncode({'body': body, 'mentionsDiveCenter': mentionsDiveCenter}),
     );
     if (res.statusCode != 201) {
       throw Exception('sendMessage failed: ${res.statusCode} ${res.body}');

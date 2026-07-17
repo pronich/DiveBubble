@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../data/repositories/auth_repository.dart';
@@ -61,6 +62,11 @@ class _AdminShellState extends State<AdminShell> {
   // away and back doesn't reselect it.
   final _pendingBubbleTripId = ValueNotifier<String?>(null);
 
+  // Mirrors BubblesViewModel.hasUnreadMention (see BubblesPage.onMentionStateChanged) —
+  // the sidebar listens to this directly since it needs to show a dot even while Bubbles
+  // itself isn't the active section.
+  final _hasUnreadMention = ValueNotifier<bool>(false);
+
   void _diveIntoBubble(String tripId) {
     setState(() {
       _selectedIndex = 1;
@@ -95,6 +101,7 @@ class _AdminShellState extends State<AdminShell> {
       selectedTabIndex: _selectedIndexNotifier,
       openTripId: _pendingBubbleTripId,
       onDiveIntoBubble: _diveIntoBubble,
+      onMentionStateChanged: (v) => _hasUnreadMention.value = v,
     ),
     UsersPage(diveCenterRepository: widget.diveCenterRepository, diveCenterId: widget.diveCenter.id),
     CompanyPage(
@@ -118,6 +125,7 @@ class _AdminShellState extends State<AdminShell> {
   void dispose() {
     _selectedIndexNotifier.dispose();
     _pendingBubbleTripId.dispose();
+    _hasUnreadMention.dispose();
     super.dispose();
   }
 
@@ -132,6 +140,7 @@ class _AdminShellState extends State<AdminShell> {
               _selectedIndex = i;
               _selectedIndexNotifier.value = i;
             }),
+            hasUnreadMention: _hasUnreadMention,
             companyName: _companyName,
             profile: _profile,
             onAccountTap: () {
@@ -155,6 +164,7 @@ class _Sidebar extends StatelessWidget {
   const _Sidebar({
     required this.selectedIndex,
     required this.onSelect,
+    required this.hasUnreadMention,
     required this.companyName,
     required this.profile,
     required this.onAccountTap,
@@ -163,6 +173,13 @@ class _Sidebar extends StatelessWidget {
 
   final int selectedIndex;
   final ValueChanged<int> onSelect;
+
+  // Only the Bubbles item (index _bubblesIndex) ever shows a dot — a diver @mentioning
+  // the dive center, surfaced here so a mention isn't just one row among many in an inbox
+  // staff might not have open.
+  final ValueListenable<bool> hasUnreadMention;
+  static const _bubblesIndex = 1;
+
   final String companyName;
   final MyProfile? profile;
   final VoidCallback onAccountTap;
@@ -250,6 +267,21 @@ class _Sidebar extends StatelessWidget {
                             fontWeight: i == selectedIndex ? FontWeight.w600 : FontWeight.normal,
                           ),
                         ),
+                        if (i == _bubblesIndex)
+                          ValueListenableBuilder<bool>(
+                            valueListenable: hasUnreadMention,
+                            builder: (context, hasMention, _) {
+                              if (!hasMention) return const SizedBox.shrink();
+                              return Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(color: theme.colorScheme.error, shape: BoxShape.circle),
+                                ),
+                              );
+                            },
+                          ),
                       ],
                     ),
                   ),

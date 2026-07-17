@@ -11,6 +11,7 @@ extension TripApiMapper on TripApiModel {
         creatorUserId: creatorUserId,
         participantCount: participantCount,
         unreadCount: unreadCount,
+        hasUnreadMention: hasUnreadMention,
         endDate: endDate,
         description: description,
         meetingPoint: meetingPoint,

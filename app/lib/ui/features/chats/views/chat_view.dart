@@ -13,7 +13,13 @@ import '../view_models/chat_view_model.dart';
 const _groupingWindow = Duration(minutes: 5);
 
 class ChatView extends StatefulWidget {
-  const ChatView({super.key, required this.viewModel, this.isCancelled = false, this.businessName});
+  const ChatView({
+    super.key,
+    required this.viewModel,
+    this.isCancelled = false,
+    this.businessName,
+    this.canMentionDiveCenter = true,
+  });
 
   final ChatViewModel viewModel;
 
@@ -27,6 +33,11 @@ class ChatView extends StatefulWidget {
   /// keep their plain name, since they aren't posting on the organization's behalf.
   final String? businessName;
 
+  /// False when the current user is themselves staff of this trip's dive center — mentioning
+  /// your own business is meaningless, so the chip is hidden for staff even though they're
+  /// on a "business trip" (businessName != null) the same way a diver is.
+  final bool canMentionDiveCenter;
+
   @override
   State<ChatView> createState() => _ChatViewState();
 }
@@ -39,6 +50,9 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
   int _lastMessageCount = 0;
   bool _isNearBottom = true;
   bool _showNewMessagesPill = false;
+  // Armed via the "@DiveCenter" chip (business trips only — see the chip's own comment
+  // below), reset once the armed message is actually sent.
+  bool _mentionArmed = false;
 
   // TabBarView disposes offscreen tabs by default — without this, switching to Transport
   // and back tore down ChatView (and, since dispose() below tears down the ChatViewModel
@@ -215,31 +229,56 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 )
-              : Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _textController,
-                          minLines: 1,
-                          maxLines: 5,
-                          keyboardType: TextInputType.multiline,
-                          textCapitalization: TextCapitalization.sentences,
-                          decoration: const InputDecoration(hintText: 'Message'),
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Business trips only — mentioning the dive center is how a diver flags
+                    // a message as actually needing staff attention (Stage 2 push will only
+                    // notify staff on a mention, not every message, to avoid spamming
+                    // several staff members over one trip's chat).
+                    if (widget.businessName != null && widget.canMentionDiveCenter)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: FilterChip(
+                            avatar: const Icon(Icons.campaign_outlined, size: 16),
+                            label: Text('@${widget.businessName}'),
+                            selected: _mentionArmed,
+                            onSelected: (value) => setState(() => _mentionArmed = value),
+                          ),
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: () {
-                          final text = _textController.text;
-                          _textController.clear();
-                          widget.viewModel.send(text);
-                        },
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _textController,
+                              minLines: 1,
+                              maxLines: 5,
+                              keyboardType: TextInputType.multiline,
+                              textCapitalization: TextCapitalization.sentences,
+                              decoration: const InputDecoration(hintText: 'Message'),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.send),
+                            onPressed: () {
+                              final text = _textController.text;
+                              final mentionsDiveCenter = _mentionArmed;
+                              _textController.clear();
+                              setState(() => _mentionArmed = false);
+                              widget.viewModel.send(text, mentionsDiveCenter: mentionsDiveCenter);
+                            },
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
         ),
       ],
@@ -418,6 +457,14 @@ class _MessageRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (message.mentionsDiveCenter && (businessName?.isNotEmpty ?? false))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(
+                '@$businessName',
+                style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
+              ),
+            ),
           if (showName)
             Padding(
               padding: const EdgeInsets.only(bottom: 2),

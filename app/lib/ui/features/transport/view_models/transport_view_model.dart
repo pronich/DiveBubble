@@ -53,6 +53,14 @@ class TransportViewModel extends ChangeNotifier {
     }
   }
 
+  /// Seeds the alert dot from data the caller already has (e.g. Trip.hasTransportAlert)
+  /// instead of a fresh network round-trip — the flag isn't cleared server-side by this,
+  /// only [checkAlert] (called on an actual Transport-tab visit) does that.
+  void seedAlert(bool value) {
+    _hasAlert = value;
+    notifyListeners();
+  }
+
   /// Checks (and, server-side, clears) whether transport changed under this diver since
   /// they last looked — call whenever the Transport tab is actually shown, not on every
   /// [load], since viewing is what acknowledges the alert.

@@ -70,6 +70,7 @@ class ChatViewModel extends ChangeNotifier {
         body: json['body'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
         isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
+        mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
       );
       if (_messages.any((m) => m.id == message.id)) return;
       _messages = [..._messages, message];
@@ -77,13 +78,13 @@ class ChatViewModel extends ChangeNotifier {
     });
   }
 
-  Future<void> send(String body) async {
+  Future<void> send(String body, {bool mentionsDiveCenter = false}) async {
     if (body.trim().isEmpty) return;
     _isSending = true;
     notifyListeners();
 
     try {
-      await _repository.sendMessage(tripId, body);
+      await _repository.sendMessage(tripId, body, mentionsDiveCenter: mentionsDiveCenter);
       _messages = await _repository.getMessages(tripId);
     } catch (e) {
       _error = e.toString();

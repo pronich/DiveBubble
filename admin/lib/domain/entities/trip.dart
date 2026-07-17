@@ -13,6 +13,9 @@ abstract class Trip with _$Trip {
     String? creatorUserId,
     @Default(0) int participantCount,
     @Default(0) int unreadCount,
+    // Only ever true for a business trip (see message.Service.Send's own gate) — backs
+    // the Bubbles-sidebar mention dot (see BubblesViewModel.hasUnreadMention).
+    @Default(false) bool hasUnreadMention,
     DateTime? endDate,
     String? description,
     String? meetingPoint,

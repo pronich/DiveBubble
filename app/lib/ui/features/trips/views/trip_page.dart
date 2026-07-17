@@ -988,6 +988,7 @@ class _DiveInButton extends StatelessWidget {
                 authRepository: authRepository,
                 profileRepository: profileRepository,
                 diveCenterRepository: diveCenterRepository,
+                initialHasTransportAlert: trip.hasTransportAlert,
               ),
             ),
           );

@@ -12,7 +12,8 @@ class ChatRepository {
     return apiModels.map((m) => m.toDomain()).toList();
   }
 
-  Future<void> sendMessage(String tripId, String body) => _service.sendMessage(tripId, body);
+  Future<void> sendMessage(String tripId, String body, {bool mentionsDiveCenter = false}) =>
+      _service.sendMessage(tripId, body, mentionsDiveCenter: mentionsDiveCenter);
 
   Future<String> getRealtimeToken() => _service.fetchRealtimeToken();
 }

@@ -30,6 +30,8 @@ class TripConversationPage extends StatefulWidget {
     required this.authRepository,
     required this.profileRepository,
     required this.diveCenterRepository,
+    required this.initialHasTransportAlert,
+    this.onTransportAlertCleared,
   });
 
   final ChatViewModel chatViewModel;
@@ -42,6 +44,14 @@ class TripConversationPage extends StatefulWidget {
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
   final DiveCenterRepository diveCenterRepository;
+  // Seeds TransportViewModel.hasAlert from the already-loaded Trip — the Bubble is only
+  // ever reached by tapping a row from that loaded list, so this is always available and
+  // skips a redundant GET /trips/{id}/transport/alert on every chat open.
+  final bool initialHasTransportAlert;
+  // Fired once the Transport tab is actually visited and the alert clears server-side —
+  // lets MyTripsViewModel flip the same flag locally so the bottom-nav dot and Bubbles
+  // row indicator update immediately, without MyTripsView refetching the whole list.
+  final VoidCallback? onTransportAlertCleared;
 
   @override
   State<TripConversationPage> createState() => _TripConversationPageState();
@@ -51,18 +61,20 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
   late final TabController _tabController;
   bool _isCancelled = false;
   String? _businessName;
+  // Gates the "@mention" composer chip off for the caller's own dive center — a staff
+  // member mentioning their own business is meaningless (see ChatView.businessName's own
+  // gate, which only checks "is this a business trip", not "am I the diver here").
+  bool _isDiveCenterStaff = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
-    // Checked once up front too — the dot itself lives in the AppBar, always visible
-    // regardless of which tab is active, so this is what actually surfaces it. Clearing
-    // it server-side here is fine: the local hasAlert flag keeps the dot showing until
-    // the diver actually switches to Transport, which re-checks and (now correctly) finds
-    // nothing, hiding it — "seen the badge" isn't the same as "went and looked."
-    widget.transportViewModel.checkAlert();
+    // Seeded from the Trip already in hand (see the field's own comment) — the dot itself
+    // lives in the AppBar, always visible regardless of which tab is active, so this is
+    // what actually surfaces it before the diver ever switches to Transport.
+    widget.transportViewModel.seedAlert(widget.initialHasTransportAlert);
     _refreshTripDerivedState();
   }
 
@@ -75,17 +87,24 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
       final trip = await widget.tripRepository.getTrip(widget.chatViewModel.tripId);
       final diveCenterId = trip.diveCenterId;
       String? businessName;
+      var isDiveCenterStaff = false;
       if (diveCenterId != null) {
         try {
           businessName = (await widget.diveCenterRepository.getById(diveCenterId)).name;
         } catch (_) {
           // Best-effort — chat messages just fall back to the sender's plain name.
         }
+        try {
+          isDiveCenterStaff = await widget.diveCenterRepository.isMember(diveCenterId);
+        } catch (_) {
+          // Best-effort — worst case the mention chip stays visible for a staff member.
+        }
       }
       if (mounted) {
         setState(() {
           _isCancelled = trip.bookingStatus == 'cancelled';
           _businessName = businessName;
+          _isDiveCenterStaff = isDiveCenterStaff;
         });
       }
     } catch (_) {
@@ -97,7 +116,7 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
     if (_tabController.index == 1) {
-      widget.transportViewModel.checkAlert();
+      widget.transportViewModel.checkAlert().then((_) => widget.onTransportAlertCleared?.call());
     }
   }
 
@@ -144,7 +163,12 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
       body: TabBarView(
         controller: _tabController,
         children: [
-          ChatView(viewModel: widget.chatViewModel, isCancelled: _isCancelled, businessName: _businessName),
+          ChatView(
+            viewModel: widget.chatViewModel,
+            isCancelled: _isCancelled,
+            businessName: _businessName,
+            canMentionDiveCenter: !_isDiveCenterStaff,
+          ),
           TransportView(viewModel: widget.transportViewModel, isCancelled: _isCancelled, businessName: _businessName),
         ],
       ),

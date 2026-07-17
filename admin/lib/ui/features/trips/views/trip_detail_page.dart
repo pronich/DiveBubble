@@ -104,6 +104,35 @@ class _TripDetailPageState extends State<TripDetailPage> {
     if (u != null && mounted) setState(() => _trip = u);
   }
 
+  // Final, no reopen path (same as app/'s own Cancel) — confirm before calling since this
+  // affects every participant, not just the staff member tapping the button.
+  Future<void> _cancelTrip() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Cancel this trip?'),
+        content: const Text('This can\'t be undone. Divers who already joined will see the trip as cancelled.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Keep trip')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Cancel trip'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await widget.tripRepository.cancelTrip(_trip.id);
+      if (mounted) setState(() => _trip = _trip.copyWith(bookingStatus: 'cancelled'));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -129,6 +158,16 @@ class _TripDetailPageState extends State<TripDetailPage> {
             padding: const EdgeInsets.only(right: 12),
             child: OutlinedButton.icon(onPressed: _openEdit, icon: const Icon(Icons.edit_outlined), label: const Text('Edit')),
           ),
+          if (!cancelled)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: OutlinedButton.icon(
+                onPressed: _cancelTrip,
+                style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error, side: BorderSide(color: theme.colorScheme.error)),
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('Cancel trip'),
+              ),
+            ),
         ],
       ),
       body: Center(

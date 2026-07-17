@@ -9,5 +9,6 @@ extension ChatMessageApiMapper on ChatMessageApiModel {
         body: body,
         createdAt: createdAt,
         isDiveCenterStaff: isDiveCenterStaff,
+        mentionsDiveCenter: mentionsDiveCenter,
       );
 }

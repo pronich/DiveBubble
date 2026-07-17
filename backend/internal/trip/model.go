@@ -8,14 +8,19 @@ import (
 )
 
 type Trip struct {
-	ID               uuid.UUID
-	Title            string
-	Location         string
-	StartTime        time.Time
-	CreatedAt        time.Time
-	CreatorUserID    uuid.NullUUID
-	ParticipantCount int
-	UnreadCount      int // only populated by ListJoinedByUser
+	ID                uuid.UUID
+	Title             string
+	Location          string
+	StartTime         time.Time
+	CreatedAt         time.Time
+	CreatorUserID     uuid.NullUUID
+	ParticipantCount  int
+	UnreadCount       int  // only populated by ListJoinedByUser
+	HasTransportAlert bool // only populated by ListJoinedByUser — see transport_alerts
+	// True when an unread message on this trip has mentions_dive_center set — only ever
+	// true for a business trip (see message.Service.Send's own gate). Only populated by
+	// ListJoinedByUser; backs the Bubbles-sidebar mention dot in admin/.
+	HasUnreadMention bool
 
 	// Enrichment fields — all optional except BookingStatus, which always has a value.
 	EndDate          sql.NullTime

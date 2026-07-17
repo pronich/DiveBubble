@@ -12,11 +12,11 @@ import '../../../../domain/entities/chat_message.dart';
 import '../../../../domain/entities/my_profile.dart';
 import '../../../../domain/entities/trip.dart';
 
-/// Only the currently-open conversation gets a live subscription — unlike app/'s
-/// MyTripsViewModel, which subscribes to every joined trip up front for inbox-wide unread
-/// badges, this stays scoped to one channel at a time (re-subscribed on every selectTrip
-/// call) since BubblesViewModel itself is long-lived and reused across trip switches,
-/// not disposed-and-recreated per trip the way app/'s ChatViewModel is.
+/// The selected conversation's own message history stays scoped to one live subscription at
+/// a time (re-subscribed on every selectTrip call, see _subscribeToRealtime) — but every
+/// trip in the inbox also gets a lightweight subscription (see _subscribeToAllTrips) purely
+/// to keep unreadCount/hasUnreadMention live for the sidebar dot, mirroring app/'s
+/// MyTripsViewModel, which needs the same thing for its own bottom-nav dot.
 class BubblesViewModel extends ChangeNotifier {
   BubblesViewModel({
     required TripRepository tripRepository,
@@ -42,8 +42,19 @@ class BubblesViewModel extends ChangeNotifier {
   centrifuge.Subscription? _subscription;
   StreamSubscription<centrifuge.PublicationEvent>? _publicationListener;
 
+  // One subscription per trip in the inbox, kept alive for this ViewModel's whole lifetime
+  // (see class doc) — this is what makes the sidebar mention dot react without the staff
+  // member having to click into Bubbles first.
+  final Map<String, centrifuge.Subscription> _tripSubscriptions = {};
+  final Map<String, StreamSubscription<centrifuge.PublicationEvent>> _tripPublicationListeners = {};
+
   List<Trip> _trips = [];
   List<Trip> get trips => _trips;
+
+  // Backs the Bubbles-sidebar mention dot in AdminShell (see BubblesPage's
+  // onMentionStateChanged callback) — recomputed on every notifyListeners, same as
+  // app/'s MyTripsViewModel.hasAnyAttention driving RootShell's bottom-nav Badge.
+  bool get hasUnreadMention => _trips.any((t) => t.hasUnreadMention);
 
   bool _isLoadingTrips = false;
   bool get isLoadingTrips => _isLoadingTrips;
@@ -84,6 +95,7 @@ class BubblesViewModel extends ChangeNotifier {
     try {
       final all = await _tripRepository.getMyTrips();
       _trips = all.where((t) => t.diveCenterId == diveCenterId).toList();
+      await _subscribeToAllTrips();
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -117,10 +129,41 @@ class BubblesViewModel extends ChangeNotifier {
       // every time a conversation is opened.
       final all = await _tripRepository.getMyTrips();
       _trips = all.where((t) => t.diveCenterId == diveCenterId).toList();
+      await _subscribeToAllTrips();
       notifyListeners();
     } catch (_) {
       // Not worth surfacing — the inbox badge just stays stale until the next successful call.
     }
+  }
+
+  // Idempotent — a trip already in _tripSubscriptions is skipped, so calling this again
+  // after every reload only picks up trips new to the list (e.g. one just created).
+  Future<void> _subscribeToAllTrips() async {
+    for (final trip in _trips) {
+      if (_tripSubscriptions.containsKey(trip.id)) continue;
+      final sub = await _realtimeService.subscribe('trip:${trip.id}');
+      _tripPublicationListeners[trip.id] = sub.publication.listen((event) => _onAnyTripMessage(trip.id, event));
+      _tripSubscriptions[trip.id] = sub;
+    }
+  }
+
+  void _onAnyTripMessage(String tripId, centrifuge.PublicationEvent event) {
+    // The selected trip's own transcript is already handled live by _subscribeToRealtime —
+    // and a staff member looking straight at it shouldn't have it flagged as unread/mentioned.
+    if (tripId == _selectedTripId) return;
+    final index = _trips.indexWhere((t) => t.id == tripId);
+    if (index == -1) return;
+
+    final json = jsonDecode(utf8.decode(event.data)) as Map<String, dynamic>;
+    if (json['userId'] as String == currentUserId) return;
+    final mentionsDiveCenter = json['mentionsDiveCenter'] as bool? ?? false;
+
+    final trip = _trips[index];
+    _trips[index] = trip.copyWith(
+      unreadCount: trip.unreadCount + 1,
+      hasUnreadMention: trip.hasUnreadMention || mentionsDiveCenter,
+    );
+    notifyListeners();
   }
 
   Future<void> _subscribeToRealtime(String tripId) async {
@@ -134,6 +177,7 @@ class BubblesViewModel extends ChangeNotifier {
         body: json['body'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
         isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
+        mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
       );
       // Only this trip's own messages matter here — the shared channel this listener is
       // attached to is scoped to exactly one trip at a time already, but a stale listener
@@ -173,6 +217,12 @@ class BubblesViewModel extends ChangeNotifier {
   @override
   void dispose() {
     _unsubscribeCurrent();
+    for (final listener in _tripPublicationListeners.values) {
+      listener.cancel();
+    }
+    for (final sub in _tripSubscriptions.values) {
+      _realtimeService.unsubscribe(sub);
+    }
     super.dispose();
   }
 

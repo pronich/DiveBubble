@@ -15,6 +15,7 @@ abstract class TripApiModel with _$TripApiModel {
     String? creatorUserId,
     @Default(0) int participantCount,
     @Default(0) int unreadCount,
+    @Default(false) bool hasUnreadMention,
     DateTime? endDate,
     String? description,
     String? meetingPoint,

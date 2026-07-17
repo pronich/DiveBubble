@@ -37,6 +37,7 @@ class BubblesPage extends StatefulWidget {
     required this.selectedTabIndex,
     required this.openTripId,
     required this.onDiveIntoBubble,
+    required this.onMentionStateChanged,
   });
 
   final TripRepository tripRepository;
@@ -65,6 +66,12 @@ class BubblesPage extends StatefulWidget {
   // "Dive into Bubble" button calls this to pop back here, same round-trip AdminShell wires
   // up from the Trips tab.
   final ValueChanged<String> onDiveIntoBubble;
+
+  // Reported every time BubblesViewModel's trip list changes — AdminShell forwards this
+  // into a ValueNotifier its sidebar listens to, so the Bubbles nav icon can show a dot
+  // even while a different section is active (this page isn't visible then, but its
+  // ViewModel keeps existing and notifying — see AdminShell's `late final _pages`).
+  final ValueChanged<bool> onMentionStateChanged;
 
   // AdminShell keeps every section alive in an IndexedStack built exactly once (`late final
   // _pages`, see its own comment on why) — so this widget's own constructor args, and
@@ -121,16 +128,20 @@ class _BubblesPageState extends State<BubblesPage> {
       diveCenterName: widget.diveCenterName,
       currentUserId: userId ?? '',
     );
+    vm.addListener(_reportMentionState);
     await vm.loadTrips();
     if (!mounted) return;
     setState(() => _viewModel = vm);
   }
+
+  void _reportMentionState() => widget.onMentionStateChanged(_viewModel?.hasUnreadMention ?? false);
 
   @override
   void dispose() {
     widget.selectedTabIndex.removeListener(_onTabIndexChanged);
     widget.openTripId.removeListener(_onOpenTripIdChanged);
     _messageController.dispose();
+    _viewModel?.removeListener(_reportMentionState);
     _viewModel?.dispose();
     super.dispose();
   }
@@ -790,6 +801,16 @@ class _MessageRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // A diver flagged this one for staff attention — surfaced here so scrolling
+          // history makes it obvious which messages were actually meant to be noticed.
+          if (message.mentionsDiveCenter && diveCenterName.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(
+                '@$diveCenterName',
+                style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
+              ),
+            ),
           if (showName)
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
