@@ -981,6 +981,7 @@ class _DiveInButton extends StatelessWidget {
                   currentUserId: currentUserId,
                 ),
                 tripTitle: trip.title,
+                tripPhotoUrl: trip.photoUrl,
                 tripRepository: tripRepository,
                 chatRepository: chatRepository,
                 transportRepository: transportRepository,

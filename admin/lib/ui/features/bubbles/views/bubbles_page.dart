@@ -156,6 +156,11 @@ class _BubblesPageState extends State<BubblesPage> {
     }
   }
 
+  // Same breakpoint as AdminShell's own sidebar-to-drawer switch — a permanent 320px inbox
+  // pane alongside a conversation is just as cramped on a phone-width browser as a 260px
+  // sidebar was.
+  static const _mobileBreakpoint = 760.0;
+
   @override
   Widget build(BuildContext context) {
     final vm = _viewModel;
@@ -165,22 +170,41 @@ class _BubblesPageState extends State<BubblesPage> {
     return ListenableBuilder(
       listenable: vm,
       builder: (context, _) {
+        final conversation = _Conversation(
+          viewModel: vm,
+          controller: _messageController,
+          onSend: _send,
+          tripRepository: widget.tripRepository,
+          transportRepository: widget.transportRepository,
+          profileRepository: widget.profileRepository,
+          diveCenterId: widget.diveCenterId,
+          onDiveIntoBubble: widget.onDiveIntoBubble,
+        );
+
+        if (MediaQuery.sizeOf(context).width < _mobileBreakpoint) {
+          // One pane at a time — the inbox list until a Bubble is selected, then the
+          // conversation full-width with a back button (see _Conversation.onBack) to
+          // return, Telegram-Web-mobile style rather than a permanently split view.
+          return vm.selectedTripId == null
+              ? _Inbox(viewModel: vm, onSelect: vm.selectTrip)
+              : _Conversation(
+                  viewModel: vm,
+                  controller: _messageController,
+                  onSend: _send,
+                  tripRepository: widget.tripRepository,
+                  transportRepository: widget.transportRepository,
+                  profileRepository: widget.profileRepository,
+                  diveCenterId: widget.diveCenterId,
+                  onDiveIntoBubble: widget.onDiveIntoBubble,
+                  onBack: vm.clearSelection,
+                );
+        }
+
         return Row(
           children: [
             SizedBox(width: 320, child: _Inbox(viewModel: vm, onSelect: vm.selectTrip)),
             VerticalDivider(width: 1, color: Theme.of(context).colorScheme.outlineVariant),
-            Expanded(
-              child: _Conversation(
-                viewModel: vm,
-                controller: _messageController,
-                onSend: _send,
-                tripRepository: widget.tripRepository,
-                transportRepository: widget.transportRepository,
-                profileRepository: widget.profileRepository,
-                diveCenterId: widget.diveCenterId,
-                onDiveIntoBubble: widget.onDiveIntoBubble,
-              ),
-            ),
+            Expanded(child: conversation),
           ],
         );
       },
@@ -213,23 +237,13 @@ class _InboxState extends State<_Inbox> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'INBOX',
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, letterSpacing: 0.5),
-              ),
-              const SizedBox(height: 4),
-              Text('Bubbles', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
-            ],
-          ),
+          child: Text('Bubbles', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
         ),
         if (viewModel.trips.isNotEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: TextField(
-              decoration: const InputDecoration(hintText: 'Search trips', prefixIcon: Icon(Icons.search), isDense: true),
+              decoration: const InputDecoration(hintText: 'Search Bubble', prefixIcon: Icon(Icons.search), isDense: true),
               onChanged: (value) => setState(() => _search = value),
             ),
           ),
@@ -282,7 +296,8 @@ class _InboxRow extends StatelessWidget {
             children: [
               CircleAvatar(
                 backgroundColor: theme.colorScheme.primary,
-                child: Text(initials, style: const TextStyle(color: Colors.white)),
+                backgroundImage: (trip.photoUrl?.isNotEmpty ?? false) ? NetworkImage(trip.photoUrl!) : null,
+                child: (trip.photoUrl?.isNotEmpty ?? false) ? null : Text(initials, style: const TextStyle(color: Colors.white)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -329,6 +344,7 @@ class _Conversation extends StatefulWidget {
     required this.profileRepository,
     required this.diveCenterId,
     required this.onDiveIntoBubble,
+    this.onBack,
   });
 
   final BubblesViewModel viewModel;
@@ -339,6 +355,11 @@ class _Conversation extends StatefulWidget {
   final ProfileRepository profileRepository;
   final String diveCenterId;
   final ValueChanged<String> onDiveIntoBubble;
+
+  // Mobile layout only (see BubblesPage.build) — renders a back button in the header that
+  // returns to the full-width inbox list. Null on desktop, where the inbox stays visible
+  // alongside the conversation and there's nothing to "go back" to.
+  final VoidCallback? onBack;
 
   @override
   State<_Conversation> createState() => _ConversationState();
@@ -486,19 +507,27 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
               decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.colorScheme.outlineVariant))),
               child: Row(
                 children: [
+                  if (widget.onBack != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: IconButton(icon: const Icon(Icons.arrow_back), onPressed: widget.onBack),
+                    ),
                   CircleAvatar(
                     backgroundColor: theme.colorScheme.primary,
-                    child: Text(
-                      trip.title.trim().isEmpty ? '?' : trip.title.trim().substring(0, 1).toUpperCase(),
-                      style: const TextStyle(color: Colors.white),
-                    ),
+                    backgroundImage: (trip.photoUrl?.isNotEmpty ?? false) ? NetworkImage(trip.photoUrl!) : null,
+                    child: (trip.photoUrl?.isNotEmpty ?? false)
+                        ? null
+                        : Text(
+                            trip.title.trim().isEmpty ? '?' : trip.title.trim().substring(0, 1).toUpperCase(),
+                            style: const TextStyle(color: Colors.white),
+                          ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(trip.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text(trip.title, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600)),
                         Text(
                           '${formatShortDate(trip.startTime)} · ${trip.location}',
                           style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),

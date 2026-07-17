@@ -129,30 +129,55 @@ class _AdminShellState extends State<AdminShell> {
     super.dispose();
   }
 
+  // Below this, a permanent 260px sidebar leaves too little room for actual content — a
+  // browser window this narrow is either a phone or a very cramped desktop window either way.
+  static const _mobileBreakpoint = 760.0;
+
+  void _onAccountTap(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Personal profile editing is coming soon')),
+    );
+  }
+
+  Future<void> _onSignOut() async {
+    await widget.authRepository.signOut();
+    widget.onSignedOut();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.sizeOf(context).width < _mobileBreakpoint;
+
+    final sidebar = _Sidebar(
+      selectedIndex: _selectedIndex,
+      onSelect: (i) {
+        setState(() {
+          _selectedIndex = i;
+          _selectedIndexNotifier.value = i;
+        });
+        // The Drawer (mobile only — see build's isMobile branch) needs closing after a tap;
+        // a no-op on desktop, where this widget isn't wrapped in a Drawer at all.
+        if (isMobile) Navigator.of(context).maybePop();
+      },
+      hasUnreadMention: _hasUnreadMention,
+      companyName: _companyName,
+      profile: _profile,
+      onAccountTap: () => _onAccountTap(context),
+      onSignOut: _onSignOut,
+    );
+
+    if (isMobile) {
+      return Scaffold(
+        appBar: AppBar(title: Text(_Sidebar._items[_selectedIndex].label)),
+        drawer: Drawer(child: sidebar),
+        body: IndexedStack(index: _selectedIndex, children: _pages),
+      );
+    }
+
     return Scaffold(
       body: Row(
         children: [
-          _Sidebar(
-            selectedIndex: _selectedIndex,
-            onSelect: (i) => setState(() {
-              _selectedIndex = i;
-              _selectedIndexNotifier.value = i;
-            }),
-            hasUnreadMention: _hasUnreadMention,
-            companyName: _companyName,
-            profile: _profile,
-            onAccountTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Personal profile editing is coming soon')),
-              );
-            },
-            onSignOut: () async {
-              await widget.authRepository.signOut();
-              widget.onSignedOut();
-            },
-          ),
+          SizedBox(width: 260, child: sidebar),
           Expanded(child: IndexedStack(index: _selectedIndex, children: _pages)),
         ],
       ),
@@ -190,7 +215,7 @@ class _Sidebar extends StatelessWidget {
   static const _items = [
     (icon: Icons.calendar_today_outlined, selectedIcon: Icons.calendar_today, label: 'Trips'),
     (icon: Icons.bubble_chart_outlined, selectedIcon: Icons.bubble_chart, label: 'Bubbles'),
-    (icon: Icons.people_outline, selectedIcon: Icons.people, label: 'Users'),
+    (icon: Icons.people_outline, selectedIcon: Icons.people, label: 'Team'),
     (icon: Icons.apartment_outlined, selectedIcon: Icons.apartment, label: 'Company'),
   ];
 
@@ -203,8 +228,10 @@ class _Sidebar extends StatelessWidget {
         ? '?'
         : displayName.trim().split(RegExp(r'\s+')).map((w) => w[0]).take(2).join().toUpperCase();
 
+    // No fixed width here — the desktop call site wraps this in its own SizedBox(width:
+    // 260), while the mobile Drawer wrapping it (see AdminShell.build's isMobile branch)
+    // sizes itself. Only the border is unconditional; a thin line reads fine either way.
     return Container(
-      width: 260,
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         border: Border(right: BorderSide(color: theme.colorScheme.outlineVariant)),
@@ -215,14 +242,23 @@ class _Sidebar extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
             child: Row(
               children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary,
-                    borderRadius: BorderRadius.circular(10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/images/logo_1024.png',
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.cover,
+                    // A failed load's default error widget doesn't respect the 36x36 box the
+                    // way a normal image does, which blew out this Row's width entirely (see
+                    // the "RIGHT OVERFLOWED" report) — bound to the same size explicitly.
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 36,
+                      height: 36,
+                      color: Theme.of(context).colorScheme.primary,
+                      child: const Icon(Icons.anchor, color: Colors.white, size: 20),
+                    ),
                   ),
-                  child: const Icon(Icons.anchor, color: Colors.white, size: 20),
                 ),
                 const SizedBox(width: 10),
                 Column(

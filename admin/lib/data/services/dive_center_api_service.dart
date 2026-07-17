@@ -120,7 +120,7 @@ class DiveCenterApiService {
     return list.map((e) => DiveCenterMember.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  // Exact-email lookup only, owner-only on the backend — not a user directory. Used to
+  // Prefix-email lookup, owner-only on the backend — not a user directory. Used to
   // confirm "is this the right person" before actually adding them via addMember below.
   Future<MemberPreview> searchMemberByEmail(String diveCenterId, String email) async {
     final uri = Uri.parse('$baseUrl/dive-centers/$diveCenterId/members/search').replace(queryParameters: {'email': email});

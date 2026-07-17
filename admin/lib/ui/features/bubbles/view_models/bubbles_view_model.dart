@@ -204,6 +204,16 @@ class BubblesViewModel extends ChangeNotifier {
     });
   }
 
+  // Mobile layout only (see BubblesPage) — returns to the inbox list. Only tears down the
+  // selected-conversation subscription, not _subscribeToAllTrips's per-trip ones, which
+  // need to stay alive regardless of what's selected for the sidebar mention dot.
+  Future<void> clearSelection() async {
+    await _unsubscribeCurrent();
+    _selectedTripId = null;
+    _messages = [];
+    notifyListeners();
+  }
+
   Future<void> _unsubscribeCurrent() async {
     _publicationListener?.cancel();
     _publicationListener = null;

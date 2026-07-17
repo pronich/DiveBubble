@@ -23,6 +23,7 @@ class TripConversationPage extends StatefulWidget {
     required this.chatViewModel,
     required this.transportViewModel,
     required this.tripTitle,
+    this.tripPhotoUrl,
     required this.tripRepository,
     required this.chatRepository,
     required this.transportRepository,
@@ -37,6 +38,10 @@ class TripConversationPage extends StatefulWidget {
   final ChatViewModel chatViewModel;
   final TransportViewModel transportViewModel;
   final String tripTitle;
+  // Rendered as a small tappable thumbnail on the right of the AppBar (see build) —
+  // null shows a plain placeholder icon instead, same fallback every other trip photo spot
+  // in the app uses.
+  final String? tripPhotoUrl;
   final TripRepository tripRepository;
   final ChatRepository chatRepository;
   final TransportRepository transportRepository;
@@ -129,9 +134,34 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: InkWell(onTap: () => _openTripPage(context), child: Text(widget.tripTitle)),
+        title: InkWell(
+          onTap: () => _openTripPage(context),
+          child: Text(
+            widget.tripTitle,
+            style: theme.textTheme.headlineSmall,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: InkWell(
+              onTap: () => _openTripPage(context),
+              customBorder: const CircleBorder(),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: theme.colorScheme.secondaryContainer,
+                backgroundImage: (widget.tripPhotoUrl?.isNotEmpty ?? false) ? NetworkImage(widget.tripPhotoUrl!) : null,
+                child: (widget.tripPhotoUrl?.isNotEmpty ?? false)
+                    ? null
+                    : Icon(Icons.image_outlined, size: 18, color: theme.colorScheme.onSecondaryContainer),
+              ),
+            ),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: [
