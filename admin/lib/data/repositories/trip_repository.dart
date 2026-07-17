@@ -89,6 +89,8 @@ class TripRepository {
 
   Future<void> markRead(String tripId) => _service.markRead(tripId);
 
+  Future<void> cancelTrip(String tripId) => _service.cancelTrip(tripId);
+
   Future<List<TripPhoto>> getTripPhotos(String tripId) => _service.fetchTripPhotos(tripId);
 
   Future<TripPhoto> addTripPhoto(String tripId, List<int> bytes, String filename) =>

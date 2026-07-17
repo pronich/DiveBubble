@@ -8,8 +8,8 @@ import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
 import 'multipart_upload.dart';
 
-/// Trimmed to what admin/ actually needs — no join/leave/cancel/participants here, those
-/// stay diver-facing actions in app/. Business trip creation/listing only.
+/// Trimmed to what admin/ actually needs — no join/leave/participants here, those
+/// stay diver-facing actions in app/. Business trip creation/listing/cancel only.
 class TripApiService {
   TripApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
       : _client = client ?? http.Client();
@@ -135,6 +135,15 @@ class TripApiService {
     final res = await _client.post(Uri.parse('$baseUrl/trips/$tripId/read'), headers: await _authHeaders());
     if (res.statusCode != 204) {
       throw Exception('markRead failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
+  // isOrganizer (backend) already accepts any member of the trip's dive center, not just
+  // whoever created it — same access rule Edit/photo-upload already rely on here.
+  Future<void> cancelTrip(String tripId) async {
+    final res = await _client.post(Uri.parse('$baseUrl/trips/$tripId/cancel'), headers: await _authHeaders());
+    if (res.statusCode != 204) {
+      throw Exception('cancelTrip failed: ${res.statusCode} ${res.body}');
     }
   }
 

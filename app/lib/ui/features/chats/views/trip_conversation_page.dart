@@ -61,6 +61,10 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
   late final TabController _tabController;
   bool _isCancelled = false;
   String? _businessName;
+  // Gates the "@mention" composer chip off for the caller's own dive center — a staff
+  // member mentioning their own business is meaningless (see ChatView.businessName's own
+  // gate, which only checks "is this a business trip", not "am I the diver here").
+  bool _isDiveCenterStaff = false;
 
   @override
   void initState() {
@@ -83,17 +87,24 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
       final trip = await widget.tripRepository.getTrip(widget.chatViewModel.tripId);
       final diveCenterId = trip.diveCenterId;
       String? businessName;
+      var isDiveCenterStaff = false;
       if (diveCenterId != null) {
         try {
           businessName = (await widget.diveCenterRepository.getById(diveCenterId)).name;
         } catch (_) {
           // Best-effort — chat messages just fall back to the sender's plain name.
         }
+        try {
+          isDiveCenterStaff = await widget.diveCenterRepository.isMember(diveCenterId);
+        } catch (_) {
+          // Best-effort — worst case the mention chip stays visible for a staff member.
+        }
       }
       if (mounted) {
         setState(() {
           _isCancelled = trip.bookingStatus == 'cancelled';
           _businessName = businessName;
+          _isDiveCenterStaff = isDiveCenterStaff;
         });
       }
     } catch (_) {
@@ -152,7 +163,12 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
       body: TabBarView(
         controller: _tabController,
         children: [
-          ChatView(viewModel: widget.chatViewModel, isCancelled: _isCancelled, businessName: _businessName),
+          ChatView(
+            viewModel: widget.chatViewModel,
+            isCancelled: _isCancelled,
+            businessName: _businessName,
+            canMentionDiveCenter: !_isDiveCenterStaff,
+          ),
           TransportView(viewModel: widget.transportViewModel, isCancelled: _isCancelled, businessName: _businessName),
         ],
       ),

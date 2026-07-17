@@ -56,6 +56,7 @@ type tripResponse struct {
 	ParticipantCount  int        `json:"participantCount"`
 	UnreadCount       int        `json:"unreadCount"`
 	HasTransportAlert bool       `json:"hasTransportAlert"`
+	HasUnreadMention  bool       `json:"hasUnreadMention"`
 
 	EndDate          *time.Time `json:"endDate,omitempty"`
 	Description      *string    `json:"description,omitempty"`
@@ -109,6 +110,7 @@ func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse
 		ParticipantCount:  participantCount,
 		UnreadCount:       t.UnreadCount,
 		HasTransportAlert: t.HasTransportAlert,
+		HasUnreadMention:  t.HasUnreadMention,
 		EndDate:           nullTimePtr(t.EndDate),
 		Description:       nullStringPtr(t.Description),
 		MeetingPoint:      nullStringPtr(t.MeetingPoint),

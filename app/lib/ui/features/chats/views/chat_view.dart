@@ -13,7 +13,13 @@ import '../view_models/chat_view_model.dart';
 const _groupingWindow = Duration(minutes: 5);
 
 class ChatView extends StatefulWidget {
-  const ChatView({super.key, required this.viewModel, this.isCancelled = false, this.businessName});
+  const ChatView({
+    super.key,
+    required this.viewModel,
+    this.isCancelled = false,
+    this.businessName,
+    this.canMentionDiveCenter = true,
+  });
 
   final ChatViewModel viewModel;
 
@@ -26,6 +32,11 @@ class ChatView extends StatefulWidget {
   /// Center" instead of just "Name" (see _MessageRow); other divers in the same Bubble
   /// keep their plain name, since they aren't posting on the organization's behalf.
   final String? businessName;
+
+  /// False when the current user is themselves staff of this trip's dive center — mentioning
+  /// your own business is meaningless, so the chip is hidden for staff even though they're
+  /// on a "business trip" (businessName != null) the same way a diver is.
+  final bool canMentionDiveCenter;
 
   @override
   State<ChatView> createState() => _ChatViewState();
@@ -226,7 +237,7 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
                     // a message as actually needing staff attention (Stage 2 push will only
                     // notify staff on a mention, not every message, to avoid spamming
                     // several staff members over one trip's chat).
-                    if (widget.businessName != null)
+                    if (widget.businessName != null && widget.canMentionDiveCenter)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                         child: Align(
