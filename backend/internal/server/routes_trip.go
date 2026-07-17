@@ -75,6 +75,17 @@ type tripResponse struct {
 	PriceMinor   *int       `json:"priceMinor,omitempty"`
 	Currency     string     `json:"currency"`
 	BookingURL   *string    `json:"bookingUrl,omitempty"`
+
+	Latitude  *float64 `json:"latitude,omitempty"`
+	Longitude *float64 `json:"longitude,omitempty"`
+}
+
+func nullFloat64Ptr(v sql.NullFloat64) *float64 {
+	if !v.Valid {
+		return nil
+	}
+	f := v.Float64
+	return &f
 }
 
 func nullStringPtr(v sql.NullString) *string {
@@ -126,6 +137,8 @@ func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse
 		PriceMinor:        nullInt32Ptr(t.PriceMinor),
 		Currency:          t.Currency,
 		BookingURL:        nullStringPtr(t.BookingURL),
+		Latitude:          nullFloat64Ptr(t.Latitude),
+		Longitude:         nullFloat64Ptr(t.Longitude),
 	}
 	if t.CreatorUserID.Valid {
 		resp.CreatorUserID = &t.CreatorUserID.UUID
@@ -160,6 +173,10 @@ type createTripRequest struct {
 	DiveCenterID *uuid.UUID `json:"diveCenterId"`
 	PriceMinor   *int       `json:"priceMinor"`
 	BookingURL   *string    `json:"bookingUrl"`
+
+	// Best-effort client-side forward-geocode of Location/MeetingPoint — see model.go.
+	Latitude  *float64 `json:"latitude"`
+	Longitude *float64 `json:"longitude"`
 }
 
 func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -189,6 +206,8 @@ func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 			DiveCenterID:     req.DiveCenterID,
 			PriceMinor:       req.PriceMinor,
 			BookingURL:       req.BookingURL,
+			Latitude:         req.Latitude,
+			Longitude:        req.Longitude,
 		})
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
@@ -511,7 +530,8 @@ func handleListMyTrips(svc *trip.Service) func(http.ResponseWriter, *http.Reques
 
 func handleListTrips(svc *trip.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		trips, err := svc.ListTrips(r.Context())
+		query := r.URL.Query().Get("q")
+		trips, err := svc.ListTrips(r.Context(), query)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not list trips")
 			return

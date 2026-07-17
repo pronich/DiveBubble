@@ -128,8 +128,8 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 	return t, nil
 }
 
-func (s *Service) ListTrips(ctx context.Context) ([]Trip, error) {
-	return s.Repo.List(ctx)
+func (s *Service) ListTrips(ctx context.Context, query string) ([]Trip, error) {
+	return s.Repo.List(ctx, strings.TrimSpace(query))
 }
 
 func (s *Service) GetTrip(ctx context.Context, id string) (Trip, error) {

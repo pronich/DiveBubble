@@ -124,4 +124,24 @@ class AuthRepository extends ChangeNotifier {
     await _tokens.clear();
     notifyListeners();
   }
+
+  /// Permanently anonymizes the account server-side. Unlike [signOut], the backend call is
+  /// NOT best-effort — local state is only cleared once it genuinely succeeds, so a failure
+  /// propagates to the caller and the session stays intact (nothing to silently recover from
+  /// if the account wasn't actually deleted).
+  Future<void> deleteAccount() async {
+    final accessToken = await getValidAccessToken();
+    if (accessToken == null) {
+      throw Exception('Not signed in');
+    }
+    await _api.deleteAccount(accessToken);
+
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (_) {
+      // best-effort — the account is already gone server-side either way
+    }
+    await _tokens.clear();
+    notifyListeners();
+  }
 }

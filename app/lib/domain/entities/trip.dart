@@ -37,5 +37,9 @@ abstract class Trip with _$Trip {
     // bookingCode, since a business trip can't be joined directly (see TripPage's
     // organizer-card-adjacent Book-now button and CLAUDE.md's Booking Code flow section).
     String? bookingUrl,
+    // Best-effort forward-geocode of location/meetingPoint at creation time — powers
+    // Explore's "Nearest" sort (distance computed client-side). Null if geocoding failed.
+    double? latitude,
+    double? longitude,
   }) = _Trip;
 }

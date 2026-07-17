@@ -9,8 +9,8 @@ class TripRepository {
 
   final TripApiService _service;
 
-  Future<List<Trip>> getTrips() async {
-    final apiModels = await _service.fetchTrips();
+  Future<List<Trip>> getTrips({String? query}) async {
+    final apiModels = await _service.fetchTrips(query: query);
     return apiModels.map((m) => m.toDomain()).toList();
   }
 
@@ -64,6 +64,8 @@ class TripRepository {
     int? depthMaxM,
     String? minCertification,
     int? maxParticipants,
+    double? latitude,
+    double? longitude,
   }) async {
     final apiModel = await _service.createTrip(
       title: title,
@@ -78,6 +80,8 @@ class TripRepository {
       depthMaxM: depthMaxM,
       minCertification: minCertification,
       maxParticipants: maxParticipants,
+      latitude: latitude,
+      longitude: longitude,
     );
     return apiModel.toDomain();
   }

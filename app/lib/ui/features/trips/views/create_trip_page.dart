@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
@@ -231,6 +232,22 @@ class _CreateTripPageState extends State<CreateTripPage> {
       _startTimeOfDay!.minute,
     );
 
+    // Best-effort forward-geocode — prefer the meeting point (more precise) over the
+    // general location. Any failure (no results, no network) just leaves lat/lng null;
+    // never blocks trip creation.
+    double? latitude;
+    double? longitude;
+    try {
+      final geocodeQuery = _textOrNull(_meetingPointController) ?? location;
+      final results = await Geocoding().locationFromAddress(geocodeQuery);
+      if (results.isNotEmpty) {
+        latitude = results.first.latitude;
+        longitude = results.first.longitude;
+      }
+    } catch (_) {
+      // ignore — see above
+    }
+
     final trip = await widget.viewModel.submit(
       title: title,
       location: location,
@@ -244,6 +261,8 @@ class _CreateTripPageState extends State<CreateTripPage> {
       diveCountMin: _intOrNull(_diveCountMinController),
       diveCountMax: _intOrNull(_diveCountMaxController),
       maxParticipants: _intOrNull(_maxParticipantsController),
+      latitude: latitude,
+      longitude: longitude,
     );
 
     if (trip != null) {

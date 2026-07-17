@@ -48,6 +48,12 @@ type Trip struct {
 	// general website) — see CLAUDE.md's Booking Code flow section for why the two aren't
 	// the same field.
 	BookingURL sql.NullString
+
+	// Latitude/Longitude are a best-effort client-side forward-geocode of the trip's
+	// location/meeting_point at creation time — nullable, powers Explore's "Nearest" sort
+	// (distance computed client-side, not in SQL).
+	Latitude  sql.NullFloat64
+	Longitude sql.NullFloat64
 }
 
 // Photo is one entry in a trip's ordered gallery (trip_photos) — Position is upload order,

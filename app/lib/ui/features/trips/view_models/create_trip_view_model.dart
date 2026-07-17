@@ -27,6 +27,8 @@ class CreateTripViewModel extends ChangeNotifier {
     int? depthMaxM,
     String? minCertification,
     int? maxParticipants,
+    double? latitude,
+    double? longitude,
   }) async {
     _isSubmitting = true;
     _error = null;
@@ -46,6 +48,8 @@ class CreateTripViewModel extends ChangeNotifier {
         depthMaxM: depthMaxM,
         minCertification: minCertification,
         maxParticipants: maxParticipants,
+        latitude: latitude,
+        longitude: longitude,
       );
     } catch (e) {
       _error = e.toString();

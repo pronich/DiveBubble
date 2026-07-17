@@ -78,6 +78,14 @@ class ProfileApiService {
     return ProfileApiModel.fromJson(json);
   }
 
+  Future<ProfileApiModel> removeAvatar() async {
+    final res = await _client.delete(Uri.parse('$baseUrl/me/avatar'), headers: await _authHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('removeAvatar failed: ${res.statusCode} ${res.body}');
+    }
+    return ProfileApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   // Level card's single photo (users.certification_photo_url) — distinct from a
   // specialty's own photo, see SpecialtyApiService.uploadSpecialtyPhoto.
   Future<ProfileApiModel> uploadCertificationPhoto(String filePath) async {

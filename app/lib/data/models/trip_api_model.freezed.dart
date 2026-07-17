@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$TripApiModel {
 
- String get id; String get title; String get location; DateTime get startTime; DateTime get createdAt; bool get joined; String? get creatorUserId; int get participantCount; int get unreadCount; bool get hasTransportAlert; DateTime? get endDate; String? get description; String? get meetingPoint; int? get diveCountMin; int? get diveCountMax; int? get depthMinM; int? get depthMaxM; String? get minCertification; String? get bookingCode; int? get maxParticipants; String get bookingStatus; String? get photoUrl; String? get diveCenterId; int? get priceMinor; String get currency; String? get bookingUrl;
+ String get id; String get title; String get location; DateTime get startTime; DateTime get createdAt; bool get joined; String? get creatorUserId; int get participantCount; int get unreadCount; bool get hasTransportAlert; DateTime? get endDate; String? get description; String? get meetingPoint; int? get diveCountMin; int? get diveCountMax; int? get depthMinM; int? get depthMaxM; String? get minCertification; String? get bookingCode; int? get maxParticipants; String get bookingStatus; String? get photoUrl; String? get diveCenterId; int? get priceMinor; String get currency; String? get bookingUrl; double? get latitude; double? get longitude;
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $TripApiModelCopyWith<TripApiModel> get copyWith => _$TripApiModelCopyWithImpl<T
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.hasTransportAlert, hasTransportAlert) || other.hasTransportAlert == hasTransportAlert)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.diveCenterId, diveCenterId) || other.diveCenterId == diveCenterId)&&(identical(other.priceMinor, priceMinor) || other.priceMinor == priceMinor)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.bookingUrl, bookingUrl) || other.bookingUrl == bookingUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.hasTransportAlert, hasTransportAlert) || other.hasTransportAlert == hasTransportAlert)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.diveCenterId, diveCenterId) || other.diveCenterId == diveCenterId)&&(identical(other.priceMinor, priceMinor) || other.priceMinor == priceMinor)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.bookingUrl, bookingUrl) || other.bookingUrl == bookingUrl)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,createdAt,joined,creatorUserId,participantCount,unreadCount,hasTransportAlert,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus,photoUrl,diveCenterId,priceMinor,currency,bookingUrl]);
+int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,createdAt,joined,creatorUserId,participantCount,unreadCount,hasTransportAlert,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus,photoUrl,diveCenterId,priceMinor,currency,bookingUrl,latitude,longitude]);
 
 @override
 String toString() {
-  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, unreadCount: $unreadCount, hasTransportAlert: $hasTransportAlert, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus, photoUrl: $photoUrl, diveCenterId: $diveCenterId, priceMinor: $priceMinor, currency: $currency, bookingUrl: $bookingUrl)';
+  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, unreadCount: $unreadCount, hasTransportAlert: $hasTransportAlert, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus, photoUrl: $photoUrl, diveCenterId: $diveCenterId, priceMinor: $priceMinor, currency: $currency, bookingUrl: $bookingUrl, latitude: $latitude, longitude: $longitude)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $TripApiModelCopyWith<$Res>  {
   factory $TripApiModelCopyWith(TripApiModel value, $Res Function(TripApiModel) _then) = _$TripApiModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String title, String location, DateTime startTime, DateTime createdAt, bool joined, String? creatorUserId, int participantCount, int unreadCount, bool hasTransportAlert, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus, String? photoUrl, String? diveCenterId, int? priceMinor, String currency, String? bookingUrl
+ String id, String title, String location, DateTime startTime, DateTime createdAt, bool joined, String? creatorUserId, int participantCount, int unreadCount, bool hasTransportAlert, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus, String? photoUrl, String? diveCenterId, int? priceMinor, String currency, String? bookingUrl, double? latitude, double? longitude
 });
 
 
@@ -65,7 +65,7 @@ class _$TripApiModelCopyWithImpl<$Res>
 
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? unreadCount = null,Object? hasTransportAlert = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,Object? photoUrl = freezed,Object? diveCenterId = freezed,Object? priceMinor = freezed,Object? currency = null,Object? bookingUrl = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? unreadCount = null,Object? hasTransportAlert = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,Object? photoUrl = freezed,Object? diveCenterId = freezed,Object? priceMinor = freezed,Object? currency = null,Object? bookingUrl = freezed,Object? latitude = freezed,Object? longitude = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -93,7 +93,9 @@ as String?,diveCenterId: freezed == diveCenterId ? _self.diveCenterId : diveCent
 as String?,priceMinor: freezed == priceMinor ? _self.priceMinor : priceMinor // ignore: cast_nullable_to_non_nullable
 as int?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,bookingUrl: freezed == bookingUrl ? _self.bookingUrl : bookingUrl // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,latitude: freezed == latitude ? _self.latitude : latitude // ignore: cast_nullable_to_non_nullable
+as double?,longitude: freezed == longitude ? _self.longitude : longitude // ignore: cast_nullable_to_non_nullable
+as double?,
   ));
 }
 
@@ -178,10 +180,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  bool hasTransportAlert,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency,  String? bookingUrl)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  bool hasTransportAlert,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency,  String? bookingUrl,  double? latitude,  double? longitude)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TripApiModel() when $default != null:
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.hasTransportAlert,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency,_that.bookingUrl);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.hasTransportAlert,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency,_that.bookingUrl,_that.latitude,_that.longitude);case _:
   return orElse();
 
 }
@@ -199,10 +201,10 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.create
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  bool hasTransportAlert,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency,  String? bookingUrl)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  bool hasTransportAlert,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency,  String? bookingUrl,  double? latitude,  double? longitude)  $default,) {final _that = this;
 switch (_that) {
 case _TripApiModel():
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.hasTransportAlert,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency,_that.bookingUrl);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.hasTransportAlert,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency,_that.bookingUrl,_that.latitude,_that.longitude);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -219,10 +221,10 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.create
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  bool hasTransportAlert,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency,  String? bookingUrl)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String title,  String location,  DateTime startTime,  DateTime createdAt,  bool joined,  String? creatorUserId,  int participantCount,  int unreadCount,  bool hasTransportAlert,  DateTime? endDate,  String? description,  String? meetingPoint,  int? diveCountMin,  int? diveCountMax,  int? depthMinM,  int? depthMaxM,  String? minCertification,  String? bookingCode,  int? maxParticipants,  String bookingStatus,  String? photoUrl,  String? diveCenterId,  int? priceMinor,  String currency,  String? bookingUrl,  double? latitude,  double? longitude)?  $default,) {final _that = this;
 switch (_that) {
 case _TripApiModel() when $default != null:
-return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.hasTransportAlert,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency,_that.bookingUrl);case _:
+return $default(_that.id,_that.title,_that.location,_that.startTime,_that.createdAt,_that.joined,_that.creatorUserId,_that.participantCount,_that.unreadCount,_that.hasTransportAlert,_that.endDate,_that.description,_that.meetingPoint,_that.diveCountMin,_that.diveCountMax,_that.depthMinM,_that.depthMaxM,_that.minCertification,_that.bookingCode,_that.maxParticipants,_that.bookingStatus,_that.photoUrl,_that.diveCenterId,_that.priceMinor,_that.currency,_that.bookingUrl,_that.latitude,_that.longitude);case _:
   return null;
 
 }
@@ -234,7 +236,7 @@ return $default(_that.id,_that.title,_that.location,_that.startTime,_that.create
 @JsonSerializable()
 
 class _TripApiModel implements TripApiModel {
-  const _TripApiModel({required this.id, required this.title, required this.location, required this.startTime, required this.createdAt, required this.joined, this.creatorUserId, this.participantCount = 0, this.unreadCount = 0, this.hasTransportAlert = false, this.endDate, this.description, this.meetingPoint, this.diveCountMin, this.diveCountMax, this.depthMinM, this.depthMaxM, this.minCertification, this.bookingCode, this.maxParticipants, this.bookingStatus = 'open', this.photoUrl, this.diveCenterId, this.priceMinor, this.currency = 'DKK', this.bookingUrl});
+  const _TripApiModel({required this.id, required this.title, required this.location, required this.startTime, required this.createdAt, required this.joined, this.creatorUserId, this.participantCount = 0, this.unreadCount = 0, this.hasTransportAlert = false, this.endDate, this.description, this.meetingPoint, this.diveCountMin, this.diveCountMax, this.depthMinM, this.depthMaxM, this.minCertification, this.bookingCode, this.maxParticipants, this.bookingStatus = 'open', this.photoUrl, this.diveCenterId, this.priceMinor, this.currency = 'DKK', this.bookingUrl, this.latitude, this.longitude});
   factory _TripApiModel.fromJson(Map<String, dynamic> json) => _$TripApiModelFromJson(json);
 
 @override final  String id;
@@ -263,6 +265,8 @@ class _TripApiModel implements TripApiModel {
 @override final  int? priceMinor;
 @override@JsonKey() final  String currency;
 @override final  String? bookingUrl;
+@override final  double? latitude;
+@override final  double? longitude;
 
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
@@ -277,16 +281,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.hasTransportAlert, hasTransportAlert) || other.hasTransportAlert == hasTransportAlert)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.diveCenterId, diveCenterId) || other.diveCenterId == diveCenterId)&&(identical(other.priceMinor, priceMinor) || other.priceMinor == priceMinor)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.bookingUrl, bookingUrl) || other.bookingUrl == bookingUrl));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TripApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.title, title) || other.title == title)&&(identical(other.location, location) || other.location == location)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.creatorUserId, creatorUserId) || other.creatorUserId == creatorUserId)&&(identical(other.participantCount, participantCount) || other.participantCount == participantCount)&&(identical(other.unreadCount, unreadCount) || other.unreadCount == unreadCount)&&(identical(other.hasTransportAlert, hasTransportAlert) || other.hasTransportAlert == hasTransportAlert)&&(identical(other.endDate, endDate) || other.endDate == endDate)&&(identical(other.description, description) || other.description == description)&&(identical(other.meetingPoint, meetingPoint) || other.meetingPoint == meetingPoint)&&(identical(other.diveCountMin, diveCountMin) || other.diveCountMin == diveCountMin)&&(identical(other.diveCountMax, diveCountMax) || other.diveCountMax == diveCountMax)&&(identical(other.depthMinM, depthMinM) || other.depthMinM == depthMinM)&&(identical(other.depthMaxM, depthMaxM) || other.depthMaxM == depthMaxM)&&(identical(other.minCertification, minCertification) || other.minCertification == minCertification)&&(identical(other.bookingCode, bookingCode) || other.bookingCode == bookingCode)&&(identical(other.maxParticipants, maxParticipants) || other.maxParticipants == maxParticipants)&&(identical(other.bookingStatus, bookingStatus) || other.bookingStatus == bookingStatus)&&(identical(other.photoUrl, photoUrl) || other.photoUrl == photoUrl)&&(identical(other.diveCenterId, diveCenterId) || other.diveCenterId == diveCenterId)&&(identical(other.priceMinor, priceMinor) || other.priceMinor == priceMinor)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.bookingUrl, bookingUrl) || other.bookingUrl == bookingUrl)&&(identical(other.latitude, latitude) || other.latitude == latitude)&&(identical(other.longitude, longitude) || other.longitude == longitude));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,createdAt,joined,creatorUserId,participantCount,unreadCount,hasTransportAlert,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus,photoUrl,diveCenterId,priceMinor,currency,bookingUrl]);
+int get hashCode => Object.hashAll([runtimeType,id,title,location,startTime,createdAt,joined,creatorUserId,participantCount,unreadCount,hasTransportAlert,endDate,description,meetingPoint,diveCountMin,diveCountMax,depthMinM,depthMaxM,minCertification,bookingCode,maxParticipants,bookingStatus,photoUrl,diveCenterId,priceMinor,currency,bookingUrl,latitude,longitude]);
 
 @override
 String toString() {
-  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, unreadCount: $unreadCount, hasTransportAlert: $hasTransportAlert, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus, photoUrl: $photoUrl, diveCenterId: $diveCenterId, priceMinor: $priceMinor, currency: $currency, bookingUrl: $bookingUrl)';
+  return 'TripApiModel(id: $id, title: $title, location: $location, startTime: $startTime, createdAt: $createdAt, joined: $joined, creatorUserId: $creatorUserId, participantCount: $participantCount, unreadCount: $unreadCount, hasTransportAlert: $hasTransportAlert, endDate: $endDate, description: $description, meetingPoint: $meetingPoint, diveCountMin: $diveCountMin, diveCountMax: $diveCountMax, depthMinM: $depthMinM, depthMaxM: $depthMaxM, minCertification: $minCertification, bookingCode: $bookingCode, maxParticipants: $maxParticipants, bookingStatus: $bookingStatus, photoUrl: $photoUrl, diveCenterId: $diveCenterId, priceMinor: $priceMinor, currency: $currency, bookingUrl: $bookingUrl, latitude: $latitude, longitude: $longitude)';
 }
 
 
@@ -297,7 +301,7 @@ abstract mixin class _$TripApiModelCopyWith<$Res> implements $TripApiModelCopyWi
   factory _$TripApiModelCopyWith(_TripApiModel value, $Res Function(_TripApiModel) _then) = __$TripApiModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String title, String location, DateTime startTime, DateTime createdAt, bool joined, String? creatorUserId, int participantCount, int unreadCount, bool hasTransportAlert, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus, String? photoUrl, String? diveCenterId, int? priceMinor, String currency, String? bookingUrl
+ String id, String title, String location, DateTime startTime, DateTime createdAt, bool joined, String? creatorUserId, int participantCount, int unreadCount, bool hasTransportAlert, DateTime? endDate, String? description, String? meetingPoint, int? diveCountMin, int? diveCountMax, int? depthMinM, int? depthMaxM, String? minCertification, String? bookingCode, int? maxParticipants, String bookingStatus, String? photoUrl, String? diveCenterId, int? priceMinor, String currency, String? bookingUrl, double? latitude, double? longitude
 });
 
 
@@ -314,7 +318,7 @@ class __$TripApiModelCopyWithImpl<$Res>
 
 /// Create a copy of TripApiModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? unreadCount = null,Object? hasTransportAlert = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,Object? photoUrl = freezed,Object? diveCenterId = freezed,Object? priceMinor = freezed,Object? currency = null,Object? bookingUrl = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? title = null,Object? location = null,Object? startTime = null,Object? createdAt = null,Object? joined = null,Object? creatorUserId = freezed,Object? participantCount = null,Object? unreadCount = null,Object? hasTransportAlert = null,Object? endDate = freezed,Object? description = freezed,Object? meetingPoint = freezed,Object? diveCountMin = freezed,Object? diveCountMax = freezed,Object? depthMinM = freezed,Object? depthMaxM = freezed,Object? minCertification = freezed,Object? bookingCode = freezed,Object? maxParticipants = freezed,Object? bookingStatus = null,Object? photoUrl = freezed,Object? diveCenterId = freezed,Object? priceMinor = freezed,Object? currency = null,Object? bookingUrl = freezed,Object? latitude = freezed,Object? longitude = freezed,}) {
   return _then(_TripApiModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
@@ -342,7 +346,9 @@ as String?,diveCenterId: freezed == diveCenterId ? _self.diveCenterId : diveCent
 as String?,priceMinor: freezed == priceMinor ? _self.priceMinor : priceMinor // ignore: cast_nullable_to_non_nullable
 as int?,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
 as String,bookingUrl: freezed == bookingUrl ? _self.bookingUrl : bookingUrl // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,latitude: freezed == latitude ? _self.latitude : latitude // ignore: cast_nullable_to_non_nullable
+as double?,longitude: freezed == longitude ? _self.longitude : longitude // ignore: cast_nullable_to_non_nullable
+as double?,
   ));
 }
 

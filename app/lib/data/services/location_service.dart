@@ -7,7 +7,10 @@ import 'package:geolocator/geolocator.dart';
 class LocationService {
   final _geocoding = Geocoding();
 
-  Future<String?> currentCityCountry() async {
+  /// Raw device position — used by Explore's "Nearest" sort, which needs coordinates to
+  /// compute distance against, not a display string. Same permission handling as
+  /// [currentCityCountry]; any failure (permission denied, services off) returns null.
+  Future<Position?> currentPosition() async {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) return null;
 
@@ -19,9 +22,19 @@ class LocationService {
         return null;
       }
 
-      final position = await Geolocator.getCurrentPosition(
+      return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
       );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<String?> currentCityCountry() async {
+    try {
+      final position = await currentPosition();
+      if (position == null) return null;
+
       final placemarks = await _geocoding.placemarkFromCoordinates(position.latitude, position.longitude);
       if (placemarks.isEmpty) return null;
 

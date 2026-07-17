@@ -148,6 +148,7 @@ class _ProfileViewState extends State<ProfileView> {
                   onEdit: () => _openEditProfile(context, profile),
                   onLevelStatTap: _scrollToCertifications,
                   onDiveOut: widget.authRepository.signOut,
+                  onDeleteAccount: widget.authRepository.deleteAccount,
                   specialtiesExpanded: _specialtiesExpanded,
                   onToggleSpecialtiesExpanded: (v) => setState(() => _specialtiesExpanded = v),
                 );
@@ -232,6 +233,7 @@ class _SignedInBody extends StatelessWidget {
     required this.onEdit,
     required this.onLevelStatTap,
     required this.onDiveOut,
+    required this.onDeleteAccount,
     required this.specialtiesExpanded,
     required this.onToggleSpecialtiesExpanded,
   });
@@ -242,6 +244,7 @@ class _SignedInBody extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onLevelStatTap;
   final Future<void> Function() onDiveOut;
+  final Future<void> Function() onDeleteAccount;
   final bool specialtiesExpanded;
   final ValueChanged<bool> onToggleSpecialtiesExpanded;
 
@@ -277,6 +280,47 @@ class _SignedInBody extends StatelessWidget {
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.error ?? 'Could not upload photo')));
     }
+  }
+
+  Future<void> _removeAvatar(BuildContext context) async {
+    final ok = await viewModel.removeAvatar();
+    if (!context.mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.error ?? 'Could not remove photo')));
+    }
+  }
+
+  // "Look at it vs change it" separation — same precedent CardPhotoPicker uses for
+  // cert/specialty photos — rather than jumping straight into the image picker on tap.
+  Future<void> _showAvatarOptions(BuildContext context) async {
+    final hasAvatar = profile.avatarUrl?.isNotEmpty ?? false;
+    await showModalBottomSheet(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Change photo'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _pickAndUploadAvatar(context);
+              },
+            ),
+            if (hasAvatar)
+              ListTile(
+                leading: Icon(Icons.delete_outline, color: Theme.of(sheetContext).colorScheme.error),
+                title: Text('Remove photo', style: TextStyle(color: Theme.of(sheetContext).colorScheme.error)),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  _removeAvatar(context);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _pickAndUploadCertificationPhoto(BuildContext context) async {
@@ -315,7 +359,7 @@ class _SignedInBody extends StatelessWidget {
                 profile: profile,
                 onEditProfile: onEdit,
                 onLevelStatTap: onLevelStatTap,
-                onAvatarTap: () => _pickAndUploadAvatar(context),
+                onAvatarTap: () => _showAvatarOptions(context),
                 isUploadingAvatar: viewModel.isUploadingPhoto,
               ),
               const SizedBox(height: 24),
@@ -384,6 +428,7 @@ class _SignedInBody extends StatelessWidget {
         const _SettingsRow(icon: Icons.description_outlined, label: 'Legal', page: LegalPage()),
         const Divider(height: 32),
         _DiveOutRow(onDiveOut: onDiveOut),
+        _DeleteAccountRow(onDeleteAccount: onDeleteAccount),
         const SizedBox(height: 16),
       ],
     );
@@ -440,6 +485,65 @@ class _DiveOutRow extends StatelessWidget {
       leading: Icon(Icons.logout, color: theme.colorScheme.onSurfaceVariant),
       title: Text('Dive out', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
       onTap: onDiveOut,
+    );
+  }
+}
+
+/// Destructive styling (theme.colorScheme.error), unlike _DiveOutRow's deliberately muted
+/// treatment — this is permanent and affects trips the diver organized, so it earns the
+/// alarm treatment sign-out doesn't get.
+class _DeleteAccountRow extends StatefulWidget {
+  const _DeleteAccountRow({required this.onDeleteAccount});
+
+  final Future<void> Function() onDeleteAccount;
+
+  @override
+  State<_DeleteAccountRow> createState() => _DeleteAccountRowState();
+}
+
+class _DeleteAccountRowState extends State<_DeleteAccountRow> {
+  bool _isDeleting = false;
+
+  Future<void> _confirmAndDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This permanently anonymizes your account and cancels any trips you organize. '
+          "This can't be undone.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isDeleting = true);
+    try {
+      await widget.onDeleteAccount();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not delete account: $e')));
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListTile(
+      leading: _isDeleting
+          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+          : Icon(Icons.delete_outline, color: theme.colorScheme.error),
+      title: Text('Delete account', style: TextStyle(color: theme.colorScheme.error)),
+      onTap: _isDeleting ? null : _confirmAndDelete,
     );
   }
 }

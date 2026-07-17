@@ -19,6 +19,7 @@ var tripColumnNames = []string{
 	"dive_count_min", "dive_count_max", "depth_min_m", "depth_max_m",
 	"min_certification", "booking_code", "max_participants", "booking_status",
 	"dive_center_id", "price_minor", "currency", "booking_url",
+	"latitude", "longitude",
 }
 
 // coverPhotoExpr is the trip's first photo (trip_photos, position 0) — photo_url isn't a
@@ -56,6 +57,7 @@ func scanTrip(row interface{ Scan(...any) error }) (Trip, error) {
 		&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
 		&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus,
 		&t.DiveCenterID, &t.PriceMinor, &t.Currency, &t.BookingURL,
+		&t.Latitude, &t.Longitude,
 		&t.PhotoURL,
 	)
 	return t, err
@@ -108,6 +110,10 @@ type CreateParams struct {
 	DiveCenterID *uuid.UUID
 	PriceMinor   *int
 	BookingURL   *string
+
+	// Latitude/Longitude — see model.go's own doc comment. Best-effort, client-geocoded.
+	Latitude  *float64
+	Longitude *float64
 }
 
 func (r *Repository) Create(ctx context.Context, p CreateParams) (Trip, error) {
@@ -117,15 +123,17 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Trip, error) {
 			end_date, description, meeting_point,
 			dive_count_min, dive_count_max, depth_min_m, depth_max_m,
 			min_certification, booking_code, max_participants,
-			dive_center_id, price_minor, booking_url
+			dive_center_id, price_minor, booking_url,
+			latitude, longitude
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 		RETURNING `+tripColumns,
 		p.Title, p.Location, p.StartTime, p.CreatorUserID,
 		p.EndDate, p.Description, p.MeetingPoint,
 		p.DiveCountMin, p.DiveCountMax, p.DepthMinM, p.DepthMaxM,
 		p.MinCertification, p.BookingCode, p.MaxParticipants,
 		p.DiveCenterID, p.PriceMinor, p.BookingURL,
+		p.Latitude, p.Longitude,
 	))
 }
 
@@ -179,8 +187,22 @@ func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (
 	))
 }
 
-func (r *Repository) List(ctx context.Context) ([]Trip, error) {
-	rows, err := r.DB.QueryContext(ctx, `SELECT `+tripColumns+` FROM trips WHERE booking_status != 'cancelled' ORDER BY start_time ASC`)
+// List optionally filters by a free-text query matched against title, location, the
+// creator's display name, and the dive center's name (organizer/dive-center name aren't
+// on the trips table itself, hence the two LEFT JOINs — an empty query skips the match
+// entirely rather than joining for nothing). Sort stays date order here; distance-based
+// "Nearest" sort is computed client-side (see CLAUDE.md's Search & Filters sheet section).
+func (r *Repository) List(ctx context.Context, query string) ([]Trip, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT `+tripColumnsPrefixed("t")+`
+		FROM trips t
+		LEFT JOIN users creator ON creator.id = t.creator_user_id
+		LEFT JOIN dive_centers dc ON dc.id = t.dive_center_id
+		WHERE t.booking_status != 'cancelled'
+		  AND ($1 = '' OR t.title ILIKE '%' || $1 || '%' OR t.location ILIKE '%' || $1 || '%'
+		       OR creator.display_name ILIKE '%' || $1 || '%' OR dc.name ILIKE '%' || $1 || '%')
+		ORDER BY t.start_time ASC
+	`, query)
 	if err != nil {
 		return nil, err
 	}
@@ -366,6 +388,7 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 			&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
 			&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus,
 			&t.DiveCenterID, &t.PriceMinor, &t.Currency, &t.BookingURL,
+			&t.Latitude, &t.Longitude,
 			&t.PhotoURL,
 			&t.UnreadCount, &t.ParticipantCount, &t.HasTransportAlert, &t.HasUnreadMention,
 		)

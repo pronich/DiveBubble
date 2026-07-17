@@ -19,6 +19,7 @@ type Config struct {
 	GoogleServerClientID  string
 	AccessTokenTTL        time.Duration
 	RefreshSessionTTL     time.Duration
+	SessionRetentionGrace time.Duration
 	UploadDir             string
 	PublicBaseURL         string
 	CORSAllowedOrigins    []string
@@ -41,6 +42,9 @@ func Load() Config {
 	googleServerClientID := require("GOOGLE_SERVER_CLIENT_ID")
 	accessTokenTTL := durationEnv("ACCESS_TOKEN_TTL", 8*time.Hour)
 	refreshSessionTTL := durationEnv("REFRESH_SESSION_TTL", 180*24*time.Hour)
+	// How long an expired/revoked auth_sessions row is kept before physical deletion —
+	// separate from RefreshSessionTTL, which only governs how long the token stays usable.
+	sessionRetentionGrace := durationEnv("SESSION_RETENTION_GRACE", 30*24*time.Hour)
 
 	uploadDir := os.Getenv("UPLOAD_DIR")
 	if uploadDir == "" {
@@ -70,6 +74,7 @@ func Load() Config {
 		GoogleServerClientID:  googleServerClientID,
 		AccessTokenTTL:        accessTokenTTL,
 		RefreshSessionTTL:     refreshSessionTTL,
+		SessionRetentionGrace: sessionRetentionGrace,
 		UploadDir:             uploadDir,
 		PublicBaseURL:         publicBaseURL,
 		CORSAllowedOrigins:    corsAllowedOrigins,

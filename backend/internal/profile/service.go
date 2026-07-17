@@ -21,3 +21,7 @@ func (s *Service) Get(ctx context.Context, userID uuid.UUID) (Profile, error) {
 func (s *Service) Update(ctx context.Context, userID uuid.UUID, params UpdateParams) (Profile, error) {
 	return s.Repo.Update(ctx, userID, params)
 }
+
+func (s *Service) ClearAvatar(ctx context.Context, userID uuid.UUID) (Profile, error) {
+	return s.Repo.ClearAvatar(ctx, userID)
+}

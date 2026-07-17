@@ -87,6 +87,7 @@ class _TripsListViewState extends State<TripsListView> {
         child: Column(
           children: [
             _ExploreHeader(
+              viewModel: widget.viewModel,
               onCreateTrip: () => _openCreateTrip(context),
               onJoinByCode: () => _openJoinByCode(context),
               showShadow: _isScrolled,
@@ -107,6 +108,15 @@ class _TripsListViewState extends State<TripsListView> {
                     }
 
                     final trips = widget.viewModel.trips;
+                    if (trips.isEmpty && widget.viewModel.hasActiveFilters) {
+                      return EmptyStateView(
+                        icon: Icons.search_off,
+                        title: 'No trips match your search',
+                        subtitle: 'Try a different search term or clear your filters.',
+                        ctaLabel: 'Clear filters',
+                        onCtaPressed: widget.viewModel.clearFilters,
+                      );
+                    }
                     if (trips.isEmpty) {
                       return EmptyStateView(
                         icon: Icons.scuba_diving_outlined,
@@ -253,26 +263,93 @@ class _TripsListViewState extends State<TripsListView> {
   }
 }
 
-// Search is a visual mock only (no query/filter logic exists yet) — the two quick actions below
-// deliberately reuse the calm FilledButton (light-fill) theme rather than the bold primary
-// ElevatedButton style, since Create/Join are secondary entry points most divers will ignore
-// in favor of just browsing, the same way Airbnb's category chips stay quiet under its search bar.
-class _ExploreHeader extends StatelessWidget {
-  const _ExploreHeader({required this.onCreateTrip, required this.onJoinByCode, required this.showShadow});
+// The two quick actions below deliberately reuse the calm FilledButton (light-fill) theme
+// rather than the bold primary ElevatedButton style, since Create/Join are secondary entry
+// points most divers will ignore in favor of just browsing, the same way Airbnb's category
+// chips stay quiet under its search bar. Search expands inline, directly below the search
+// field, staying pinned at the top of the screen — Airbnb's "Where?" panel pattern — rather
+// than sliding up as a bottom sheet; the trip grid below just gets shorter while it's open.
+class _ExploreHeader extends StatefulWidget {
+  const _ExploreHeader({
+    required this.viewModel,
+    required this.onCreateTrip,
+    required this.onJoinByCode,
+    required this.showShadow,
+  });
 
+  final TripsListViewModel viewModel;
   final VoidCallback onCreateTrip;
   final VoidCallback onJoinByCode;
   final bool showShadow;
 
   @override
+  State<_ExploreHeader> createState() => _ExploreHeaderState();
+}
+
+class _ExploreHeaderState extends State<_ExploreHeader> {
+  bool _filtersOpen = false;
+  late final _queryController = TextEditingController(text: widget.viewModel.query);
+  late SortMode _sortMode = widget.viewModel.sortMode;
+  final _queryFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _queryController.dispose();
+    _queryFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _openFilters() {
+    setState(() => _filtersOpen = true);
+    _queryFocusNode.requestFocus();
+  }
+
+  void _closeFilters() {
+    setState(() => _filtersOpen = false);
+    _queryFocusNode.unfocus();
+  }
+
+  Future<void> _selectNearest() async {
+    setState(() => _sortMode = SortMode.nearest);
+    final resolved = await widget.viewModel.resolvePosition();
+    if (!resolved && mounted) {
+      setState(() => _sortMode = SortMode.soonest);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not get your location — showing soonest trips instead')),
+      );
+    }
+  }
+
+  void _clear() {
+    setState(() {
+      _queryController.clear();
+      _sortMode = SortMode.soonest;
+    });
+  }
+
+  Future<void> _apply() async {
+    _closeFilters();
+    await widget.viewModel.applyFilters(query: _queryController.text.trim(), sortMode: _sortMode);
+  }
+
+  String _summaryLabel() {
+    final parts = <String>[
+      if (widget.viewModel.query.isNotEmpty) "'${widget.viewModel.query}'",
+      if (widget.viewModel.sortMode == SortMode.nearest) 'Nearest',
+    ];
+    return parts.join(' · ');
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasFilters = widget.viewModel.hasActiveFilters;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       decoration: BoxDecoration(
         color: theme.scaffoldBackgroundColor,
-        boxShadow: showShadow
+        boxShadow: widget.showShadow
             ? [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.08),
@@ -291,73 +368,135 @@ class _ExploreHeader extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
             child: InkWell(
               borderRadius: BorderRadius.circular(999),
-              onTap: () => _showComingSoon(context),
+              onTap: _filtersOpen ? null : _openFilters,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 11,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.search,
-                      size: 20,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
+                    Icon(Icons.search, size: 20, color: theme.colorScheme.onSurfaceVariant),
                     const SizedBox(width: 10),
-                    Text(
-                      'Search trips',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                    Expanded(
+                      child: _filtersOpen
+                          ? TextField(
+                              controller: _queryController,
+                              focusNode: _queryFocusNode,
+                              textInputAction: TextInputAction.search,
+                              onSubmitted: (_) => _apply(),
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                border: InputBorder.none,
+                                hintText: 'Trips, dive centers, organizers, locations',
+                              ),
+                            )
+                          : Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 7),
+                              child: Text(
+                                hasFilters ? _summaryLabel() : 'Search trips',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: hasFilters ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant,
+                                  fontWeight: hasFilters ? FontWeight.w600 : FontWeight.normal,
+                                ),
+                              ),
+                            ),
                     ),
+                    if (_filtersOpen)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: _closeFilters,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(Icons.close, size: 20, color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      )
+                    else if (hasFilters)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: widget.viewModel.clearFilters,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(Icons.close, size: 18, color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
                   ],
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onCreateTrip,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Create trip'),
-                  style: FilledButton.styleFrom(
-                    shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    visualDensity: VisualDensity.compact,
+          if (_filtersOpen) ...[
+            const SizedBox(height: 16),
+            Text('Sort by', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+            ListenableBuilder(
+              listenable: widget.viewModel,
+              builder: (context, _) {
+                return Wrap(
+                  spacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Soonest'),
+                      selected: _sortMode == SortMode.soonest,
+                      onSelected: (_) => setState(() => _sortMode = SortMode.soonest),
+                    ),
+                    ChoiceChip(
+                      label: widget.viewModel.isResolvingPosition
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Nearest'),
+                      selected: _sortMode == SortMode.nearest,
+                      onSelected: widget.viewModel.isResolvingPosition ? null : (_) => _selectNearest(),
+                    ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                TextButton(onPressed: _clear, child: const Text('Clear all')),
+                const Spacer(),
+                FilledButton(onPressed: _apply, child: const Text('Show trips')),
+              ],
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: widget.onCreateTrip,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Create trip'),
+                    style: FilledButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: onJoinByCode,
-                  icon: const Icon(
-                    Icons.confirmation_number_outlined,
-                    size: 18,
-                  ),
-                  label: const Text('Join trip'),
-                  style: FilledButton.styleFrom(
-                    shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    visualDensity: VisualDensity.compact,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: widget.onJoinByCode,
+                    icon: const Icon(Icons.confirmation_number_outlined, size: 18),
+                    label: const Text('Join trip'),
+                    style: FilledButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );
-  }
-
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Coming soon')));
   }
 }
 

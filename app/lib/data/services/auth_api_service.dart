@@ -79,6 +79,18 @@ class AuthApiService {
     );
   }
 
+  // Unlike logout (best-effort, status ignored), a failure here must propagate — the caller
+  // only clears the local session once this genuinely succeeds (see AuthRepository.deleteAccount).
+  Future<void> deleteAccount(String accessToken) async {
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/me'),
+      headers: {'Authorization': 'Bearer $accessToken'},
+    );
+    if (res.statusCode != 200) {
+      throw Exception(_extractError(res.body) ?? 'Could not delete account');
+    }
+  }
+
   // Server errors come back as {"error": "..."} — surface that message directly instead of the raw body.
   String? _extractError(String body) {
     try {

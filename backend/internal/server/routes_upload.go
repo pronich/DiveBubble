@@ -25,6 +25,7 @@ func registerUploadRoutes(
 	authIssuer *auth.TokenIssuer,
 ) {
 	mux.HandleFunc("POST /me/avatar", withAuth(authIssuer, handleUploadAvatar(uploadSvc, profileSvc)))
+	mux.HandleFunc("DELETE /me/avatar", withAuth(authIssuer, handleDeleteAvatar(profileSvc)))
 	mux.HandleFunc("POST /me/certification-photo", withAuth(authIssuer, handleUploadCertificationPhoto(uploadSvc, profileSvc)))
 	mux.HandleFunc("POST /me/specialties/{id}/photo", withAuth(authIssuer, handleUploadSpecialtyPhoto(uploadSvc, certificationSvc)))
 	mux.HandleFunc("POST /trips/{id}/photos", withAuth(authIssuer, handleUploadTripPhoto(uploadSvc, tripSvc)))
@@ -67,6 +68,17 @@ func handleUploadAvatar(uploadSvc *upload.Service, profileSvc *profile.Service) 
 		p, err := profileSvc.Update(r.Context(), userID, profile.UpdateParams{AvatarURL: &url})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not update profile")
+			return
+		}
+		writeJSON(w, http.StatusOK, toProfileResponse(p))
+	}
+}
+
+func handleDeleteAvatar(profileSvc *profile.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		p, err := profileSvc.ClearAvatar(r.Context(), userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not remove avatar")
 			return
 		}
 		writeJSON(w, http.StatusOK, toProfileResponse(p))

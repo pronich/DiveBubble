@@ -135,3 +135,17 @@ func (r *SessionRepository) RevokeSession(ctx context.Context, userID, sessionID
 	`, sessionID, userID, revokeReasonLogout)
 	return err
 }
+
+// DeleteExpired physically removes session rows that became unusable (expired, or revoked —
+// e.g. via rotation/logout) before the given cutoff, keeping a short grace window past that
+// point for fraud investigation rather than purging the instant a row goes stale. Returns the
+// number of rows removed, for the caller to log.
+func (r *SessionRepository) DeleteExpired(ctx context.Context, before time.Time) (int64, error) {
+	res, err := r.DB.ExecContext(ctx, `
+		DELETE FROM auth_sessions WHERE expires_at < $1 OR (revoked_at IS NOT NULL AND revoked_at < $1)
+	`, before.UTC())
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}

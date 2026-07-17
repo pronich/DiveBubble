@@ -184,6 +184,22 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
+  Future<bool> removeAvatar() async {
+    _isUploadingPhoto = true;
+    notifyListeners();
+
+    try {
+      _profile = await _repository.removeAvatar();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      return false;
+    } finally {
+      _isUploadingPhoto = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> uploadCertificationPhoto(String filePath) async {
     _isUploadingPhoto = true;
     notifyListeners();

@@ -36,6 +36,8 @@ _TripApiModel _$TripApiModelFromJson(Map<String, dynamic> json) =>
       priceMinor: (json['priceMinor'] as num?)?.toInt(),
       currency: json['currency'] as String? ?? 'DKK',
       bookingUrl: json['bookingUrl'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
     );
 
 Map<String, dynamic> _$TripApiModelToJson(_TripApiModel instance) =>
@@ -66,4 +68,6 @@ Map<String, dynamic> _$TripApiModelToJson(_TripApiModel instance) =>
       'priceMinor': instance.priceMinor,
       'currency': instance.currency,
       'bookingUrl': instance.bookingUrl,
+      'latitude': instance.latitude,
+      'longitude': instance.longitude,
     };

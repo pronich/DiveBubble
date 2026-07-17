@@ -47,6 +47,11 @@ class ProfileRepository {
     return apiModel.toDomain();
   }
 
+  Future<Profile> removeAvatar() async {
+    final apiModel = await _service.removeAvatar();
+    return apiModel.toDomain();
+  }
+
   Future<Profile> uploadCertificationPhoto(String filePath) async {
     final apiModel = await _service.uploadCertificationPhoto(filePath);
     return apiModel.toDomain();

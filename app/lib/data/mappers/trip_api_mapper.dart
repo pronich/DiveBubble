@@ -28,5 +28,7 @@ extension TripApiMapper on TripApiModel {
         priceMinor: priceMinor,
         currency: currency,
         bookingUrl: bookingUrl,
+        latitude: latitude,
+        longitude: longitude,
       );
 }

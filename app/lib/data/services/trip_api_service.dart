@@ -29,8 +29,11 @@ class TripApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
-  Future<List<TripApiModel>> fetchTrips() async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips'));
+  Future<List<TripApiModel>> fetchTrips({String? query}) async {
+    final uri = Uri.parse('$baseUrl/trips').replace(
+      queryParameters: (query != null && query.trim().isNotEmpty) ? {'q': query.trim()} : null,
+    );
+    final res = await _client.get(uri);
     if (res.statusCode != 200) {
       throw Exception('fetchTrips failed: ${res.statusCode} ${res.body}');
     }
@@ -164,6 +167,8 @@ class TripApiService {
     int? depthMaxM,
     String? minCertification,
     int? maxParticipants,
+    double? latitude,
+    double? longitude,
   }) async {
     final body = <String, dynamic>{
       'title': title,
@@ -178,6 +183,8 @@ class TripApiService {
       if (depthMaxM != null) 'depthMaxM': depthMaxM,
       if (minCertification != null) 'minCertification': minCertification,
       if (maxParticipants != null) 'maxParticipants': maxParticipants,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
     };
     final res = await _client.post(
       Uri.parse('$baseUrl/trips'),
