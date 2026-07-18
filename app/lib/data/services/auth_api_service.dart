@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-class GoogleSignInResult {
-  const GoogleSignInResult({
+class ProviderSignInResult {
+  const ProviderSignInResult({
     required this.accessToken,
     required this.accessTokenExpiresAt,
     required this.refreshToken,
@@ -36,7 +36,7 @@ class AuthApiService {
   final String baseUrl;
   final http.Client _client;
 
-  Future<GoogleSignInResult> signInWithGoogle(String idToken) async {
+  Future<ProviderSignInResult> signInWithGoogle(String idToken) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/auth/google'),
       headers: {'Content-Type': 'application/json'},
@@ -46,7 +46,39 @@ class AuthApiService {
       throw Exception(_extractError(res.body) ?? 'Google sign-in failed');
     }
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-    return GoogleSignInResult(
+    return ProviderSignInResult(
+      accessToken: decoded['accessToken'] as String,
+      accessTokenExpiresAt: DateTime.parse(decoded['accessTokenExpiresAt'] as String),
+      refreshToken: decoded['refreshToken'] as String,
+      userId: decoded['userId'] as String,
+      isNewUser: decoded['isNewUser'] as bool? ?? false,
+    );
+  }
+
+  // nonce is the *raw* nonce (the client sends Apple the SHA-256 hex digest of it instead —
+  // see AuthRepository.signInWithApple). email/fullName are out-of-band hints from
+  // AuthorizationCredentialAppleID, present only on the very first authorization ever.
+  Future<ProviderSignInResult> signInWithApple({
+    required String identityToken,
+    required String nonce,
+    String? email,
+    String? fullName,
+  }) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/auth/apple'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'identityToken': identityToken,
+        'nonce': nonce,
+        if (email != null) 'email': email,
+        if (fullName != null) 'fullName': fullName,
+      }),
+    );
+    if (res.statusCode != 200) {
+      throw Exception(_extractError(res.body) ?? 'Apple sign-in failed');
+    }
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    return ProviderSignInResult(
       accessToken: decoded['accessToken'] as String,
       accessTokenExpiresAt: DateTime.parse(decoded['accessTokenExpiresAt'] as String),
       refreshToken: decoded['refreshToken'] as String,

@@ -17,6 +17,10 @@ type Config struct {
 	CentrifugoTokenSecret string
 	JWTSecret             string
 	GoogleServerClientID  string
+	// AppleAudience is the iOS app's bundle id (the App ID, not a Services ID — DiveBubble
+	// has no web Sign in with Apple flow). Defaults to the one and only bundle id this
+	// project ships, so no env var is required in dev.
+	AppleAudience string
 	AccessTokenTTL        time.Duration
 	RefreshSessionTTL     time.Duration
 	SessionRetentionGrace time.Duration
@@ -52,6 +56,10 @@ func Load() Config {
 	centrifugoTokenSecret := require("CENTRIFUGO_TOKEN_SECRET")
 	jwtSecret := require("JWT_SECRET")
 	googleServerClientID := require("GOOGLE_SERVER_CLIENT_ID")
+	appleAudience := os.Getenv("APPLE_AUDIENCE")
+	if appleAudience == "" {
+		appleAudience = "io.divebubble.app"
+	}
 	accessTokenTTL := durationEnv("ACCESS_TOKEN_TTL", 8*time.Hour)
 	refreshSessionTTL := durationEnv("REFRESH_SESSION_TTL", 180*24*time.Hour)
 	// How long an expired/revoked auth_sessions row is kept before physical deletion —
@@ -96,6 +104,7 @@ func Load() Config {
 		CentrifugoTokenSecret: centrifugoTokenSecret,
 		JWTSecret:             jwtSecret,
 		GoogleServerClientID:  googleServerClientID,
+		AppleAudience:         appleAudience,
 		AccessTokenTTL:        accessTokenTTL,
 		RefreshSessionTTL:     refreshSessionTTL,
 		SessionRetentionGrace: sessionRetentionGrace,

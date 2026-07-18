@@ -1,8 +1,24 @@
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../services/auth_api_service.dart';
 import '../services/token_storage_service.dart';
+
+/// A random string sent to Apple (as its SHA-256 hex digest) and to our own backend (raw) —
+/// the backend re-hashes it and checks it against the identity token's own nonce claim, which
+/// is how Sign in with Apple defends against a stolen/replayed token being reused.
+String _generateNonce([int length = 32]) {
+  const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+  final random = Random.secure();
+  return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+}
+
+String _sha256Hex(String input) => sha256.convert(utf8.encode(input)).toString();
 
 /// Result of a successful sign-in — isNewUser lets the caller drop a brand-new account
 /// straight into Edit Profile instead of an empty screen.
@@ -63,6 +79,53 @@ class AuthRepository extends ChangeNotifier {
     }
 
     final result = await _api.signInWithGoogle(idToken);
+    await _tokens.save(
+      accessToken: result.accessToken,
+      accessTokenExpiresAt: result.accessTokenExpiresAt,
+      refreshToken: result.refreshToken,
+      userId: result.userId,
+    );
+    notifyListeners();
+    return SignInResult(userId: result.userId, isNewUser: result.isNewUser);
+  }
+
+  /// Runs the native Sign in with Apple flow and exchanges the resulting identity token with
+  /// the backend. email/givenName/familyName only ever come back non-null on a diver's very
+  /// first authorization ever — later sign-ins omit them, which is fine: the backend only
+  /// seeds the user row from these hints on account creation (see LoginOrRegister), never
+  /// overwrites on later logins, so there's nothing for this method to cache/persist locally.
+  Future<SignInResult> signInWithApple() async {
+    final rawNonce = _generateNonce();
+
+    final AuthorizationCredentialAppleID credential;
+    try {
+      credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [AppleIDAuthorizationScopes.email, AppleIDAuthorizationScopes.fullName],
+        nonce: _sha256Hex(rawNonce),
+      );
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        throw Exception('Sign-in cancelled');
+      }
+      throw Exception(e.message);
+    }
+
+    final identityToken = credential.identityToken;
+    if (identityToken == null) {
+      throw Exception('Apple did not return an identity token');
+    }
+
+    final fullName = [
+      credential.givenName,
+      credential.familyName,
+    ].where((s) => s != null && s.isNotEmpty).join(' ');
+
+    final result = await _api.signInWithApple(
+      identityToken: identityToken,
+      nonce: rawNonce,
+      email: credential.email,
+      fullName: fullName.isEmpty ? null : fullName,
+    );
     await _tokens.save(
       accessToken: result.accessToken,
       accessTokenExpiresAt: result.accessTokenExpiresAt,

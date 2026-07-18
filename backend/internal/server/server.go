@@ -47,6 +47,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	if err != nil {
 		log.Fatalf("server: %v", err)
 	}
+	appleKeys := auth.NewAppleKeySet()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)
@@ -54,7 +55,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	registerMessageRoutes(mux, messageSvc, tripSvc, diveCenterSvc, authIssuer, publisher)
 	registerTransportRoutes(mux, transportSvc, tripSvc, diveCenterSvc, authIssuer)
 	registerRealtimeRoutes(mux, realtimeTokenIssuer, authIssuer)
-	registerAuthRoutes(mux, cfg, identityRepo, sessionRepo, authIssuer)
+	registerAuthRoutes(mux, cfg, identityRepo, sessionRepo, authIssuer, appleKeys)
 	registerProfileRoutes(mux, profileSvc, authIssuer)
 	registerCertificationRoutes(mux, certificationSvc, authIssuer)
 	registerGearRoutes(mux, gearSvc, authIssuer)

@@ -14,14 +14,27 @@ import (
 	"github.com/google/uuid"
 )
 
-func registerAuthRoutes(mux *http.ServeMux, cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer) {
+func registerAuthRoutes(mux *http.ServeMux, cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, appleKeys *auth.AppleKeySet) {
 	mux.HandleFunc("POST /auth/google", handleAuthGoogle(cfg, identities, sessions, issuer))
+	mux.HandleFunc("POST /auth/apple", handleAuthApple(cfg, identities, sessions, issuer, appleKeys))
 	mux.HandleFunc("POST /auth/refresh", handleAuthRefresh(cfg, sessions, issuer))
 	mux.Handle("POST /auth/logout", bearerAuth(issuer, handleAuthLogout(sessions)))
 }
 
 type googleAuthRequest struct {
 	IDToken string `json:"idToken"`
+}
+
+// appleAuthRequest — Email/FullName are out-of-band hints from the native
+// ASAuthorizationAppleIDCredential, present only on the very first authorization ever (Apple
+// doesn't repeat them on later sign-ins, and never puts them in the identity token itself).
+// Nonce is the *raw* nonce the client generated — the client sends Apple the SHA-256 hex
+// digest of it instead (see AppleKeySet.VerifyAppleIdentityToken's own nonce comment).
+type appleAuthRequest struct {
+	IdentityToken string `json:"identityToken"`
+	Nonce         string `json:"nonce"`
+	Email         string `json:"email"`
+	FullName      string `json:"fullName"`
 }
 
 type authLoginResponse struct {
@@ -78,6 +91,71 @@ func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, se
 		}
 		now := time.Now().UTC()
 		sessionID, err := sessions.InsertSession(r.Context(), userID, "google", refreshHash, now.Add(cfg.RefreshSessionTTL))
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not create session")
+			return
+		}
+
+		access, accessExp, err := issuer.IssueAccessToken(userID, sessionID)
+		if err != nil {
+			_ = sessions.DeleteSession(r.Context(), sessionID)
+			writeError(w, http.StatusInternalServerError, "could not issue access token")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, authLoginResponse{
+			AccessToken:          access,
+			AccessTokenExpiresAt: accessExp,
+			RefreshToken:         rawRefresh,
+			UserID:               userID,
+			IsNewUser:            isNewUser,
+		})
+	}
+}
+
+func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, appleKeys *auth.AppleKeySet) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "could not read body")
+			return
+		}
+		var req appleAuthRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+		if strings.TrimSpace(req.IdentityToken) == "" {
+			writeError(w, http.StatusBadRequest, "identityToken is required")
+			return
+		}
+
+		identity, err := appleKeys.VerifyAppleIdentityToken(r.Context(), req.IdentityToken, cfg.AppleAudience, req.Nonce)
+		if err != nil {
+			writeError(w, http.StatusUnauthorized, "Apple ID token verification failed")
+			return
+		}
+
+		// Prefer the token's own email over the credential hint if both are present — the
+		// token is the verified source; the hint is only ever useful when the token omits it.
+		email := identity.Email
+		if email == "" {
+			email = req.Email
+		}
+
+		userID, isNewUser, err := identities.LoginOrRegister(r.Context(), "apple", identity.Sub, email, req.FullName, "")
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not resolve user")
+			return
+		}
+
+		rawRefresh, refreshHash, err := auth.GenerateRefreshToken()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not create session")
+			return
+		}
+		now := time.Now().UTC()
+		sessionID, err := sessions.InsertSession(r.Context(), userID, "apple", refreshHash, now.Add(cfg.RefreshSessionTTL))
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not create session")
 			return

@@ -6,7 +6,6 @@ import '../../profile/view_models/profile_view_model.dart';
 import '../../profile/views/edit_profile_page.dart';
 
 /// Google/Apple sign-in choice sheet, opened from anywhere a gated action needs a signed-in user.
-/// Apple is a UI-only stub until App Store Connect registration lands.
 class LoginSheet extends StatefulWidget {
   const LoginSheet({super.key, required this.authRepository, required this.profileRepository});
 
@@ -35,13 +34,17 @@ class _LoginSheetState extends State<LoginSheet> {
   bool _loading = false;
   String? _error;
 
-  Future<void> _signInWithGoogle() async {
+  Future<void> _signInWithGoogle() => _signIn(widget.authRepository.signInWithGoogle);
+
+  Future<void> _signInWithApple() => _signIn(widget.authRepository.signInWithApple);
+
+  Future<void> _signIn(Future<SignInResult> Function() signIn) async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final result = await widget.authRepository.signInWithGoogle();
+      final result = await signIn();
       if (!mounted) return;
 
       if (result.isNewUser) {
@@ -104,11 +107,10 @@ class _LoginSheetState extends State<LoginSheet> {
               ),
             ],
             const SizedBox(height: 12),
-            // Visible now, disabled until the app is registered in App Store Connect for Apple Sign-In.
             ElevatedButton.icon(
-              onPressed: null,
+              onPressed: _loading ? null : _signInWithApple,
               icon: const Icon(Icons.apple, size: 20),
-              label: const Text('Continue with Apple (coming soon)'),
+              label: const Text('Continue with Apple'),
             ),
           ],
         ),
