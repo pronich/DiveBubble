@@ -43,12 +43,13 @@ compose-logs:
 
 # Production stack (postgres + migrate + centrifugo + api + this project's own nginx) — run
 # on the droplet, loads .env for every required secret docker-compose.prod.yml's own
-# ${VAR:?...} placeholders will error on if missing. This nginx is internal-only (see
-# nginx/default.conf) — the droplet's shared gateway-nginx (separate, not in this repo) owns
-# 80/443 and Cloudflare Origin TLS, and reverse-proxies api.divebubble.io here.
+# ${VAR:?...} placeholders will error on if missing. Requires the external `gateway_net`
+# docker network to already exist (`docker network create gateway_net`, one-time per droplet)
+# — this project's nginx has no host port; the droplet's shared gateway-nginx (separate, not
+# in this repo) reaches it by container name (divebubble-nginx) over that network.
 deploy-up:
 	docker compose -f docker-compose.prod.yml --env-file .env up -d --build
-	@echo "nginx: 127.0.0.1:$${NGINX_PORT:-9002} (loopback only) — point the shared gateway-nginx at this"
+	@echo "nginx: divebubble-nginx on gateway_net — point the shared gateway-nginx at this"
 	@echo "stop: make deploy-down"
 
 deploy-down:
