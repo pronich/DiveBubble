@@ -29,7 +29,13 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	profileSvc := profile.NewService(profile.NewRepository(db))
 	certificationSvc := certification.NewService(certification.NewRepository(db))
 	gearSvc := gear.NewService(gear.NewRepository(db))
-	uploadSvc := upload.NewService(cfg.UploadDir, cfg.PublicBaseURL)
+	var uploadBackend upload.Backend
+	if cfg.SpacesBucket != "" {
+		uploadBackend = upload.NewSpacesBackend(cfg.SpacesEndpoint, cfg.SpacesRegion, cfg.SpacesBucket, cfg.SpacesAccessKey, cfg.SpacesSecretKey, cfg.SpacesPublicURL)
+	} else {
+		uploadBackend = upload.NewLocalBackend(cfg.UploadDir, cfg.PublicBaseURL)
+	}
+	uploadSvc := upload.NewService(uploadBackend)
 	waitlistSvc := waitlist.NewService(waitlist.NewRepository(db))
 	accountSvc := account.NewService(account.NewRepository(db))
 	publisher := realtime.NewPublisher(cfg.CentrifugoURL, cfg.CentrifugoAPIKey)

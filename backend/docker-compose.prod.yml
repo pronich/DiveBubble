@@ -69,6 +69,14 @@ services:
       # No wildcard default in prod (see config.go) — must be the real app/admin origins,
       # e.g. https://admin.divebubble.io,https://divebubble.io
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS must be set in production}"
+      # Optional — unset (all blank) means uploads fall back to local disk (UPLOAD_DIR
+      # above). See .env.example's own Spaces section and internal/upload/service.go.
+      SPACES_ENDPOINT: "${SPACES_ENDPOINT:-}"
+      SPACES_REGION: "${SPACES_REGION:-}"
+      SPACES_BUCKET: "${SPACES_BUCKET:-}"
+      SPACES_ACCESS_KEY: "${SPACES_ACCESS_KEY:-}"
+      SPACES_SECRET_KEY: "${SPACES_SECRET_KEY:-}"
+      SPACES_CDN_URL: "${SPACES_CDN_URL:-}"
     volumes:
       - uploads_data:/data/uploads
     restart: unless-stopped

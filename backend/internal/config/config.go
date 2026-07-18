@@ -23,6 +23,18 @@ type Config struct {
 	UploadDir             string
 	PublicBaseURL         string
 	CORSAllowedOrigins    []string
+
+	// Spaces* are all optional — SpacesBucket empty means "use LocalBackend" (dev default,
+	// see server.go). Set together in production; there's no partial-Spaces mode.
+	SpacesEndpoint  string
+	SpacesRegion    string
+	SpacesBucket    string
+	SpacesAccessKey string
+	SpacesSecretKey string
+	// SpacesPublicURL is the CDN endpoint if the Space has one enabled, else the same
+	// direct https://<bucket>.<region>.digitaloceanspaces.com host — either way, computed
+	// once here so callers never re-derive it. No trailing slash.
+	SpacesPublicURL string
 }
 
 func Load() Config {
@@ -64,6 +76,18 @@ func Load() Config {
 		corsAllowedOrigins = strings.Split(raw, ",")
 	}
 
+	spacesEndpoint := os.Getenv("SPACES_ENDPOINT")
+	spacesRegion := os.Getenv("SPACES_REGION")
+	spacesBucket := os.Getenv("SPACES_BUCKET")
+	spacesAccessKey := os.Getenv("SPACES_ACCESS_KEY")
+	spacesSecretKey := os.Getenv("SPACES_SECRET_KEY")
+	spacesPublicURL := strings.TrimSuffix(os.Getenv("SPACES_CDN_URL"), "/")
+	if spacesPublicURL == "" && spacesBucket != "" {
+		// No CDN configured — fall back to the direct virtual-hosted-style Space URL,
+		// derived from the endpoint (e.g. https://fra1.digitaloceanspaces.com) + bucket.
+		spacesPublicURL = strings.Replace(spacesEndpoint, "https://", "https://"+spacesBucket+".", 1)
+	}
+
 	return Config{
 		Port:                  port,
 		DatabaseURL:           databaseURL,
@@ -78,6 +102,12 @@ func Load() Config {
 		UploadDir:             uploadDir,
 		PublicBaseURL:         publicBaseURL,
 		CORSAllowedOrigins:    corsAllowedOrigins,
+		SpacesEndpoint:        spacesEndpoint,
+		SpacesRegion:          spacesRegion,
+		SpacesBucket:          spacesBucket,
+		SpacesAccessKey:       spacesAccessKey,
+		SpacesSecretKey:       spacesSecretKey,
+		SpacesPublicURL:       spacesPublicURL,
 	}
 }
 
