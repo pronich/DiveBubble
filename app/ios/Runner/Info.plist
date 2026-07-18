@@ -40,7 +40,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>DiveBubble uses your location to show your city on your profile.</string>
+	<string>DiveBubble uses your location to show your city on your profile and to sort trips by distance.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>DiveBubble needs access to your photos to set an avatar or trip photo.</string>
 	<key>NSCameraUsageDescription</key>
