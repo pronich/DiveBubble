@@ -41,13 +41,14 @@ compose-down:
 compose-logs:
 	docker compose logs -f --tail=200
 
-# Production stack (postgres + migrate + centrifugo + api, no nginx of its own — see
-# nginx/api.divebubble.io.conf) — run on the droplet, loads .env for every required secret
-# docker-compose.prod.yml's own ${VAR:?...} placeholders will error on if missing.
+# Production stack (postgres + migrate + centrifugo + api + this project's own nginx) — run
+# on the droplet, loads .env for every required secret docker-compose.prod.yml's own
+# ${VAR:?...} placeholders will error on if missing. This nginx is internal-only (see
+# nginx/default.conf) — the droplet's shared gateway-nginx (separate, not in this repo) owns
+# 80/443 and Cloudflare Origin TLS, and reverse-proxies api.divebubble.io here.
 deploy-up:
 	docker compose -f docker-compose.prod.yml --env-file .env up -d --build
-	@echo "api: 127.0.0.1:$${API_PORT:-8081} / centrifugo: 127.0.0.1:$${CENTRIFUGO_PORT:-8090} (loopback only)"
-	@echo "point the shared droplet nginx at these — see nginx/api.divebubble.io.conf"
+	@echo "nginx: 127.0.0.1:$${NGINX_PORT:-9002} (loopback only) — point the shared gateway-nginx at this"
 	@echo "stop: make deploy-down"
 
 deploy-down:
