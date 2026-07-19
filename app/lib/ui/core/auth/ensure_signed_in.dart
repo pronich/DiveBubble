@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
+import '../../../data/repositories/push_repository.dart';
 import '../../features/onboarding/views/login_sheet.dart';
 
 /// Ensures the user is authenticated before a gated action (Join, Create trip, etc.), prompting
@@ -11,6 +12,7 @@ Future<String?> ensureSignedIn(
   BuildContext context,
   AuthRepository authRepository,
   ProfileRepository profileRepository,
+  PushRepository pushRepository,
 ) async {
   final existing = await authRepository.getValidAccessToken();
   if (existing != null) {
@@ -22,6 +24,7 @@ Future<String?> ensureSignedIn(
     context,
     authRepository: authRepository,
     profileRepository: profileRepository,
+    pushRepository: pushRepository,
   );
   if (!signedIn) return null;
   return authRepository.currentUserId();

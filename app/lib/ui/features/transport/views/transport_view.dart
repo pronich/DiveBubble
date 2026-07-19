@@ -262,7 +262,12 @@ class _TransportOfferDetailSheetState
   }
 
   Future<void> _join(TransportOffer offer) async {
-    final userId = await ensureSignedIn(context, widget.viewModel.authRepository, widget.viewModel.profileRepository);
+    final userId = await ensureSignedIn(
+      context,
+      widget.viewModel.authRepository,
+      widget.viewModel.profileRepository,
+      widget.viewModel.pushRepository,
+    );
     if (userId == null || !mounted) return;
 
     setState(() => _joinError = null);

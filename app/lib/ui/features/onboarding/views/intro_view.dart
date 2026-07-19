@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/push_repository.dart';
 import '../../../core/branding/bubble_logo_painter.dart';
 import '../../../core/branding/logo_bubbles.dart';
 import '../../../core/branding/logo_layout.dart';
@@ -18,11 +19,13 @@ class IntroView extends StatefulWidget {
     super.key,
     required this.authRepository,
     required this.profileRepository,
+    required this.pushRepository,
     required this.onDone,
   });
 
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final PushRepository pushRepository;
 
   /// Called once the user picks Dive in (after login) or Skip — either way, onboarding is over.
   final VoidCallback onDone;
@@ -70,6 +73,7 @@ class _IntroViewState extends State<IntroView> with TickerProviderStateMixin {
       context,
       authRepository: widget.authRepository,
       profileRepository: widget.profileRepository,
+      pushRepository: widget.pushRepository,
     );
     if (signedIn) widget.onDone();
   }

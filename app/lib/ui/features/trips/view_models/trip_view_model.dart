@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/dive_center.dart';
 import '../../../../domain/entities/profile.dart';
@@ -14,6 +15,7 @@ class TripViewModel extends ChangeNotifier {
     required TripRepository repository,
     required this.authRepository,
     required this.profileRepository,
+    required this.pushRepository,
     required this.diveCenterRepository,
     required String tripId,
     required this.currentUserId,
@@ -24,6 +26,7 @@ class TripViewModel extends ChangeNotifier {
   final String _tripId;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final PushRepository pushRepository;
   final DiveCenterRepository diveCenterRepository;
   final String currentUserId;
 

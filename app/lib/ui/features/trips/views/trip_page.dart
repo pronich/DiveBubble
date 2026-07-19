@@ -5,6 +5,7 @@ import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
@@ -317,6 +318,7 @@ class _TripPageState extends State<TripPage> {
                         tripRepository: widget.tripRepository,
                         authRepository: widget.viewModel.authRepository,
                         profileRepository: widget.viewModel.profileRepository,
+                        pushRepository: widget.viewModel.pushRepository,
                         diveCenterRepository: widget.diveCenterRepository,
                         currentUserId: widget.viewModel.currentUserId,
                       )
@@ -671,7 +673,12 @@ class _JoinButton extends StatelessWidget {
   }
 
   Future<void> _handleJoin(BuildContext context) async {
-    final userId = await ensureSignedIn(context, viewModel.authRepository, viewModel.profileRepository);
+    final userId = await ensureSignedIn(
+      context,
+      viewModel.authRepository,
+      viewModel.profileRepository,
+      viewModel.pushRepository,
+    );
     if (userId == null) return;
     await viewModel.join();
   }
@@ -733,7 +740,12 @@ class _BookNowSection extends StatelessWidget {
   }
 
   Future<void> _handleEnterCode(BuildContext context) async {
-    final userId = await ensureSignedIn(context, viewModel.authRepository, viewModel.profileRepository);
+    final userId = await ensureSignedIn(
+      context,
+      viewModel.authRepository,
+      viewModel.profileRepository,
+      viewModel.pushRepository,
+    );
     if (userId == null || !context.mounted) return;
 
     final resolved = await showJoinByCodeDialog(context, tripRepository);
@@ -754,6 +766,7 @@ class _BookNowSection extends StatelessWidget {
             repository: tripRepository,
             authRepository: viewModel.authRepository,
             profileRepository: viewModel.profileRepository,
+            pushRepository: viewModel.pushRepository,
             diveCenterRepository: diveCenterRepository,
             tripId: resolved.id,
             currentUserId: userId,
@@ -993,6 +1006,7 @@ class _DiveInButton extends StatelessWidget {
     required this.tripRepository,
     required this.authRepository,
     required this.profileRepository,
+    required this.pushRepository,
     required this.diveCenterRepository,
     required this.currentUserId,
   });
@@ -1004,6 +1018,7 @@ class _DiveInButton extends StatelessWidget {
   final TripRepository tripRepository;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final PushRepository pushRepository;
   final DiveCenterRepository diveCenterRepository;
   final String currentUserId;
 
@@ -1028,6 +1043,7 @@ class _DiveInButton extends StatelessWidget {
                   repository: transportRepository,
                   authRepository: authRepository,
                   profileRepository: profileRepository,
+                  pushRepository: pushRepository,
                   tripId: trip.id,
                   currentUserId: currentUserId,
                 ),
@@ -1039,6 +1055,7 @@ class _DiveInButton extends StatelessWidget {
                 realtimeService: realtimeService,
                 authRepository: authRepository,
                 profileRepository: profileRepository,
+                pushRepository: pushRepository,
                 diveCenterRepository: diveCenterRepository,
                 initialHasTransportAlert: trip.hasTransportAlert,
               ),

@@ -125,6 +125,7 @@ class _ProfileViewState extends State<ProfileView> {
                 context,
                 authRepository: widget.authRepository,
                 profileRepository: widget.profileRepository,
+                pushRepository: widget.pushRepository,
               ),
             )
           : ListenableBuilder(

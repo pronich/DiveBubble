@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/services/onboarding_state_service.dart';
 import '../../../core/theme/app_gradients.dart';
 import 'intro_view.dart';
@@ -16,11 +17,13 @@ class AppEntryGate extends StatefulWidget {
     super.key,
     required this.authRepository,
     required this.profileRepository,
+    required this.pushRepository,
     required this.rootShellBuilder,
   });
 
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final PushRepository pushRepository;
 
   /// currentUserId is the real signed-in user's id if logged in, or '' for an anonymous/browsing
   /// session — resolved fresh right before entering the app, not fixed at app startup, since
@@ -93,6 +96,7 @@ class _AppEntryGateState extends State<AppEntryGate> {
         return IntroView(
           authRepository: widget.authRepository,
           profileRepository: widget.profileRepository,
+          pushRepository: widget.pushRepository,
           onDone: _completeIntro,
         );
       case _Phase.staticSplash:

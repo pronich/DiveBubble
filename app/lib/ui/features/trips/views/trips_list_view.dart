@@ -4,6 +4,7 @@ import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
@@ -31,6 +32,7 @@ class TripsListView extends StatefulWidget {
     required this.realtimeService,
     required this.authRepository,
     required this.profileRepository,
+    required this.pushRepository,
     required this.diveCenterRepository,
     required this.currentUserId,
   });
@@ -42,6 +44,7 @@ class TripsListView extends StatefulWidget {
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final PushRepository pushRepository;
   final DiveCenterRepository diveCenterRepository;
   final String currentUserId;
 
@@ -184,6 +187,7 @@ class _TripsListViewState extends State<TripsListView> {
             repository: widget.tripRepository,
             authRepository: widget.authRepository,
             profileRepository: widget.profileRepository,
+            pushRepository: widget.pushRepository,
             diveCenterRepository: widget.diveCenterRepository,
             tripId: trip.id,
             currentUserId: widget.currentUserId,
@@ -199,7 +203,12 @@ class _TripsListViewState extends State<TripsListView> {
   }
 
   Future<void> _openCreateTrip(BuildContext context) async {
-    final userId = await ensureSignedIn(context, widget.authRepository, widget.profileRepository);
+    final userId = await ensureSignedIn(
+      context,
+      widget.authRepository,
+      widget.profileRepository,
+      widget.pushRepository,
+    );
     if (userId == null || !context.mounted) return;
 
     Navigator.of(context).push(
@@ -215,6 +224,7 @@ class _TripsListViewState extends State<TripsListView> {
                     repository: widget.tripRepository,
                     authRepository: widget.authRepository,
                     profileRepository: widget.profileRepository,
+                    pushRepository: widget.pushRepository,
                     diveCenterRepository: widget.diveCenterRepository,
                     tripId: trip.id,
                     currentUserId: userId,
@@ -234,7 +244,12 @@ class _TripsListViewState extends State<TripsListView> {
   }
 
   Future<void> _openJoinByCode(BuildContext context) async {
-    final userId = await ensureSignedIn(context, widget.authRepository, widget.profileRepository);
+    final userId = await ensureSignedIn(
+      context,
+      widget.authRepository,
+      widget.profileRepository,
+      widget.pushRepository,
+    );
     if (userId == null || !context.mounted) return;
 
     final trip = await showJoinByCodeDialog(context, widget.tripRepository);
@@ -248,6 +263,7 @@ class _TripsListViewState extends State<TripsListView> {
             repository: widget.tripRepository,
             authRepository: widget.authRepository,
             profileRepository: widget.profileRepository,
+            pushRepository: widget.pushRepository,
             diveCenterRepository: widget.diveCenterRepository,
             tripId: trip.id,
             currentUserId: userId,

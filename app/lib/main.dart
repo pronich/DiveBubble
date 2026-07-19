@@ -113,7 +113,7 @@ class _MyAppState extends State<MyApp> {
     super.dispose();
   }
 
-  void _onAuthChanged() => _maybeRegisterPush();
+  void _onAuthChanged() => _syncPushTokenIfAuthorized();
 
   Future<void> _setUpPushNotifications() async {
     // iOS shows a system banner for a foreground notification-payload message only if asked —
@@ -133,27 +133,27 @@ class _MyAppState extends State<MyApp> {
 
     // Covers a returning already-signed-in user (no auth-change event fires on a silent
     // token restore, only on an explicit sign-in) — see _onAuthChanged's own comment.
-    _maybeRegisterPush();
+    _syncPushTokenIfAuthorized();
   }
 
-  // Requesting permission only after a real sign-in (never on cold start for a browsing,
-  // not-signed-in user) — see CLAUDE.md's push notifications section for why. Safe to call
-  // repeatedly: iOS only ever shows its own prompt once per install, every later call just
-  // reads back that same decision.
-  Future<void> _maybeRegisterPush() async {
+  // Deliberately passive — never calls requestPermission(), which is what actually shows
+  // the OS prompt. For a brand-new account, that prompt now only ever appears from the
+  // explicit PushPermissionPage step in LoginSheet's onboarding chain (with its own "why"
+  // explained first); this just re-syncs the token for an already-decided diver on sign-in,
+  // token refresh, or app resume, so a permission granted once doesn't need re-asking.
+  Future<void> _syncPushTokenIfAuthorized() async {
     if (await _authRepository.currentUserId() == null) return;
     // Respects an explicit opt-out from NotificationsSettingsPage — a sign-in/token-refresh
     // event must never silently undo that.
     if (!await PushPreferences.isEnabled()) return;
 
     try {
-      final settings = await FirebaseMessaging.instance.requestPermission();
-      if (settings.authorizationStatus == AuthorizationStatus.denied) return;
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) return;
 
-      // iOS-only gotcha: requestPermission() triggers registerForRemoteNotifications(),
-      // but the APNS device token arrives from Apple asynchronously — calling getToken()
-      // before it lands throws apns-token-not-set. Poll briefly rather than assuming it's
-      // instant (usually lands within a second, but not synchronously).
+      // iOS-only gotcha: the APNS device token arrives from Apple asynchronously — calling
+      // getToken() before it lands throws apns-token-not-set, even when already authorized
+      // (e.g. right after a cold start). Poll briefly rather than assuming it's instant.
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         var apnsToken = await FirebaseMessaging.instance.getAPNSToken();
         var attempts = 0;
@@ -169,7 +169,7 @@ class _MyAppState extends State<MyApp> {
       if (token != null) await _registerToken(token);
     } catch (e) {
       // Best-effort — push setup must never crash the app it's supposed to be a nicety for.
-      debugPrint('push: could not set up push notifications: $e');
+      debugPrint('push: could not sync push token: $e');
     }
   }
 
@@ -208,6 +208,7 @@ class _MyAppState extends State<MyApp> {
               repository: _transportRepository,
               authRepository: _authRepository,
               profileRepository: _profileRepository,
+              pushRepository: _pushRepository,
               tripId: trip.id,
               currentUserId: currentUserId,
             ),
@@ -219,6 +220,7 @@ class _MyAppState extends State<MyApp> {
             realtimeService: _realtimeService,
             authRepository: _authRepository,
             profileRepository: _profileRepository,
+            pushRepository: _pushRepository,
             diveCenterRepository: _diveCenterRepository,
             initialHasTransportAlert: trip.hasTransportAlert,
           ),
@@ -240,6 +242,7 @@ class _MyAppState extends State<MyApp> {
       home: AppEntryGate(
         authRepository: _authRepository,
         profileRepository: _profileRepository,
+        pushRepository: _pushRepository,
         rootShellBuilder: (context, currentUserId) => RootShell(
           tripRepository: _tripRepository,
           chatRepository: _chatRepository,

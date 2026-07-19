@@ -4,6 +4,7 @@ import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
@@ -30,6 +31,7 @@ class TripConversationPage extends StatefulWidget {
     required this.realtimeService,
     required this.authRepository,
     required this.profileRepository,
+    required this.pushRepository,
     required this.diveCenterRepository,
     required this.initialHasTransportAlert,
     this.onTransportAlertCleared,
@@ -48,6 +50,7 @@ class TripConversationPage extends StatefulWidget {
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final PushRepository pushRepository;
   final DiveCenterRepository diveCenterRepository;
   // Seeds TransportViewModel.hasAlert from the already-loaded Trip — the Bubble is only
   // ever reached by tapping a row from that loaded list, so this is always available and
@@ -214,6 +217,7 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
             repository: widget.tripRepository,
             authRepository: widget.authRepository,
             profileRepository: widget.profileRepository,
+            pushRepository: widget.pushRepository,
             diveCenterRepository: widget.diveCenterRepository,
             tripId: widget.chatViewModel.tripId,
             currentUserId: widget.chatViewModel.currentUserId,

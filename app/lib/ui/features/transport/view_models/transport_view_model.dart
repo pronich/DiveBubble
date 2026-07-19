@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../domain/entities/transport_offer.dart';
 
@@ -10,6 +11,7 @@ class TransportViewModel extends ChangeNotifier {
     required TransportRepository repository,
     required this.authRepository,
     required this.profileRepository,
+    required this.pushRepository,
     required this.tripId,
     required this.currentUserId,
   }) : _repository = repository;
@@ -17,6 +19,7 @@ class TransportViewModel extends ChangeNotifier {
   final TransportRepository _repository;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
+  final PushRepository pushRepository;
   final String tripId;
   final String currentUserId;
 

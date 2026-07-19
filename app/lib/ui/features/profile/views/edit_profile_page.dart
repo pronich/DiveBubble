@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/services/location_service.dart';
 import '../../../../domain/entities/profile.dart';
+import '../../onboarding/views/certifications_onboarding_page.dart';
 import '../view_models/profile_view_model.dart';
 import 'language_picker_page.dart';
-import 'update_level_sheet.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({
@@ -17,9 +17,10 @@ class EditProfilePage extends StatefulWidget {
   final ProfileViewModel viewModel;
   final Profile profile;
 
-  /// True only for the brand-new-account flow pushed from LoginSheet — chains straight
-  /// into UpdateLevelSheet after saving, so a new diver sets their certification level
-  /// as part of the same onboarding pass instead of having to find Certifications later.
+  /// True only for the brand-new-account flow pushed from LoginSheet (after Location and
+  /// Push permission) — chains straight into CertificationsOnboardingPage after saving, so
+  /// a new diver sets their certification level as part of the same onboarding pass
+  /// instead of having to find Certifications later.
   final bool isOnboarding;
 
   @override
@@ -41,9 +42,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
-    // Best-effort auto-fill on first open (covers the brand-new-account flow, and anyone
-    // who never set a location) — never overwrites a value the diver already typed.
-    if (_locationController.text.isEmpty) {
+    // Best-effort auto-fill on first open, for anyone who never set a location — never
+    // overwrites a value the diver already typed. Skipped when isOnboarding: the new-account
+    // flow already ran this exact request (with its own explanation) a screen earlier via
+    // LocationPermissionPage; re-running it here would silently re-prompt even after the
+    // diver explicitly tapped "Not now" there, undoing the point of asking first.
+    if (_locationController.text.isEmpty && !widget.isOnboarding) {
       _detectLocation();
     }
   }
@@ -84,10 +88,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (!success || !mounted) return;
 
     if (widget.isOnboarding) {
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        builder: (_) => UpdateLevelSheet(viewModel: widget.viewModel),
+      await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => CertificationsOnboardingPage(viewModel: widget.viewModel)),
       );
     }
     if (mounted) Navigator.of(context).pop();
