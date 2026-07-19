@@ -203,16 +203,17 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 }
 
 // notifyNewMessage pushes the new message to everyone with access to the trip except its
-// sender — trip participants plus, for a business trip, its dive center's staff (who never
-// get a trip_participants row, see requireParticipant above). Best-effort: push.Service
-// already swallows its own errors, this only has list-recipients errors to log.
+// sender — trip participants always, plus a business trip's dive center staff only when the
+// message explicitly mentions the dive center (see CLAUDE.md's Notifications Stage 1.5 — the
+// mention flag exists specifically so every diver message doesn't push every staff member;
+// staff who aren't mentioned still see it via admin/'s own in-app unread badge, just not a push).
 func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *profile.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, t trip.Trip, m message.Message, senderID uuid.UUID) {
 	recipients, err := tripSvc.ListParticipantUserIDs(ctx, t.ID.String())
 	if err != nil {
 		log.Printf("push: could not list participants for trip:%s: %v", t.ID, err)
 		return
 	}
-	if t.DiveCenterID.Valid {
+	if t.DiveCenterID.Valid && m.MentionsDiveCenter {
 		staffIDs, err := diveCenterSvc.ListMemberUserIDs(ctx, t.DiveCenterID.UUID)
 		if err != nil {
 			log.Printf("push: could not list dive center staff for trip:%s: %v", t.ID, err)
