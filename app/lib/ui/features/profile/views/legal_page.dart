@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-/// No hosted Terms/Privacy document exists yet, so these are "Coming soon" stubs
-/// rather than dead links.
 class LegalPage extends StatelessWidget {
   const LegalPage({super.key});
 
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Coming soon')));
-  }
+  static const _termsUrl = 'https://divebubble.io/terms';
+  static const _privacyUrl = 'https://divebubble.io/privacy';
+
+  Future<void> _open(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
   @override
   Widget build(BuildContext context) {
@@ -18,13 +18,13 @@ class LegalPage extends StatelessWidget {
           ListTile(
             title: const Text('Terms of Service'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showComingSoon(context),
+            onTap: () => _open(_termsUrl),
           ),
           const Divider(height: 1),
           ListTile(
             title: const Text('Privacy Policy'),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showComingSoon(context),
+            onTap: () => _open(_privacyUrl),
           ),
         ],
       ),

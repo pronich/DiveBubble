@@ -22,8 +22,15 @@ import 'ui/core/navigation/root_shell.dart';
 import 'ui/core/theme/app_theme.dart';
 import 'ui/features/onboarding/views/app_entry_gate.dart';
 
-const _apiBaseUrl = 'http://localhost:8080';
-const _centrifugoWsUrl = 'ws://localhost:8000/connection/websocket';
+// Build-time config via --dart-define, same pattern as admin/'s main.dart — a physical
+// device can't reach the dev machine's `localhost`, so real-device runs need either the
+// Mac's LAN IP or the deployed API passed explicitly. `flutter run` with no --dart-define
+// falls back to localhost, unchanged from before (fine for simulator/desktop).
+const _apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8080');
+const _centrifugoWsUrl = String.fromEnvironment(
+  'CENTRIFUGO_WS_URL',
+  defaultValue: 'ws://localhost:8000/connection/websocket',
+);
 
 // Google Cloud Console (project backing DiveBuddy) — iOS client identifies the app to Google,
 // the Web (server) client is the ID token audience the backend verifies against.
