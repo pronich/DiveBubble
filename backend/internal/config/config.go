@@ -20,13 +20,18 @@ type Config struct {
 	// AppleAudience is the iOS app's bundle id (the App ID, not a Services ID — DiveBubble
 	// has no web Sign in with Apple flow). Defaults to the one and only bundle id this
 	// project ships, so no env var is required in dev.
-	AppleAudience string
+	AppleAudience         string
 	AccessTokenTTL        time.Duration
 	RefreshSessionTTL     time.Duration
 	SessionRetentionGrace time.Duration
 	UploadDir             string
 	PublicBaseURL         string
 	CORSAllowedOrigins    []string
+
+	// FirebaseCredentialsJSON is the Firebase service account JSON content (not a file path)
+	// used to send push notifications. Empty disables push entirely (local dev default without
+	// it) — not required, same optional-infra pattern as Spaces below.
+	FirebaseCredentialsJSON string
 
 	// Spaces* are all optional — SpacesBucket empty means "use LocalBackend" (dev default,
 	// see server.go). Set together in production; there's no partial-Spaces mode.
@@ -84,6 +89,8 @@ func Load() Config {
 		corsAllowedOrigins = strings.Split(raw, ",")
 	}
 
+	firebaseCredentialsJSON := os.Getenv("FIREBASE_CREDENTIALS_JSON")
+
 	spacesEndpoint := os.Getenv("SPACES_ENDPOINT")
 	spacesRegion := os.Getenv("SPACES_REGION")
 	spacesBucket := os.Getenv("SPACES_BUCKET")
@@ -97,26 +104,27 @@ func Load() Config {
 	}
 
 	return Config{
-		Port:                  port,
-		DatabaseURL:           databaseURL,
-		CentrifugoURL:         centrifugoURL,
-		CentrifugoAPIKey:      centrifugoAPIKey,
-		CentrifugoTokenSecret: centrifugoTokenSecret,
-		JWTSecret:             jwtSecret,
-		GoogleServerClientID:  googleServerClientID,
-		AppleAudience:         appleAudience,
-		AccessTokenTTL:        accessTokenTTL,
-		RefreshSessionTTL:     refreshSessionTTL,
-		SessionRetentionGrace: sessionRetentionGrace,
-		UploadDir:             uploadDir,
-		PublicBaseURL:         publicBaseURL,
-		CORSAllowedOrigins:    corsAllowedOrigins,
-		SpacesEndpoint:        spacesEndpoint,
-		SpacesRegion:          spacesRegion,
-		SpacesBucket:          spacesBucket,
-		SpacesAccessKey:       spacesAccessKey,
-		SpacesSecretKey:       spacesSecretKey,
-		SpacesPublicURL:       spacesPublicURL,
+		Port:                    port,
+		DatabaseURL:             databaseURL,
+		CentrifugoURL:           centrifugoURL,
+		CentrifugoAPIKey:        centrifugoAPIKey,
+		CentrifugoTokenSecret:   centrifugoTokenSecret,
+		JWTSecret:               jwtSecret,
+		GoogleServerClientID:    googleServerClientID,
+		AppleAudience:           appleAudience,
+		AccessTokenTTL:          accessTokenTTL,
+		RefreshSessionTTL:       refreshSessionTTL,
+		SessionRetentionGrace:   sessionRetentionGrace,
+		UploadDir:               uploadDir,
+		PublicBaseURL:           publicBaseURL,
+		CORSAllowedOrigins:      corsAllowedOrigins,
+		FirebaseCredentialsJSON: firebaseCredentialsJSON,
+		SpacesEndpoint:          spacesEndpoint,
+		SpacesRegion:            spacesRegion,
+		SpacesBucket:            spacesBucket,
+		SpacesAccessKey:         spacesAccessKey,
+		SpacesSecretKey:         spacesSecretKey,
+		SpacesPublicURL:         spacesPublicURL,
 	}
 }
 

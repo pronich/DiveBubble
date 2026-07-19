@@ -218,6 +218,26 @@ func (r *Repository) ListMembers(ctx context.Context, diveCenterID uuid.UUID) ([
 	return members, rows.Err()
 }
 
+// ListMemberUserIDs is the lightweight counterpart to ListMembers — no user/profile joins,
+// for callers that only need who to reach (e.g. push notification fan-out), not who they are.
+func (r *Repository) ListMemberUserIDs(ctx context.Context, diveCenterID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.DB.QueryContext(ctx, `SELECT user_id FROM dive_center_members WHERE dive_center_id = $1`, diveCenterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 // AddMember upserts — re-adding an existing member just updates their role, rather than erroring.
 func (r *Repository) AddMember(ctx context.Context, diveCenterID, userID uuid.UUID, role string) (Member, error) {
 	var m Member

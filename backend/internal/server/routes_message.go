@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+
 	"errors"
 	"io"
 	"log"
@@ -12,6 +13,8 @@ import (
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/divecenter"
 	"divebubble_be/internal/message"
+	"divebubble_be/internal/profile"
+	"divebubble_be/internal/push"
 	"divebubble_be/internal/realtime"
 	"divebubble_be/internal/trip"
 
@@ -23,11 +26,13 @@ func registerMessageRoutes(
 	svc *message.Service,
 	tripSvc *trip.Service,
 	diveCenterSvc *divecenter.Service,
+	profileSvc *profile.Service,
 	authIssuer *auth.TokenIssuer,
 	publisher *realtime.Publisher,
+	pushSvc *push.Service,
 ) {
 	mux.HandleFunc("GET /trips/{id}/messages", withAuth(authIssuer, handleListMessages(svc, tripSvc, diveCenterSvc)))
-	mux.HandleFunc("POST /trips/{id}/messages", withAuth(authIssuer, handleSendMessage(svc, tripSvc, diveCenterSvc, publisher)))
+	mux.HandleFunc("POST /trips/{id}/messages", withAuth(authIssuer, handleSendMessage(svc, tripSvc, diveCenterSvc, profileSvc, publisher, pushSvc)))
 }
 
 type messageResponse struct {
@@ -132,7 +137,7 @@ type sendMessageRequest struct {
 	MentionsDiveCenter bool   `json:"mentionsDiveCenter"`
 }
 
-func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, publisher *realtime.Publisher, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
 		if !ok {
@@ -191,6 +196,79 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 			log.Printf("realtime publish failed for trip:%s: %v", tripID, pubErr)
 		}
 
+		notifyNewMessage(r.Context(), pushSvc, profileSvc, tripSvc, diveCenterSvc, t, m, userID)
+
 		writeJSON(w, http.StatusCreated, resp)
 	}
+}
+
+// notifyNewMessage pushes the new message to everyone with access to the trip except its
+// sender — trip participants plus, for a business trip, its dive center's staff (who never
+// get a trip_participants row, see requireParticipant above). Best-effort: push.Service
+// already swallows its own errors, this only has list-recipients errors to log.
+func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *profile.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, t trip.Trip, m message.Message, senderID uuid.UUID) {
+	recipients, err := tripSvc.ListParticipantUserIDs(ctx, t.ID.String())
+	if err != nil {
+		log.Printf("push: could not list participants for trip:%s: %v", t.ID, err)
+		return
+	}
+	if t.DiveCenterID.Valid {
+		staffIDs, err := diveCenterSvc.ListMemberUserIDs(ctx, t.DiveCenterID.UUID)
+		if err != nil {
+			log.Printf("push: could not list dive center staff for trip:%s: %v", t.ID, err)
+		} else {
+			recipients = append(recipients, staffIDs...)
+		}
+	}
+	recipients = excludeUser(dedupeUsers(recipients), senderID)
+	if len(recipients) == 0 {
+		return
+	}
+
+	senderName := "New message"
+	if sender, err := profileSvc.Get(ctx, senderID); err == nil && sender.DisplayName.Valid && sender.DisplayName.String != "" {
+		senderName = sender.DisplayName.String
+	}
+
+	pushSvc.SendToUsers(ctx, recipients, push.Notification{
+		Title: senderName + " · " + t.Title,
+		Body:  truncateForPush(m.Body),
+		Data:  map[string]string{"tripId": t.ID.String(), "type": "message"},
+	})
+}
+
+func dedupeUsers(ids []uuid.UUID) []uuid.UUID {
+	seen := make(map[uuid.UUID]bool, len(ids))
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
+}
+
+// excludeUser filters in place — safe because dedupeUsers above always hands back a
+// freshly allocated slice, never one a caller still holds a reference into.
+func excludeUser(ids []uuid.UUID, exclude uuid.UUID) []uuid.UUID {
+	out := ids[:0]
+	for _, id := range ids {
+		if id != exclude {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
+// truncateForPush keeps push payloads small — cuts on a rune boundary since message bodies
+// aren't guaranteed ASCII.
+func truncateForPush(body string) string {
+	const maxRunes = 150
+	runes := []rune(body)
+	if len(runes) <= maxRunes {
+		return body
+	}
+	return string(runes[:maxRunes]) + "…"
 }

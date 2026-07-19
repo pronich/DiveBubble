@@ -41,6 +41,12 @@ func (s *Service) IsMember(ctx context.Context, diveCenterID, userID uuid.UUID) 
 	return s.Repo.IsMember(ctx, diveCenterID, userID)
 }
 
+// ListMemberUserIDs is un-gated (no callerID) — for internal/system callers like push
+// fan-out, not an HTTP-exposed listing (see ListMembers for the member-gated roster view).
+func (s *Service) ListMemberUserIDs(ctx context.Context, diveCenterID uuid.UUID) ([]uuid.UUID, error) {
+	return s.Repo.ListMemberUserIDs(ctx, diveCenterID)
+}
+
 func (s *Service) IsOwner(ctx context.Context, diveCenterID, userID uuid.UUID) (bool, error) {
 	return s.Repo.IsOwner(ctx, diveCenterID, userID)
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"divebubble_be/internal/gear"
 	"divebubble_be/internal/message"
 	"divebubble_be/internal/profile"
+	"divebubble_be/internal/push"
 	"divebubble_be/internal/realtime"
 	"divebubble_be/internal/transport"
 	"divebubble_be/internal/trip"
@@ -38,6 +40,10 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	uploadSvc := upload.NewService(uploadBackend)
 	waitlistSvc := waitlist.NewService(waitlist.NewRepository(db))
 	accountSvc := account.NewService(account.NewRepository(db))
+	pushSvc, err := push.New(context.Background(), push.NewRepository(db), cfg.FirebaseCredentialsJSON)
+	if err != nil {
+		log.Fatalf("server: push: %v", err)
+	}
 	publisher := realtime.NewPublisher(cfg.CentrifugoURL, cfg.CentrifugoAPIKey)
 	realtimeTokenIssuer := realtime.NewTokenIssuer(cfg.CentrifugoTokenSecret)
 
@@ -52,7 +58,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)
 	registerTripRoutes(mux, tripSvc, transportSvc, authIssuer)
-	registerMessageRoutes(mux, messageSvc, tripSvc, diveCenterSvc, authIssuer, publisher)
+	registerMessageRoutes(mux, messageSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, publisher, pushSvc)
 	registerTransportRoutes(mux, transportSvc, tripSvc, diveCenterSvc, authIssuer)
 	registerRealtimeRoutes(mux, realtimeTokenIssuer, authIssuer)
 	registerAuthRoutes(mux, cfg, identityRepo, sessionRepo, authIssuer, appleKeys)
@@ -63,6 +69,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	registerDiveCenterRoutes(mux, diveCenterSvc, identityRepo, profileSvc, authIssuer)
 	registerWaitlistRoutes(mux, waitlistSvc)
 	registerAccountRoutes(mux, accountSvc, authIssuer)
+	registerPushRoutes(mux, pushSvc, authIssuer)
 	// Uploaded images are served back unauthenticated, same as any other image URL
 	// referenced from a profile/trip card — dev-only local disk today, swappable for
 	// object storage (DigitalOcean Spaces) later without callers noticing.

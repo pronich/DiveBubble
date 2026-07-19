@@ -62,6 +62,9 @@ services:
       CENTRIFUGO_TOKEN_SECRET: "${CENTRIFUGO_TOKEN_SECRET:?CENTRIFUGO_TOKEN_SECRET must be set}"
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
       GOOGLE_SERVER_CLIENT_ID: "${GOOGLE_SERVER_CLIENT_ID:?GOOGLE_SERVER_CLIENT_ID must be set}"
+      # Optional — unset disables push notifications (internal/push.Service no-ops). See
+      # .env.example for where this comes from.
+      FIREBASE_CREDENTIALS_JSON: "${FIREBASE_CREDENTIALS_JSON:-}"
       ACCESS_TOKEN_TTL: "${ACCESS_TOKEN_TTL:-8h}"
       REFRESH_SESSION_TTL: "${REFRESH_SESSION_TTL:-4320h}"
       UPLOAD_DIR: "/data/uploads"
