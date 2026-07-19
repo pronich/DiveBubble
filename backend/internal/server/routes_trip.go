@@ -234,6 +234,10 @@ func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 				writeError(w, http.StatusForbidden, "not a member of that dive center")
 				return
 			}
+			if errors.Is(err, trip.ErrBusinessTripRequiresPriceAndURL) {
+				writeError(w, http.StatusBadRequest, "business trips require a price and a booking URL")
+				return
+			}
 			writeError(w, http.StatusInternalServerError, "could not create trip")
 			return
 		}
@@ -506,6 +510,10 @@ func handleUpdateTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 			}
 			if errors.Is(err, trip.ErrOnlyOrganizerCanEditTrip) {
 				writeError(w, http.StatusForbidden, "only the organizer can edit this trip")
+				return
+			}
+			if errors.Is(err, trip.ErrBusinessTripRequiresPriceAndURL) {
+				writeError(w, http.StatusBadRequest, "business trips require a price and a booking URL")
 				return
 			}
 			writeError(w, http.StatusInternalServerError, "could not update trip")

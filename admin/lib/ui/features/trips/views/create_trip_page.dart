@@ -166,6 +166,15 @@ class _CreateTripPageState extends State<CreateTripPage> {
       return;
     }
 
+    final priceMinor = _priceMinorOrNull(_priceController);
+    final bookingUrl = _textOrNull(_bookingUrlController);
+    if (priceMinor == null || bookingUrl == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Price and booking URL are required')),
+      );
+      return;
+    }
+
     final startTime = DateTime(
       _startDate!.year,
       _startDate!.month,
@@ -187,8 +196,8 @@ class _CreateTripPageState extends State<CreateTripPage> {
       diveCountMin: _intOrNull(_diveCountMinController),
       diveCountMax: _intOrNull(_diveCountMaxController),
       maxParticipants: _intOrNull(_maxParticipantsController),
-      priceMinor: _priceMinorOrNull(_priceController),
-      bookingUrl: _textOrNull(_bookingUrlController),
+      priceMinor: priceMinor,
+      bookingUrl: bookingUrl,
     );
 
     if (trip == null) return;
@@ -317,14 +326,14 @@ class _CreateTripPageState extends State<CreateTripPage> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _priceController,
-                          decoration: const InputDecoration(labelText: 'Price (optional)', prefixText: 'DKK '),
+                          decoration: const InputDecoration(labelText: 'Price', prefixText: 'DKK '),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: _bookingUrlController,
                           decoration: const InputDecoration(
-                            labelText: 'Booking URL (optional)',
+                            labelText: 'Booking URL',
                             hintText: 'Where divers pay to get their booking code',
                           ),
                           keyboardType: TextInputType.url,

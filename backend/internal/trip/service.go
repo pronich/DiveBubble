@@ -20,6 +20,7 @@ var ErrNotDiveCenterMember = errors.New("not a member of that dive center")
 var ErrRequiresBookingCode = errors.New("this trip requires a booking code to join")
 var ErrInvalidBookingCode = errors.New("invalid booking code")
 var ErrTooManyPhotos = errors.New("trip already has the maximum number of photos")
+var ErrBusinessTripRequiresPriceAndURL = errors.New("business trips require a price and a booking URL")
 
 const maxBookingCodeAttempts = 5
 
@@ -90,6 +91,19 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 		}
 		if !isMember {
 			return Trip{}, ErrNotDiveCenterMember
+		}
+		// A business trip is a marketplace listing — a diver books externally on the
+		// dive center's own site (see JoinByCode/Booking Code flow), so without a price
+		// and a link to actually book, the listing has nothing for a diver to act on.
+		if p.PriceMinor == nil {
+			return Trip{}, ErrBusinessTripRequiresPriceAndURL
+		}
+		if p.BookingURL != nil {
+			trimmed := strings.TrimSpace(*p.BookingURL)
+			p.BookingURL = &trimmed
+		}
+		if p.BookingURL == nil || *p.BookingURL == "" {
+			return Trip{}, ErrBusinessTripRequiresPriceAndURL
 		}
 	}
 	// Business trips get a server-generated code, retried on the rare unique-constraint
@@ -324,6 +338,21 @@ func (s *Service) Update(ctx context.Context, id string, userID uuid.UUID, p Upd
 			return Trip{}, ErrInvalidArgument
 		}
 		p.Location = &trimmed
+	}
+	if t.DiveCenterID.Valid {
+		if p.BookingURL != nil {
+			trimmed := strings.TrimSpace(*p.BookingURL)
+			p.BookingURL = &trimmed
+		}
+		// Effective value after this update: the incoming one if the request touches the
+		// field, otherwise whatever's already on the row (see UpdateParams' COALESCE
+		// semantics — nil here means "leave untouched", not "clear"). Either way, a
+		// business trip must end up with both fields set.
+		hasPrice := p.PriceMinor != nil || t.PriceMinor.Valid
+		hasBookingURL := (p.BookingURL != nil && *p.BookingURL != "") || (t.BookingURL.Valid && t.BookingURL.String != "")
+		if !hasPrice || !hasBookingURL {
+			return Trip{}, ErrBusinessTripRequiresPriceAndURL
+		}
 	}
 	return s.Repo.Update(ctx, tripID, p)
 }
