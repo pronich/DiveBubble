@@ -1,7 +1,7 @@
 import { BubbleBackground } from "@/components/BubbleBackground";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { CONTACT_EMAIL } from "@/lib/constants";
+import { SUPPORT_EMAIL } from "@/lib/constants";
 
 const FAQ_ITEMS = [
   {
@@ -10,7 +10,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Is DiveBubble free?",
-    a: "Yes — DiveBubble is free for divers, and free for dive centers during beta. We're not charging anything yet.",
+    a: "Yes — DiveBubble is free for divers, and free for dive centers during beta. We're not charging anything, and we don't process any payments on the app.",
   },
   {
     q: "Which certifications do I need?",
@@ -26,15 +26,19 @@ const FAQ_ITEMS = [
   },
   {
     q: "How do dive centers get started?",
-    a: "Dive centers get their own dedicated workspace, DiveBubble Business, to publish trips and manage staff. Reach out and we'll help you get set up.",
+    a: "Dive centers get their own dedicated workspace, DiveBubble Business, to publish trips and manage staff. Sign-up isn't open yet — leave your email on the Business page and we'll let you know when it is.",
   },
   {
-    q: "Where is my data stored?",
-    a: "On managed cloud infrastructure, with encryption in transit. See our Privacy Policy for the full details.",
+    q: "Where is my data stored, and is it GDPR-compliant?",
+    a: `Yes. We're a Danish company, and DiveBubble is built and operated to comply with the GDPR. Your data is stored on managed cloud infrastructure with encryption in transit, and we never sell it or use it for advertising. See our Privacy Policy for the full details, including your rights.`,
+  },
+  {
+    q: "How do I delete my account or exercise my privacy rights?",
+    a: `You can delete your account and most of your data directly from the app. For anything else — access, correction, or questions about your data — email ${SUPPORT_EMAIL} and we'll respond within a month.`,
   },
   {
     q: "How can I contact support?",
-    a: `Email us at ${CONTACT_EMAIL} and we'll get back to you.`,
+    a: `Email us at ${SUPPORT_EMAIL} and we'll get back to you.`,
   },
 ];
 
@@ -51,8 +55,8 @@ export default function FaqPage() {
           <h1 className="mt-6 font-serif text-5xl font-semibold">Questions, answered.</h1>
           <p className="mt-4 max-w-xl text-white/75">
             Everything you might want to know about DiveBubble. Still stuck? Reach us at{" "}
-            <a href={`mailto:${CONTACT_EMAIL}`} className="underline underline-offset-2 hover:text-white">
-              {CONTACT_EMAIL}
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="underline underline-offset-2 hover:text-white">
+              {SUPPORT_EMAIL}
             </a>
             .
           </p>
