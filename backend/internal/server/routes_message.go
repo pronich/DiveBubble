@@ -222,6 +222,11 @@ func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *pr
 		}
 	}
 	recipients = excludeUser(dedupeUsers(recipients), senderID)
+	if mutedIDs, err := tripSvc.ListMutedUserIDs(ctx, t.ID); err != nil {
+		log.Printf("push: could not list muted users for trip:%s: %v", t.ID, err)
+	} else {
+		recipients = excludeUsers(recipients, mutedIDs)
+	}
 	if len(recipients) == 0 {
 		return
 	}

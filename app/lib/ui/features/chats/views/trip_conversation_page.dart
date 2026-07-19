@@ -70,6 +70,7 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
   // member mentioning their own business is meaningless (see ChatView.businessName's own
   // gate, which only checks "is this a business trip", not "am I the diver here").
   bool _isDiveCenterStaff = false;
+  bool _isMuted = false;
 
   @override
   void initState() {
@@ -81,6 +82,30 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
     // what actually surfaces it before the diver ever switches to Transport.
     widget.transportViewModel.seedAlert(widget.initialHasTransportAlert);
     _refreshTripDerivedState();
+    _loadMuted();
+  }
+
+  Future<void> _loadMuted() async {
+    try {
+      final muted = await widget.tripRepository.getMuted(widget.chatViewModel.tripId);
+      if (mounted) setState(() => _isMuted = muted);
+    } catch (_) {
+      // Best-effort — worst case the bell shows "unmuted" until the next successful check.
+    }
+  }
+
+  Future<void> _toggleMuted() async {
+    final next = !_isMuted;
+    setState(() => _isMuted = next); // optimistic — a chat-mute toggle isn't worth a spinner
+    try {
+      if (next) {
+        await widget.tripRepository.muteTrip(widget.chatViewModel.tripId);
+      } else {
+        await widget.tripRepository.unmuteTrip(widget.chatViewModel.tripId);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isMuted = !next); // roll back on failure
+    }
   }
 
   // Owned here, not by ChatViewModel/TransportViewModel — both tabs (plus the message
@@ -146,6 +171,11 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: _isMuted ? 'Unmute' : 'Mute',
+            icon: Icon(_isMuted ? Icons.notifications_off_outlined : Icons.notifications_none),
+            onPressed: _toggleMuted,
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: InkWell(

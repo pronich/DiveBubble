@@ -5,6 +5,7 @@ import '../../../data/repositories/chat_repository.dart';
 import '../../../data/repositories/dive_center_repository.dart';
 import '../../../data/repositories/gear_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
+import '../../../data/repositories/push_repository.dart';
 import '../../../data/repositories/specialty_repository.dart';
 import '../../../data/repositories/transport_repository.dart';
 import '../../../data/repositories/trip_repository.dart';
@@ -28,6 +29,7 @@ class RootShell extends StatefulWidget {
     required this.specialtyRepository,
     required this.gearRepository,
     required this.diveCenterRepository,
+    required this.pushRepository,
     required this.currentUserId,
   });
 
@@ -40,6 +42,7 @@ class RootShell extends StatefulWidget {
   final SpecialtyRepository specialtyRepository;
   final GearRepository gearRepository;
   final DiveCenterRepository diveCenterRepository;
+  final PushRepository pushRepository;
   final String currentUserId;
 
   @override
@@ -118,6 +121,7 @@ class _RootShellState extends State<RootShell> {
             profileRepository: widget.profileRepository,
             specialtyRepository: widget.specialtyRepository,
             gearRepository: widget.gearRepository,
+            pushRepository: widget.pushRepository,
             isActive: _index == 2,
           ),
         ],

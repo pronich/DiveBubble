@@ -373,3 +373,33 @@ func (s *Service) MarkRead(ctx context.Context, id string, userID uuid.UUID) err
 	}
 	return s.Repo.MarkRead(ctx, tripID, userID)
 }
+
+func (s *Service) Mute(ctx context.Context, id string, userID uuid.UUID) error {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return ErrInvalidArgument
+	}
+	return s.Repo.Mute(ctx, tripID, userID)
+}
+
+func (s *Service) Unmute(ctx context.Context, id string, userID uuid.UUID) error {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return ErrInvalidArgument
+	}
+	return s.Repo.Unmute(ctx, tripID, userID)
+}
+
+func (s *Service) IsMuted(ctx context.Context, id string, userID uuid.UUID) (bool, error) {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return false, ErrInvalidArgument
+	}
+	return s.Repo.IsMuted(ctx, tripID, userID)
+}
+
+// ListMutedUserIDs is un-gated (no callerID) — for internal/system callers like push
+// fan-out, not an HTTP-exposed listing (same pattern as divecenter.ListMemberUserIDs).
+func (s *Service) ListMutedUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
+	return s.Repo.ListMutedUserIDs(ctx, tripID)
+}

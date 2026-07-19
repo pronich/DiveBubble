@@ -60,6 +60,14 @@ func (r *Repository) ListTokensForUsers(ctx context.Context, userIDs []uuid.UUID
 	return tokens, rows.Err()
 }
 
+// DeleteTokenForUser removes exactly one device's registration — scoped to userID so a
+// caller can only unregister their own token, not guess someone else's (e.g. from
+// NotificationsSettingsPage's master toggle).
+func (r *Repository) DeleteTokenForUser(ctx context.Context, userID uuid.UUID, token string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM push_tokens WHERE token = $1 AND user_id = $2`, token, userID)
+	return err
+}
+
 // DeleteTokens removes tokens FCM reports as no longer registered (app uninstalled, token
 // rotated) — called best-effort after every send so the table doesn't accumulate dead rows.
 func (r *Repository) DeleteTokens(ctx context.Context, tokens []string) error {

@@ -418,6 +418,47 @@ func (r *Repository) MarkRead(ctx context.Context, tripID, userID uuid.UUID) err
 	return err
 }
 
+func (r *Repository) Mute(ctx context.Context, tripID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `
+		INSERT INTO trip_mutes (trip_id, user_id) VALUES ($1, $2)
+		ON CONFLICT (trip_id, user_id) DO NOTHING
+	`, tripID, userID)
+	return err
+}
+
+func (r *Repository) Unmute(ctx context.Context, tripID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `DELETE FROM trip_mutes WHERE trip_id = $1 AND user_id = $2`, tripID, userID)
+	return err
+}
+
+func (r *Repository) IsMuted(ctx context.Context, tripID, userID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM trip_mutes WHERE trip_id = $1 AND user_id = $2)
+	`, tripID, userID).Scan(&exists)
+	return exists, err
+}
+
+// ListMutedUserIDs backs notifyNewMessage's mute filter — everyone who's muted this trip,
+// regardless of how they have access to it (participant or dive-center staff).
+func (r *Repository) ListMutedUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.DB.QueryContext(ctx, `SELECT user_id FROM trip_mutes WHERE trip_id = $1`, tripID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 func (r *Repository) CountParticipants(ctx context.Context, tripID uuid.UUID) (int, error) {
 	var count int
 	err := r.DB.QueryRowContext(ctx, `

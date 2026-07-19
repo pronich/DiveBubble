@@ -29,4 +29,14 @@ class PushApiService {
       throw Exception('registerToken failed: ${res.statusCode} ${res.body}');
     }
   }
+
+  Future<void> unregisterToken(String token) async {
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/me/push-token').replace(queryParameters: {'token': token}),
+      headers: await _authHeaders(),
+    );
+    if (res.statusCode != 204) {
+      throw Exception('unregisterToken failed: ${res.statusCode} ${res.body}');
+    }
+  }
 }

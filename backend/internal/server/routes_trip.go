@@ -41,6 +41,9 @@ func registerTripRoutes(
 	mux.HandleFunc("PATCH /trips/{id}", withAuth(authIssuer, handleUpdateTrip(svc, diveCenterSvc, pushSvc)))
 	mux.HandleFunc("GET /trips/{id}/participants", withAuth(authIssuer, handleListParticipants(svc)))
 	mux.HandleFunc("POST /trips/{id}/read", withAuth(authIssuer, handleMarkRead(svc)))
+	mux.HandleFunc("GET /trips/{id}/mute", withAuth(authIssuer, handleGetTripMute(svc)))
+	mux.HandleFunc("POST /trips/{id}/mute", withAuth(authIssuer, handleMuteTrip(svc)))
+	mux.HandleFunc("DELETE /trips/{id}/mute", withAuth(authIssuer, handleUnmuteTrip(svc)))
 	// Same "browsable without an account" posture as GET /trips/{id} — the gallery is part
 	// of the trip's own public detail, not gated behind participation. Adding a photo (POST)
 	// is a multipart upload, so it's registered in routes_upload.go alongside the others.
@@ -616,6 +619,55 @@ func handleMarkRead(svc *trip.Service) func(http.ResponseWriter, *http.Request, 
 				return
 			}
 			writeError(w, http.StatusInternalServerError, "could not mark trip read")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func handleGetTripMute(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+		muted, err := svc.IsMuted(r.Context(), id, userID)
+		if err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not get mute state")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"muted": muted})
+	}
+}
+
+// handleMuteTrip/handleUnmuteTrip are deliberately un-gated by requireParticipant — muting
+// a trip you've since left (or a business trip's staff role) is harmless either way, and
+// this stays consistent with MarkRead above, which has the same posture.
+func handleMuteTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+		if err := svc.Mute(r.Context(), id, userID); err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not mute trip")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func handleUnmuteTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+		if err := svc.Unmute(r.Context(), id, userID); err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not unmute trip")
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

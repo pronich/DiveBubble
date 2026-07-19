@@ -34,6 +34,12 @@ class TripRepository {
 
   Future<void> markRead(String id) => _service.markRead(id);
 
+  Future<bool> getMuted(String id) => _service.getMuted(id);
+
+  Future<void> muteTrip(String id) => _service.muteTrip(id);
+
+  Future<void> unmuteTrip(String id) => _service.unmuteTrip(id);
+
   Future<List<TripPhoto>> getTripPhotos(String id) async {
     final apiModels = await _service.fetchTripPhotos(id);
     return apiModels.map((m) => m.toDomain()).toList();

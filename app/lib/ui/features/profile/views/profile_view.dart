@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/gear_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/specialty_repository.dart';
 import '../../../../data/services/location_service.dart';
 import '../../../../domain/certification_level.dart';
@@ -30,6 +31,7 @@ class ProfileView extends StatefulWidget {
     required this.profileRepository,
     required this.specialtyRepository,
     required this.gearRepository,
+    required this.pushRepository,
     required this.isActive,
   });
 
@@ -37,6 +39,7 @@ class ProfileView extends StatefulWidget {
   final ProfileRepository profileRepository;
   final SpecialtyRepository specialtyRepository;
   final GearRepository gearRepository;
+  final PushRepository pushRepository;
 
   /// Whether this is the currently-selected bottom-nav tab. RootShell's IndexedStack keeps
   /// ProfileView alive when another tab is selected, so this is how it notices tab switches.
@@ -151,6 +154,7 @@ class _ProfileViewState extends State<ProfileView> {
                   onDeleteAccount: widget.authRepository.deleteAccount,
                   specialtiesExpanded: _specialtiesExpanded,
                   onToggleSpecialtiesExpanded: (v) => setState(() => _specialtiesExpanded = v),
+                  pushRepository: widget.pushRepository,
                 );
               },
             ),
@@ -236,6 +240,7 @@ class _SignedInBody extends StatelessWidget {
     required this.onDeleteAccount,
     required this.specialtiesExpanded,
     required this.onToggleSpecialtiesExpanded,
+    required this.pushRepository,
   });
 
   final Profile profile;
@@ -247,6 +252,7 @@ class _SignedInBody extends StatelessWidget {
   final Future<void> Function() onDeleteAccount;
   final bool specialtiesExpanded;
   final ValueChanged<bool> onToggleSpecialtiesExpanded;
+  final PushRepository pushRepository;
 
   bool get _hasLevel => profile.certificationLevel?.isNotEmpty ?? false;
 
@@ -419,10 +425,10 @@ class _SignedInBody extends StatelessWidget {
           ),
         ),
         const _SettingsDivider(),
-        const _SettingsRow(
+        _SettingsRow(
           icon: Icons.notifications_outlined,
           label: 'Notifications',
-          page: NotificationsSettingsPage(),
+          page: NotificationsSettingsPage(pushRepository: pushRepository),
         ),
         const _SettingsRow(icon: Icons.info_outline, label: 'About', page: AboutPage()),
         const _SettingsRow(icon: Icons.description_outlined, label: 'Legal', page: LegalPage()),

@@ -65,6 +65,12 @@ func (s *Service) RegisterToken(ctx context.Context, userID uuid.UUID, platform,
 	return s.repo.Upsert(ctx, userID, platform, token)
 }
 
+// UnregisterToken is the master-off path from NotificationsSettingsPage — removing the row
+// is what actually stops sends, there's no separate "enabled" flag on push_tokens to flip.
+func (s *Service) UnregisterToken(ctx context.Context, userID uuid.UUID, token string) error {
+	return s.repo.DeleteTokenForUser(ctx, userID, token)
+}
+
 type Notification struct {
 	Title string
 	Body  string

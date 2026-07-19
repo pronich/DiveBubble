@@ -154,6 +154,28 @@ class TripApiService {
     }
   }
 
+  Future<bool> getMuted(String id) async {
+    final res = await _client.get(Uri.parse('$baseUrl/trips/$id/mute'), headers: await _requiredAuthHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('getMuted failed: ${res.statusCode} ${res.body}');
+    }
+    return (jsonDecode(res.body) as Map<String, dynamic>)['muted'] as bool;
+  }
+
+  Future<void> muteTrip(String id) async {
+    final res = await _client.post(Uri.parse('$baseUrl/trips/$id/mute'), headers: await _requiredAuthHeaders());
+    if (res.statusCode != 204) {
+      throw Exception('muteTrip failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
+  Future<void> unmuteTrip(String id) async {
+    final res = await _client.delete(Uri.parse('$baseUrl/trips/$id/mute'), headers: await _requiredAuthHeaders());
+    if (res.statusCode != 204) {
+      throw Exception('unmuteTrip failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
   Future<TripApiModel> createTrip({
     required String title,
     required String location,

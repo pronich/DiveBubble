@@ -14,6 +14,7 @@ import (
 
 func registerPushRoutes(mux *http.ServeMux, svc *push.Service, authIssuer *auth.TokenIssuer) {
 	mux.HandleFunc("POST /me/push-token", withAuth(authIssuer, handleRegisterPushToken(svc)))
+	mux.HandleFunc("DELETE /me/push-token", withAuth(authIssuer, handleUnregisterPushToken(svc)))
 }
 
 type registerPushTokenRequest struct {
@@ -43,6 +44,23 @@ func handleRegisterPushToken(svc *push.Service) func(http.ResponseWriter, *http.
 
 		if err := svc.RegisterToken(r.Context(), userID, req.Platform, req.Token); err != nil {
 			writeError(w, http.StatusInternalServerError, "could not register push token")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleUnregisterPushToken is the master-off path (NotificationsSettingsPage) — the token
+// itself, not the platform, since it's the row's primary key.
+func handleUnregisterPushToken(svc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		token := strings.TrimSpace(r.URL.Query().Get("token"))
+		if token == "" {
+			writeError(w, http.StatusBadRequest, "token is required")
+			return
+		}
+		if err := svc.UnregisterToken(r.Context(), userID, token); err != nil {
+			writeError(w, http.StatusInternalServerError, "could not unregister push token")
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

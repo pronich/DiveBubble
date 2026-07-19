@@ -18,6 +18,7 @@ import 'data/services/dive_center_api_service.dart';
 import 'data/services/gear_api_service.dart';
 import 'data/services/profile_api_service.dart';
 import 'data/services/push_api_service.dart';
+import 'data/services/push_preferences.dart';
 import 'data/services/realtime_service.dart';
 import 'data/services/specialty_api_service.dart';
 import 'data/services/token_storage_service.dart';
@@ -141,6 +142,9 @@ class _MyAppState extends State<MyApp> {
   // reads back that same decision.
   Future<void> _maybeRegisterPush() async {
     if (await _authRepository.currentUserId() == null) return;
+    // Respects an explicit opt-out from NotificationsSettingsPage — a sign-in/token-refresh
+    // event must never silently undo that.
+    if (!await PushPreferences.isEnabled()) return;
 
     try {
       final settings = await FirebaseMessaging.instance.requestPermission();
@@ -170,6 +174,9 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _registerToken(String token) async {
+    // A token-refresh event fires regardless of the diver's own preference — must not
+    // silently re-enable push after an explicit opt-out via NotificationsSettingsPage.
+    if (!await PushPreferences.isEnabled()) return;
     try {
       await _pushRepository.registerToken(token: token, platform: defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios');
     } catch (e) {
@@ -243,6 +250,7 @@ class _MyAppState extends State<MyApp> {
           specialtyRepository: _specialtyRepository,
           gearRepository: _gearRepository,
           diveCenterRepository: _diveCenterRepository,
+          pushRepository: _pushRepository,
           currentUserId: currentUserId,
         ),
       ),

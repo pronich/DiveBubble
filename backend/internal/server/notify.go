@@ -55,3 +55,22 @@ func excludeUser(ids []uuid.UUID, exclude uuid.UUID) []uuid.UUID {
 	}
 	return out
 }
+
+// excludeUsers is excludeUser for a set — used to subtract a trip's muted users from a
+// message push's recipients (see notifyNewMessage). Safe to call with a nil/empty exclude set.
+func excludeUsers(ids []uuid.UUID, exclude []uuid.UUID) []uuid.UUID {
+	if len(exclude) == 0 {
+		return ids
+	}
+	excludeSet := make(map[uuid.UUID]bool, len(exclude))
+	for _, id := range exclude {
+		excludeSet[id] = true
+	}
+	out := ids[:0]
+	for _, id := range ids {
+		if !excludeSet[id] {
+			out = append(out, id)
+		}
+	}
+	return out
+}
