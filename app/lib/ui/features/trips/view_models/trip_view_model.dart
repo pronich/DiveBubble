@@ -61,6 +61,9 @@ class TripViewModel extends ChangeNotifier {
   bool _isCancelling = false;
   bool get isCancelling => _isCancelling;
 
+  bool _isMuted = false;
+  bool get isMuted => _isMuted;
+
   Future<void> load() async {
     _isLoading = true;
     _error = null;
@@ -101,10 +104,34 @@ class TripViewModel extends ChangeNotifier {
       } else {
         _isDiveCenterStaff = false;
       }
+      try {
+        _isMuted = await _repository.getMuted(_tripId);
+      } catch (_) {
+        // Best-effort — worst case the mute pill shows "unmuted" until the next successful load.
+        _isMuted = false;
+      }
     } catch (e) {
       _error = e.toString();
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Optimistic, no dedicated loading flag — a mute toggle isn't worth a spinner. Rolls
+  /// back on failure.
+  Future<void> toggleMute() async {
+    final next = !_isMuted;
+    _isMuted = next;
+    notifyListeners();
+    try {
+      if (next) {
+        await _repository.muteTrip(_tripId);
+      } else {
+        await _repository.unmuteTrip(_tripId);
+      }
+    } catch (_) {
+      _isMuted = !next;
       notifyListeners();
     }
   }

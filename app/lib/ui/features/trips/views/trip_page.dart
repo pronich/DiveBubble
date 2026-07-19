@@ -235,6 +235,12 @@ class _TripPageState extends State<TripPage> {
                         _TripStatusPill(trip: trip, isOrganizer: isOrganizer),
                       ],
                     ),
+                    // Quick actions row, Telegram-Group-Info-style — only meaningful once
+                    // already inside the Bubble (see openedFromConversation's own doc).
+                    if (widget.openedFromConversation) ...[
+                      const SizedBox(height: 16),
+                      _ActionPillsRow(viewModel: widget.viewModel, trip: trip, isOrganizer: isOrganizer),
+                    ],
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -326,11 +332,8 @@ class _TripPageState extends State<TripPage> {
                               realtimeService: widget.realtimeService,
                               diveCenterRepository: widget.diveCenterRepository,
                             )
-                          : _JoinButton(trip: trip, viewModel: widget.viewModel)
-                    else if (widget.openedFromConversation && trip.joined && !isOrganizer)
-                      _LeaveButton(viewModel: widget.viewModel)
-                    else if (widget.openedFromConversation && isOrganizer && trip.bookingStatus != 'cancelled')
-                      _CancelButton(viewModel: widget.viewModel),
+                          : _JoinButton(trip: trip, viewModel: widget.viewModel),
+                    // Leave/Cancel now live in _ActionPillsRow up top, Telegram-Group-Info-style.
                   ],
                 ),
               ),
@@ -766,117 +769,165 @@ class _BookNowSection extends StatelessWidget {
   }
 }
 
-/// Only shown on the Specific view (opened from inside a Bubble) to a joined,
-/// non-organizer diver — the organizer's way out is cancelling the trip, not this.
+/// Quick-actions row shown only on the Specific view (opened from inside a Bubble) —
+/// Telegram Group-Info-style row of icon pills, replacing the old full-width Leave/Cancel
+/// buttons. Mute is always shown; Leave (joined, non-organizer) and Cancel (organizer, not
+/// already cancelled) are mutually exclusive, same gating the old buttons used.
+class _ActionPillsRow extends StatelessWidget {
+  const _ActionPillsRow({required this.viewModel, required this.trip, required this.isOrganizer});
+
+  final TripViewModel viewModel;
+  final Trip trip;
+  final bool isOrganizer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ActionPill(
+            icon: viewModel.isMuted ? Icons.notifications_off_outlined : Icons.notifications_none,
+            label: viewModel.isMuted ? 'Unmute' : 'Mute',
+            onTap: viewModel.toggleMute,
+          ),
+        ),
+        if (trip.joined && !isOrganizer) ...[
+          const SizedBox(width: 8),
+          Expanded(
+            child: _ActionPill(
+              icon: Icons.logout,
+              label: 'Leave',
+              destructive: true,
+              busy: viewModel.isLeaving,
+              onTap: () => _handleLeave(context, viewModel),
+            ),
+          ),
+        ] else if (isOrganizer && trip.bookingStatus != 'cancelled') ...[
+          const SizedBox(width: 8),
+          Expanded(
+            child: _ActionPill(
+              icon: Icons.cancel_outlined,
+              label: 'Cancel',
+              destructive: true,
+              busy: viewModel.isCancelling,
+              onTap: () => _handleCancel(context, viewModel),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 /// On success, pops all the way back out of the Bubble; [MyTripsView]'s own
 /// `await Navigator.push(...)` around [TripConversationPage] resolves the moment that
 /// route is removed from the stack (popUntil pops it same as a direct pop), so its
 /// existing post-return reload already picks up the trip disappearing — no extra
 /// callback needed here.
-class _LeaveButton extends StatelessWidget {
-  const _LeaveButton({required this.viewModel});
-
-  final TripViewModel viewModel;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: Theme.of(context).colorScheme.error,
-          side: BorderSide(color: Theme.of(context).colorScheme.error),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+Future<void> _handleLeave(BuildContext context, TripViewModel viewModel) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Leave this Bubble?'),
+      content: const Text("You'll lose your spot and can rejoin later if there's room."),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+        TextButton(
+          style: AppButtonStyles.ghost.copyWith(foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.error)),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Leave'),
         ),
-        onPressed: viewModel.isLeaving ? null : () => _handleLeave(context),
-        child: viewModel.isLeaving
-            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Text('Leave Bubble'),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
 
-  Future<void> _handleLeave(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Leave this Bubble?'),
-        content: const Text("You'll lose your spot and can rejoin later if there's room."),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          TextButton(
-            style: AppButtonStyles.ghost.copyWith(foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.error)),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Leave'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-
-    final error = await viewModel.leave();
-    if (!context.mounted) return;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-      return;
-    }
-    Navigator.of(context).popUntil((route) => route.isFirst);
+  final error = await viewModel.leave();
+  if (!context.mounted) return;
+  if (error != null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    return;
   }
+  Navigator.of(context).popUntil((route) => route.isFirst);
 }
 
-/// Organizer-only, Specific view — the structural counterpart to [_LeaveButton], but
-/// cancelling doesn't remove the organizer from anything: it stays on this page, the
-/// status pill flips to "Cancelled", and this button itself disappears (see the caller's
-/// `bookingStatus != 'cancelled'` guard) since there's nothing left to cancel. Bolder
-/// (solid destructive) styling than Leave's outlined one — this affects every participant,
-/// not just the person tapping it, and it's final: no reopen path exists.
-class _CancelButton extends StatelessWidget {
-  const _CancelButton({required this.viewModel});
+/// Organizer-only — cancelling doesn't remove the organizer from anything: it stays on
+/// this page, the status pill flips to "Cancelled", and this pill itself disappears (see
+/// _ActionPillsRow's own `bookingStatus != 'cancelled'` guard) since there's nothing left
+/// to cancel. It's final: no reopen path exists.
+Future<void> _handleCancel(BuildContext context, TripViewModel viewModel) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Cancel this trip?'),
+      content: const Text(
+        "Every participant keeps the Bubble to see the chat history, but no one — including you — "
+        "can send messages, join, or arrange transport anymore. This can't be undone.",
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Never mind')),
+        TextButton(
+          style: AppButtonStyles.ghost.copyWith(foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.error)),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Cancel trip'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
 
-  final TripViewModel viewModel;
+  final error = await viewModel.cancel();
+  if (!context.mounted) return;
+  if (error != null) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    return;
+  }
+  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Trip cancelled')));
+}
+
+/// A single icon-over-label pill, Telegram Group-Info-style (video call / mute / search /
+/// more, stacked icon+text in a rounded container) — [_ActionPillsRow] lays two of these
+/// out evenly.
+class _ActionPill extends StatelessWidget {
+  const _ActionPill({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.destructive = false,
+    this.busy = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool destructive;
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        style: AppButtonStyles.destructive,
-        onPressed: viewModel.isCancelling ? null : () => _handleCancel(context),
-        child: viewModel.isCancelling
-            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Text('Cancel Trip'),
-      ),
-    );
-  }
-
-  Future<void> _handleCancel(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cancel this trip?'),
-        content: const Text(
-          "Every participant keeps the Bubble to see the chat history, but no one — including you — "
-          "can send messages, join, or arrange transport anymore. This can't be undone.",
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Never mind')),
-          TextButton(
-            style: AppButtonStyles.ghost.copyWith(foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.error)),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Cancel trip'),
+    final theme = Theme.of(context);
+    final color = destructive ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant;
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: busy ? null : onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              busy
+                  ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: color))
+                  : Icon(icon, color: color, size: 20),
+              const SizedBox(height: 4),
+              Text(label, style: theme.textTheme.labelSmall?.copyWith(color: color)),
+            ],
           ),
-        ],
+        ),
       ),
     );
-    if (confirmed != true || !context.mounted) return;
-
-    final error = await viewModel.cancel();
-    if (!context.mounted) return;
-    if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Trip cancelled')));
   }
 }
 
