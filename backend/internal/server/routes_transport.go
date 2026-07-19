@@ -9,6 +9,8 @@ import (
 
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/divecenter"
+	"divebubble_be/internal/profile"
+	"divebubble_be/internal/push"
 	"divebubble_be/internal/transport"
 	"divebubble_be/internal/trip"
 
@@ -20,11 +22,13 @@ func registerTransportRoutes(
 	svc *transport.Service,
 	tripSvc *trip.Service,
 	diveCenterSvc *divecenter.Service,
+	profileSvc *profile.Service,
 	authIssuer *auth.TokenIssuer,
+	pushSvc *push.Service,
 ) {
 	mux.HandleFunc("GET /trips/{id}/transport", withAuth(authIssuer, handleListTransportOffers(svc, tripSvc, diveCenterSvc)))
 	mux.HandleFunc("POST /trips/{id}/transport", withAuth(authIssuer, handleCreateTransportOffer(svc, tripSvc, diveCenterSvc)))
-	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/join", withAuth(authIssuer, handleJoinTransportOffer(svc, tripSvc)))
+	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/join", withAuth(authIssuer, handleJoinTransportOffer(svc, tripSvc, profileSvc, pushSvc)))
 	mux.HandleFunc("GET /trips/{id}/transport/{offerId}/joins", withAuth(authIssuer, handleListTransportOfferJoins(svc, tripSvc)))
 	mux.HandleFunc("GET /trips/{id}/transport/alert", withAuth(authIssuer, handleGetTransportAlert(svc, tripSvc)))
 }
@@ -143,7 +147,7 @@ func handleCreateTransportOffer(svc *transport.Service, tripSvc *trip.Service, d
 	}
 }
 
-func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service, profileSvc *profile.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
 		if !ok {
@@ -166,7 +170,8 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service) fun
 			return
 		}
 
-		if err := svc.Join(r.Context(), offerID, userID); err != nil {
+		offer, err := svc.Join(r.Context(), offerID, userID)
+		if err != nil {
 			if errors.Is(err, transport.ErrNotFound) {
 				writeError(w, http.StatusNotFound, "transport offer not found")
 				return
@@ -181,6 +186,20 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service) fun
 			}
 			writeError(w, http.StatusInternalServerError, "could not join transport offer")
 			return
+		}
+
+		if offer.UserID != userID {
+			if t, err := tripSvc.GetTrip(r.Context(), tripID.String()); err == nil {
+				joinerName := "Someone"
+				if joiner, err := profileSvc.Get(r.Context(), userID); err == nil && joiner.DisplayName.Valid && joiner.DisplayName.String != "" {
+					joinerName = joiner.DisplayName.String
+				}
+				pushSvc.SendToUsers(r.Context(), []uuid.UUID{offer.UserID}, push.Notification{
+					Title: t.Title,
+					Body:  joinerName + " joined your ride.",
+					Data:  map[string]string{"tripId": t.ID.String(), "type": "transport_joined"},
+				})
+			}
 		}
 
 		writeJSON(w, http.StatusOK, map[string]bool{"joined": true})

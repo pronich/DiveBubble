@@ -1,31 +1,44 @@
 package server
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
 	"divebubble_be/internal/auth"
+	"divebubble_be/internal/divecenter"
+	"divebubble_be/internal/profile"
+	"divebubble_be/internal/push"
 	"divebubble_be/internal/transport"
 	"divebubble_be/internal/trip"
 
 	"github.com/google/uuid"
 )
 
-func registerTripRoutes(mux *http.ServeMux, svc *trip.Service, transportSvc *transport.Service, authIssuer *auth.TokenIssuer) {
+func registerTripRoutes(
+	mux *http.ServeMux,
+	svc *trip.Service,
+	transportSvc *transport.Service,
+	diveCenterSvc *divecenter.Service,
+	profileSvc *profile.Service,
+	authIssuer *auth.TokenIssuer,
+	pushSvc *push.Service,
+) {
 	mux.HandleFunc("POST /trips", withAuth(authIssuer, handleCreateTrip(svc)))
 	mux.HandleFunc("GET /trips", handleListTrips(svc))
 	mux.HandleFunc("GET /trips/mine", withAuth(authIssuer, handleListMyTrips(svc)))
 	// Detail stays browsable without an account — "joined" is just false for anonymous viewers.
 	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
-	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc)))
-	mux.HandleFunc("POST /trips/join-by-code", withAuth(authIssuer, handleJoinTripByCode(svc)))
-	mux.HandleFunc("POST /trips/{id}/leave", withAuth(authIssuer, handleLeaveTrip(svc, transportSvc)))
-	mux.HandleFunc("POST /trips/{id}/cancel", withAuth(authIssuer, handleCancelTrip(svc)))
-	mux.HandleFunc("PATCH /trips/{id}", withAuth(authIssuer, handleUpdateTrip(svc)))
+	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc, diveCenterSvc, profileSvc, pushSvc)))
+	mux.HandleFunc("POST /trips/join-by-code", withAuth(authIssuer, handleJoinTripByCode(svc, diveCenterSvc, profileSvc, pushSvc)))
+	mux.HandleFunc("POST /trips/{id}/leave", withAuth(authIssuer, handleLeaveTrip(svc, transportSvc, pushSvc)))
+	mux.HandleFunc("POST /trips/{id}/cancel", withAuth(authIssuer, handleCancelTrip(svc, diveCenterSvc, pushSvc)))
+	mux.HandleFunc("PATCH /trips/{id}", withAuth(authIssuer, handleUpdateTrip(svc, diveCenterSvc, pushSvc)))
 	mux.HandleFunc("GET /trips/{id}/participants", withAuth(authIssuer, handleListParticipants(svc)))
 	mux.HandleFunc("POST /trips/{id}/read", withAuth(authIssuer, handleMarkRead(svc)))
 	// Same "browsable without an account" posture as GET /trips/{id} — the gallery is part
@@ -262,7 +275,7 @@ func handleGetTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, u
 	}
 }
 
-func handleJoinTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleJoinTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id := r.PathValue("id")
 		if err := svc.Join(r.Context(), id, userID); err != nil {
@@ -286,8 +299,31 @@ func handleJoinTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, 
 			return
 		}
 
+		if t, err := svc.GetTrip(r.Context(), id); err == nil {
+			notifyOrganizerOfNewParticipant(r.Context(), pushSvc, profileSvc, t, userID)
+		}
+
 		writeJSON(w, http.StatusOK, map[string]bool{"joined": true})
 	}
+}
+
+// notifyOrganizerOfNewParticipant covers the individual-trip case only — Join (above) is the
+// individual-organizer join path; a business trip's roster notification lives in
+// notifyStaffOfBookingCodeJoin instead, since staff means everyone in the dive center,
+// not one organizer.
+func notifyOrganizerOfNewParticipant(ctx context.Context, pushSvc *push.Service, profileSvc *profile.Service, t trip.Trip, joinedUserID uuid.UUID) {
+	if !t.CreatorUserID.Valid || t.CreatorUserID.UUID == joinedUserID {
+		return
+	}
+	joinerName := "Someone"
+	if joiner, err := profileSvc.Get(ctx, joinedUserID); err == nil && joiner.DisplayName.Valid && joiner.DisplayName.String != "" {
+		joinerName = joiner.DisplayName.String
+	}
+	pushSvc.SendToUsers(ctx, []uuid.UUID{t.CreatorUserID.UUID}, push.Notification{
+		Title: t.Title,
+		Body:  joinerName + " joined your trip.",
+		Data:  map[string]string{"tripId": t.ID.String(), "type": "participant_joined"},
+	})
 }
 
 type joinByCodeRequest struct {
@@ -297,7 +333,7 @@ type joinByCodeRequest struct {
 // handleJoinTripByCode is the marketplace redemption path for business trips (see
 // trip.Service.JoinByCode) — no trip id in the URL, since the code alone is what the diver
 // actually has after paying on the dive center's own site.
-func handleJoinTripByCode(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleJoinTripByCode(svc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		var req joinByCodeRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
@@ -324,6 +360,8 @@ func handleJoinTripByCode(svc *trip.Service) func(http.ResponseWriter, *http.Req
 			return
 		}
 
+		notifyStaffOfBookingCodeJoin(r.Context(), pushSvc, profileSvc, diveCenterSvc, t, userID)
+
 		participantCount, err := svc.CountParticipants(r.Context(), t.ID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not join trip")
@@ -333,12 +371,40 @@ func handleJoinTripByCode(svc *trip.Service) func(http.ResponseWriter, *http.Req
 	}
 }
 
+// notifyStaffOfBookingCodeJoin is the business-trip roster-change notification — every
+// staff member of the dive center, not just whoever created the trip (see CLAUDE.md's
+// Business/dive-center section: the organization is the organizer, not one employee).
+func notifyStaffOfBookingCodeJoin(ctx context.Context, pushSvc *push.Service, profileSvc *profile.Service, diveCenterSvc *divecenter.Service, t trip.Trip, joinedUserID uuid.UUID) {
+	if !t.DiveCenterID.Valid {
+		return
+	}
+	staffIDs, err := diveCenterSvc.ListMemberUserIDs(ctx, t.DiveCenterID.UUID)
+	if err != nil {
+		log.Printf("push: could not list dive center staff for trip:%s: %v", t.ID, err)
+		return
+	}
+	// Excludes the joiner in case they're staff testing their own center's booking code.
+	staffIDs = excludeUser(dedupeUsers(staffIDs), joinedUserID)
+	if len(staffIDs) == 0 {
+		return
+	}
+	joinerName := "A diver"
+	if joiner, err := profileSvc.Get(ctx, joinedUserID); err == nil && joiner.DisplayName.Valid && joiner.DisplayName.String != "" {
+		joinerName = joiner.DisplayName.String
+	}
+	pushSvc.SendToUsers(ctx, staffIDs, push.Notification{
+		Title: t.Title,
+		Body:  joinerName + " joined via booking code.",
+		Data:  map[string]string{"tripId": t.ID.String(), "type": "participant_joined"},
+	})
+}
+
 // handleCancelTrip is organizer-only (enforced inside svc.Cancel) and final — booking_status
 // flips to "cancelled", which is what everything downstream keys off: Explore's List query
 // excludes it, the Join handler above rejects new joins, and message/transport handlers call
 // EnsureNotCancelled to freeze new activity while read access (history, participants,
 // existing transport) stays untouched.
-func handleCancelTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleCancelTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id := r.PathValue("id")
 		if err := svc.Cancel(r.Context(), id, userID); err != nil {
@@ -356,6 +422,19 @@ func handleCancelTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 			}
 			writeError(w, http.StatusInternalServerError, "could not cancel trip")
 			return
+		}
+
+		// Best-effort — the cancellation itself already succeeded above; a failed re-fetch
+		// here just means this notification is skipped, not that cancellation failed.
+		if t, err := svc.GetTrip(r.Context(), id); err == nil {
+			recipients := excludeUser(tripRecipientIDs(r.Context(), svc, diveCenterSvc, t), userID)
+			if len(recipients) > 0 {
+				pushSvc.SendToUsers(r.Context(), recipients, push.Notification{
+					Title: t.Title,
+					Body:  "This trip has been cancelled.",
+					Data:  map[string]string{"tripId": t.ID.String(), "type": "trip_cancelled"},
+				})
+			}
 		}
 
 		w.WriteHeader(http.StatusNoContent)
@@ -382,7 +461,7 @@ type updateTripRequest struct {
 // handleUpdateTrip is organizer-only (enforced inside svc.Update, same isOrganizer check as
 // Cancel/SetPhotoURL). Every field is optional — a nil pointer leaves that column untouched
 // (see trip.UpdateParams), so callers only send the fields they actually changed.
-func handleUpdateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleUpdateTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id := r.PathValue("id")
 		var req updateTripRequest
@@ -391,6 +470,11 @@ func handleUpdateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 			writeError(w, http.StatusBadRequest, "invalid JSON body")
 			return
 		}
+
+		// Snapshotted before the update — the client (admin/'s edit form) resends every
+		// field on every save, not just what actually changed, so the only reliable way to
+		// tell "did the time or meeting point actually change" is to diff before vs after.
+		before, beforeErr := svc.GetTrip(r.Context(), id)
 
 		t, err := svc.Update(r.Context(), id, userID, trip.UpdateParams{
 			Title:            req.Title,
@@ -425,6 +509,20 @@ func handleUpdateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 			return
 		}
 
+		if beforeErr == nil {
+			detailsChanged := !before.StartTime.Equal(t.StartTime) || before.MeetingPoint != t.MeetingPoint
+			if detailsChanged {
+				recipients := excludeUser(tripRecipientIDs(r.Context(), svc, diveCenterSvc, t), userID)
+				if len(recipients) > 0 {
+					pushSvc.SendToUsers(r.Context(), recipients, push.Notification{
+						Title: t.Title,
+						Body:  "Trip time or meeting point changed — check the details.",
+						Data:  map[string]string{"tripId": t.ID.String(), "type": "trip_updated"},
+					})
+				}
+			}
+		}
+
 		joined, err := svc.IsJoined(r.Context(), id, userID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not update trip")
@@ -443,7 +541,7 @@ func handleUpdateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 // business rule (organizer can't leave) plus transport's cascade (their own joins freed,
 // any offer *they* created dissolved with an alert for whoever had joined it — see
 // transport.Service.HandleUserLeavingTrip).
-func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id := r.PathValue("id")
 		tripID, err := uuid.Parse(id)
@@ -471,9 +569,21 @@ func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service) func(ht
 			return
 		}
 
-		if err := transportSvc.HandleUserLeavingTrip(r.Context(), tripID, userID); err != nil {
+		alertedUserIDs, err := transportSvc.HandleUserLeavingTrip(r.Context(), tripID, userID)
+		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not clean up transport offers")
 			return
+		}
+		if len(alertedUserIDs) > 0 {
+			// Best-effort — the leave itself already succeeded; a failed re-fetch here just
+			// means this notification is skipped.
+			if t, err := svc.GetTrip(r.Context(), id); err == nil {
+				pushSvc.SendToUsers(r.Context(), dedupeUsers(alertedUserIDs), push.Notification{
+					Title: t.Title,
+					Body:  "A transport offer you joined was cancelled — check the Transport tab.",
+					Data:  map[string]string{"tripId": t.ID.String(), "type": "transport_alert"},
+				})
+			}
 		}
 
 		w.WriteHeader(http.StatusNoContent)

@@ -238,31 +238,6 @@ func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *pr
 	})
 }
 
-func dedupeUsers(ids []uuid.UUID) []uuid.UUID {
-	seen := make(map[uuid.UUID]bool, len(ids))
-	out := make([]uuid.UUID, 0, len(ids))
-	for _, id := range ids {
-		if seen[id] {
-			continue
-		}
-		seen[id] = true
-		out = append(out, id)
-	}
-	return out
-}
-
-// excludeUser filters in place — safe because dedupeUsers above always hands back a
-// freshly allocated slice, never one a caller still holds a reference into.
-func excludeUser(ids []uuid.UUID, exclude uuid.UUID) []uuid.UUID {
-	out := ids[:0]
-	for _, id := range ids {
-		if id != exclude {
-			out = append(out, id)
-		}
-	}
-	return out
-}
-
 // truncateForPush keeps push payloads small — cuts on a rune boundary since message bodies
 // aren't guaranteed ASCII.
 func truncateForPush(body string) string {
