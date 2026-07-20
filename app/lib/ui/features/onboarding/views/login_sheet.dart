@@ -159,7 +159,11 @@ class _LoginSheetState extends State<LoginSheet> {
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+        // showModalBottomSheet doesn't push its content above the keyboard on its own —
+        // without viewInsets.bottom here, the email field (revealed after tapping
+        // "Continue with email") stayed anchored in place and ended up hidden underneath
+        // the keyboard instead of the sheet growing to make room for it.
+        padding: EdgeInsets.fromLTRB(24, 20, 24, 32 + MediaQuery.of(context).viewInsets.bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
