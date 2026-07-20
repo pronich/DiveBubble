@@ -39,13 +39,28 @@ class ProfileApiService {
     return _fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Only ever called from the personal-info onboarding step today — nil-leaves-unchanged
-  // on the backend (profile.UpdateParams' COALESCE), same contract as app/'s own PATCH /me.
-  Future<MyProfile> updateProfile({String? displayName, String? location, String? bio}) async {
+  // nil-leaves-unchanged on the backend (profile.UpdateParams' COALESCE), same contract as
+  // app/'s own PATCH /me. Used by both the onboarding step (name/location/bio only) and
+  // AccountPage's full edit form.
+  Future<MyProfile> updateProfile({
+    String? displayName,
+    String? location,
+    String? bio,
+    int? diveCount,
+    String? certificationLevel,
+    String? certificationAgency,
+    String? certificationNumber,
+    String? languages,
+  }) async {
     final body = <String, dynamic>{
       if (displayName != null) 'displayName': displayName,
       if (location != null) 'location': location,
       if (bio != null) 'bio': bio,
+      if (diveCount != null) 'diveCount': diveCount,
+      if (certificationLevel != null) 'certificationLevel': certificationLevel,
+      if (certificationAgency != null) 'certificationAgency': certificationAgency,
+      if (certificationNumber != null) 'certificationNumber': certificationNumber,
+      if (languages != null) 'languages': languages,
     };
     final res = await _client.patch(
       Uri.parse('$baseUrl/me'),
@@ -73,5 +88,11 @@ class ProfileApiService {
         avatarUrl: json['avatarUrl'] as String?,
         location: json['location'] as String?,
         bio: json['bio'] as String?,
+        diveCount: json['diveCount'] as int? ?? 0,
+        certificationLevel: json['certificationLevel'] as String?,
+        certificationAgency: json['certificationAgency'] as String?,
+        certificationNumber: json['certificationNumber'] as String?,
+        languages: json['languages'] as String? ?? '',
+        memberSince: json['memberSince'] != null ? DateTime.tryParse(json['memberSince'] as String) : null,
       );
 }

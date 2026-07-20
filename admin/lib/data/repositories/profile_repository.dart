@@ -10,8 +10,26 @@ class ProfileRepository {
 
   Future<MyProfile> getById(String userId) => _service.fetchById(userId);
 
-  Future<MyProfile> update({String? displayName, String? location, String? bio}) =>
-      _service.updateProfile(displayName: displayName, location: location, bio: bio);
+  Future<MyProfile> update({
+    String? displayName,
+    String? location,
+    String? bio,
+    int? diveCount,
+    String? certificationLevel,
+    String? certificationAgency,
+    String? certificationNumber,
+    String? languages,
+  }) =>
+      _service.updateProfile(
+        displayName: displayName,
+        location: location,
+        bio: bio,
+        diveCount: diveCount,
+        certificationLevel: certificationLevel,
+        certificationAgency: certificationAgency,
+        certificationNumber: certificationNumber,
+        languages: languages,
+      );
 
   Future<MyProfile> uploadAvatar(List<int> bytes, String filename) => _service.uploadAvatar(bytes, filename);
 }

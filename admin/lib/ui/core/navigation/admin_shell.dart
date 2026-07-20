@@ -5,11 +5,13 @@ import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/dive_center_repository.dart';
 import '../../../data/repositories/message_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
+import '../../../data/repositories/specialty_repository.dart';
 import '../../../data/repositories/transport_repository.dart';
 import '../../../data/repositories/trip_repository.dart';
 import '../../../data/services/realtime_service.dart';
 import '../../../domain/entities/dive_center.dart';
 import '../../../domain/entities/my_profile.dart';
+import '../../features/account/views/account_page.dart';
 import '../../features/bubbles/views/bubbles_page.dart';
 import '../../features/company/views/company_page.dart';
 import '../../features/trips/views/trips_page.dart';
@@ -28,6 +30,7 @@ class AdminShell extends StatefulWidget {
     required this.tripRepository,
     required this.messageRepository,
     required this.profileRepository,
+    required this.specialtyRepository,
     required this.transportRepository,
     required this.realtimeService,
     required this.authRepository,
@@ -39,6 +42,7 @@ class AdminShell extends StatefulWidget {
   final TripRepository tripRepository;
   final MessageRepository messageRepository;
   final ProfileRepository profileRepository;
+  final SpecialtyRepository specialtyRepository;
   final TransportRepository transportRepository;
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
@@ -134,8 +138,15 @@ class _AdminShellState extends State<AdminShell> {
   static const _mobileBreakpoint = 760.0;
 
   void _onAccountTap(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Personal profile editing is coming soon')),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AccountPage(
+          profileRepository: widget.profileRepository,
+          specialtyRepository: widget.specialtyRepository,
+          authRepository: widget.authRepository,
+          onSignedOut: widget.onSignedOut,
+        ),
+      ),
     );
   }
 
