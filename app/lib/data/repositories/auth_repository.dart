@@ -193,13 +193,18 @@ class AuthRepository extends ChangeNotifier {
     final stored = await _tokens.read();
     if (stored != null) {
       try {
-        await _api.logout(stored.accessToken);
+        await _api.logout(stored.accessToken).timeout(const Duration(seconds: 5));
       } catch (_) {
         // best-effort — still clear locally below
       }
     }
     try {
-      await GoogleSignIn.instance.signOut();
+      // Timeout, not just try/catch: GoogleSignIn.instance.signOut() on an instance that
+      // was never initialize()'d this session (a diver who signed in via Apple, or now the
+      // email passwordless flow, never touches GoogleSignIn at all) doesn't throw — it
+      // hangs indefinitely awaiting an initialization that's never coming, which would
+      // silently stall this entire method (tokens never cleared, "Dive out" looks broken).
+      await GoogleSignIn.instance.signOut().timeout(const Duration(seconds: 5));
     } catch (_) {
       // best-effort
     }
