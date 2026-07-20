@@ -36,14 +36,20 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _init() async {
     try {
-      await widget.authRepository.ensureInitialized();
+      // Timeout, not just try/catch: Google Identity Services' own initialize() has been
+      // observed to simply never resolve for some accounts/browser states (a GIS-internal
+      // FedCM promise rejecting with OperationError in an unrelated microtask, unrelated to
+      // *our* awaited Future) — without this, the whole login screen (including the email
+      // fallback, previously gated on the same _isReady flag) got stuck behind a Google
+      // problem that had nothing to do with the diver's actual sign-in method.
+      await widget.authRepository.ensureInitialized().timeout(const Duration(seconds: 8));
       _authSub = widget.authRepository.authenticationEvents.listen(
         _onAuthEvent,
         onError: (Object e) => setState(() => _error = e.toString()),
       );
       if (mounted) setState(() => _isReady = true);
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = 'Google sign-in is temporarily unavailable — try "Dive in with email" instead.');
     }
   }
 
@@ -123,14 +129,19 @@ class _LoginPageState extends State<LoginPage> {
 
   List<Widget> _buildProviderButtons(ThemeData theme) {
     return [
-      if (!_isReady || _isCompletingSignIn)
+      // This slot's own state (loading/ready/failed) is independent of the email button
+      // below, which is *always* interactive immediately — a slow or broken Google init
+      // must never block the one sign-in method that never touches Google at all.
+      if (_error != null)
+        const SizedBox.shrink()
+      else if (!_isReady || _isCompletingSignIn)
         const SizedBox(height: 44, child: Center(child: CircularProgressIndicator()))
       else
         // Looks like our own FilledButton.tonal — see CustomGoogleButton's own doc
         // comment for why the *real* click target underneath still has to be Google's own
         // widget.
         const CustomGoogleButton(),
-      const SizedBox(height: 12),
+      if (_error == null) const SizedBox(height: 12),
       SizedBox(
         width: double.infinity,
         height: 44,
