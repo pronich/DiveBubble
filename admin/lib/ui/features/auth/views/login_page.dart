@@ -31,7 +31,10 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _init();
+    // TEMP DIAGNOSTIC: skip calling ensureInitialized() to test whether the freeze happens
+    // even without OUR code ever touching GoogleSignIn (i.e. purely from the plugin's own
+    // automatic registration-time side effect) — revert once confirmed either way.
+    // _init();
   }
 
   Future<void> _init() async {
