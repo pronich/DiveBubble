@@ -44,7 +44,9 @@ dependencies:
   # wraps, with no Flutter plugin registration of its own — we call it ourselves, lazily.
   google_identity_services_web: ^0.3.3
   web: ^1.1.0
-  flutter_secure_storage: ^10.3.1
+  # flutter_secure_storage deliberately NOT used (2026-07-20) — see
+  # TokenStorageService's own doc comment: its web backend was observed hanging
+  # indefinitely after a fully-successful backend login on admin.divebubble.io.
   image_picker: ^1.1.2
   url_launcher: ^6.3.1
   centrifuge: ^0.20.0
