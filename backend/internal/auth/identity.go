@@ -97,3 +97,65 @@ func (r *IdentityRepository) LoginOrRegister(ctx context.Context, provider, prov
 	}
 	return userID, true, nil
 }
+
+// LoginOrRegisterByEmail is LoginOrRegister's counterpart for the passwordless "email"
+// provider, which needs one extra step the others don't: Google/Apple sub claims are
+// already scoped per-provider, so two different providers never collide, but a diver who
+// signed up via Google and *separately* verifies a passwordless code for that same address
+// must land on their existing account, not a disconnected new one. Order of checks: (1) an
+// "email" identity for this address already exists → that account; (2) some *other*
+// provider's identity shares this provider_email → link a new "email" identity onto that
+// same user_id rather than creating a second account for the same person; (3) neither →
+// create fresh, same as LoginOrRegister.
+func (r *IdentityRepository) LoginOrRegisterByEmail(ctx context.Context, normalizedEmail string) (userID uuid.UUID, isNewUser bool, err error) {
+	err = r.DB.QueryRowContext(ctx, `
+		SELECT user_id FROM auth_identities WHERE provider = 'email' AND provider_user_id = $1
+	`, normalizedEmail).Scan(&userID)
+	if err == nil {
+		return userID, false, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return uuid.Nil, false, err
+	}
+
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return uuid.Nil, false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var existingUserID uuid.UUID
+	err = tx.QueryRowContext(ctx, `
+		SELECT user_id FROM auth_identities WHERE provider_email = $1 LIMIT 1
+	`, normalizedEmail).Scan(&existingUserID)
+	switch {
+	case err == nil:
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO auth_identities (user_id, provider, provider_user_id, provider_email)
+			VALUES ($1, 'email', $2, $2)
+		`, existingUserID, normalizedEmail); err != nil {
+			return uuid.Nil, false, err
+		}
+		if err := tx.Commit(); err != nil {
+			return uuid.Nil, false, err
+		}
+		return existingUserID, false, nil
+	case errors.Is(err, sql.ErrNoRows):
+		newUserID := uuid.New()
+		if _, err := tx.ExecContext(ctx, `INSERT INTO users (id) VALUES ($1)`, newUserID); err != nil {
+			return uuid.Nil, false, err
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO auth_identities (user_id, provider, provider_user_id, provider_email)
+			VALUES ($1, 'email', $2, $2)
+		`, newUserID, normalizedEmail); err != nil {
+			return uuid.Nil, false, err
+		}
+		if err := tx.Commit(); err != nil {
+			return uuid.Nil, false, err
+		}
+		return newUserID, true, nil
+	default:
+		return uuid.Nil, false, err
+	}
+}

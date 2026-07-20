@@ -9,4 +9,9 @@ class ProfileRepository {
   Future<MyProfile> getMe() => _service.fetchMe();
 
   Future<MyProfile> getById(String userId) => _service.fetchById(userId);
+
+  Future<MyProfile> update({String? displayName, String? location, String? bio}) =>
+      _service.updateProfile(displayName: displayName, location: location, bio: bio);
+
+  Future<MyProfile> uploadAvatar(List<int> bytes, String filename) => _service.uploadAvatar(bytes, filename);
 }

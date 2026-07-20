@@ -87,6 +87,39 @@ class AuthApiService {
     );
   }
 
+  // kind is always "otp" here — app/'s passwordless flow is code-entry, unlike admin/'s
+  // clicked-link flow (same backend endpoint, same email_login_codes table either way, see
+  // backend's internal/auth/email.go).
+  Future<void> startEmailLogin(String email) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/auth/email/start'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'kind': 'otp'}),
+    );
+    if (res.statusCode != 200) {
+      throw Exception(_extractError(res.body) ?? 'Could not send login code');
+    }
+  }
+
+  Future<ProviderSignInResult> verifyEmailLogin(String email, String code) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/auth/email/verify'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'code': code}),
+    );
+    if (res.statusCode != 200) {
+      throw Exception(_extractError(res.body) ?? 'That code is invalid or has expired');
+    }
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    return ProviderSignInResult(
+      accessToken: decoded['accessToken'] as String,
+      accessTokenExpiresAt: DateTime.parse(decoded['accessTokenExpiresAt'] as String),
+      refreshToken: decoded['refreshToken'] as String,
+      userId: decoded['userId'] as String,
+      isNewUser: decoded['isNewUser'] as bool? ?? false,
+    );
+  }
+
   Future<RefreshResult> refresh(String refreshToken) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/auth/refresh'),

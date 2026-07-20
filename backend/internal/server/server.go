@@ -11,6 +11,7 @@ import (
 	"divebubble_be/internal/certification"
 	"divebubble_be/internal/config"
 	"divebubble_be/internal/divecenter"
+	"divebubble_be/internal/email"
 	"divebubble_be/internal/gear"
 	"divebubble_be/internal/message"
 	"divebubble_be/internal/profile"
@@ -54,6 +55,8 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 		log.Fatalf("server: %v", err)
 	}
 	appleKeys := auth.NewAppleKeySet()
+	emailCodeRepo := auth.NewEmailCodeRepository(db)
+	emailSvc := email.New(cfg.ResendAPIKey, cfg.EmailFromAddress)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)
@@ -61,7 +64,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	registerMessageRoutes(mux, messageSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, publisher, pushSvc)
 	registerTransportRoutes(mux, transportSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, pushSvc)
 	registerRealtimeRoutes(mux, realtimeTokenIssuer, authIssuer)
-	registerAuthRoutes(mux, cfg, identityRepo, sessionRepo, authIssuer, appleKeys)
+	registerAuthRoutes(mux, cfg, identityRepo, sessionRepo, authIssuer, appleKeys, emailCodeRepo, emailSvc)
 	registerProfileRoutes(mux, profileSvc, authIssuer)
 	registerCertificationRoutes(mux, certificationSvc, authIssuer)
 	registerGearRoutes(mux, gearSvc, authIssuer)

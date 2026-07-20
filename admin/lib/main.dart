@@ -14,6 +14,7 @@ import 'data/services/realtime_service.dart';
 import 'data/services/token_storage_service.dart';
 import 'data/services/transport_api_service.dart';
 import 'data/services/trip_api_service.dart';
+import 'ui/core/magic_link_gate.dart';
 import 'ui/core/root_gate.dart';
 import 'ui/core/theme/app_theme.dart';
 
@@ -69,14 +70,17 @@ class AdminApp extends StatelessWidget {
       title: 'DiveBubble Business',
       theme: AdminTheme.light,
       debugShowCheckedModeBanner: false,
-      home: RootGate(
+      home: MagicLinkGate(
         authRepository: authRepository,
-        diveCenterRepository: diveCenterRepository,
-        tripRepository: tripRepository,
-        profileRepository: profileRepository,
-        messageRepository: messageRepository,
-        transportRepository: transportRepository,
-        realtimeService: realtimeService,
+        child: RootGate(
+          authRepository: authRepository,
+          diveCenterRepository: diveCenterRepository,
+          tripRepository: tripRepository,
+          profileRepository: profileRepository,
+          messageRepository: messageRepository,
+          transportRepository: transportRepository,
+          realtimeService: realtimeService,
+        ),
       ),
     );
   }
