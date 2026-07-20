@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'data/repositories/auth_repository.dart';
@@ -35,7 +37,18 @@ const _centrifugoWsUrl = String.fromEnvironment(
 const _googleWebClientId = '267576474476-ea5pbefve96l3oqd1j59oo276sskv54f.apps.googleusercontent.com';
 
 void main() {
-  runApp(const AdminApp());
+  // An uncaught async error from an unrelated microtask (observed: a stray FormatException
+  // from a dependency, firing around the same time as Google Identity Services' own init,
+  // on some accounts/browser states) should never be able to take down the whole app —
+  // without a guarded zone it reaches the root zone's default handler, which on Flutter
+  // web can leave the app stuck on the pre-Flutter loading splash forever instead of just
+  // logging the error and continuing.
+  runZonedGuarded(() {
+    runApp(const AdminApp());
+  }, (error, stack) {
+    // ignore: avoid_print
+    print('Uncaught zone error: $error\n$stack');
+  });
 }
 
 class AdminApp extends StatelessWidget {
