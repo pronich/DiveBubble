@@ -38,10 +38,12 @@ dependencies:
   http: ^1.5.0
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
-  # google_sign_in/google_sign_in_web temporarily removed (2026-07-20) — see
-  # AuthRepository's own doc comment: the plugin's automatic registration hung the whole
-  # app in production for some accounts, and removing the dependency (not just unused
-  # code) is what stops that plugin from being constructed at all.
+  # google_sign_in/google_sign_in_web deliberately NOT used (2026-07-20) — see
+  # GoogleIdentityService's own doc comment: that plugin's automatic registration hung the
+  # whole app in production for some accounts. This is the plain JS-interop library it
+  # wraps, with no Flutter plugin registration of its own — we call it ourselves, lazily.
+  google_identity_services_web: ^0.3.3
+  web: ^1.1.0
   flutter_secure_storage: ^10.3.1
   image_picker: ^1.1.2
   url_launcher: ^6.3.1
