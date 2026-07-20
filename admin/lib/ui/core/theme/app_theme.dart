@@ -17,19 +17,16 @@ abstract final class AdminTheme {
     inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
   );
 
-  // TEMP DIAGNOSTIC: skip google_fonts' dynamic font loading entirely, to test whether
-  // Flutter's first frame is stuck waiting on it in production.
-  static final TextTheme _textTheme = const TextTheme();
-  // static final TextTheme _textTheme = () {
-  //   final base = GoogleFonts.interTextTheme();
-  //   final display = GoogleFonts.frauncesTextTheme();
-  //   return base.copyWith(
-  //     displayLarge: display.displayLarge?.copyWith(fontWeight: FontWeight.w600),
-  //     displayMedium: display.displayMedium?.copyWith(fontWeight: FontWeight.w600),
-  //     displaySmall: display.displaySmall?.copyWith(fontWeight: FontWeight.w600),
-  //     headlineLarge: display.headlineLarge?.copyWith(fontWeight: FontWeight.w600),
-  //     headlineMedium: display.headlineMedium?.copyWith(fontWeight: FontWeight.w600),
-  //     headlineSmall: display.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
-  //   );
-  // }();
+  static final TextTheme _textTheme = () {
+    final base = GoogleFonts.interTextTheme();
+    final display = GoogleFonts.frauncesTextTheme();
+    return base.copyWith(
+      displayLarge: display.displayLarge?.copyWith(fontWeight: FontWeight.w600),
+      displayMedium: display.displayMedium?.copyWith(fontWeight: FontWeight.w600),
+      displaySmall: display.displaySmall?.copyWith(fontWeight: FontWeight.w600),
+      headlineLarge: display.headlineLarge?.copyWith(fontWeight: FontWeight.w600),
+      headlineMedium: display.headlineMedium?.copyWith(fontWeight: FontWeight.w600),
+      headlineSmall: display.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+    );
+  }();
 }
