@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:google_sign_in_web/web_only.dart' as gsi_web;
 
 import '../../../../data/repositories/auth_repository.dart';
+import 'custom_google_button.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key, required this.authRepository, required this.onSignedIn});
@@ -23,6 +23,7 @@ class _LoginPageState extends State<LoginPage> {
   StreamSubscription<GoogleSignInAuthenticationEvent>? _authSub;
 
   final _emailController = TextEditingController();
+  bool _showEmailForm = false;
   bool _isSendingEmailLink = false;
   bool _emailLinkSent = false;
   String? _emailError;
@@ -111,62 +112,78 @@ class _LoginPageState extends State<LoginPage> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                if (!_isReady || _isCompletingSignIn)
-                  const CircularProgressIndicator()
-                else
-                  // The rendered widget IS the click target — Google's own GIS button,
-                  // not a Material button calling an imperative sign-in method (unsupported
-                  // on web, see AuthRepository.ensureInitialized's doc comment).
-                  gsi_web.renderButton(),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(_error!, style: TextStyle(color: theme.colorScheme.error), textAlign: TextAlign.center),
-                ],
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('or', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                    ),
-                    Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                if (_emailLinkSent)
-                  Text(
-                    'Check your inbox — we sent a login link to ${_emailController.text.trim()}.',
-                    style: theme.textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  )
-                else ...[
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    onSubmitted: (_) => _sendEmailLink(),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: _isSendingEmailLink ? null : _sendEmailLink,
-                      child: _isSendingEmailLink
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Continue with email'),
-                    ),
-                  ),
-                  if (_emailError != null) ...[
-                    const SizedBox(height: 12),
-                    Text(_emailError!, style: TextStyle(color: theme.colorScheme.error), textAlign: TextAlign.center),
-                  ],
-                ],
+                if (_showEmailForm) ..._buildEmailForm(theme) else ..._buildProviderButtons(theme),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  List<Widget> _buildProviderButtons(ThemeData theme) {
+    return [
+      if (!_isReady || _isCompletingSignIn)
+        const SizedBox(height: 44, child: Center(child: CircularProgressIndicator()))
+      else
+        // Looks like our own FilledButton.tonal — see CustomGoogleButton's own doc
+        // comment for why the *real* click target underneath still has to be Google's own
+        // widget.
+        const CustomGoogleButton(),
+      const SizedBox(height: 12),
+      SizedBox(
+        width: double.infinity,
+        height: 44,
+        child: FilledButton.tonalIcon(
+          onPressed: () => setState(() => _showEmailForm = true),
+          icon: const Icon(Icons.email_outlined, size: 20),
+          label: const Text('Dive in with email'),
+        ),
+      ),
+      if (_error != null) ...[
+        const SizedBox(height: 12),
+        Text(_error!, style: TextStyle(color: theme.colorScheme.error), textAlign: TextAlign.center),
+      ],
+    ];
+  }
+
+  List<Widget> _buildEmailForm(ThemeData theme) {
+    if (_emailLinkSent) {
+      return [
+        Text(
+          'Check your inbox — we sent a login link to ${_emailController.text.trim()}.',
+          style: theme.textTheme.bodyMedium,
+          textAlign: TextAlign.center,
+        ),
+      ];
+    }
+
+    return [
+      TextField(
+        controller: _emailController,
+        keyboardType: TextInputType.emailAddress,
+        decoration: const InputDecoration(labelText: 'Email'),
+        onSubmitted: (_) => _sendEmailLink(),
+      ),
+      const SizedBox(height: 12),
+      SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: _isSendingEmailLink ? null : _sendEmailLink,
+          child: _isSendingEmailLink
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Send login link'),
+        ),
+      ),
+      if (_emailError != null) ...[
+        const SizedBox(height: 12),
+        Text(_emailError!, style: TextStyle(color: theme.colorScheme.error), textAlign: TextAlign.center),
+      ],
+      const SizedBox(height: 8),
+      TextButton(
+        onPressed: _isSendingEmailLink ? null : () => setState(() => _showEmailForm = false),
+        child: const Text('Use a different sign-in method'),
+      ),
+    ];
   }
 }
