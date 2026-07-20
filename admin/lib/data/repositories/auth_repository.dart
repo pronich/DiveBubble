@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 import '../services/auth_api_service.dart';
 import '../services/token_storage_service.dart';
@@ -14,52 +13,25 @@ class SignInResult {
   final bool isNewUser;
 }
 
-/// Web-only variant of app/'s AuthRepository — a single Google Web OAuth client plays both
-/// roles here (the client Google issues the token to, and the token's audience), since
-/// there's no separate native app identity to keep distinct the way iOS needs one. Same
-/// backend contract (`POST /auth/google` etc.) and token-refresh behavior otherwise.
+/// Web-only variant of app/'s AuthRepository. Google Sign-In is temporarily disabled here
+/// (2026-07-20) — `google_sign_in_web`'s plugin registration eagerly constructs a
+/// `GoogleSignInPlugin` at app bootstrap regardless of whether this code ever calls it,
+/// and that constructor's own background GIS script load was observed hanging the entire
+/// app on the pre-Flutter loading splash in production (reproducible on admin.divebubble.io,
+/// not on localhost, for at least some Google accounts) — even with `initialize()` never
+/// called at all. Removing the `google_sign_in`/`google_sign_in_web` dependencies stops the
+/// plugin from being registered/constructed in the first place. Email/passwordless (see
+/// startEmailLogin/completeEmailLogin) is unaffected and is the only sign-in path for now.
 class AuthRepository extends ChangeNotifier {
-  AuthRepository({
-    required this.googleWebClientId,
-    required AuthApiService apiService,
-    required TokenStorageService tokenStorage,
-  }) : _api = apiService,
-       _tokens = tokenStorage;
+  AuthRepository({required AuthApiService apiService, required TokenStorageService tokenStorage})
+    : _api = apiService,
+      _tokens = tokenStorage;
 
-  final String googleWebClientId;
   final AuthApiService _api;
   final TokenStorageService _tokens;
 
-  bool _googleInitialized = false;
-
-  /// Must resolve before LoginPage renders Google's own sign-in button (the web platform
-  /// doesn't support the imperative `authenticate()` call app/ uses on mobile — see
-  /// GoogleSignIn.supportsAuthenticate()'s doc comment — so the button widget itself, via
-  /// google_sign_in_web's renderButton(), is the only entry point into the flow here).
-  Future<void> ensureInitialized() async {
-    if (_googleInitialized) return;
-    await GoogleSignIn.instance.initialize(clientId: googleWebClientId);
-    _googleInitialized = true;
-  }
-
-  /// The stream LoginPage listens to for the result of a click on the rendered button —
-  /// there's no other way to observe a web sign-in completing.
-  Stream<GoogleSignInAuthenticationEvent> get authenticationEvents => GoogleSignIn.instance.authenticationEvents;
-
-  /// Exchanges an already-authenticated Google account's ID token with the backend and
-  /// persists the resulting session. Throws with a message suitable to show the user on failure.
-  Future<SignInResult> completeSignIn(GoogleSignInAccount account) async {
-    final idToken = account.authentication.idToken;
-    if (idToken == null) {
-      throw Exception('Google did not return an ID token');
-    }
-
-    final result = await _api.signInWithGoogle(idToken);
-    return _persistAuthResult(result);
-  }
-
-  /// Requests a magic-link email for passwordless login — alongside Google, not replacing
-  /// it. See AuthApiService.startEmailLogin's own doc comment for where the link points.
+  /// Requests a magic-link email for passwordless login. See
+  /// AuthApiService.startEmailLogin's own doc comment for where the link points.
   Future<void> startEmailLogin(String email) => _api.startEmailLogin(email);
 
   /// Completes a magic-link login — called by MagicLinkGate with the token+email it read
@@ -119,16 +91,6 @@ class AuthRepository extends ChangeNotifier {
       } catch (_) {
         // best-effort — still clear locally below
       }
-    }
-    try {
-      // Timeout, not just try/catch: GoogleSignIn.instance.signOut() on an instance that
-      // was never initialize()'d this session (e.g. a diver who signed in via the email
-      // passwordless flow, which never touches GoogleSignIn at all) doesn't throw — it
-      // hangs indefinitely awaiting an initialization that's never coming, which silently
-      // stalled this entire method (tokens never cleared, "Sign out" looked broken).
-      await GoogleSignIn.instance.signOut().timeout(const Duration(seconds: 5));
-    } catch (_) {
-      // best-effort
     }
     await _tokens.clear();
     notifyListeners();

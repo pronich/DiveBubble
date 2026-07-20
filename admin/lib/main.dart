@@ -32,10 +32,6 @@ const _centrifugoWsUrl = String.fromEnvironment(
   defaultValue: 'ws://localhost:8000/connection/websocket',
 );
 
-// Same Web OAuth client app/ already uses for its own ID-token audience — a web build has
-// no separate native-app identity to keep distinct from it, unlike app/'s iOS client id.
-const _googleWebClientId = '267576474476-ea5pbefve96l3oqd1j59oo276sskv54f.apps.googleusercontent.com';
-
 void main() {
   // An uncaught async error from an unrelated microtask (observed: a stray FormatException
   // from a dependency, firing around the same time as Google Identity Services' own init,
@@ -57,7 +53,6 @@ class AdminApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final authRepository = AuthRepository(
-      googleWebClientId: _googleWebClientId,
       apiService: AuthApiService(baseUrl: _apiBaseUrl),
       tokenStorage: TokenStorageService(),
     );
