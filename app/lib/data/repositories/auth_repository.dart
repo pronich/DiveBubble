@@ -136,6 +136,25 @@ class AuthRepository extends ChangeNotifier {
     return SignInResult(userId: result.userId, isNewUser: result.isNewUser);
   }
 
+  /// Sends a one-time login code to the given email — the app's own passwordless flow, kept
+  /// alongside (not replacing) Google/Apple. Unlike admin/'s clicked-link flow, the code is
+  /// typed back in by the diver, so there's no separate "consume a link" entry point needed.
+  Future<void> startEmailLogin(String email) => _api.startEmailLogin(email);
+
+  /// Verifies a code from startEmailLogin and persists the resulting session — same shape as
+  /// signInWithGoogle/signInWithApple otherwise.
+  Future<SignInResult> verifyEmailLogin(String email, String code) async {
+    final result = await _api.verifyEmailLogin(email, code);
+    await _tokens.save(
+      accessToken: result.accessToken,
+      accessTokenExpiresAt: result.accessTokenExpiresAt,
+      refreshToken: result.refreshToken,
+      userId: result.userId,
+    );
+    notifyListeners();
+    return SignInResult(userId: result.userId, isNewUser: result.isNewUser);
+  }
+
   /// Returns a currently-valid access token, transparently refreshing it if it's expired (or
   /// close to it). Returns null if there's no session at all, or refreshing failed (revoked/expired
   /// refresh token) — either way, any stored tokens are cleared so the caller can prompt login.

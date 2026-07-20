@@ -3,20 +3,34 @@ package server
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/config"
+	"divebubble_be/internal/email"
 
 	"github.com/google/uuid"
 )
 
-func registerAuthRoutes(mux *http.ServeMux, cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, appleKeys *auth.AppleKeySet) {
+func registerAuthRoutes(
+	mux *http.ServeMux,
+	cfg config.Config,
+	identities *auth.IdentityRepository,
+	sessions *auth.SessionRepository,
+	issuer *auth.TokenIssuer,
+	appleKeys *auth.AppleKeySet,
+	emailCodes *auth.EmailCodeRepository,
+	emailSvc *email.Service,
+) {
 	mux.HandleFunc("POST /auth/google", handleAuthGoogle(cfg, identities, sessions, issuer))
 	mux.HandleFunc("POST /auth/apple", handleAuthApple(cfg, identities, sessions, issuer, appleKeys))
+	mux.HandleFunc("POST /auth/email/start", handleAuthEmailStart(cfg, emailCodes, emailSvc))
+	mux.HandleFunc("POST /auth/email/verify", handleAuthEmailVerify(cfg, identities, sessions, issuer, emailCodes))
 	mux.HandleFunc("POST /auth/refresh", handleAuthRefresh(cfg, sessions, issuer))
 	mux.Handle("POST /auth/logout", bearerAuth(issuer, handleAuthLogout(sessions)))
 }
@@ -175,6 +189,160 @@ func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, ses
 			UserID:               userID,
 			IsNewUser:            isNewUser,
 		})
+	}
+}
+
+type emailStartRequest struct {
+	Email string `json:"email"`
+	Kind  string `json:"kind"` // "magic_link" (admin/) or "otp" (app/)
+}
+
+type emailVerifyRequest struct {
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
+
+// handleAuthEmailStart sends a login code to the given address — always 200 on a
+// well-formed email (there's no "account not found" case to hide the way a traditional
+// password-reset flow would have: LoginOrRegister creates the account transparently on
+// first verify, exactly like Google/Apple, so knowing "a code was just sent to X" reveals
+// nothing about whether X already had a DiveBubble account).
+func handleAuthEmailStart(cfg config.Config, emailCodes *auth.EmailCodeRepository, emailSvc *email.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "could not read body")
+			return
+		}
+		var req emailStartRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+		if !auth.IsValidEmail(req.Email) {
+			writeError(w, http.StatusBadRequest, "a valid email is required")
+			return
+		}
+
+		var kind auth.EmailCodeKind
+		switch req.Kind {
+		case string(auth.EmailCodeKindMagicLink):
+			kind = auth.EmailCodeKindMagicLink
+		case string(auth.EmailCodeKindOTP):
+			kind = auth.EmailCodeKindOTP
+		default:
+			writeError(w, http.StatusBadRequest, `kind must be "magic_link" or "otp"`)
+			return
+		}
+
+		lastSent, err := emailCodes.LastSentAt(r.Context(), req.Email)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not check send rate")
+			return
+		}
+		if !lastSent.IsZero() && time.Now().UTC().Before(lastSent.Add(cfg.EmailCodeCooldown)) {
+			writeError(w, http.StatusTooManyRequests, "a code was already sent — check your inbox")
+			return
+		}
+
+		ttl := cfg.EmailOTPTTL
+		if kind == auth.EmailCodeKindMagicLink {
+			ttl = cfg.EmailMagicLinkTTL
+		}
+		rawCode, err := emailCodes.GenerateAndStore(r.Context(), req.Email, kind, ttl)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not create login code")
+			return
+		}
+
+		normalizedEmail := auth.NormalizeEmail(req.Email)
+		var sendErr error
+		if kind == auth.EmailCodeKindMagicLink {
+			link := fmt.Sprintf("%s/?token=%s&email=%s", cfg.AdminBaseURL, url.QueryEscape(rawCode), url.QueryEscape(normalizedEmail))
+			sendErr = emailSvc.SendTemplate(r.Context(), normalizedEmail, email.TemplateMagicLink, map[string]string{email.VarMagicLink: link})
+		} else {
+			sendErr = emailSvc.SendTemplate(r.Context(), normalizedEmail, email.TemplateOTP, map[string]string{email.VarOTPCode: rawCode})
+		}
+		if sendErr != nil {
+			writeError(w, http.StatusInternalServerError, "could not send email")
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, emailCodes *auth.EmailCodeRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "could not read body")
+			return
+		}
+		var req emailVerifyRequest
+		if err := json.Unmarshal(body, &req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+		if strings.TrimSpace(req.Email) == "" || strings.TrimSpace(req.Code) == "" {
+			writeError(w, http.StatusBadRequest, "email and code are required")
+			return
+		}
+
+		normalizedEmail, err := emailCodes.VerifyCode(r.Context(), req.Email, req.Code)
+		if err != nil {
+			status, msg := emailCodeErrorResponse(err)
+			writeError(w, status, msg)
+			return
+		}
+
+		// LoginOrRegisterByEmail (not the plain LoginOrRegister every other provider uses)
+		// so a diver who already has a Google/Apple account under this same address links
+		// onto it instead of getting a second, disconnected account — see its own doc
+		// comment in internal/auth/identity.go.
+		userID, isNewUser, err := identities.LoginOrRegisterByEmail(r.Context(), normalizedEmail)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not resolve user")
+			return
+		}
+
+		rawRefresh, refreshHash, err := auth.GenerateRefreshToken()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not create session")
+			return
+		}
+		now := time.Now().UTC()
+		sessionID, err := sessions.InsertSession(r.Context(), userID, "email", refreshHash, now.Add(cfg.RefreshSessionTTL))
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not create session")
+			return
+		}
+
+		access, accessExp, err := issuer.IssueAccessToken(userID, sessionID)
+		if err != nil {
+			_ = sessions.DeleteSession(r.Context(), sessionID)
+			writeError(w, http.StatusInternalServerError, "could not issue access token")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, authLoginResponse{
+			AccessToken:          access,
+			AccessTokenExpiresAt: accessExp,
+			RefreshToken:         rawRefresh,
+			UserID:               userID,
+			IsNewUser:            isNewUser,
+		})
+	}
+}
+
+func emailCodeErrorResponse(err error) (int, string) {
+	switch {
+	case errors.Is(err, auth.ErrEmailCodeInvalid):
+		return http.StatusUnauthorized, "invalid or expired code"
+	case errors.Is(err, auth.ErrEmailCodeTooManyTries):
+		return http.StatusTooManyRequests, "too many incorrect attempts — request a new code"
+	default:
+		return http.StatusInternalServerError, "could not verify code"
 	}
 }
 

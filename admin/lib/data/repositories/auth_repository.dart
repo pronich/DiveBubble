@@ -55,6 +55,21 @@ class AuthRepository extends ChangeNotifier {
     }
 
     final result = await _api.signInWithGoogle(idToken);
+    return _persistAuthResult(result);
+  }
+
+  /// Requests a magic-link email for passwordless login — alongside Google, not replacing
+  /// it. See AuthApiService.startEmailLogin's own doc comment for where the link points.
+  Future<void> startEmailLogin(String email) => _api.startEmailLogin(email);
+
+  /// Completes a magic-link login — called by MagicLinkGate with the token+email it read
+  /// off this app's own URL query params on load.
+  Future<SignInResult> completeEmailLogin(String email, String token) async {
+    final result = await _api.verifyEmailLogin(email, token);
+    return _persistAuthResult(result);
+  }
+
+  Future<SignInResult> _persistAuthResult(AuthResult result) async {
     await _tokens.save(
       accessToken: result.accessToken,
       accessTokenExpiresAt: result.accessTokenExpiresAt,

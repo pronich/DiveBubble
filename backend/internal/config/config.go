@@ -28,6 +28,19 @@ type Config struct {
 	PublicBaseURL         string
 	CORSAllowedOrigins    []string
 
+	// Passwordless email login (magic link for admin/, OTP for app/) — ResendAPIKey empty
+	// disables real sending (see internal/email.Service's own doc comment); everything else
+	// here has a working default so local dev never needs these set.
+	ResendAPIKey      string
+	EmailFromAddress  string
+	EmailMagicLinkTTL time.Duration
+	EmailOTPTTL       time.Duration
+	EmailCodeCooldown time.Duration
+	// AdminBaseURL is where a magic-link email points back to (admin/'s own root, read via
+	// Uri.base query params on load — see admin/'s MagicLinkGate) — distinct from
+	// PublicBaseURL, which is the *backend's* own base URL for uploaded-file links.
+	AdminBaseURL string
+
 	// FirebaseCredentialsJSON is the Firebase service account JSON content (not a file path)
 	// used to send push notifications. Empty disables push entirely (local dev default without
 	// it) — not required, same optional-infra pattern as Spaces below.
@@ -91,6 +104,19 @@ func Load() Config {
 
 	firebaseCredentialsJSON := os.Getenv("FIREBASE_CREDENTIALS_JSON")
 
+	resendAPIKey := os.Getenv("RESEND_API_KEY")
+	emailFromAddress := os.Getenv("EMAIL_FROM_ADDRESS")
+	if emailFromAddress == "" {
+		emailFromAddress = "DiveBubble <login@divebubble.io>"
+	}
+	emailMagicLinkTTL := durationEnv("EMAIL_MAGIC_LINK_TTL", 15*time.Minute)
+	emailOTPTTL := durationEnv("EMAIL_OTP_TTL", 10*time.Minute)
+	emailCodeCooldown := durationEnv("EMAIL_CODE_COOLDOWN", 30*time.Second)
+	adminBaseURL := os.Getenv("ADMIN_BASE_URL")
+	if adminBaseURL == "" {
+		adminBaseURL = "http://localhost:5050"
+	}
+
 	spacesEndpoint := os.Getenv("SPACES_ENDPOINT")
 	spacesRegion := os.Getenv("SPACES_REGION")
 	spacesBucket := os.Getenv("SPACES_BUCKET")
@@ -119,6 +145,12 @@ func Load() Config {
 		PublicBaseURL:           publicBaseURL,
 		CORSAllowedOrigins:      corsAllowedOrigins,
 		FirebaseCredentialsJSON: firebaseCredentialsJSON,
+		ResendAPIKey:            resendAPIKey,
+		EmailFromAddress:        emailFromAddress,
+		EmailMagicLinkTTL:       emailMagicLinkTTL,
+		EmailOTPTTL:             emailOTPTTL,
+		EmailCodeCooldown:       emailCodeCooldown,
+		AdminBaseURL:            adminBaseURL,
 		SpacesEndpoint:          spacesEndpoint,
 		SpacesRegion:            spacesRegion,
 		SpacesBucket:            spacesBucket,

@@ -10,7 +10,7 @@ class LoginPage extends StatefulWidget {
   const LoginPage({super.key, required this.authRepository, required this.onSignedIn});
 
   final AuthRepository authRepository;
-  final Future<void> Function() onSignedIn;
+  final Future<void> Function(bool isNewUser) onSignedIn;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -21,6 +21,11 @@ class _LoginPageState extends State<LoginPage> {
   bool _isCompletingSignIn = false;
   String? _error;
   StreamSubscription<GoogleSignInAuthenticationEvent>? _authSub;
+
+  final _emailController = TextEditingController();
+  bool _isSendingEmailLink = false;
+  bool _emailLinkSent = false;
+  String? _emailError;
 
   @override
   void initState() {
@@ -49,8 +54,8 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
     try {
-      await widget.authRepository.completeSignIn(event.user);
-      await widget.onSignedIn();
+      final result = await widget.authRepository.completeSignIn(event.user);
+      await widget.onSignedIn(result.isNewUser);
     } catch (e) {
       if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -58,9 +63,31 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _sendEmailLink() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() => _emailError = 'Enter your email');
+      return;
+    }
+
+    setState(() {
+      _isSendingEmailLink = true;
+      _emailError = null;
+    });
+    try {
+      await widget.authRepository.startEmailLogin(email);
+      if (mounted) setState(() => _emailLinkSent = true);
+    } catch (e) {
+      if (mounted) setState(() => _emailError = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isSendingEmailLink = false);
+    }
+  }
+
   @override
   void dispose() {
     _authSub?.cancel();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -94,6 +121,46 @@ class _LoginPageState extends State<LoginPage> {
                 if (_error != null) ...[
                   const SizedBox(height: 12),
                   Text(_error!, style: TextStyle(color: theme.colorScheme.error), textAlign: TextAlign.center),
+                ],
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('or', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                    ),
+                    Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                if (_emailLinkSent)
+                  Text(
+                    'Check your inbox — we sent a login link to ${_emailController.text.trim()}.',
+                    style: theme.textTheme.bodyMedium,
+                    textAlign: TextAlign.center,
+                  )
+                else ...[
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                    onSubmitted: (_) => _sendEmailLink(),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _isSendingEmailLink ? null : _sendEmailLink,
+                      child: _isSendingEmailLink
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Text('Continue with email'),
+                    ),
+                  ),
+                  if (_emailError != null) ...[
+                    const SizedBox(height: 12),
+                    Text(_emailError!, style: TextStyle(color: theme.colorScheme.error), textAlign: TextAlign.center),
+                  ],
                 ],
               ],
             ),

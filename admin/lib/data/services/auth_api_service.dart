@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-class GoogleSignInResult {
-  const GoogleSignInResult({
+class AuthResult {
+  const AuthResult({
     required this.accessToken,
     required this.accessTokenExpiresAt,
     required this.refreshToken,
@@ -36,7 +36,7 @@ class AuthApiService {
   final String baseUrl;
   final http.Client _client;
 
-  Future<GoogleSignInResult> signInWithGoogle(String idToken) async {
+  Future<AuthResult> signInWithGoogle(String idToken) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/auth/google'),
       headers: {'Content-Type': 'application/json'},
@@ -46,7 +46,7 @@ class AuthApiService {
       throw Exception(_extractError(res.body) ?? 'Google sign-in failed');
     }
     final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-    return GoogleSignInResult(
+    return AuthResult(
       accessToken: decoded['accessToken'] as String,
       accessTokenExpiresAt: DateTime.parse(decoded['accessTokenExpiresAt'] as String),
       refreshToken: decoded['refreshToken'] as String,
@@ -69,6 +69,39 @@ class AuthApiService {
       accessToken: decoded['accessToken'] as String,
       accessTokenExpiresAt: DateTime.parse(decoded['accessTokenExpiresAt'] as String),
       refreshToken: decoded['refreshToken'] as String,
+    );
+  }
+
+  // Requests a magic-link email — the link (clicked in a browser, possibly a different
+  // tab/device) carries the token+email back to this app's own root as query params, where
+  // MagicLinkGate picks it up and calls verifyEmailLogin with them.
+  Future<void> startEmailLogin(String email) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/auth/email/start'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'kind': 'magic_link'}),
+    );
+    if (res.statusCode != 200) {
+      throw Exception(_extractError(res.body) ?? 'Could not send login email');
+    }
+  }
+
+  Future<AuthResult> verifyEmailLogin(String email, String code) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/auth/email/verify'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'code': code}),
+    );
+    if (res.statusCode != 200) {
+      throw Exception(_extractError(res.body) ?? 'That link is invalid or has expired');
+    }
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    return AuthResult(
+      accessToken: decoded['accessToken'] as String,
+      accessTokenExpiresAt: DateTime.parse(decoded['accessTokenExpiresAt'] as String),
+      refreshToken: decoded['refreshToken'] as String,
+      userId: decoded['userId'] as String,
+      isNewUser: decoded['isNewUser'] as bool? ?? false,
     );
   }
 
