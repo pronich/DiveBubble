@@ -65,6 +65,12 @@ services:
       # Optional — unset disables push notifications (internal/push.Service no-ops). See
       # .env.example for where this comes from.
       FIREBASE_CREDENTIALS_JSON: "${FIREBASE_CREDENTIALS_JSON:-}"
+      # Optional — unset disables real email sending (internal/email.Service logs instead,
+      # see its own doc comment). ADMIN_BASE_URL must be the real
+      # https://admin.divebubble.io in production or magic links point at localhost.
+      RESEND_API_KEY: "${RESEND_API_KEY:-}"
+      EMAIL_FROM_ADDRESS: "${EMAIL_FROM_ADDRESS:-}"
+      ADMIN_BASE_URL: "${ADMIN_BASE_URL:-}"
       ACCESS_TOKEN_TTL: "${ACCESS_TOKEN_TTL:-8h}"
       REFRESH_SESSION_TTL: "${REFRESH_SESSION_TTL:-4320h}"
       UPLOAD_DIR: "/data/uploads"
