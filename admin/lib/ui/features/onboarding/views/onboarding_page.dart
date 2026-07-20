@@ -89,7 +89,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 padding: const EdgeInsets.all(24),
                 children: [
                   Text(
-                    'This is what divers will see about you. You can change it any time.',
+                    'This is what divers will see about your dive center. You can change it any time.',
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 24),

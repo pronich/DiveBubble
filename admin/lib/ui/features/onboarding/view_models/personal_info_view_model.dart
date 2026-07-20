@@ -34,9 +34,19 @@ class PersonalInfoViewModel extends ChangeNotifier {
   }
 
   /// Avatar upload (if any) happens first — it's a standalone endpoint that already
-  /// persists avatar_url server-side, so the display-name/location/bio PATCH afterwards
-  /// never needs to carry it too.
-  Future<bool> submit({required String displayName, String? location, String? bio, PickedImage? avatar}) async {
+  /// persists avatar_url server-side, so the rest of the PATCH afterwards never needs to
+  /// carry it too.
+  Future<bool> submit({
+    required String displayName,
+    String? location,
+    String? bio,
+    int? diveCount,
+    String? certificationLevel,
+    String? certificationAgency,
+    String? certificationNumber,
+    String? languages,
+    PickedImage? avatar,
+  }) async {
     _isSubmitting = true;
     _error = null;
     notifyListeners();
@@ -45,7 +55,16 @@ class PersonalInfoViewModel extends ChangeNotifier {
       if (avatar != null) {
         await _repository.uploadAvatar(avatar.bytes, avatar.filename);
       }
-      await _repository.update(displayName: displayName, location: location, bio: bio);
+      await _repository.update(
+        displayName: displayName,
+        location: location,
+        bio: bio,
+        diveCount: diveCount,
+        certificationLevel: certificationLevel,
+        certificationAgency: certificationAgency,
+        certificationNumber: certificationNumber,
+        languages: languages,
+      );
       return true;
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
