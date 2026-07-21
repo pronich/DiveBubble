@@ -25,6 +25,7 @@ backend/uploads/
 .env.*
 !.env.example
 backend/firebase-service-account.json
+backend/SECRETS_ROTATION.md
 
 # OS
 .DS_Store

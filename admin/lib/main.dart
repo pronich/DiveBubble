@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'data/repositories/auth_repository.dart';
@@ -23,13 +24,19 @@ import 'ui/core/root_gate.dart';
 import 'ui/core/theme/app_theme.dart';
 
 // Build-time config via --dart-define (Flutter web has no runtime env vars — everything
-// compiles into the static bundle). Vercel's Build Command passes these from its own
-// project-level Environment Variables; local `flutter run -d chrome` with no --dart-define
-// falls back to localhost, unchanged from before.
-const _apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8080');
+// compiles into the static bundle). Vercel's Build Command is expected to pass these from its
+// own project-level Environment Variables; if it doesn't, a --release build still falls back
+// to the real production API instead of localhost (kReleaseMode-gated, same fallback app/'s
+// main.dart uses) — local `flutter run -d chrome` (debug) keeps defaulting to localhost.
+const _apiBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: kReleaseMode ? 'https://api.divebubble.io' : 'http://localhost:8080',
+);
 const _centrifugoWsUrl = String.fromEnvironment(
   'CENTRIFUGO_WS_URL',
-  defaultValue: 'ws://localhost:8000/connection/websocket',
+  defaultValue: kReleaseMode
+      ? 'wss://api.divebubble.io/connection/websocket'
+      : 'ws://localhost:8000/connection/websocket',
 );
 
 // Same Web OAuth client app/ already uses for its own ID-token audience — a web build has

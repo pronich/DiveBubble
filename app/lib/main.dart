@@ -34,11 +34,18 @@ import 'ui/features/transport/view_models/transport_view_model.dart';
 // Build-time config via --dart-define, same pattern as admin/'s main.dart — a physical
 // device can't reach the dev machine's `localhost`, so real-device runs need either the
 // Mac's LAN IP or the deployed API passed explicitly. `flutter run` with no --dart-define
-// falls back to localhost, unchanged from before (fine for simulator/desktop).
-const _apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8080');
+// still falls back to localhost (simulator/desktop convenience), but a `--release` build
+// (App Store archive, TestFlight) falls back to the real production API instead — a release
+// build shipped without remembering the flag must never silently point at localhost.
+const _apiBaseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: kReleaseMode ? 'https://api.divebubble.io' : 'http://localhost:8080',
+);
 const _centrifugoWsUrl = String.fromEnvironment(
   'CENTRIFUGO_WS_URL',
-  defaultValue: 'ws://localhost:8000/connection/websocket',
+  defaultValue: kReleaseMode
+      ? 'wss://api.divebubble.io/connection/websocket'
+      : 'ws://localhost:8000/connection/websocket',
 );
 
 // Google Cloud Console (project backing DiveBuddy) — iOS client identifies the app to Google,
