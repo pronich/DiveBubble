@@ -47,7 +47,7 @@ func (r *Repository) DeleteAccount(ctx context.Context, userID uuid.UUID) error 
 			certification_number = NULL,
 			certification_photo_url = NULL,
 			certification_verified = false,
-			languages = NULL,
+			languages = '',
 			deleted_at = now()
 		WHERE id = $1
 	`, userID); err != nil {
