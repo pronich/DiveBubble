@@ -52,3 +52,16 @@ type MembershipView struct {
 	DiveCenter DiveCenter
 	Role       string
 }
+
+// Invitation is a pending staff invite for an email with no DiveBubble account yet — no
+// token of its own, since a successful sign-in with the matching email is the actual proof
+// of ownership (see Service.AcceptInvitations).
+type Invitation struct {
+	ID              uuid.UUID
+	DiveCenterID    uuid.UUID
+	Email           string
+	Role            string // "owner" | "staff"
+	InvitedByUserID uuid.UUID
+	CreatedAt       time.Time
+	AcceptedAt      sql.NullTime
+}

@@ -14,6 +14,7 @@ import (
 
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/config"
+	"divebubble_be/internal/divecenter"
 	"divebubble_be/internal/email"
 
 	"github.com/google/uuid"
@@ -29,11 +30,12 @@ func registerAuthRoutes(
 	appleTokens *auth.AppleTokenClient,
 	emailCodes *auth.EmailCodeRepository,
 	emailSvc *email.Service,
+	diveCenterSvc *divecenter.Service,
 ) {
-	mux.HandleFunc("POST /auth/google", handleAuthGoogle(cfg, identities, sessions, issuer, emailSvc))
-	mux.HandleFunc("POST /auth/apple", handleAuthApple(cfg, identities, sessions, issuer, appleKeys, appleTokens, emailSvc))
+	mux.HandleFunc("POST /auth/google", handleAuthGoogle(cfg, identities, sessions, issuer, emailSvc, diveCenterSvc))
+	mux.HandleFunc("POST /auth/apple", handleAuthApple(cfg, identities, sessions, issuer, appleKeys, appleTokens, emailSvc, diveCenterSvc))
 	mux.HandleFunc("POST /auth/email/start", handleAuthEmailStart(cfg, emailCodes, emailSvc))
-	mux.HandleFunc("POST /auth/email/verify", handleAuthEmailVerify(cfg, identities, sessions, issuer, emailCodes, emailSvc))
+	mux.HandleFunc("POST /auth/email/verify", handleAuthEmailVerify(cfg, identities, sessions, issuer, emailCodes, emailSvc, diveCenterSvc))
 	mux.HandleFunc("POST /auth/refresh", handleAuthRefresh(cfg, sessions, issuer))
 	mux.Handle("POST /auth/logout", bearerAuth(issuer, handleAuthLogout(sessions)))
 }
@@ -90,7 +92,17 @@ func sendWelcomeEmail(ctx context.Context, emailSvc *email.Service, userID uuid.
 	}
 }
 
-func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, emailSvc *email.Service) http.HandlerFunc {
+// acceptDiveCenterInvitations auto-joins userID to any dive center that invited this email —
+// best-effort (logged, not propagated): a failure here must never block sign-in itself, unlike
+// the invite *send* on the owner's side (see handleInviteDiveCenterMember), which is a
+// different action at a different time with no pending-list fallback to fall back on.
+func acceptDiveCenterInvitations(ctx context.Context, diveCenterSvc *divecenter.Service, userID uuid.UUID, email string) {
+	if err := diveCenterSvc.AcceptInvitations(ctx, userID, email); err != nil {
+		log.Printf("auth: accepting dive-center invitations failed for user %s: %v", userID, err)
+	}
+}
+
+func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, emailSvc *email.Service, diveCenterSvc *divecenter.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
@@ -121,6 +133,7 @@ func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, se
 		if isNewUser {
 			sendWelcomeEmail(r.Context(), emailSvc, userID, identity.Email)
 		}
+		acceptDiveCenterInvitations(r.Context(), diveCenterSvc, userID, identity.Email)
 
 		rawRefresh, refreshHash, err := auth.GenerateRefreshToken()
 		if err != nil {
@@ -151,7 +164,7 @@ func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, se
 	}
 }
 
-func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, appleKeys *auth.AppleKeySet, appleTokens *auth.AppleTokenClient, emailSvc *email.Service) http.HandlerFunc {
+func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, appleKeys *auth.AppleKeySet, appleTokens *auth.AppleTokenClient, emailSvc *email.Service, diveCenterSvc *divecenter.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
@@ -189,6 +202,7 @@ func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, ses
 		if isNewUser {
 			sendWelcomeEmail(r.Context(), emailSvc, userID, email)
 		}
+		acceptDiveCenterInvitations(r.Context(), diveCenterSvc, userID, email)
 
 		// Best-effort: an Apple refresh token is only needed later, for DeleteAccount to
 		// revoke — a failure here (disabled client, network hiccup, Apple outage) must never
@@ -312,7 +326,7 @@ func handleAuthEmailStart(cfg config.Config, emailCodes *auth.EmailCodeRepositor
 	}
 }
 
-func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, emailCodes *auth.EmailCodeRepository, emailSvc *email.Service) http.HandlerFunc {
+func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, emailCodes *auth.EmailCodeRepository, emailSvc *email.Service, diveCenterSvc *divecenter.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
@@ -348,6 +362,7 @@ func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepositor
 		if isNewUser {
 			sendWelcomeEmail(r.Context(), emailSvc, userID, normalizedEmail)
 		}
+		acceptDiveCenterInvitations(r.Context(), diveCenterSvc, userID, normalizedEmail)
 
 		rawRefresh, refreshHash, err := auth.GenerateRefreshToken()
 		if err != nil {

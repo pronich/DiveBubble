@@ -7,8 +7,12 @@ package email
 // account yet) is still deferred past MVP, same as CLAUDE.md's Membership API notes — the
 // alias is just reserved here ahead of that round.
 const (
-	TemplateMagicLink  = "divebubble-signin"
-	TemplateOTP        = "divebubble-mobile-signin"
+	TemplateMagicLink = "divebubble-signin"
+	TemplateOTP       = "divebubble-mobile-signin"
+	// TemplateInvitation fires when a dive-center owner invites an email with no DiveBubble
+	// account yet (see divecenter.Service.InviteMember) — no invite-specific link/token, the
+	// CTA is a static link to admin.divebubble.io, since a normal sign-in with the invited
+	// email is itself the proof needed (see divecenter.Service.AcceptInvitations).
 	TemplateInvitation = "invitation-divebubble"
 	// TemplateWelcome fires once, right after a brand-new account's very first sign-in
 	// (isNewUser == true) — regardless of which of the three providers created it. No
@@ -16,7 +20,7 @@ const (
 	// all three providers (email/OTP sign-up never has one), so the template stays generic.
 	TemplateWelcome = "divebubble-welcome"
 
-	VarMagicLink   = "magic_link"
-	VarOTPCode     = "signin_code"
-	VarInviteeName = "invitee_name"
+	VarMagicLink      = "magic_link"
+	VarOTPCode        = "signin_code"
+	VarDiveCenterName = "dive_center_name"
 )

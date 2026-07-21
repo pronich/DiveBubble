@@ -147,6 +147,27 @@ class DiveCenterApiService {
     }
   }
 
+  // Counterpart to addMember for an email with no DiveBubble account yet — called when
+  // searchMemberByEmail throws MemberNotFoundException. No pending-list to reconcile with
+  // (see CLAUDE.md) — a failure here is a real error, not swallowed.
+  Future<void> inviteMember(String diveCenterId, String email, String role) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/dive-centers/$diveCenterId/invitations'),
+      headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'role': role}),
+    );
+    if (res.statusCode != 201) {
+      String message = 'inviteMember failed: ${res.statusCode}';
+      try {
+        final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+        if (decoded['error'] is String) message = decoded['error'] as String;
+      } catch (_) {
+        // best-effort — fall back to the generic message above
+      }
+      throw Exception(message);
+    }
+  }
+
   Future<void> removeMember(String diveCenterId, String userId) async {
     final res = await _client.delete(
       Uri.parse('$baseUrl/dive-centers/$diveCenterId/members/$userId'),

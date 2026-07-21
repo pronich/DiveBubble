@@ -269,3 +269,72 @@ func (r *Repository) CountOwners(ctx context.Context, diveCenterID uuid.UUID) (i
 	`, diveCenterID).Scan(&count)
 	return count, err
 }
+
+// CreateOrRefreshInvitation upserts on (dive_center_id, email) — re-inviting an already
+// -pending (or even previously-accepted, e.g. someone who left) email just refreshes the
+// role/timestamps and resets accepted_at, rather than erroring or duplicating.
+func (r *Repository) CreateOrRefreshInvitation(ctx context.Context, diveCenterID uuid.UUID, email, role string, invitedByUserID uuid.UUID) (Invitation, error) {
+	var inv Invitation
+	err := r.DB.QueryRowContext(ctx, `
+		INSERT INTO dive_center_invitations (dive_center_id, email, role, invited_by_user_id)
+		VALUES ($1, $2, $3, $4)
+		ON CONFLICT (dive_center_id, email) DO UPDATE SET
+			role = EXCLUDED.role,
+			invited_by_user_id = EXCLUDED.invited_by_user_id,
+			created_at = now(),
+			accepted_at = NULL
+		RETURNING id, dive_center_id, email, role, invited_by_user_id, created_at, accepted_at
+	`, diveCenterID, email, role, invitedByUserID).Scan(
+		&inv.ID, &inv.DiveCenterID, &inv.Email, &inv.Role, &inv.InvitedByUserID, &inv.CreatedAt, &inv.AcceptedAt,
+	)
+	return inv, err
+}
+
+// ConsumeInvitationsForEmail adds userID to every dive center with a pending invitation for
+// email, then marks each accepted — called after every successful sign-in (see
+// Service.AcceptInvitations). Uses ON CONFLICT DO NOTHING (not AddMember's own DO-UPDATE
+// upsert) so this can never downgrade a role an owner may have since set manually through
+// the normal add-member flow in the meantime.
+func (r *Repository) ConsumeInvitationsForEmail(ctx context.Context, email string, userID uuid.UUID) error {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT id, dive_center_id, role FROM dive_center_invitations
+		WHERE email = $1 AND accepted_at IS NULL
+	`, email)
+	if err != nil {
+		return err
+	}
+	type pending struct {
+		id           uuid.UUID
+		diveCenterID uuid.UUID
+		role         string
+	}
+	var invitations []pending
+	for rows.Next() {
+		var p pending
+		if err := rows.Scan(&p.id, &p.diveCenterID, &p.role); err != nil {
+			rows.Close()
+			return err
+		}
+		invitations = append(invitations, p)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	rows.Close()
+
+	for _, p := range invitations {
+		if _, err := r.DB.ExecContext(ctx, `
+			INSERT INTO dive_center_members (dive_center_id, user_id, role)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (dive_center_id, user_id) DO NOTHING
+		`, p.diveCenterID, userID, p.role); err != nil {
+			return err
+		}
+		if _, err := r.DB.ExecContext(ctx, `
+			UPDATE dive_center_invitations SET accepted_at = now() WHERE id = $1
+		`, p.id); err != nil {
+			return err
+		}
+	}
+	return nil
+}

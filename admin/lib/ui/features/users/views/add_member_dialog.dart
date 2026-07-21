@@ -4,9 +4,10 @@ import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/services/dive_center_api_service.dart';
 import '../../../../domain/entities/dive_center_member.dart';
 
-/// Search-then-add, not a free-form invite — MVP staff-add is exact-email lookup only (see
-/// CLAUDE.md's Membership API note), since there's no invite-by-email flow for people who
-/// don't have a DiveBubble account yet.
+/// Search-then-add for an existing account; falls back to sending an invitation email when
+/// the search comes up empty (see CLAUDE.md's Implemented — dive centers section) — an
+/// invitee is auto-joined the moment they sign in with the invited email, no separate accept
+/// step, so there's nothing more for this dialog to do once the invite is sent.
 class AddMemberDialog extends StatefulWidget {
   const AddMemberDialog({super.key, required this.diveCenterRepository, required this.diveCenterId});
 
@@ -20,9 +21,13 @@ class AddMemberDialog extends StatefulWidget {
 class _AddMemberDialogState extends State<AddMemberDialog> {
   final _emailController = TextEditingController();
   MemberPreview? _found;
+  // Set on a MemberNotFoundException — the email that came up empty, offered as an invite
+  // target instead. Cleared on every new search so a stale offer never lingers.
+  String? _notFoundEmail;
   String _role = 'staff';
   bool _isSearching = false;
   bool _isAdding = false;
+  bool _isInviting = false;
   String? _error;
 
   @override
@@ -38,16 +43,34 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
       _isSearching = true;
       _error = null;
       _found = null;
+      _notFoundEmail = null;
     });
     try {
       final preview = await widget.diveCenterRepository.searchMemberByEmail(widget.diveCenterId, email);
       setState(() => _found = preview);
     } on MemberNotFoundException {
-      setState(() => _error = 'No DiveBubble account found for that email — they need to sign up first.');
+      setState(() => _notFoundEmail = email);
     } catch (e) {
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       setState(() => _isSearching = false);
+    }
+  }
+
+  Future<void> _invite() async {
+    final email = _notFoundEmail;
+    if (email == null) return;
+    setState(() {
+      _isInviting = true;
+      _error = null;
+    });
+    try {
+      await widget.diveCenterRepository.inviteMember(widget.diveCenterId, email, _role);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isInviting = false);
     }
   }
 
@@ -72,6 +95,7 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final found = _found;
+    final notFoundEmail = _notFoundEmail;
     return Dialog(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 460),
@@ -151,6 +175,31 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
                   onChanged: (value) => setState(() => _role = value ?? 'staff'),
                 ),
               ],
+              if (notFoundEmail != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'No DiveBubble account found for $notFoundEmail — send an invitation instead. '
+                    "They'll be added to your team automatically the first time they sign in with this address.",
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _role,
+                  decoration: const InputDecoration(labelText: 'Role'),
+                  items: const [
+                    DropdownMenuItem(value: 'staff', child: Text('Staff')),
+                    DropdownMenuItem(value: 'owner', child: Text('Owner')),
+                  ],
+                  onChanged: (value) => setState(() => _role = value ?? 'staff'),
+                ),
+              ],
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -163,10 +212,16 @@ class _AddMemberDialogState extends State<AddMemberDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: FilledButton(
-                      onPressed: (found == null || _isAdding) ? null : _add,
-                      child: _isAdding
+                      onPressed: _isAdding || _isInviting
+                          ? null
+                          : found != null
+                              ? _add
+                              : notFoundEmail != null
+                                  ? _invite
+                                  : null,
+                      child: (_isAdding || _isInviting)
                           ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Add to team'),
+                          : Text(notFoundEmail != null ? 'Send invite' : 'Add to team'),
                     ),
                   ),
                 ],

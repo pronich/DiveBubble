@@ -148,3 +148,36 @@ func (s *Service) RemoveMember(ctx context.Context, diveCenterID, callerID, targ
 	}
 	return nil
 }
+
+// InviteMember is owner-only, same role-defaulting rule as AddMember. Unlike AddMember (which
+// targets an existing account by id), this targets an email that — as far as the caller
+// knows — has no DiveBubble account yet; see Service.AcceptInvitations for how it's redeemed.
+func (s *Service) InviteMember(ctx context.Context, diveCenterID, callerID uuid.UUID, email, role string) (Invitation, error) {
+	isOwner, err := s.Repo.IsOwner(ctx, diveCenterID, callerID)
+	if err != nil {
+		return Invitation{}, err
+	}
+	if !isOwner {
+		return Invitation{}, ErrOnlyOwner
+	}
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return Invitation{}, ErrInvalidArgument
+	}
+	if role != "owner" {
+		role = "staff"
+	}
+	return s.Repo.CreateOrRefreshInvitation(ctx, diveCenterID, email, role, callerID)
+}
+
+// AcceptInvitations auto-joins userID to every dive center with a pending invitation for
+// email — called after every successful sign-in (any provider, new or returning user), since
+// an invite has no token of its own: a verified sign-in with the matching email is the proof.
+// A no-op if email is empty (e.g. an Apple sign-in that never shared one).
+func (s *Service) AcceptInvitations(ctx context.Context, userID uuid.UUID, email string) error {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return nil
+	}
+	return s.Repo.ConsumeInvitationsForEmail(ctx, email, userID)
+}

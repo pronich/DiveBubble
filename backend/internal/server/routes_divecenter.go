@@ -11,6 +11,7 @@ import (
 
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/divecenter"
+	"divebubble_be/internal/email"
 	"divebubble_be/internal/profile"
 
 	"github.com/google/uuid"
@@ -22,6 +23,7 @@ func registerDiveCenterRoutes(
 	identityRepo *auth.IdentityRepository,
 	profileSvc *profile.Service,
 	authIssuer *auth.TokenIssuer,
+	emailSvc *email.Service,
 ) {
 	mux.HandleFunc("POST /dive-centers", withAuth(authIssuer, handleCreateDiveCenter(svc)))
 	mux.HandleFunc("GET /dive-centers/mine", withAuth(authIssuer, handleListMyDiveCenters(svc)))
@@ -32,6 +34,7 @@ func registerDiveCenterRoutes(
 	mux.HandleFunc("GET /dive-centers/{id}/members/search", withAuth(authIssuer, handleSearchDiveCenterMember(svc, identityRepo, profileSvc)))
 	mux.HandleFunc("POST /dive-centers/{id}/members", withAuth(authIssuer, handleAddDiveCenterMember(svc)))
 	mux.HandleFunc("DELETE /dive-centers/{id}/members/{userId}", withAuth(authIssuer, handleRemoveDiveCenterMember(svc)))
+	mux.HandleFunc("POST /dive-centers/{id}/invitations", withAuth(authIssuer, handleInviteDiveCenterMember(svc, emailSvc)))
 }
 
 type diveCenterResponse struct {
@@ -443,5 +446,73 @@ func handleRemoveDiveCenterMember(svc *divecenter.Service) func(http.ResponseWri
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+type inviteMemberRequest struct {
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
+type invitationResponse struct {
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// handleInviteDiveCenterMember is the counterpart to handleAddDiveCenterMember for an email
+// with no DiveBubble account yet — admin/'s AddMemberDialog calls this when
+// handleSearchDiveCenterMember 404s. Unlike most side-effect emails elsewhere in this
+// codebase, the send failure here is NOT best-effort: it's the entire point of the request,
+// and v1 has no pending-invitations UI that would otherwise let an owner notice a silently
+// -dropped send (see CLAUDE.md).
+func handleInviteDiveCenterMember(svc *divecenter.Service, emailSvc *email.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			return
+		}
+		var req inviteMemberRequest
+		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
+		if err := dec.Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+		if strings.TrimSpace(req.Email) == "" {
+			writeError(w, http.StatusBadRequest, "email is required")
+			return
+		}
+
+		inv, err := svc.InviteMember(r.Context(), id, userID, req.Email, req.Role)
+		if err != nil {
+			if errors.Is(err, divecenter.ErrOnlyOwner) {
+				writeError(w, http.StatusForbidden, "only an owner can invite members")
+				return
+			}
+			if errors.Is(err, divecenter.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "email is required")
+				return
+			}
+			log.Printf("invite dive center member failed: %v", err)
+			writeError(w, http.StatusInternalServerError, "could not create invitation")
+			return
+		}
+
+		dc, err := svc.Get(r.Context(), id)
+		if err != nil {
+			log.Printf("load dive center for invitation email failed: %v", err)
+			writeError(w, http.StatusInternalServerError, "could not send invitation")
+			return
+		}
+		if err := emailSvc.SendTemplate(r.Context(), inv.Email, email.TemplateInvitation, map[string]string{
+			email.VarDiveCenterName: dc.Name,
+		}); err != nil {
+			log.Printf("send invitation email failed: %v", err)
+			writeError(w, http.StatusInternalServerError, "could not send invitation email")
+			return
+		}
+
+		writeJSON(w, http.StatusCreated, invitationResponse{Email: inv.Email, Role: inv.Role, CreatedAt: inv.CreatedAt})
 	}
 }

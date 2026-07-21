@@ -78,5 +78,8 @@ class DiveCenterRepository {
   Future<void> addMember(String diveCenterId, String userId, String role) =>
       _service.addMember(diveCenterId, userId, role);
 
+  Future<void> inviteMember(String diveCenterId, String email, String role) =>
+      _service.inviteMember(diveCenterId, email, role);
+
   Future<void> removeMember(String diveCenterId, String userId) => _service.removeMember(diveCenterId, userId);
 }
