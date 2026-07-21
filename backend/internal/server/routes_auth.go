@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,10 +30,10 @@ func registerAuthRoutes(
 	emailCodes *auth.EmailCodeRepository,
 	emailSvc *email.Service,
 ) {
-	mux.HandleFunc("POST /auth/google", handleAuthGoogle(cfg, identities, sessions, issuer))
-	mux.HandleFunc("POST /auth/apple", handleAuthApple(cfg, identities, sessions, issuer, appleKeys, appleTokens))
+	mux.HandleFunc("POST /auth/google", handleAuthGoogle(cfg, identities, sessions, issuer, emailSvc))
+	mux.HandleFunc("POST /auth/apple", handleAuthApple(cfg, identities, sessions, issuer, appleKeys, appleTokens, emailSvc))
 	mux.HandleFunc("POST /auth/email/start", handleAuthEmailStart(cfg, emailCodes, emailSvc))
-	mux.HandleFunc("POST /auth/email/verify", handleAuthEmailVerify(cfg, identities, sessions, issuer, emailCodes))
+	mux.HandleFunc("POST /auth/email/verify", handleAuthEmailVerify(cfg, identities, sessions, issuer, emailCodes, emailSvc))
 	mux.HandleFunc("POST /auth/refresh", handleAuthRefresh(cfg, sessions, issuer))
 	mux.Handle("POST /auth/logout", bearerAuth(issuer, handleAuthLogout(sessions)))
 }
@@ -77,7 +78,19 @@ type refreshResponse struct {
 	RefreshToken         string    `json:"refreshToken"`
 }
 
-func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer) http.HandlerFunc {
+// sendWelcomeEmail fires TemplateWelcome for a brand-new account — best-effort, same as the
+// Apple token exchange above: a failed/unset-Resend-key send must never fail sign-in itself.
+// No-op if to is empty (e.g. an Apple sign-up that never shared an email).
+func sendWelcomeEmail(ctx context.Context, emailSvc *email.Service, userID uuid.UUID, to string) {
+	if to == "" {
+		return
+	}
+	if err := emailSvc.SendTemplate(ctx, to, email.TemplateWelcome, nil); err != nil {
+		log.Printf("auth: welcome email failed for user %s: %v", userID, err)
+	}
+}
+
+func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, emailSvc *email.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
@@ -104,6 +117,9 @@ func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, se
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not resolve user")
 			return
+		}
+		if isNewUser {
+			sendWelcomeEmail(r.Context(), emailSvc, userID, identity.Email)
 		}
 
 		rawRefresh, refreshHash, err := auth.GenerateRefreshToken()
@@ -135,7 +151,7 @@ func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, se
 	}
 }
 
-func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, appleKeys *auth.AppleKeySet, appleTokens *auth.AppleTokenClient) http.HandlerFunc {
+func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, appleKeys *auth.AppleKeySet, appleTokens *auth.AppleTokenClient, emailSvc *email.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
@@ -169,6 +185,9 @@ func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, ses
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not resolve user")
 			return
+		}
+		if isNewUser {
+			sendWelcomeEmail(r.Context(), emailSvc, userID, email)
 		}
 
 		// Best-effort: an Apple refresh token is only needed later, for DeleteAccount to
@@ -293,7 +312,7 @@ func handleAuthEmailStart(cfg config.Config, emailCodes *auth.EmailCodeRepositor
 	}
 }
 
-func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, emailCodes *auth.EmailCodeRepository) http.HandlerFunc {
+func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, emailCodes *auth.EmailCodeRepository, emailSvc *email.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
@@ -325,6 +344,9 @@ func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepositor
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not resolve user")
 			return
+		}
+		if isNewUser {
+			sendWelcomeEmail(r.Context(), emailSvc, userID, normalizedEmail)
 		}
 
 		rawRefresh, refreshHash, err := auth.GenerateRefreshToken()

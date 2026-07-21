@@ -10,6 +10,11 @@ const (
 	TemplateMagicLink  = "divebubble-signin"
 	TemplateOTP        = "divebubble-mobile-signin"
 	TemplateInvitation = "invitation-divebubble"
+	// TemplateWelcome fires once, right after a brand-new account's very first sign-in
+	// (isNewUser == true) — regardless of which of the three providers created it. No
+	// variables: unlike TemplateInvitation, there's no name to interpolate reliably across
+	// all three providers (email/OTP sign-up never has one), so the template stays generic.
+	TemplateWelcome = "divebubble-welcome"
 
 	VarMagicLink   = "magic_link"
 	VarOTPCode     = "signin_code"
