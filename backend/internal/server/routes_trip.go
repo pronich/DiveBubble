@@ -230,6 +230,10 @@ func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 				writeError(w, http.StatusBadRequest, "title, location and startTime are required")
 				return
 			}
+			if errors.Is(err, trip.ErrEndDateBeforeStart) {
+				writeError(w, http.StatusBadRequest, "end date is before the start date")
+				return
+			}
 			if errors.Is(err, trip.ErrNotDiveCenterMember) {
 				writeError(w, http.StatusForbidden, "not a member of that dive center")
 				return

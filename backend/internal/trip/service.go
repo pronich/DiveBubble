@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"divebubble_be/internal/divecenter"
 
@@ -21,6 +22,7 @@ var ErrRequiresBookingCode = errors.New("this trip requires a booking code to jo
 var ErrInvalidBookingCode = errors.New("invalid booking code")
 var ErrTooManyPhotos = errors.New("trip already has the maximum number of photos")
 var ErrBusinessTripRequiresPriceAndURL = errors.New("business trips require a price and a booking URL")
+var ErrEndDateBeforeStart = errors.New("end date is before the start date")
 
 const maxBookingCodeAttempts = 5
 
@@ -78,8 +80,16 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 	if p.Title == "" || p.Location == "" || p.StartTime.IsZero() {
 		return Trip{}, ErrInvalidArgument
 	}
-	if p.EndDate != nil && p.EndDate.Before(p.StartTime) {
-		return Trip{}, ErrInvalidArgument
+	// Compare calendar dates, not exact instants — EndDate is a pure date (always
+	// midnight UTC by the time it gets here, see clients' own endDate serialization), so a
+	// same-day trip's EndDate is always clock-earlier than its StartTime even though the two
+	// dates are equal, which a raw .Before() would wrongly reject.
+	if p.EndDate != nil {
+		endDate := time.Date(p.EndDate.Year(), p.EndDate.Month(), p.EndDate.Day(), 0, 0, 0, 0, time.UTC)
+		startDate := time.Date(p.StartTime.Year(), p.StartTime.Month(), p.StartTime.Day(), 0, 0, 0, 0, time.UTC)
+		if endDate.Before(startDate) {
+			return Trip{}, ErrEndDateBeforeStart
+		}
 	}
 	if p.DiveCenterID != nil {
 		if s.DiveCenterSvc == nil {

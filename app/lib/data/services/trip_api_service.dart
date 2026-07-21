@@ -196,7 +196,11 @@ class TripApiService {
       'title': title,
       'location': location,
       'startTime': startTime.toUtc().toIso8601String(),
-      if (endDate != null) 'endDate': endDate.toUtc().toIso8601String(),
+      // endDate is a pure calendar date (picked date-only, always local midnight) — .toUtc()
+      // on that shifts it into the *previous* UTC day for any positive-offset timezone,
+      // which then fails the backend's endDate >= startTime check for same-day trips. Build
+      // a fresh UTC-midnight DateTime from the Y/M/D instead of converting the local one.
+      if (endDate != null) 'endDate': DateTime.utc(endDate.year, endDate.month, endDate.day).toIso8601String(),
       if (description != null) 'description': description,
       if (meetingPoint != null) 'meetingPoint': meetingPoint,
       if (diveCountMin != null) 'diveCountMin': diveCountMin,

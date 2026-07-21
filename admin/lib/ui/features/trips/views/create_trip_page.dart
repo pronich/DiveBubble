@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/certification_level.dart';
@@ -64,6 +65,11 @@ class _CreateTripPageState extends State<CreateTripPage> {
   DateTime? _endDate;
   String? _minCertification;
 
+  // Flips true on the first failed submit — required fields still empty at that point get a
+  // red border/label instead of only a SnackBar, so it's obvious at a glance which ones need
+  // attention rather than having to re-read the error text against six unlabeled blanks.
+  bool _showValidation = false;
+
   // Create-only — an existing trip's photos are managed through TripDetailPage's own
   // gallery instead (see AdminShell's Manage flow), so this stays empty while editing.
   List<_PendingPhoto> _pickedPhotos = [];
@@ -73,7 +79,13 @@ class _CreateTripPageState extends State<CreateTripPage> {
   void initState() {
     super.initState();
     final trip = widget.existingTrip;
-    if (trip == null) return;
+    if (trip == null) {
+      // New trip: default to the next full hour, not the exact current time — 15:20 right
+      // now shouldn't quietly become the start time of a dive nobody meant to schedule for
+      // 15:20 specifically.
+      _startTimeOfDay = _roundUpToNextHour(TimeOfDay.now());
+      return;
+    }
     _titleController.text = trip.title;
     _locationController.text = trip.location;
     _descriptionController.text = trip.description ?? '';
@@ -119,16 +131,9 @@ class _CreateTripPageState extends State<CreateTripPage> {
     if (picked != null) setState(() => _startDate = picked);
   }
 
-  // TimePickerEntryMode.input skips Flutter's default analog clock face in favor of a
-  // typed HH:MM field from the start — closer to what was actually asked for ("just an
-  // input, like Apple") than building a custom text-entry time widget from scratch.
-  Future<void> _pickStartTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _startTimeOfDay ?? TimeOfDay.now(),
-      initialEntryMode: TimePickerEntryMode.input,
-    );
-    if (picked != null) setState(() => _startTimeOfDay = picked);
+  static TimeOfDay _roundUpToNextHour(TimeOfDay time) {
+    if (time.minute == 0) return time;
+    return TimeOfDay(hour: (time.hour + 1) % 24, minute: 0);
   }
 
   Future<void> _addPhotos() async {
@@ -160,6 +165,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
     final title = _titleController.text.trim();
     final location = _locationController.text.trim();
     if (title.isEmpty || location.isEmpty || _startDate == null || _startTimeOfDay == null) {
+      setState(() => _showValidation = true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Title, location, date and start time are required')),
       );
@@ -169,6 +175,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
     final priceMinor = _priceMinorOrNull(_priceController);
     final bookingUrl = _textOrNull(_bookingUrlController);
     if (priceMinor == null || bookingUrl == null) {
+      setState(() => _showValidation = true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Price and booking URL are required')),
       );
@@ -288,11 +295,22 @@ class _CreateTripPageState extends State<CreateTripPage> {
                           ),
                           const SizedBox(height: 20),
                         ],
-                        TextField(controller: _titleController, decoration: const InputDecoration(labelText: 'Title')),
+                        TextField(
+                          controller: _titleController,
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            labelText: 'Title',
+                            errorText: _showValidation && _titleController.text.trim().isEmpty ? 'Required' : null,
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: _locationController,
-                          decoration: const InputDecoration(labelText: 'Location'),
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            labelText: 'Location',
+                            errorText: _showValidation && _locationController.text.trim().isEmpty ? 'Required' : null,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Row(
@@ -304,14 +322,16 @@ class _CreateTripPageState extends State<CreateTripPage> {
                                     ? null
                                     : '${_startDate!.year}-${_startDate!.month}-${_startDate!.day}',
                                 onTap: _pickStartDate,
+                                isError: _showValidation && _startDate == null,
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: _PickerField(
+                              child: _InlineTimeField(
                                 label: 'Start time',
-                                value: _startTimeOfDay?.format(context),
-                                onTap: _pickStartTime,
+                                initialValue: _startTimeOfDay ?? _roundUpToNextHour(TimeOfDay.now()),
+                                onChanged: (time) => setState(() => _startTimeOfDay = time),
+                                isError: _showValidation && _startTimeOfDay == null,
                               ),
                             ),
                           ],
@@ -326,15 +346,22 @@ class _CreateTripPageState extends State<CreateTripPage> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _priceController,
-                          decoration: const InputDecoration(labelText: 'Price', prefixText: 'DKK '),
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
+                            labelText: 'Price',
+                            prefixText: 'DKK ',
+                            errorText: _showValidation && _priceMinorOrNull(_priceController) == null ? 'Required' : null,
+                          ),
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: _bookingUrlController,
-                          decoration: const InputDecoration(
+                          onChanged: (_) => setState(() {}),
+                          decoration: InputDecoration(
                             labelText: 'Booking URL',
                             hintText: 'Where divers pay to get their booking code',
+                            errorText: _showValidation && _textOrNull(_bookingUrlController) == null ? 'Required' : null,
                           ),
                           keyboardType: TextInputType.url,
                         ),
@@ -451,13 +478,110 @@ class _CreateTripPageState extends State<CreateTripPage> {
   }
 }
 
+/// Two plain digit segments (HH, MM) edited directly inside the field's own box — no popup at
+/// all, unlike _PickerField's tap-to-open-dialog pattern. Owns its own controllers seeded once
+/// from [initialValue]; the parent only ever hears about a value once both segments parse to a
+/// valid 24-hour time, via [onChanged] — it doesn't feed edits back in, so the parent rebuilding
+/// (e.g. to update [isError]) never resets what's mid-typed.
+class _InlineTimeField extends StatefulWidget {
+  const _InlineTimeField({required this.label, required this.initialValue, required this.onChanged, this.isError = false});
+
+  final String label;
+  final TimeOfDay initialValue;
+  final ValueChanged<TimeOfDay> onChanged;
+  final bool isError;
+
+  @override
+  State<_InlineTimeField> createState() => _InlineTimeFieldState();
+}
+
+class _InlineTimeFieldState extends State<_InlineTimeField> {
+  late final _hourController = TextEditingController(text: _pad(widget.initialValue.hour));
+  late final _minuteController = TextEditingController(text: _pad(widget.initialValue.minute));
+  final _minuteFocus = FocusNode();
+
+  static String _pad(int n) => n.toString().padLeft(2, '0');
+
+  @override
+  void dispose() {
+    _hourController.dispose();
+    _minuteController.dispose();
+    _minuteFocus.dispose();
+    super.dispose();
+  }
+
+  void _onHourChanged(String text) {
+    if (text.length >= 2) {
+      final hour = int.tryParse(text) ?? 0;
+      if (hour > 23) _hourController.text = '23';
+      _minuteFocus.requestFocus();
+      _minuteController.selection = TextSelection(baseOffset: 0, extentOffset: _minuteController.text.length);
+    }
+    _emitIfValid();
+  }
+
+  void _onMinuteChanged(String text) {
+    if (text.length >= 2) {
+      final minute = int.tryParse(text) ?? 0;
+      if (minute > 59) _minuteController.text = '59';
+    }
+    _emitIfValid();
+  }
+
+  void _emitIfValid() {
+    final hour = int.tryParse(_hourController.text);
+    final minute = int.tryParse(_minuteController.text);
+    if (hour != null && hour <= 23 && minute != null && minute <= 59) {
+      widget.onChanged(TimeOfDay(hour: hour, minute: minute));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InputDecorator(
+      decoration: InputDecoration(labelText: widget.label, errorText: widget.isError ? 'Required' : null),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _segment(_hourController, null, _onHourChanged),
+          const Text(':'),
+          _segment(_minuteController, _minuteFocus, _onMinuteChanged),
+        ],
+      ),
+    );
+  }
+
+  Widget _segment(TextEditingController controller, FocusNode? focusNode, ValueChanged<String> onChanged) {
+    return SizedBox(
+      width: 26,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        onChanged: onChanged,
+        textAlign: TextAlign.center,
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(2)],
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: EdgeInsets.zero,
+          counterText: '',
+        ),
+        maxLength: 2,
+        onTap: () => controller.selection = TextSelection(baseOffset: 0, extentOffset: controller.text.length),
+      ),
+    );
+  }
+}
+
 class _PickerField extends StatelessWidget {
-  const _PickerField({required this.label, required this.value, required this.onTap, this.onClear});
+  const _PickerField({required this.label, required this.value, required this.onTap, this.onClear, this.isError = false});
 
   final String label;
   final String? value;
   final VoidCallback onTap;
   final VoidCallback? onClear;
+  final bool isError;
 
   @override
   Widget build(BuildContext context) {
@@ -466,6 +590,7 @@ class _PickerField extends StatelessWidget {
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
+          errorText: isError ? 'Required' : null,
           suffixIcon: onClear != null ? IconButton(icon: const Icon(Icons.clear), onPressed: onClear) : null,
         ),
         child: Text(value ?? 'Select'),
