@@ -43,8 +43,14 @@ class LoginSheet extends StatefulWidget {
   State<LoginSheet> createState() => _LoginSheetState();
 }
 
+enum _AuthProvider { google, apple }
+
 class _LoginSheetState extends State<LoginSheet> {
   bool _loading = false;
+  // Which provider button triggered the current _loading — Google/Apple share the one
+  // _loading flag (both get disabled together), but only the button actually pressed should
+  // show its own spinner instead of its static icon.
+  _AuthProvider? _pendingProvider;
   String? _error;
 
   // Email/OTP is a small state machine inline in the same sheet rather than its own route —
@@ -62,13 +68,14 @@ class _LoginSheetState extends State<LoginSheet> {
     super.dispose();
   }
 
-  Future<void> _signInWithGoogle() => _signIn(widget.authRepository.signInWithGoogle);
+  Future<void> _signInWithGoogle() => _signIn(widget.authRepository.signInWithGoogle, _AuthProvider.google);
 
-  Future<void> _signInWithApple() => _signIn(widget.authRepository.signInWithApple);
+  Future<void> _signInWithApple() => _signIn(widget.authRepository.signInWithApple, _AuthProvider.apple);
 
-  Future<void> _signIn(Future<SignInResult> Function() signIn) async {
+  Future<void> _signIn(Future<SignInResult> Function() signIn, _AuthProvider provider) async {
     setState(() {
       _loading = true;
+      _pendingProvider = provider;
       _error = null;
     });
     try {
@@ -79,6 +86,7 @@ class _LoginSheetState extends State<LoginSheet> {
       setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');
         _loading = false;
+        _pendingProvider = null;
       });
     }
   }
@@ -189,7 +197,7 @@ class _LoginSheetState extends State<LoginSheet> {
     return [
       ElevatedButton.icon(
         onPressed: _loading ? null : _signInWithGoogle,
-        icon: _loading
+        icon: _pendingProvider == _AuthProvider.google
             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
             : const Icon(Icons.g_mobiledata, size: 26),
         label: const Text('Continue with Google'),
@@ -197,7 +205,9 @@ class _LoginSheetState extends State<LoginSheet> {
       const SizedBox(height: 12),
       ElevatedButton.icon(
         onPressed: _loading ? null : _signInWithApple,
-        icon: const Icon(Icons.apple, size: 20),
+        icon: _pendingProvider == _AuthProvider.apple
+            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.apple, size: 20),
         label: const Text('Continue with Apple'),
       ),
       const SizedBox(height: 12),

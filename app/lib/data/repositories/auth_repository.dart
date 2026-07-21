@@ -123,6 +123,7 @@ class AuthRepository extends ChangeNotifier {
     final result = await _api.signInWithApple(
       identityToken: identityToken,
       nonce: rawNonce,
+      authorizationCode: credential.authorizationCode,
       email: credential.email,
       fullName: fullName.isEmpty ? null : fullName,
     );

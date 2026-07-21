@@ -61,6 +61,7 @@ class AuthApiService {
   Future<ProviderSignInResult> signInWithApple({
     required String identityToken,
     required String nonce,
+    required String authorizationCode,
     String? email,
     String? fullName,
   }) async {
@@ -70,6 +71,7 @@ class AuthApiService {
       body: jsonEncode({
         'identityToken': identityToken,
         'nonce': nonce,
+        'authorizationCode': authorizationCode,
         if (email != null) 'email': email,
         if (fullName != null) 'fullName': fullName,
       }),

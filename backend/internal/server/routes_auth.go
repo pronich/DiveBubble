@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -24,11 +25,12 @@ func registerAuthRoutes(
 	sessions *auth.SessionRepository,
 	issuer *auth.TokenIssuer,
 	appleKeys *auth.AppleKeySet,
+	appleTokens *auth.AppleTokenClient,
 	emailCodes *auth.EmailCodeRepository,
 	emailSvc *email.Service,
 ) {
 	mux.HandleFunc("POST /auth/google", handleAuthGoogle(cfg, identities, sessions, issuer))
-	mux.HandleFunc("POST /auth/apple", handleAuthApple(cfg, identities, sessions, issuer, appleKeys))
+	mux.HandleFunc("POST /auth/apple", handleAuthApple(cfg, identities, sessions, issuer, appleKeys, appleTokens))
 	mux.HandleFunc("POST /auth/email/start", handleAuthEmailStart(cfg, emailCodes, emailSvc))
 	mux.HandleFunc("POST /auth/email/verify", handleAuthEmailVerify(cfg, identities, sessions, issuer, emailCodes))
 	mux.HandleFunc("POST /auth/refresh", handleAuthRefresh(cfg, sessions, issuer))
@@ -49,6 +51,12 @@ type appleAuthRequest struct {
 	Nonce         string `json:"nonce"`
 	Email         string `json:"email"`
 	FullName      string `json:"fullName"`
+	// AuthorizationCode is the native ASAuthorizationAppleIDCredential's one-time code —
+	// exchanged (best-effort, see handleAuthApple) for an Apple refresh token so DeleteAccount
+	// has something to revoke later. Optional: omitted, empty, or a failed exchange just means
+	// account deletion won't have an Apple token to revoke for this diver — sign-in itself
+	// never depends on it.
+	AuthorizationCode string `json:"authorizationCode"`
 }
 
 type authLoginResponse struct {
@@ -127,7 +135,7 @@ func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, se
 	}
 }
 
-func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, appleKeys *auth.AppleKeySet) http.HandlerFunc {
+func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, sessions *auth.SessionRepository, issuer *auth.TokenIssuer, appleKeys *auth.AppleKeySet, appleTokens *auth.AppleTokenClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
@@ -161,6 +169,19 @@ func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, ses
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not resolve user")
 			return
+		}
+
+		// Best-effort: an Apple refresh token is only needed later, for DeleteAccount to
+		// revoke — a failure here (disabled client, network hiccup, Apple outage) must never
+		// block signing in.
+		if req.AuthorizationCode != "" {
+			if refreshToken, err := appleTokens.Exchange(r.Context(), req.AuthorizationCode); err != nil {
+				log.Printf("auth: apple token exchange failed for user %s: %v", userID, err)
+			} else if refreshToken != "" {
+				if err := identities.SetAppleRefreshToken(r.Context(), userID, refreshToken); err != nil {
+					log.Printf("auth: could not store apple refresh token for user %s: %v", userID, err)
+				}
+			}
 		}
 
 		rawRefresh, refreshHash, err := auth.GenerateRefreshToken()

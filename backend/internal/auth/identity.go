@@ -98,6 +98,38 @@ func (r *IdentityRepository) LoginOrRegister(ctx context.Context, provider, prov
 	return userID, true, nil
 }
 
+// GetAppleRefreshToken returns the Apple refresh token stored for this user's "apple"
+// identity (see SetAppleRefreshToken), if any — used at account-deletion time to revoke it.
+// ok is false when the user has no "apple" identity, or one was never captured (e.g. signed
+// in before this feature existed, or Apple token exchange was disabled/failed at the time).
+func (r *IdentityRepository) GetAppleRefreshToken(ctx context.Context, userID uuid.UUID) (token string, ok bool, err error) {
+	var raw sql.NullString
+	err = r.DB.QueryRowContext(ctx, `
+		SELECT apple_refresh_token FROM auth_identities WHERE user_id = $1 AND provider = 'apple'
+	`, userID).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	if !raw.Valid || raw.String == "" {
+		return "", false, nil
+	}
+	return raw.String, true, nil
+}
+
+// SetAppleRefreshToken persists the refresh token AppleTokenClient.Exchange returned for this
+// user's "apple" identity — overwritten on every sign-in (Apple issues a fresh one each time)
+// rather than kept only from the first, so it stays valid even if an earlier one was somehow
+// invalidated. A no-op if the user has no "apple" identity row.
+func (r *IdentityRepository) SetAppleRefreshToken(ctx context.Context, userID uuid.UUID, refreshToken string) error {
+	_, err := r.DB.ExecContext(ctx, `
+		UPDATE auth_identities SET apple_refresh_token = $1 WHERE user_id = $2 AND provider = 'apple'
+	`, refreshToken, userID)
+	return err
+}
+
 // LoginOrRegisterByEmail is LoginOrRegister's counterpart for the passwordless "email"
 // provider, which needs one extra step the others don't: Google/Apple sub claims are
 // already scoped per-provider, so two different providers never collide, but a diver who

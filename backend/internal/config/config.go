@@ -20,7 +20,14 @@ type Config struct {
 	// AppleAudience is the iOS app's bundle id (the App ID, not a Services ID — DiveBubble
 	// has no web Sign in with Apple flow). Defaults to the one and only bundle id this
 	// project ships, so no env var is required in dev.
-	AppleAudience         string
+	AppleAudience string
+	// AppleTeamID/AppleKeyID/ApplePrivateKey are all optional and only needed to revoke a
+	// diver's Apple authorization on account deletion (App Store Review Guideline 5.1.1(v)) —
+	// empty disables that specific side effect, same "empty disables" convention as
+	// FirebaseCredentialsJSON below. Sign-in itself never depends on these.
+	AppleTeamID           string
+	AppleKeyID            string
+	ApplePrivateKey       string
 	AccessTokenTTL        time.Duration
 	RefreshSessionTTL     time.Duration
 	SessionRetentionGrace time.Duration
@@ -78,6 +85,12 @@ func Load() Config {
 	if appleAudience == "" {
 		appleAudience = "io.divebubble.app"
 	}
+	appleTeamID := os.Getenv("APPLE_TEAM_ID")
+	appleKeyID := os.Getenv("APPLE_KEY_ID")
+	// Stored as a single-line env var with literal \n sequences (works regardless of how the
+	// hosting env parses .env files, since the unescaping happens here, not in a dotenv
+	// parser's own quoting rules) — unescaped back to real newlines before use.
+	applePrivateKey := strings.ReplaceAll(os.Getenv("APPLE_PRIVATE_KEY"), `\n`, "\n")
 	accessTokenTTL := durationEnv("ACCESS_TOKEN_TTL", 8*time.Hour)
 	refreshSessionTTL := durationEnv("REFRESH_SESSION_TTL", 180*24*time.Hour)
 	// How long an expired/revoked auth_sessions row is kept before physical deletion —
@@ -138,6 +151,9 @@ func Load() Config {
 		JWTSecret:               jwtSecret,
 		GoogleServerClientID:    googleServerClientID,
 		AppleAudience:           appleAudience,
+		AppleTeamID:             appleTeamID,
+		AppleKeyID:              appleKeyID,
+		ApplePrivateKey:         applePrivateKey,
 		AccessTokenTTL:          accessTokenTTL,
 		RefreshSessionTTL:       refreshSessionTTL,
 		SessionRetentionGrace:   sessionRetentionGrace,

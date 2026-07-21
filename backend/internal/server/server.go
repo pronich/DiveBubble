@@ -40,7 +40,6 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	}
 	uploadSvc := upload.NewService(uploadBackend)
 	waitlistSvc := waitlist.NewService(waitlist.NewRepository(db))
-	accountSvc := account.NewService(account.NewRepository(db))
 	pushSvc, err := push.New(context.Background(), push.NewRepository(db), cfg.FirebaseCredentialsJSON)
 	if err != nil {
 		log.Fatalf("server: push: %v", err)
@@ -55,6 +54,11 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 		log.Fatalf("server: %v", err)
 	}
 	appleKeys := auth.NewAppleKeySet()
+	appleTokens, err := auth.NewAppleTokenClient(cfg.AppleTeamID, cfg.AppleKeyID, cfg.ApplePrivateKey, cfg.AppleAudience)
+	if err != nil {
+		log.Fatalf("server: %v", err)
+	}
+	accountSvc := account.NewService(account.NewRepository(db), identityRepo, appleTokens)
 	emailCodeRepo := auth.NewEmailCodeRepository(db)
 	emailSvc := email.New(cfg.ResendAPIKey, cfg.EmailFromAddress)
 
@@ -64,7 +68,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	registerMessageRoutes(mux, messageSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, publisher, pushSvc)
 	registerTransportRoutes(mux, transportSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, pushSvc)
 	registerRealtimeRoutes(mux, realtimeTokenIssuer, authIssuer)
-	registerAuthRoutes(mux, cfg, identityRepo, sessionRepo, authIssuer, appleKeys, emailCodeRepo, emailSvc)
+	registerAuthRoutes(mux, cfg, identityRepo, sessionRepo, authIssuer, appleKeys, appleTokens, emailCodeRepo, emailSvc)
 	registerProfileRoutes(mux, profileSvc, authIssuer)
 	registerCertificationRoutes(mux, certificationSvc, authIssuer)
 	registerGearRoutes(mux, gearSvc, authIssuer)
