@@ -62,6 +62,12 @@ func (r *IdentityRepository) FindUserIDByEmail(ctx context.Context, email string
 // first creation — later logins never overwrite whatever the user has since set themselves.
 // isNewUser tells the caller whether this was the account's very first sign-in, so the client
 // can drop a brand-new user straight into Edit Profile instead of an empty screen.
+//
+// Mirrors LoginOrRegisterByEmail's own linking check (see its comment): a diver who already
+// has an account under some *other* provider sharing this email — including one created via
+// the passwordless "email" flow — must land on that same account, not a disconnected new one.
+// Without this, signing in with email first and Google/Apple second (or Google first, Apple
+// second) silently created two separate accounts for the same person.
 func (r *IdentityRepository) LoginOrRegister(ctx context.Context, provider, providerUserID, email, displayName, avatarURL string) (userID uuid.UUID, isNewUser bool, err error) {
 	err = r.DB.QueryRowContext(ctx, `
 		SELECT user_id FROM auth_identities WHERE provider = $1 AND provider_user_id = $2
@@ -78,6 +84,32 @@ func (r *IdentityRepository) LoginOrRegister(ctx context.Context, provider, prov
 		return uuid.Nil, false, err
 	}
 	defer func() { _ = tx.Rollback() }()
+
+	// Apple only ever returns an email on the diver's very first-ever authorization — a
+	// repeat sign-in with no email can't be linked by it, but also doesn't need to be,
+	// since a repeat sign-in should already have matched the provider+providerUserID check
+	// above.
+	if email != "" {
+		var existingUserID uuid.UUID
+		err = tx.QueryRowContext(ctx, `
+			SELECT user_id FROM auth_identities WHERE provider_email = $1 LIMIT 1
+		`, email).Scan(&existingUserID)
+		switch {
+		case err == nil:
+			if _, err := tx.ExecContext(ctx, `
+				INSERT INTO auth_identities (user_id, provider, provider_user_id, provider_email)
+				VALUES ($1, $2, $3, $4)
+			`, existingUserID, provider, providerUserID, email); err != nil {
+				return uuid.Nil, false, err
+			}
+			if err := tx.Commit(); err != nil {
+				return uuid.Nil, false, err
+			}
+			return existingUserID, false, nil
+		case !errors.Is(err, sql.ErrNoRows):
+			return uuid.Nil, false, err
+		}
+	}
 
 	userID = uuid.New()
 	if _, err := tx.ExecContext(ctx, `
