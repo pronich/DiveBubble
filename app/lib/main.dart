@@ -246,6 +246,7 @@ class _MyAppState extends State<MyApp> {
       navigatorKey: _navigatorKey,
       title: 'DiveBubble',
       theme: AppTheme.light,
+      debugShowCheckedModeBanner: false,
       home: AppEntryGate(
         authRepository: _authRepository,
         profileRepository: _profileRepository,
