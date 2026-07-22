@@ -18,6 +18,7 @@ import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/external_url.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/photo_manager_grid.dart';
 import '../../../core/widgets/pick_image.dart';
@@ -130,44 +131,55 @@ class _TripPageState extends State<TripPage> {
                               controller: _photoPageController,
                               itemCount: photos.length,
                               onPageChanged: (i) => setState(() => _currentPhotoIndex = i),
-                              itemBuilder: (context, i) => Image.network(photos[i].url, fit: BoxFit.cover),
+                              // Tap-left/tap-right zones live *inside* each page (descendants
+                              // of PageView), not stacked on top of it — a GestureDetector
+                              // overlaying PageView from outside competes with its own drag
+                              // recognizer for the same pointer and swallows real swipes;
+                              // nested inside a page, Flutter's normal ancestor-scrollable/
+                              // descendant-tap disambiguation lets a drag fall through to the
+                              // PageView while a stationary tap still resolves here.
+                              itemBuilder: (context, i) => Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.network(
+                                    photos[i].url,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) =>
+                                        Image.asset(AppAssets.tripPlaceholder, fit: BoxFit.cover),
+                                  ),
+                                  if (photos.length > 1) ...[
+                                    Positioned(
+                                      left: 0,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: MediaQuery.sizeOf(context).width / 3,
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.translucent,
+                                        onTap: _currentPhotoIndex > 0
+                                            ? () => _photoPageController.previousPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut)
+                                            : null,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 0,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: MediaQuery.sizeOf(context).width / 3,
+                                      child: GestureDetector(
+                                        behavior: HitTestBehavior.translucent,
+                                        onTap: _currentPhotoIndex < photos.length - 1
+                                            ? () => _photoPageController.nextPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut)
+                                            : null,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             )
                           : Image.asset(AppAssets.tripPlaceholder, fit: BoxFit.cover),
                       const DecoratedBox(
                         decoration: BoxDecoration(gradient: AppGradients.imageScrim),
                       ),
-                      // Tap-left/tap-right to advance, same convention as Instagram Stories
-                      // — no visible arrow (unlike admin/'s hover chevrons, touch UI doesn't
-                      // need one), just a wide invisible hit zone on each third of the image.
-                      // Also works around trackpad two-finger "swipes" not reliably
-                      // registering as a touch drag in the iOS Simulator — tapping always
-                      // works regardless of that.
-                      if (photos.length > 1) ...[
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: MediaQuery.sizeOf(context).width / 3,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTap: _currentPhotoIndex > 0
-                                ? () => _photoPageController.previousPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut)
-                                : null,
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: MediaQuery.sizeOf(context).width / 3,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTap: _currentPhotoIndex < photos.length - 1
-                                ? () => _photoPageController.nextPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut)
-                                : null,
-                          ),
-                        ),
-                      ],
                       // Dot page indicator — only worth showing once there's more than one
                       // photo to swipe between.
                       if (photos.length > 1)
@@ -742,7 +754,7 @@ class _BookNowSection extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+              onPressed: () => launchUrl(externalUri(url), mode: LaunchMode.externalApplication),
               icon: const Icon(Icons.open_in_new, size: 18),
               label: Text(label),
             ),

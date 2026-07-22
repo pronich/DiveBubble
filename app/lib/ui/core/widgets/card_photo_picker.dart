@@ -76,7 +76,14 @@ class _PhotoPreviewPage extends StatelessWidget {
           ),
         ],
       ),
-      body: Center(child: InteractiveViewer(child: Image.network(photoUrl))),
+      body: Center(
+        child: InteractiveViewer(
+          child: Image.network(
+            photoUrl,
+            errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image_outlined, color: Colors.white54, size: 48),
+          ),
+        ),
+      ),
     );
   }
 }

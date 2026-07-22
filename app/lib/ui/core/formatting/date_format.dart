@@ -31,6 +31,9 @@ String formatChatDateSeparator(DateTime dateTime) {
   return '$month ${local.day}, ${local.year}';
 }
 
+/// e.g. "August 2026" — the calendar picker's month header.
+String formatMonthYear(DateTime dateTime) => '${_fullMonths[dateTime.month - 1]} ${dateTime.year}';
+
 /// Collapses to a single date when [end] is null or the same calendar day as [start].
 String formatDateRange(DateTime start, DateTime? end) {
   if (end == null) return formatShortDate(start);

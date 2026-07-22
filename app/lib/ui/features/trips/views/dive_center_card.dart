@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../domain/entities/dive_center.dart';
+import '../../../core/utils/external_url.dart';
 import '../../profile/views/profile_overview_card.dart';
 
 /// Same "tap an identity, get a sheet" pattern as showDiverIdCard, but for a business — a
@@ -59,7 +60,12 @@ class DiveCenterOverviewCard extends StatelessWidget {
                 height: 80,
                 color: theme.colorScheme.secondaryContainer,
                 child: (dc.logoUrl?.isNotEmpty ?? false)
-                    ? Image.network(dc.logoUrl!, fit: BoxFit.cover)
+                    ? Image.network(
+                        dc.logoUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            Icon(Icons.storefront_outlined, size: 36, color: theme.colorScheme.onSecondaryContainer),
+                      )
                     : Icon(Icons.storefront_outlined, size: 36, color: theme.colorScheme.onSecondaryContainer),
               ),
             ),
@@ -118,7 +124,7 @@ class DiveCenterOverviewCard extends StatelessWidget {
               ProfileInfoRow(label: 'Languages', value: dc.languages.isNotEmpty ? dc.languages : '—'),
               if (dc.website?.isNotEmpty ?? false) ...[
                 const Divider(height: 1),
-                _LinkRow(label: 'Website', value: dc.website!, onTap: () => launchUrl(Uri.parse(dc.website!), mode: LaunchMode.externalApplication)),
+                _LinkRow(label: 'Website', value: dc.website!, onTap: () => launchUrl(externalUri(dc.website!), mode: LaunchMode.externalApplication)),
               ],
               if (dc.phone?.isNotEmpty ?? false) ...[
                 const Divider(height: 1),
