@@ -286,6 +286,11 @@ class _CreateTripPageState extends State<CreateTripPage> {
   int? _intOrNull(TextEditingController controller) => int.tryParse(controller.text.trim());
 }
 
+DateTime _roundUpToNextHour(DateTime time) {
+  if (time.minute == 0 && time.second == 0) return time;
+  return DateTime(time.year, time.month, time.day, time.hour + 1);
+}
+
 /// iOS-style wheel picker in a bottom sheet — Material's `showDatePicker`/`showTimePicker`
 /// dialogs read as a jarring overlay on top of the field; this matches native iOS pickers instead.
 Future<DateTime?> _showWheelPicker(
@@ -368,7 +373,10 @@ class _TimePickerField extends StatelessWidget {
     return InkWell(
       onTap: () async {
         final now = DateTime.now();
-        final initial = value != null ? DateTime(now.year, now.month, now.day, value!.hour, value!.minute) : now;
+        // No time picked yet -> start the wheel at the next clean hour, not the exact
+        // current minute (matches admin/'s own create-trip default) — a diver opening this
+        // at 14:37 almost certainly means "around 3pm", not literally :37.
+        final initial = value != null ? DateTime(now.year, now.month, now.day, value!.hour, value!.minute) : _roundUpToNextHour(now);
         final picked = await _showWheelPicker(context, mode: CupertinoDatePickerMode.time, initialDateTime: initial);
         if (picked != null) onPick(TimeOfDay.fromDateTime(picked));
       },
