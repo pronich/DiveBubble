@@ -13,6 +13,7 @@ import (
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/divecenter"
 	"divebubble_be/internal/message"
+	"divebubble_be/internal/moderation"
 	"divebubble_be/internal/profile"
 	"divebubble_be/internal/push"
 	"divebubble_be/internal/realtime"
@@ -30,8 +31,9 @@ func registerMessageRoutes(
 	authIssuer *auth.TokenIssuer,
 	publisher *realtime.Publisher,
 	pushSvc *push.Service,
+	moderationSvc *moderation.Service,
 ) {
-	mux.HandleFunc("GET /trips/{id}/messages", withAuth(authIssuer, handleListMessages(svc, tripSvc, diveCenterSvc)))
+	mux.HandleFunc("GET /trips/{id}/messages", withAuth(authIssuer, handleListMessages(svc, tripSvc, diveCenterSvc, moderationSvc)))
 	mux.HandleFunc("POST /trips/{id}/messages", withAuth(authIssuer, handleSendMessage(svc, tripSvc, diveCenterSvc, profileSvc, publisher, pushSvc)))
 }
 
@@ -104,7 +106,7 @@ func (c *diveCenterStaffChecker) isStaff(ctx context.Context, userID uuid.UUID) 
 	return isMember
 }
 
-func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, moderationSvc *moderation.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
 		if !ok {
@@ -121,6 +123,27 @@ func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterS
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not list messages")
 			return
+		}
+
+		// Best-effort — a lookup failure here must not break the whole chat load, so on error
+		// this just falls back to "nothing blocked" rather than failing the request.
+		blocked, err := moderationSvc.ListBlockedUserIDs(r.Context(), userID)
+		if err != nil {
+			log.Printf("list messages: could not load blocked users for %s: %v", userID, err)
+			blocked = nil
+		}
+		if len(blocked) > 0 {
+			blockedSet := make(map[uuid.UUID]bool, len(blocked))
+			for _, id := range blocked {
+				blockedSet[id] = true
+			}
+			filtered := messages[:0]
+			for _, m := range messages {
+				if !blockedSet[m.UserID] {
+					filtered = append(filtered, m)
+				}
+			}
+			messages = filtered
 		}
 
 		checker := newDiveCenterStaffChecker(diveCenterSvc, t.DiveCenterID)

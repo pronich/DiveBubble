@@ -49,4 +49,15 @@ class ChatApiService {
       throw Exception('sendMessage failed: ${res.statusCode} ${res.body}');
     }
   }
+
+  Future<void> reportMessage(String tripId, String messageId, String reason, {String? details}) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$tripId/messages/$messageId/report'),
+      headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode({'reason': reason, 'details': details ?? ''}),
+    );
+    if (res.statusCode != 201) {
+      throw Exception('reportMessage failed: ${res.statusCode} ${res.body}');
+    }
+  }
 }

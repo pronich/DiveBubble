@@ -25,6 +25,16 @@ func (r *Repository) Create(ctx context.Context, tripID, userID uuid.UUID, body 
 	return m, err
 }
 
+func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Message, error) {
+	var m Message
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT id, trip_id, user_id, body, created_at, mentions_dive_center
+		FROM chat_messages
+		WHERE id = $1
+	`, id).Scan(&m.ID, &m.TripID, &m.UserID, &m.Body, &m.CreatedAt, &m.MentionsDiveCenter)
+	return m, err
+}
+
 func (r *Repository) ListByTrip(ctx context.Context, tripID uuid.UUID) ([]Message, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT id, trip_id, user_id, body, created_at, mentions_dive_center

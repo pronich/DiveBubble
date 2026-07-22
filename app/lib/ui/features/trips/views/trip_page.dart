@@ -281,6 +281,7 @@ class _TripPageState extends State<TripPage> {
                       isOrganizer: isOrganizer,
                       profile: widget.viewModel.organizerProfile,
                       creatorUserId: trip.creatorUserId,
+                      currentUserId: widget.viewModel.currentUserId,
                       profileRepository: widget.viewModel.profileRepository,
                       diveCenter: widget.viewModel.organizerDiveCenter,
                     ),
@@ -304,6 +305,7 @@ class _TripPageState extends State<TripPage> {
                       const SizedBox(height: 8),
                       _TripParticipantsList(
                         tripId: trip.id,
+                        currentUserId: widget.viewModel.currentUserId,
                         tripRepository: widget.tripRepository,
                         profileRepository: widget.viewModel.profileRepository,
                       ),
@@ -359,9 +361,15 @@ class _TripPageState extends State<TripPage> {
 /// Inline member list embedded right under "N people joined" — Telegram-style, no extra
 /// screen to get to it. Same lazy-per-id profile fetch pattern as Transport's joined-divers.
 class _TripParticipantsList extends StatefulWidget {
-  const _TripParticipantsList({required this.tripId, required this.tripRepository, required this.profileRepository});
+  const _TripParticipantsList({
+    required this.tripId,
+    required this.currentUserId,
+    required this.tripRepository,
+    required this.profileRepository,
+  });
 
   final String tripId;
+  final String currentUserId;
   final TripRepository tripRepository;
   final ProfileRepository profileRepository;
 
@@ -416,7 +424,12 @@ class _TripParticipantsListState extends State<_TripParticipantsList> {
             final name = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
             return InkWell(
               borderRadius: BorderRadius.circular(8),
-              onTap: () => showDiverIdCard(context, userId: userId, profileRepository: widget.profileRepository),
+              onTap: () => showDiverIdCard(
+                context,
+                userId: userId,
+                currentUserId: widget.currentUserId,
+                profileRepository: widget.profileRepository,
+              ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
@@ -546,6 +559,7 @@ class _OrganizerCard extends StatelessWidget {
     required this.isOrganizer,
     required this.profile,
     required this.creatorUserId,
+    required this.currentUserId,
     required this.profileRepository,
     this.diveCenter,
   });
@@ -553,6 +567,7 @@ class _OrganizerCard extends StatelessWidget {
   final bool isOrganizer;
   final Profile? profile;
   final String? creatorUserId;
+  final String currentUserId;
   final ProfileRepository profileRepository;
 
   /// Set for a business trip — the dive center's own identity is shown instead of the
@@ -609,7 +624,12 @@ class _OrganizerCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       onTap: creatorUserId == null
           ? null
-          : () => showDiverIdCard(context, userId: creatorUserId!, profileRepository: profileRepository),
+          : () => showDiverIdCard(
+                context,
+                userId: creatorUserId!,
+                currentUserId: currentUserId,
+                profileRepository: profileRepository,
+              ),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(

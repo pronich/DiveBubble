@@ -120,7 +120,20 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
   }
 
   void _openProfile(String userId) {
-    showDiverIdCard(context, userId: userId, profileRepository: widget.viewModel.profileRepository);
+    showDiverIdCard(
+      context,
+      userId: userId,
+      currentUserId: widget.viewModel.currentUserId,
+      profileRepository: widget.viewModel.profileRepository,
+    );
+  }
+
+  void _showReportSheet(ChatMessage message) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _ReportMessageSheet(viewModel: widget.viewModel, messageId: message.id),
+    );
   }
 
   @override
@@ -196,6 +209,7 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
                         profile: _profiles[message.userId],
                         businessName: widget.businessName,
                         onTapSender: () => _openProfile(message.userId),
+                        onLongPress: isMine ? null : () => _showReportSheet(message),
                       );
                     },
                   ),
@@ -419,6 +433,7 @@ class _MessageRow extends StatelessWidget {
     required this.isLastInCluster,
     required this.profile,
     required this.onTapSender,
+    this.onLongPress,
     this.businessName,
   });
 
@@ -428,6 +443,9 @@ class _MessageRow extends StatelessWidget {
   final bool isLastInCluster;
   final Profile? profile;
   final VoidCallback onTapSender;
+
+  /// Null for the diver's own messages — reporting your own message isn't a thing.
+  final VoidCallback? onLongPress;
 
   /// Never applied to the diver's own messages (see isMine below), and only ever combined
   /// with message.isDiveCenterStaff — a regular diver's message in a business trip's chat
@@ -449,35 +467,38 @@ class _MessageRow extends StatelessWidget {
     // in a burst. Regular divers keep the usual "only the first message in a cluster" rule.
     final showName = !isMine && (isFirstInCluster || message.isDiveCenterStaff);
 
-    final bubble = Container(
-      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: bubbleColor, borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (message.mentionsDiveCenter && (businessName?.isNotEmpty ?? false))
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Text(
-                '@$businessName',
-                style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
-              ),
-            ),
-          if (showName)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: GestureDetector(
-                onTap: onTapSender,
+    final bubble = GestureDetector(
+      onLongPress: onLongPress,
+      child: Container(
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(color: bubbleColor, borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (message.mentionsDiveCenter && (businessName?.isNotEmpty ?? false))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
-                  name,
-                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: onBubbleColor),
+                  '@$businessName',
+                  style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
                 ),
               ),
-            ),
-          _MessageBody(body: message.body, time: formatTime(message.createdAt), color: onBubbleColor),
-        ],
+            if (showName)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: GestureDetector(
+                  onTap: onTapSender,
+                  child: Text(
+                    name,
+                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: onBubbleColor),
+                  ),
+                ),
+              ),
+            _MessageBody(body: message.body, time: formatTime(message.createdAt), color: onBubbleColor),
+          ],
+        ),
       ),
     );
 
@@ -512,6 +533,91 @@ class _MessageRow extends StatelessWidget {
           const SizedBox(width: 8),
           Flexible(child: bubble),
         ],
+      ),
+    );
+  }
+}
+
+const _reportReasons = ['Spam', 'Harassment', 'Inappropriate content', 'Other'];
+
+class _ReportMessageSheet extends StatefulWidget {
+  const _ReportMessageSheet({required this.viewModel, required this.messageId});
+
+  final ChatViewModel viewModel;
+  final String messageId;
+
+  @override
+  State<_ReportMessageSheet> createState() => _ReportMessageSheetState();
+}
+
+class _ReportMessageSheetState extends State<_ReportMessageSheet> {
+  String _reason = _reportReasons.first;
+  final _detailsController = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _detailsController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    setState(() => _isSubmitting = true);
+    final error = await widget.viewModel.reportMessage(
+      widget.messageId,
+      _reason,
+      details: _detailsController.text.trim().isEmpty ? null : _detailsController.text.trim(),
+    );
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report sent — thank you.')));
+    } else {
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not send report: $error')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 16 + MediaQuery.of(context).viewInsets.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Report message', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _reportReasons
+                  .map((reason) => ChoiceChip(
+                        label: Text(reason),
+                        selected: _reason == reason,
+                        onSelected: (_) => setState(() => _reason = reason),
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _detailsController,
+              decoration: const InputDecoration(labelText: 'Details (optional)'),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isSubmitting ? null : _submit,
+                child: _isSubmitting
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Send report'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

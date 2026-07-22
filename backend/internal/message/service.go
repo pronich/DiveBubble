@@ -2,6 +2,7 @@ package message
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 )
 
 var ErrInvalidArgument = errors.New("invalid argument")
+var ErrNotFound = errors.New("message not found")
 
 type Service struct {
 	Repo *Repository
@@ -28,4 +30,12 @@ func (s *Service) Send(ctx context.Context, tripID, userID uuid.UUID, body strin
 
 func (s *Service) List(ctx context.Context, tripID uuid.UUID) ([]Message, error) {
 	return s.Repo.ListByTrip(ctx, tripID)
+}
+
+func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (Message, error) {
+	m, err := s.Repo.GetByID(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Message{}, ErrNotFound
+	}
+	return m, err
 }

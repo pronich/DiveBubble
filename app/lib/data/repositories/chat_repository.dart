@@ -15,5 +15,8 @@ class ChatRepository {
   Future<void> sendMessage(String tripId, String body, {bool mentionsDiveCenter = false}) =>
       _service.sendMessage(tripId, body, mentionsDiveCenter: mentionsDiveCenter);
 
+  Future<void> reportMessage(String tripId, String messageId, String reason, {String? details}) =>
+      _service.reportMessage(tripId, messageId, reason, details: details);
+
   Future<String> getRealtimeToken() => _service.fetchRealtimeToken();
 }

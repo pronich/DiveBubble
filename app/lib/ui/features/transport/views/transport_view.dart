@@ -258,7 +258,12 @@ class _TransportOfferDetailSheetState
   }
 
   void _openProfile(String userId) {
-    showDiverIdCard(context, userId: userId, profileRepository: widget.viewModel.profileRepository);
+    showDiverIdCard(
+      context,
+      userId: userId,
+      currentUserId: widget.viewModel.currentUserId,
+      profileRepository: widget.viewModel.profileRepository,
+    );
   }
 
   Future<void> _join(TransportOffer offer) async {
