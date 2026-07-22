@@ -14,6 +14,7 @@ import '../../onboarding/views/login_sheet.dart';
 import '../view_models/profile_view_model.dart';
 import 'about_page.dart';
 import 'add_specialty_sheet.dart';
+import 'blocked_users_page.dart';
 import 'edit_profile_page.dart';
 import 'gear_locker_page.dart';
 import 'gear_summary_card.dart';
@@ -156,6 +157,7 @@ class _ProfileViewState extends State<ProfileView> {
                   specialtiesExpanded: _specialtiesExpanded,
                   onToggleSpecialtiesExpanded: (v) => setState(() => _specialtiesExpanded = v),
                   pushRepository: widget.pushRepository,
+                  profileRepository: widget.profileRepository,
                 );
               },
             ),
@@ -242,6 +244,7 @@ class _SignedInBody extends StatelessWidget {
     required this.specialtiesExpanded,
     required this.onToggleSpecialtiesExpanded,
     required this.pushRepository,
+    required this.profileRepository,
   });
 
   final Profile profile;
@@ -254,6 +257,7 @@ class _SignedInBody extends StatelessWidget {
   final bool specialtiesExpanded;
   final ValueChanged<bool> onToggleSpecialtiesExpanded;
   final PushRepository pushRepository;
+  final ProfileRepository profileRepository;
 
   bool get _hasLevel => profile.certificationLevel?.isNotEmpty ?? false;
 
@@ -431,6 +435,7 @@ class _SignedInBody extends StatelessWidget {
           label: 'Notifications',
           page: NotificationsSettingsPage(pushRepository: pushRepository),
         ),
+        _SettingsRow(icon: Icons.block, label: 'Blocked users', page: BlockedUsersPage(profileRepository: profileRepository)),
         const _SettingsRow(icon: Icons.info_outline, label: 'About', page: AboutPage()),
         const _SettingsRow(icon: Icons.description_outlined, label: 'Legal', page: LegalPage()),
         const Divider(height: 32),

@@ -92,4 +92,26 @@ class ProfileApiService {
     final json = await uploadImageFile(Uri.parse('$baseUrl/me/certification-photo'), filePath: filePath, headers: await _authHeaders());
     return ProfileApiModel.fromJson(json);
   }
+
+  Future<void> blockUser(String userId) async {
+    final res = await _client.post(Uri.parse('$baseUrl/users/$userId/block'), headers: await _authHeaders());
+    if (res.statusCode != 204) {
+      throw Exception('blockUser failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
+  Future<void> unblockUser(String userId) async {
+    final res = await _client.delete(Uri.parse('$baseUrl/users/$userId/block'), headers: await _authHeaders());
+    if (res.statusCode != 204) {
+      throw Exception('unblockUser failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
+  Future<List<String>> fetchBlockedUserIds() async {
+    final res = await _client.get(Uri.parse('$baseUrl/users/blocked'), headers: await _authHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('fetchBlockedUserIds failed: ${res.statusCode} ${res.body}');
+    }
+    return (jsonDecode(res.body) as List<dynamic>).cast<String>();
+  }
 }

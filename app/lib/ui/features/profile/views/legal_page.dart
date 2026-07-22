@@ -6,6 +6,7 @@ class LegalPage extends StatelessWidget {
 
   static const _termsUrl = 'https://divebubble.io/terms';
   static const _privacyUrl = 'https://divebubble.io/privacy';
+  static const _supportEmail = 'support@divebubble.io';
 
   Future<void> _open(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
@@ -25,6 +26,12 @@ class LegalPage extends StatelessWidget {
             title: const Text('Privacy Policy'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _open(_privacyUrl),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            title: const Text('Contact support'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _open('mailto:$_supportEmail'),
           ),
         ],
       ),

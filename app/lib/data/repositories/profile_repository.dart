@@ -56,4 +56,10 @@ class ProfileRepository {
     final apiModel = await _service.uploadCertificationPhoto(filePath);
     return apiModel.toDomain();
   }
+
+  Future<void> blockUser(String userId) => _service.blockUser(userId);
+
+  Future<void> unblockUser(String userId) => _service.unblockUser(userId);
+
+  Future<List<String>> getBlockedUserIds() => _service.fetchBlockedUserIds();
 }

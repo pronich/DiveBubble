@@ -31,6 +31,11 @@ class ChatViewModel extends ChangeNotifier {
   List<ChatMessage> _messages = [];
   List<ChatMessage> get messages => _messages;
 
+  // Populated on load() from ProfileRepository.getBlockedUserIds() — the REST message list is
+  // already filtered server-side, so this set's real job is filtering the realtime append path
+  // below, which bypasses that REST endpoint entirely.
+  Set<String> blockedUserIds = {};
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -47,6 +52,12 @@ class ChatViewModel extends ChangeNotifier {
 
     try {
       _messages = await _repository.getMessages(tripId);
+      try {
+        blockedUserIds = (await profileRepository.getBlockedUserIds()).toSet();
+      } catch (_) {
+        // Best-effort — the realtime filter this feeds is a nicety, not something that
+        // should block the chat itself from loading.
+      }
       await _subscribeToRealtime();
     } catch (e) {
       _error = e.toString();
@@ -72,10 +83,32 @@ class ChatViewModel extends ChangeNotifier {
         isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
         mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
       );
+      if (blockedUserIds.contains(message.userId)) return;
       if (_messages.any((m) => m.id == message.id)) return;
       _messages = [..._messages, message];
       notifyListeners();
     });
+  }
+
+  Future<String?> reportMessage(String messageId, String reason, {String? details}) async {
+    try {
+      await _repository.reportMessage(tripId, messageId, reason, details: details);
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> blockUser(String userId) async {
+    try {
+      await profileRepository.blockUser(userId);
+      blockedUserIds = {...blockedUserIds, userId};
+      _messages = _messages.where((m) => m.userId != userId).toList();
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
   }
 
   Future<void> send(String body, {bool mentionsDiveCenter = false}) async {
