@@ -33,8 +33,9 @@ const FAQ_ITEMS = [
     a: `Yes. We're a Danish company, and DiveBubble is built and operated to comply with the GDPR. Your data is stored on managed cloud infrastructure with encryption in transit, and we never sell it or use it for advertising. See our Privacy Policy for the full details, including your rights.`,
   },
   {
+    id: "delete-account",
     q: "How do I delete my account or exercise my privacy rights?",
-    a: `You can delete your account and most of your data directly from the app. For anything else — access, correction, or questions about your data — email ${SUPPORT_EMAIL} and we'll respond within a month.`,
+    a: `You can delete your DiveBubble account directly from the app: go to Profile → Settings → Delete account. You can also request deletion by emailing ${SUPPORT_EMAIL}. When your account is deleted, your profile, certifications, gear locker, dive-center memberships, and sessions are permanently removed. Trips you organized are cancelled, and shared history (like messages other people can still see) is anonymised rather than deleted, so other participants keep seeing "Deleted user" instead of your name. Residual copies may remain temporarily in system backups until those backups are overwritten. For anything else — access, correction, or other privacy questions — email ${SUPPORT_EMAIL} and we'll respond within a month.`,
   },
   {
     q: "How can I contact support?",
@@ -65,8 +66,9 @@ export default function FaqPage() {
             {FAQ_ITEMS.map((item, i) => (
               <details
                 key={item.q}
+                id={item.id}
                 className={`group px-6 py-5 ${i > 0 ? "border-t border-brand-blue/10" : ""}`}
-                open={i === 0}
+                open={i === 0 || Boolean(item.id)}
               >
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-serif text-lg font-semibold">
                   {item.q}
