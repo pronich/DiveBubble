@@ -16,7 +16,7 @@ export default function PrivacyPage() {
           </span>
           <h1 className="mt-6 font-serif text-5xl font-semibold">Privacy Policy</h1>
           <p className="mt-4 text-white/60">Effective date: 19 July 2026</p>
-          <p className="text-white/60">Last updated: 19 July 2026</p>
+          <p className="text-white/60">Last updated: 22 July 2026</p>
 
           <div className="mt-10 space-y-8 rounded-2xl bg-white p-8 text-brand-blue sm:p-10">
             <LegalSection
@@ -198,8 +198,9 @@ export default function PrivacyPage() {
                     "DigitalOcean — EU hosting, database and file storage",
                     "Cloudflare — DNS, network delivery and security",
                     "Vercel — hosting for the DiveBubble Business workspace and divebubble.io website",
-                    "Google — Google Sign-In",
+                    "Google — Google Sign-In and Firebase Cloud Messaging (push notifications)",
                     "Apple — Sign in with Apple and Apple platform services",
+                    "Resend — delivery of sign-in codes and account emails",
                   ],
                 },
                 {
