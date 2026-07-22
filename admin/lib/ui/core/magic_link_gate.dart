@@ -7,12 +7,16 @@ import '../../data/repositories/auth_repository.dart';
 /// web has no router configured (MaterialApp.home is a fixed widget), so `Uri.base` is the
 /// only way to see those params on a fresh page load. If they're present, this consumes them
 /// against the backend *before* RootGate ever mounts, so RootGate's own currentUserId check
-/// already finds a valid session by the time it runs.
+/// already finds a valid session by the time it runs. `childBuilder` (not a plain `child`)
+/// so the freshly-learned `isNewUser` can be threaded into RootGate's construction — a magic
+/// link is exactly how an invited staff member's very first sign-in happens, and RootGate
+/// needs to know that to route them through PersonalInfoPage instead of straight to the
+/// dashboard (see RootGate's own doc comment).
 class MagicLinkGate extends StatefulWidget {
-  const MagicLinkGate({super.key, required this.authRepository, required this.child});
+  const MagicLinkGate({super.key, required this.authRepository, required this.childBuilder});
 
   final AuthRepository authRepository;
-  final Widget child;
+  final Widget Function(bool isNewUser) childBuilder;
 
   @override
   State<MagicLinkGate> createState() => _MagicLinkGateState();
@@ -20,6 +24,7 @@ class MagicLinkGate extends StatefulWidget {
 
 class _MagicLinkGateState extends State<MagicLinkGate> {
   bool _isProcessing = true;
+  bool _isNewUser = false;
   String? _error;
 
   @override
@@ -37,7 +42,8 @@ class _MagicLinkGateState extends State<MagicLinkGate> {
       return;
     }
     try {
-      await widget.authRepository.completeEmailLogin(email, token);
+      final result = await widget.authRepository.completeEmailLogin(email, token);
+      _isNewUser = result.isNewUser;
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -68,6 +74,6 @@ class _MagicLinkGateState extends State<MagicLinkGate> {
         ),
       );
     }
-    return widget.child;
+    return widget.childBuilder(_isNewUser);
   }
 }

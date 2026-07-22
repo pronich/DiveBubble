@@ -97,7 +97,7 @@ class AdminApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       home: MagicLinkGate(
         authRepository: authRepository,
-        child: RootGate(
+        childBuilder: (isNewUser) => RootGate(
           authRepository: authRepository,
           diveCenterRepository: diveCenterRepository,
           tripRepository: tripRepository,
@@ -106,6 +106,7 @@ class AdminApp extends StatelessWidget {
           messageRepository: messageRepository,
           transportRepository: transportRepository,
           realtimeService: realtimeService,
+          initialIsNewUser: isNewUser,
         ),
       ),
     );

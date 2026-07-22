@@ -16,16 +16,14 @@ import 'navigation/admin_shell.dart';
 
 enum _GateState { loading, loggedOut, needsPersonalInfo, needsOnboarding, ready }
 
-/// The whole app's routing decision, in one place: signed out -> Login; signed in with zero
-/// dive-center memberships -> Onboarding (create one); signed in with at least one -> the
-/// dashboard. A brand-new Google identity (isNewUser, only known right after a fresh
-/// completeSignIn — never on a cold-start recheck of an existing session) additionally
-/// gets a personal-info step *before* Onboarding, since they have no personal profile at
-/// all yet; an existing account signing into admin/ for the first time (already has a
-/// profile from app/, or was added as staff via email) skips straight to Onboarding, per
-/// explicit product decision — this is the one thing that *is* about account age, layered
-/// on top of the dive-center-membership check described above (see CLAUDE.md's Business/
-/// dive centers section for that original, still-unchanged rule).
+/// The whole app's routing decision, in one place: signed out -> Login; a brand-new account
+/// (isNewUser — from a fresh Google completeSignIn, or a just-consumed magic link, see
+/// [initialIsNewUser]) always gets a personal-info step first, since they have no personal
+/// profile at all yet — this used to be gated on *also* having zero dive-center memberships,
+/// which silently skipped it for a brand-new account that was auto-joined to a dive center
+/// via a staff invitation (see divecenter.Service.AcceptInvitations) before ever reaching
+/// this check. After that step (or immediately, for a returning account): zero dive-center
+/// memberships -> Onboarding (create one); at least one -> the dashboard.
 class RootGate extends StatefulWidget {
   const RootGate({
     super.key,
@@ -37,6 +35,7 @@ class RootGate extends StatefulWidget {
     required this.messageRepository,
     required this.transportRepository,
     required this.realtimeService,
+    this.initialIsNewUser = false,
   });
 
   final AuthRepository authRepository;
@@ -47,6 +46,11 @@ class RootGate extends StatefulWidget {
   final MessageRepository messageRepository;
   final TransportRepository transportRepository;
   final RealtimeService realtimeService;
+
+  // Only ever true right after MagicLinkGate just consumed a fresh magic-link sign-in that
+  // turned out to be a brand-new account — a cold start with an existing session has no such
+  // signal available, so it always constructs this false (matching _recheck's own default).
+  final bool initialIsNewUser;
 
   @override
   State<RootGate> createState() => _RootGateState();
@@ -59,12 +63,13 @@ class _RootGateState extends State<RootGate> {
   @override
   void initState() {
     super.initState();
-    _recheck();
+    _recheck(widget.initialIsNewUser);
   }
 
-  /// [isNewUser] only ever arrives true right after LoginPage's own completeSignIn call —
-  /// every other caller (initState's cold start, sign-out recovery) omits it, since those
-  /// are rechecks of a session that (if valid) already existed before this call.
+  /// [isNewUser] only ever arrives true right after LoginPage's own completeSignIn call, or
+  /// RootGate's own initState relaying MagicLinkGate's result — every other caller
+  /// (sign-out recovery) omits it, since those are rechecks of a session that (if valid)
+  /// already existed before this call.
   Future<void> _recheck([bool isNewUser = false]) async {
     final userId = await widget.authRepository.currentUserId();
     if (userId == null) {
@@ -76,9 +81,9 @@ class _RootGateState extends State<RootGate> {
       if (!mounted) return;
       setState(() {
         _diveCenters = diveCenters;
-        _state = diveCenters.isNotEmpty
-            ? _GateState.ready
-            : (isNewUser ? _GateState.needsPersonalInfo : _GateState.needsOnboarding);
+        _state = isNewUser
+            ? _GateState.needsPersonalInfo
+            : (diveCenters.isNotEmpty ? _GateState.ready : _GateState.needsOnboarding);
       });
     } catch (_) {
       // Best-effort — an expired/invalid session reads as logged-out, prompting a fresh login.
@@ -96,7 +101,11 @@ class _RootGateState extends State<RootGate> {
       case _GateState.needsPersonalInfo:
         return PersonalInfoPage(
           profileRepository: widget.profileRepository,
-          onDone: () => setState(() => _state = _GateState.needsOnboarding),
+          // Invited staff already have a dive-center membership (auto-joined on sign-in,
+          // see AcceptInvitations) by the time this loaded — they skip straight to the
+          // dashboard instead of Onboarding's "create a dive center" flow, which isn't
+          // meant for them.
+          onDone: () => setState(() => _state = _diveCenters.isNotEmpty ? _GateState.ready : _GateState.needsOnboarding),
         );
       case _GateState.needsOnboarding:
         return OnboardingPage(

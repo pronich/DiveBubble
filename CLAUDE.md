@@ -148,8 +148,6 @@ until Figma defines one.
 - Recurring-trip data model
 - Commission/markup on top of `price_minor`
 - Dive-center ownership transfer / archive
-- Email invitation for staff without an existing account (current flow requires one)
-- Personal profile editing in `admin/` (stub)
 - Last-message preview in Bubbles inbox
 - Dark theme
 - Android emulator base URL (`10.0.2.2`) — untested, not yet needed
