@@ -122,12 +122,21 @@ class _ProfileViewState extends State<ProfileView> {
       body: !_signedIn
           ? _GuestBody(
               location: _guestLocation,
-              onDiveIn: () => LoginSheet.show(
-                context,
-                authRepository: widget.authRepository,
-                profileRepository: widget.profileRepository,
-                pushRepository: widget.pushRepository,
-              ),
+              onDiveIn: () async {
+                // notifyListeners() (and thus _refresh, via the authRepository listener
+                // above) fires the moment sign-in itself completes — before LoginSheet's
+                // own onboarding chain (location/push/certificates) has written anything.
+                // Awaiting here and reloading once the whole sheet closes is what actually
+                // picks up the fully-onboarded profile, instead of the early, still-mostly-
+                // empty snapshot from right after sign-in.
+                final signedIn = await LoginSheet.show(
+                  context,
+                  authRepository: widget.authRepository,
+                  profileRepository: widget.profileRepository,
+                  pushRepository: widget.pushRepository,
+                );
+                if (signedIn) _refresh();
+              },
             )
           : ListenableBuilder(
               listenable: _viewModel,

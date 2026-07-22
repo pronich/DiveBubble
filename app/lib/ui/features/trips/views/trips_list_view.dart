@@ -397,6 +397,10 @@ class _ExploreHeaderState extends State<_ExploreHeader> {
                               controller: _queryController,
                               focusNode: _queryFocusNode,
                               textInputAction: TextInputAction.search,
+                              // Only needed so the clear/close "X" next to this field
+                              // (below) can react to isNotEmpty on every keystroke —
+                              // nothing here otherwise listens to _queryController.
+                              onChanged: (_) => setState(() {}),
                               onSubmitted: (_) => _apply(),
                               decoration: const InputDecoration(
                                 isDense: true,
@@ -420,7 +424,15 @@ class _ExploreHeaderState extends State<_ExploreHeader> {
                     if (_filtersOpen)
                       InkWell(
                         borderRadius: BorderRadius.circular(999),
-                        onTap: _closeFilters,
+                        // Text present -> clear just the query, keep the sheet open and
+                        // focused (matches a native search bar's "X"). Empty -> nothing left
+                        // to clear here, so the same tap falls back to closing the sheet.
+                        onTap: _queryController.text.isNotEmpty
+                            ? () {
+                                setState(() => _queryController.clear());
+                                _queryFocusNode.requestFocus();
+                              }
+                            : _closeFilters,
                         child: Padding(
                           padding: const EdgeInsets.all(4),
                           child: Icon(Icons.close, size: 20, color: theme.colorScheme.onSurfaceVariant),
@@ -539,7 +551,11 @@ class _TripCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   (trip.photoUrl?.isNotEmpty ?? false)
-                      ? Image.network(trip.photoUrl!, fit: BoxFit.cover)
+                      ? Image.network(
+                          trip.photoUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Image.asset(AppAssets.tripPlaceholder, fit: BoxFit.cover),
+                        )
                       : Image.asset(AppAssets.tripPlaceholder, fit: BoxFit.cover),
                   const DecoratedBox(
                     decoration: BoxDecoration(

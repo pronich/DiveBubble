@@ -228,7 +228,14 @@ class _TripRow extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: (trip.photoUrl?.isNotEmpty ?? false)
-                  ? Image.network(trip.photoUrl!, width: 52, height: 52, fit: BoxFit.cover)
+                  ? Image.network(
+                      trip.photoUrl!,
+                      width: 52,
+                      height: 52,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Image.asset(AppAssets.tripPlaceholder, width: 52, height: 52, fit: BoxFit.cover),
+                    )
                   : Image.asset(AppAssets.tripPlaceholder, width: 52, height: 52, fit: BoxFit.cover),
             ),
             const SizedBox(width: 12),

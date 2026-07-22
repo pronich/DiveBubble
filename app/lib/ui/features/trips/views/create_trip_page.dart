@@ -7,6 +7,7 @@ import 'package:geocoding/geocoding.dart';
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/formatting/date_format.dart';
+import '../../../core/widgets/calendar_picker_sheet.dart';
 import '../../../core/widgets/photo_manager_grid.dart';
 import '../../../core/widgets/pick_image.dart';
 import '../view_models/create_trip_view_model.dart';
@@ -339,13 +340,7 @@ class _DatePickerField extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () async {
-        final now = DateTime.now();
-        final picked = await _showWheelPicker(
-          context,
-          mode: CupertinoDatePickerMode.date,
-          initialDateTime: value ?? minimumDate ?? now,
-          minimumDate: minimumDate ?? now,
-        );
+        final picked = await showCalendarPicker(context, initialDate: value, minimumDate: minimumDate);
         if (picked != null) onPick(picked);
       },
       child: InputDecorator(
