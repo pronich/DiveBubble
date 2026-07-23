@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"time"
 
+	"divebubble_be/internal/account"
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/divecenter"
 	"divebubble_be/internal/profile"
@@ -28,9 +29,10 @@ func registerTripRoutes(
 	profileSvc *profile.Service,
 	authIssuer *auth.TokenIssuer,
 	pushSvc *push.Service,
+	accountSvc *account.Service,
 ) {
 	mux.HandleFunc("POST /trips", withAuth(authIssuer, handleCreateTrip(svc)))
-	mux.HandleFunc("GET /trips", handleListTrips(svc))
+	mux.HandleFunc("GET /trips", optionalAuth(authIssuer, handleListTrips(svc, accountSvc)))
 	mux.HandleFunc("GET /trips/mine", withAuth(authIssuer, handleListMyTrips(svc)))
 	// Detail stays browsable without an account — "joined" is just false for anonymous viewers.
 	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
@@ -702,10 +704,18 @@ func handleListMyTrips(svc *trip.Service) func(http.ResponseWriter, *http.Reques
 	}
 }
 
-func handleListTrips(svc *trip.Service) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+// Stays browsable anonymously (optionalAuth) — userID is uuid.Nil for anonymous callers,
+// which IsOwner treats the same as any non-owner account.
+func handleListTrips(svc *trip.Service, accountSvc *account.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		viewerIsOwner, err := accountSvc.IsOwner(r.Context(), userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not list trips")
+			return
+		}
+
 		query := r.URL.Query().Get("q")
-		trips, err := svc.ListTrips(r.Context(), query)
+		trips, err := svc.ListTrips(r.Context(), query, viewerIsOwner)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not list trips")
 			return

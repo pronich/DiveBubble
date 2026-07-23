@@ -3,6 +3,7 @@ package account
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/google/uuid"
 )
@@ -13,6 +14,18 @@ type Repository struct {
 
 func NewRepository(db *sql.DB) *Repository {
 	return &Repository{DB: db}
+}
+
+// IsOwner reports the platform-level owner flag — distinct from dive_center_members.role,
+// which is scoped to a single center. Used to let owner accounts see test/demo content
+// (e.g. test dive centers' trips) hidden from everyone else in Explore.
+func (r *Repository) IsOwner(ctx context.Context, userID uuid.UUID) (bool, error) {
+	var isOwner bool
+	err := r.DB.QueryRowContext(ctx, `SELECT is_owner FROM users WHERE id = $1`, userID).Scan(&isOwner)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return isOwner, err
 }
 
 // DeleteAccount anonymizes a user rather than deleting the row — every existing FK

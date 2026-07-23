@@ -152,8 +152,8 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 	return t, nil
 }
 
-func (s *Service) ListTrips(ctx context.Context, query string) ([]Trip, error) {
-	return s.Repo.List(ctx, strings.TrimSpace(query))
+func (s *Service) ListTrips(ctx context.Context, query string, viewerIsOwner bool) ([]Trip, error) {
+	return s.Repo.List(ctx, strings.TrimSpace(query), viewerIsOwner)
 }
 
 func (s *Service) GetTrip(ctx context.Context, id string) (Trip, error) {

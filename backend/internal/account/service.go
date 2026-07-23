@@ -29,6 +29,10 @@ func NewService(repo *Repository, appleIdentities AppleIdentityStore, appleToken
 	return &Service{Repo: repo, AppleIdentities: appleIdentities, AppleTokens: appleTokens}
 }
 
+func (s *Service) IsOwner(ctx context.Context, userID uuid.UUID) (bool, error) {
+	return s.Repo.IsOwner(ctx, userID)
+}
+
 // DeleteAccount revokes the diver's Apple authorization first (App Store Review Guideline
 // 5.1.1(v)) — must happen before Repo.DeleteAccount, which deletes the auth_identities row
 // (and the refresh token with it) as part of its anonymization transaction. Revoke failures
