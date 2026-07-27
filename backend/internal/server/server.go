@@ -68,7 +68,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)
-	registerTripRoutes(mux, tripSvc, transportSvc, buddySvc, diveCenterSvc, profileSvc, authIssuer, pushSvc, accountSvc)
+	registerTripRoutes(mux, tripSvc, transportSvc, buddySvc, diveCenterSvc, profileSvc, authIssuer, pushSvc, accountSvc, messageSvc, publisher)
 	registerMessageRoutes(mux, messageSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, publisher, pushSvc, moderationSvc)
 	registerModerationRoutes(mux, moderationSvc, messageSvc, tripSvc, authIssuer)
 	registerTransportRoutes(mux, transportSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, pushSvc, messageSvc, moderationSvc, publisher)

@@ -16,5 +16,6 @@ extension ProfileApiMapper on ProfileApiModel {
         certificationVerified: certificationVerified,
         languages: languages,
         memberSince: memberSince,
+        isProductObserver: isProductObserver,
       );
 }

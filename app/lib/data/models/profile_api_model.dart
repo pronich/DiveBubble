@@ -19,6 +19,7 @@ abstract class ProfileApiModel with _$ProfileApiModel {
     @Default(false) bool certificationVerified,
     @Default('') String languages,
     required DateTime memberSince,
+    @Default(false) bool isProductObserver,
   }) = _ProfileApiModel;
 
   factory ProfileApiModel.fromJson(Map<String, dynamic> json) =>

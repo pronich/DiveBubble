@@ -18,5 +18,6 @@ abstract class Profile with _$Profile {
     @Default(false) bool certificationVerified,
     @Default('') String languages,
     required DateTime memberSince,
+    @Default(false) bool isProductObserver,
   }) = _Profile;
 }

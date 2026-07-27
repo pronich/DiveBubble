@@ -21,6 +21,7 @@ _ProfileApiModel _$ProfileApiModelFromJson(Map<String, dynamic> json) =>
       certificationVerified: json['certificationVerified'] as bool? ?? false,
       languages: json['languages'] as String? ?? '',
       memberSince: DateTime.parse(json['memberSince'] as String),
+      isProductObserver: json['isProductObserver'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$ProfileApiModelToJson(_ProfileApiModel instance) =>
@@ -38,4 +39,5 @@ Map<String, dynamic> _$ProfileApiModelToJson(_ProfileApiModel instance) =>
       'certificationVerified': instance.certificationVerified,
       'languages': instance.languages,
       'memberSince': instance.memberSince.toIso8601String(),
+      'isProductObserver': instance.isProductObserver,
     };

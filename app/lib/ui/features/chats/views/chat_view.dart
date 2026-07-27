@@ -545,12 +545,20 @@ class _MessageRow extends StatelessWidget {
     final onBubbleColor = isMine ? colorScheme.onPrimary : colorScheme.onSecondaryContainer;
 
     final baseName = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
-    final name = (message.isDiveCenterStaff && (businessName?.isNotEmpty ?? false)) ? '$baseName | $businessName' : baseName;
-    // Staff messages always carry a name, even mid-cluster — a trip's chat is effectively a
-    // group conversation (organizer + every diver) even though it's framed as one thread, so
-    // it should always be clear which staff member is replying, not just the first message
-    // in a burst. Regular divers keep the usual "only the first message in a cluster" rule.
-    final showName = !isMine && (isFirstInCluster || message.isDiveCenterStaff);
+    // Staff display always wins over the Observer label — in his own dive center's Bubbles
+    // the founder shows up as staff, not as an observer (see users.is_product_observer).
+    final isObserver = !message.isDiveCenterStaff && (profile?.isProductObserver ?? false);
+    final name = (message.isDiveCenterStaff && (businessName?.isNotEmpty ?? false))
+        ? '$baseName | $businessName'
+        : isObserver
+            ? '$baseName | Product Observer'
+            : baseName;
+    // Staff/Observer messages always carry a name, even mid-cluster — a trip's chat is
+    // effectively a group conversation (organizer + every diver) even though it's framed as
+    // one thread, so it should always be clear which staff member/observer is replying, not
+    // just the first message in a burst. Regular divers keep the usual "only the first
+    // message in a cluster" rule.
+    final showName = !isMine && (isFirstInCluster || message.isDiveCenterStaff || isObserver);
 
     final bubble = GestureDetector(
       onLongPress: onLongPress,

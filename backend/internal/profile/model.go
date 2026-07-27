@@ -21,4 +21,5 @@ type Profile struct {
 	CertificationVerified bool
 	Languages             string // comma-separated, e.g. "English, Russian"
 	MemberSince           time.Time
+	IsProductObserver     bool
 }

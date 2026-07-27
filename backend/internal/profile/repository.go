@@ -15,7 +15,7 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{DB: db}
 }
 
-const profileColumns = `id, display_name, avatar_url, location, bio, dive_count, certification_level, certification_agency, certification_number, certification_photo_url, certification_verified, languages, created_at`
+const profileColumns = `id, display_name, avatar_url, location, bio, dive_count, certification_level, certification_agency, certification_number, certification_photo_url, certification_verified, languages, created_at, is_product_observer`
 
 func scanProfile(row interface{ Scan(...any) error }) (Profile, error) {
 	var p Profile
@@ -23,6 +23,7 @@ func scanProfile(row interface{ Scan(...any) error }) (Profile, error) {
 		&p.UserID, &p.DisplayName, &p.AvatarURL, &p.Location, &p.Bio,
 		&p.DiveCount, &p.CertificationLevel, &p.CertificationAgency, &p.CertificationNumber,
 		&p.CertificationPhotoURL, &p.CertificationVerified, &p.Languages, &p.MemberSince,
+		&p.IsProductObserver,
 	)
 	return p, err
 }

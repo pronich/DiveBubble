@@ -32,6 +32,7 @@ const (
 	KindFeedbackPrompt = "feedback_prompt"
 	KindCarJoined      = "car_joined"
 	KindBuddyJoined    = "buddy_joined"
+	KindObserverJoined = "observer_joined"
 )
 
 // SystemUserID is the sentinel sender for system-generated messages, seeded by migration

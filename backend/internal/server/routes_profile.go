@@ -78,6 +78,7 @@ type publicProfileResponse struct {
 	CertificationLevel *string   `json:"certificationLevel,omitempty"`
 	Languages          string    `json:"languages"`
 	MemberSince        time.Time `json:"memberSince"`
+	IsProductObserver  bool      `json:"isProductObserver"`
 }
 
 func toPublicProfileResponse(p profile.Profile) publicProfileResponse {
@@ -91,6 +92,7 @@ func toPublicProfileResponse(p profile.Profile) publicProfileResponse {
 		CertificationLevel: nullStringPtr(p.CertificationLevel),
 		Languages:          p.Languages,
 		MemberSince:        p.MemberSince,
+		IsProductObserver:  p.IsProductObserver,
 	}
 }
 

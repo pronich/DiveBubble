@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Profile {
 
- String get id; String? get displayName; String? get avatarUrl; String? get location; String? get bio; int get diveCount; String? get certificationLevel; String? get certificationAgency; String? get certificationNumber; String? get certificationPhotoUrl; bool get certificationVerified; String get languages; DateTime get memberSince;
+ String get id; String? get displayName; String? get avatarUrl; String? get location; String? get bio; int get diveCount; String? get certificationLevel; String? get certificationAgency; String? get certificationNumber; String? get certificationPhotoUrl; bool get certificationVerified; String get languages; DateTime get memberSince; bool get isProductObserver;
 /// Create a copy of Profile
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $ProfileCopyWith<Profile> get copyWith => _$ProfileCopyWithImpl<Profile>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Profile&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.location, location) || other.location == location)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.diveCount, diveCount) || other.diveCount == diveCount)&&(identical(other.certificationLevel, certificationLevel) || other.certificationLevel == certificationLevel)&&(identical(other.certificationAgency, certificationAgency) || other.certificationAgency == certificationAgency)&&(identical(other.certificationNumber, certificationNumber) || other.certificationNumber == certificationNumber)&&(identical(other.certificationPhotoUrl, certificationPhotoUrl) || other.certificationPhotoUrl == certificationPhotoUrl)&&(identical(other.certificationVerified, certificationVerified) || other.certificationVerified == certificationVerified)&&(identical(other.languages, languages) || other.languages == languages)&&(identical(other.memberSince, memberSince) || other.memberSince == memberSince));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Profile&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.location, location) || other.location == location)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.diveCount, diveCount) || other.diveCount == diveCount)&&(identical(other.certificationLevel, certificationLevel) || other.certificationLevel == certificationLevel)&&(identical(other.certificationAgency, certificationAgency) || other.certificationAgency == certificationAgency)&&(identical(other.certificationNumber, certificationNumber) || other.certificationNumber == certificationNumber)&&(identical(other.certificationPhotoUrl, certificationPhotoUrl) || other.certificationPhotoUrl == certificationPhotoUrl)&&(identical(other.certificationVerified, certificationVerified) || other.certificationVerified == certificationVerified)&&(identical(other.languages, languages) || other.languages == languages)&&(identical(other.memberSince, memberSince) || other.memberSince == memberSince)&&(identical(other.isProductObserver, isProductObserver) || other.isProductObserver == isProductObserver));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,avatarUrl,location,bio,diveCount,certificationLevel,certificationAgency,certificationNumber,certificationPhotoUrl,certificationVerified,languages,memberSince);
+int get hashCode => Object.hash(runtimeType,id,displayName,avatarUrl,location,bio,diveCount,certificationLevel,certificationAgency,certificationNumber,certificationPhotoUrl,certificationVerified,languages,memberSince,isProductObserver);
 
 @override
 String toString() {
-  return 'Profile(id: $id, displayName: $displayName, avatarUrl: $avatarUrl, location: $location, bio: $bio, diveCount: $diveCount, certificationLevel: $certificationLevel, certificationAgency: $certificationAgency, certificationNumber: $certificationNumber, certificationPhotoUrl: $certificationPhotoUrl, certificationVerified: $certificationVerified, languages: $languages, memberSince: $memberSince)';
+  return 'Profile(id: $id, displayName: $displayName, avatarUrl: $avatarUrl, location: $location, bio: $bio, diveCount: $diveCount, certificationLevel: $certificationLevel, certificationAgency: $certificationAgency, certificationNumber: $certificationNumber, certificationPhotoUrl: $certificationPhotoUrl, certificationVerified: $certificationVerified, languages: $languages, memberSince: $memberSince, isProductObserver: $isProductObserver)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $ProfileCopyWith<$Res>  {
   factory $ProfileCopyWith(Profile value, $Res Function(Profile) _then) = _$ProfileCopyWithImpl;
 @useResult
 $Res call({
- String id, String? displayName, String? avatarUrl, String? location, String? bio, int diveCount, String? certificationLevel, String? certificationAgency, String? certificationNumber, String? certificationPhotoUrl, bool certificationVerified, String languages, DateTime memberSince
+ String id, String? displayName, String? avatarUrl, String? location, String? bio, int diveCount, String? certificationLevel, String? certificationAgency, String? certificationNumber, String? certificationPhotoUrl, bool certificationVerified, String languages, DateTime memberSince, bool isProductObserver
 });
 
 
@@ -62,7 +62,7 @@ class _$ProfileCopyWithImpl<$Res>
 
 /// Create a copy of Profile
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = freezed,Object? avatarUrl = freezed,Object? location = freezed,Object? bio = freezed,Object? diveCount = null,Object? certificationLevel = freezed,Object? certificationAgency = freezed,Object? certificationNumber = freezed,Object? certificationPhotoUrl = freezed,Object? certificationVerified = null,Object? languages = null,Object? memberSince = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? displayName = freezed,Object? avatarUrl = freezed,Object? location = freezed,Object? bio = freezed,Object? diveCount = null,Object? certificationLevel = freezed,Object? certificationAgency = freezed,Object? certificationNumber = freezed,Object? certificationPhotoUrl = freezed,Object? certificationVerified = null,Object? languages = null,Object? memberSince = null,Object? isProductObserver = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -77,7 +77,8 @@ as String?,certificationPhotoUrl: freezed == certificationPhotoUrl ? _self.certi
 as String?,certificationVerified: null == certificationVerified ? _self.certificationVerified : certificationVerified // ignore: cast_nullable_to_non_nullable
 as bool,languages: null == languages ? _self.languages : languages // ignore: cast_nullable_to_non_nullable
 as String,memberSince: null == memberSince ? _self.memberSince : memberSince // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,isProductObserver: null == isProductObserver ? _self.isProductObserver : isProductObserver // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -162,10 +163,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String? displayName,  String? avatarUrl,  String? location,  String? bio,  int diveCount,  String? certificationLevel,  String? certificationAgency,  String? certificationNumber,  String? certificationPhotoUrl,  bool certificationVerified,  String languages,  DateTime memberSince)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String? displayName,  String? avatarUrl,  String? location,  String? bio,  int diveCount,  String? certificationLevel,  String? certificationAgency,  String? certificationNumber,  String? certificationPhotoUrl,  bool certificationVerified,  String languages,  DateTime memberSince,  bool isProductObserver)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Profile() when $default != null:
-return $default(_that.id,_that.displayName,_that.avatarUrl,_that.location,_that.bio,_that.diveCount,_that.certificationLevel,_that.certificationAgency,_that.certificationNumber,_that.certificationPhotoUrl,_that.certificationVerified,_that.languages,_that.memberSince);case _:
+return $default(_that.id,_that.displayName,_that.avatarUrl,_that.location,_that.bio,_that.diveCount,_that.certificationLevel,_that.certificationAgency,_that.certificationNumber,_that.certificationPhotoUrl,_that.certificationVerified,_that.languages,_that.memberSince,_that.isProductObserver);case _:
   return orElse();
 
 }
@@ -183,10 +184,10 @@ return $default(_that.id,_that.displayName,_that.avatarUrl,_that.location,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String? displayName,  String? avatarUrl,  String? location,  String? bio,  int diveCount,  String? certificationLevel,  String? certificationAgency,  String? certificationNumber,  String? certificationPhotoUrl,  bool certificationVerified,  String languages,  DateTime memberSince)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String? displayName,  String? avatarUrl,  String? location,  String? bio,  int diveCount,  String? certificationLevel,  String? certificationAgency,  String? certificationNumber,  String? certificationPhotoUrl,  bool certificationVerified,  String languages,  DateTime memberSince,  bool isProductObserver)  $default,) {final _that = this;
 switch (_that) {
 case _Profile():
-return $default(_that.id,_that.displayName,_that.avatarUrl,_that.location,_that.bio,_that.diveCount,_that.certificationLevel,_that.certificationAgency,_that.certificationNumber,_that.certificationPhotoUrl,_that.certificationVerified,_that.languages,_that.memberSince);case _:
+return $default(_that.id,_that.displayName,_that.avatarUrl,_that.location,_that.bio,_that.diveCount,_that.certificationLevel,_that.certificationAgency,_that.certificationNumber,_that.certificationPhotoUrl,_that.certificationVerified,_that.languages,_that.memberSince,_that.isProductObserver);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +204,10 @@ return $default(_that.id,_that.displayName,_that.avatarUrl,_that.location,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String? displayName,  String? avatarUrl,  String? location,  String? bio,  int diveCount,  String? certificationLevel,  String? certificationAgency,  String? certificationNumber,  String? certificationPhotoUrl,  bool certificationVerified,  String languages,  DateTime memberSince)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String? displayName,  String? avatarUrl,  String? location,  String? bio,  int diveCount,  String? certificationLevel,  String? certificationAgency,  String? certificationNumber,  String? certificationPhotoUrl,  bool certificationVerified,  String languages,  DateTime memberSince,  bool isProductObserver)?  $default,) {final _that = this;
 switch (_that) {
 case _Profile() when $default != null:
-return $default(_that.id,_that.displayName,_that.avatarUrl,_that.location,_that.bio,_that.diveCount,_that.certificationLevel,_that.certificationAgency,_that.certificationNumber,_that.certificationPhotoUrl,_that.certificationVerified,_that.languages,_that.memberSince);case _:
+return $default(_that.id,_that.displayName,_that.avatarUrl,_that.location,_that.bio,_that.diveCount,_that.certificationLevel,_that.certificationAgency,_that.certificationNumber,_that.certificationPhotoUrl,_that.certificationVerified,_that.languages,_that.memberSince,_that.isProductObserver);case _:
   return null;
 
 }
@@ -218,7 +219,7 @@ return $default(_that.id,_that.displayName,_that.avatarUrl,_that.location,_that.
 
 
 class _Profile implements Profile {
-  const _Profile({required this.id, this.displayName, this.avatarUrl, this.location, this.bio, this.diveCount = 0, this.certificationLevel, this.certificationAgency, this.certificationNumber, this.certificationPhotoUrl, this.certificationVerified = false, this.languages = '', required this.memberSince});
+  const _Profile({required this.id, this.displayName, this.avatarUrl, this.location, this.bio, this.diveCount = 0, this.certificationLevel, this.certificationAgency, this.certificationNumber, this.certificationPhotoUrl, this.certificationVerified = false, this.languages = '', required this.memberSince, this.isProductObserver = false});
   
 
 @override final  String id;
@@ -234,6 +235,7 @@ class _Profile implements Profile {
 @override@JsonKey() final  bool certificationVerified;
 @override@JsonKey() final  String languages;
 @override final  DateTime memberSince;
+@override@JsonKey() final  bool isProductObserver;
 
 /// Create a copy of Profile
 /// with the given fields replaced by the non-null parameter values.
@@ -245,16 +247,16 @@ _$ProfileCopyWith<_Profile> get copyWith => __$ProfileCopyWithImpl<_Profile>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Profile&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.location, location) || other.location == location)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.diveCount, diveCount) || other.diveCount == diveCount)&&(identical(other.certificationLevel, certificationLevel) || other.certificationLevel == certificationLevel)&&(identical(other.certificationAgency, certificationAgency) || other.certificationAgency == certificationAgency)&&(identical(other.certificationNumber, certificationNumber) || other.certificationNumber == certificationNumber)&&(identical(other.certificationPhotoUrl, certificationPhotoUrl) || other.certificationPhotoUrl == certificationPhotoUrl)&&(identical(other.certificationVerified, certificationVerified) || other.certificationVerified == certificationVerified)&&(identical(other.languages, languages) || other.languages == languages)&&(identical(other.memberSince, memberSince) || other.memberSince == memberSince));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Profile&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.avatarUrl, avatarUrl) || other.avatarUrl == avatarUrl)&&(identical(other.location, location) || other.location == location)&&(identical(other.bio, bio) || other.bio == bio)&&(identical(other.diveCount, diveCount) || other.diveCount == diveCount)&&(identical(other.certificationLevel, certificationLevel) || other.certificationLevel == certificationLevel)&&(identical(other.certificationAgency, certificationAgency) || other.certificationAgency == certificationAgency)&&(identical(other.certificationNumber, certificationNumber) || other.certificationNumber == certificationNumber)&&(identical(other.certificationPhotoUrl, certificationPhotoUrl) || other.certificationPhotoUrl == certificationPhotoUrl)&&(identical(other.certificationVerified, certificationVerified) || other.certificationVerified == certificationVerified)&&(identical(other.languages, languages) || other.languages == languages)&&(identical(other.memberSince, memberSince) || other.memberSince == memberSince)&&(identical(other.isProductObserver, isProductObserver) || other.isProductObserver == isProductObserver));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,avatarUrl,location,bio,diveCount,certificationLevel,certificationAgency,certificationNumber,certificationPhotoUrl,certificationVerified,languages,memberSince);
+int get hashCode => Object.hash(runtimeType,id,displayName,avatarUrl,location,bio,diveCount,certificationLevel,certificationAgency,certificationNumber,certificationPhotoUrl,certificationVerified,languages,memberSince,isProductObserver);
 
 @override
 String toString() {
-  return 'Profile(id: $id, displayName: $displayName, avatarUrl: $avatarUrl, location: $location, bio: $bio, diveCount: $diveCount, certificationLevel: $certificationLevel, certificationAgency: $certificationAgency, certificationNumber: $certificationNumber, certificationPhotoUrl: $certificationPhotoUrl, certificationVerified: $certificationVerified, languages: $languages, memberSince: $memberSince)';
+  return 'Profile(id: $id, displayName: $displayName, avatarUrl: $avatarUrl, location: $location, bio: $bio, diveCount: $diveCount, certificationLevel: $certificationLevel, certificationAgency: $certificationAgency, certificationNumber: $certificationNumber, certificationPhotoUrl: $certificationPhotoUrl, certificationVerified: $certificationVerified, languages: $languages, memberSince: $memberSince, isProductObserver: $isProductObserver)';
 }
 
 
@@ -265,7 +267,7 @@ abstract mixin class _$ProfileCopyWith<$Res> implements $ProfileCopyWith<$Res> {
   factory _$ProfileCopyWith(_Profile value, $Res Function(_Profile) _then) = __$ProfileCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? displayName, String? avatarUrl, String? location, String? bio, int diveCount, String? certificationLevel, String? certificationAgency, String? certificationNumber, String? certificationPhotoUrl, bool certificationVerified, String languages, DateTime memberSince
+ String id, String? displayName, String? avatarUrl, String? location, String? bio, int diveCount, String? certificationLevel, String? certificationAgency, String? certificationNumber, String? certificationPhotoUrl, bool certificationVerified, String languages, DateTime memberSince, bool isProductObserver
 });
 
 
@@ -282,7 +284,7 @@ class __$ProfileCopyWithImpl<$Res>
 
 /// Create a copy of Profile
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = freezed,Object? avatarUrl = freezed,Object? location = freezed,Object? bio = freezed,Object? diveCount = null,Object? certificationLevel = freezed,Object? certificationAgency = freezed,Object? certificationNumber = freezed,Object? certificationPhotoUrl = freezed,Object? certificationVerified = null,Object? languages = null,Object? memberSince = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? displayName = freezed,Object? avatarUrl = freezed,Object? location = freezed,Object? bio = freezed,Object? diveCount = null,Object? certificationLevel = freezed,Object? certificationAgency = freezed,Object? certificationNumber = freezed,Object? certificationPhotoUrl = freezed,Object? certificationVerified = null,Object? languages = null,Object? memberSince = null,Object? isProductObserver = null,}) {
   return _then(_Profile(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,displayName: freezed == displayName ? _self.displayName : displayName // ignore: cast_nullable_to_non_nullable
@@ -297,7 +299,8 @@ as String?,certificationPhotoUrl: freezed == certificationPhotoUrl ? _self.certi
 as String?,certificationVerified: null == certificationVerified ? _self.certificationVerified : certificationVerified // ignore: cast_nullable_to_non_nullable
 as bool,languages: null == languages ? _self.languages : languages // ignore: cast_nullable_to_non_nullable
 as String,memberSince: null == memberSince ? _self.memberSince : memberSince // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,isProductObserver: null == isProductObserver ? _self.isProductObserver : isProductObserver // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

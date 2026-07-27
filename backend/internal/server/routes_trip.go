@@ -15,8 +15,10 @@ import (
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/buddy"
 	"divebubble_be/internal/divecenter"
+	"divebubble_be/internal/message"
 	"divebubble_be/internal/profile"
 	"divebubble_be/internal/push"
+	"divebubble_be/internal/realtime"
 	"divebubble_be/internal/transport"
 	"divebubble_be/internal/trip"
 
@@ -33,14 +35,16 @@ func registerTripRoutes(
 	authIssuer *auth.TokenIssuer,
 	pushSvc *push.Service,
 	accountSvc *account.Service,
+	messageSvc *message.Service,
+	publisher *realtime.Publisher,
 ) {
 	mux.HandleFunc("POST /trips", withAuth(authIssuer, handleCreateTrip(svc)))
 	mux.HandleFunc("GET /trips", optionalAuth(authIssuer, handleListTrips(svc, accountSvc)))
 	mux.HandleFunc("GET /trips/mine", withAuth(authIssuer, handleListMyTrips(svc)))
 	// Detail stays browsable without an account — "joined" is just false for anonymous viewers.
 	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
-	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc, diveCenterSvc, profileSvc, pushSvc)))
-	mux.HandleFunc("POST /trips/join-by-code", withAuth(authIssuer, handleJoinTripByCode(svc, diveCenterSvc, profileSvc, pushSvc)))
+	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc, diveCenterSvc, profileSvc, pushSvc, messageSvc, publisher)))
+	mux.HandleFunc("POST /trips/join-by-code", withAuth(authIssuer, handleJoinTripByCode(svc, diveCenterSvc, profileSvc, pushSvc, messageSvc, publisher)))
 	mux.HandleFunc("POST /trips/{id}/leave", withAuth(authIssuer, handleLeaveTrip(svc, transportSvc, buddySvc, pushSvc)))
 	mux.HandleFunc("POST /trips/{id}/cancel", withAuth(authIssuer, handleCancelTrip(svc, diveCenterSvc, pushSvc)))
 	mux.HandleFunc("PATCH /trips/{id}", withAuth(authIssuer, handleUpdateTrip(svc, diveCenterSvc, pushSvc)))
@@ -294,7 +298,7 @@ func handleGetTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, u
 	}
 }
 
-func handleJoinTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleJoinTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, pushSvc *push.Service, messageSvc *message.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id := r.PathValue("id")
 		if err := svc.Join(r.Context(), id, userID); err != nil {
@@ -320,9 +324,45 @@ func handleJoinTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, profil
 
 		if t, err := svc.GetTrip(r.Context(), id); err == nil {
 			notifyOrganizerOfNewParticipant(r.Context(), pushSvc, profileSvc, t, userID)
+			notifyIfObserverJoined(r.Context(), messageSvc, publisher, profileSvc, t.ID, userID)
 		}
 
 		writeJSON(w, http.StatusOK, map[string]bool{"joined": true})
+	}
+}
+
+// notifyIfObserverJoined posts the one-time "Product Observer" system message when the
+// joining account is flagged is_product_observer — see users.is_product_observer (migration
+// 000049). SendSystem is idempotent per trip+kind, so a leave-then-rejoin never re-announces.
+func notifyIfObserverJoined(ctx context.Context, messageSvc *message.Service, publisher *realtime.Publisher, profileSvc *profile.Service, tripID, joinedUserID uuid.UUID) {
+	p, err := profileSvc.Get(ctx, joinedUserID)
+	if err != nil || !p.IsProductObserver {
+		return
+	}
+	msg, sent, err := messageSvc.SendSystem(ctx, tripID, message.KindObserverJoined,
+		"Hi all — Nikolai here, founder of DiveBubble. Just here to see how the app works on a real trip, not diving today. Enjoy the trip!")
+	if err != nil {
+		log.Printf("observer join message: could not send for trip:%s: %v", tripID, err)
+		return
+	}
+	if !sent {
+		return
+	}
+	// Field names kept in sync with messageResponse in routes_message.go, same as the
+	// feedback-prompt scan's payload in main.go.
+	payload := map[string]any{
+		"id":                 msg.ID,
+		"tripId":             msg.TripID,
+		"userId":             msg.UserID,
+		"body":               msg.Body,
+		"createdAt":          msg.CreatedAt,
+		"isDiveCenterStaff":  false,
+		"mentionsDiveCenter": false,
+		"kind":               msg.Kind,
+		"feedbackProvided":   false,
+	}
+	if pubErr := publisher.Publish(ctx, "trip:"+tripID.String(), payload); pubErr != nil {
+		log.Printf("observer join message: realtime publish failed for trip:%s: %v", tripID, pubErr)
 	}
 }
 
@@ -352,7 +392,7 @@ type joinByCodeRequest struct {
 // handleJoinTripByCode is the marketplace redemption path for business trips (see
 // trip.Service.JoinByCode) — no trip id in the URL, since the code alone is what the diver
 // actually has after paying on the dive center's own site.
-func handleJoinTripByCode(svc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleJoinTripByCode(svc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, pushSvc *push.Service, messageSvc *message.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		var req joinByCodeRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
@@ -380,6 +420,7 @@ func handleJoinTripByCode(svc *trip.Service, diveCenterSvc *divecenter.Service, 
 		}
 
 		notifyStaffOfBookingCodeJoin(r.Context(), pushSvc, profileSvc, diveCenterSvc, t, userID)
+		notifyIfObserverJoined(r.Context(), messageSvc, publisher, profileSvc, t.ID, userID)
 
 		participantCount, err := svc.CountParticipants(r.Context(), t.ID)
 		if err != nil {

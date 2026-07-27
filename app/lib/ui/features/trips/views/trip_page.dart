@@ -442,7 +442,8 @@ class _TripParticipantsListState extends State<_TripParticipantsList> {
         for (final userId in _userIds!)
           Builder(builder: (context) {
             final profile = _profiles[userId];
-            final name = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
+            final baseName = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
+            final name = (profile?.isProductObserver ?? false) ? '$baseName | Product Observer' : baseName;
             return InkWell(
               borderRadius: BorderRadius.circular(8),
               onTap: () => showDiverIdCard(
