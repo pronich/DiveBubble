@@ -17,6 +17,7 @@ type Trip struct {
 	ParticipantCount  int
 	UnreadCount       int  // only populated by ListJoinedByUser
 	HasTransportAlert bool // only populated by ListJoinedByUser — see transport_alerts
+	HasBuddyAlert     bool // only populated by ListJoinedByUser — see buddy_alerts
 	// True when an unread message on this trip has mentions_dive_center set — only ever
 	// true for a business trip (see message.Service.Send's own gate). Only populated by
 	// ListJoinedByUser; backs the Bubbles-sidebar mention dot in admin/.

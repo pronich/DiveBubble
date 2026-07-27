@@ -256,7 +256,7 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service, pro
 
 				// One system message per join event — not idempotent like SendSystem, since
 				// every new joiner should get their own announcement in the car's chat.
-				msg, sysErr := messageSvc.PostSystemEvent(r.Context(), tripID, uuid.NullUUID{UUID: offerID, Valid: true}, message.KindCarJoined, joinerName+" joined your car")
+				msg, sysErr := messageSvc.PostSystemEvent(r.Context(), tripID, message.Scope{OfferID: uuid.NullUUID{UUID: offerID, Valid: true}}, message.KindCarJoined, joinerName+" joined your car")
 				if sysErr != nil {
 					log.Printf("car chat: could not post join system message for offer:%s: %v", offerID, sysErr)
 				} else if pubErr := publisher.Publish(r.Context(), "transport_offer:"+offerID.String(), toMessageResponse(msg, false, false)); pubErr != nil {
@@ -398,7 +398,7 @@ func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Servi
 			return
 		}
 
-		m, err := messageSvc.Send(r.Context(), offer.TripID, userID, uuid.NullUUID{UUID: offer.ID, Valid: true}, req.Body, false)
+		m, err := messageSvc.Send(r.Context(), offer.TripID, userID, message.Scope{OfferID: uuid.NullUUID{UUID: offer.ID, Valid: true}}, req.Body, false)
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, "body is required")

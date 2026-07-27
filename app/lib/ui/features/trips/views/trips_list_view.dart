@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/buddy_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
@@ -29,6 +30,7 @@ class TripsListView extends StatefulWidget {
     required this.tripRepository,
     required this.chatRepository,
     required this.transportRepository,
+    required this.buddyRepository,
     required this.realtimeService,
     required this.authRepository,
     required this.profileRepository,
@@ -41,6 +43,7 @@ class TripsListView extends StatefulWidget {
   final TripRepository tripRepository;
   final ChatRepository chatRepository;
   final TransportRepository transportRepository;
+  final BuddyRepository buddyRepository;
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
@@ -195,6 +198,7 @@ class _TripsListViewState extends State<TripsListView> {
           tripRepository: widget.tripRepository,
           chatRepository: widget.chatRepository,
           transportRepository: widget.transportRepository,
+          buddyRepository: widget.buddyRepository,
           realtimeService: widget.realtimeService,
           diveCenterRepository: widget.diveCenterRepository,
         ),
@@ -232,6 +236,7 @@ class _TripsListViewState extends State<TripsListView> {
                   tripRepository: widget.tripRepository,
                   chatRepository: widget.chatRepository,
                   transportRepository: widget.transportRepository,
+                  buddyRepository: widget.buddyRepository,
                   realtimeService: widget.realtimeService,
                   diveCenterRepository: widget.diveCenterRepository,
                 ),
@@ -271,6 +276,7 @@ class _TripsListViewState extends State<TripsListView> {
           tripRepository: widget.tripRepository,
           chatRepository: widget.chatRepository,
           transportRepository: widget.transportRepository,
+          buddyRepository: widget.buddyRepository,
           realtimeService: widget.realtimeService,
           diveCenterRepository: widget.diveCenterRepository,
         ),

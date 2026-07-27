@@ -13,6 +13,7 @@ import (
 
 	"divebubble_be/internal/account"
 	"divebubble_be/internal/auth"
+	"divebubble_be/internal/buddy"
 	"divebubble_be/internal/divecenter"
 	"divebubble_be/internal/profile"
 	"divebubble_be/internal/push"
@@ -26,6 +27,7 @@ func registerTripRoutes(
 	mux *http.ServeMux,
 	svc *trip.Service,
 	transportSvc *transport.Service,
+	buddySvc *buddy.Service,
 	diveCenterSvc *divecenter.Service,
 	profileSvc *profile.Service,
 	authIssuer *auth.TokenIssuer,
@@ -39,7 +41,7 @@ func registerTripRoutes(
 	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
 	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc, diveCenterSvc, profileSvc, pushSvc)))
 	mux.HandleFunc("POST /trips/join-by-code", withAuth(authIssuer, handleJoinTripByCode(svc, diveCenterSvc, profileSvc, pushSvc)))
-	mux.HandleFunc("POST /trips/{id}/leave", withAuth(authIssuer, handleLeaveTrip(svc, transportSvc, pushSvc)))
+	mux.HandleFunc("POST /trips/{id}/leave", withAuth(authIssuer, handleLeaveTrip(svc, transportSvc, buddySvc, pushSvc)))
 	mux.HandleFunc("POST /trips/{id}/cancel", withAuth(authIssuer, handleCancelTrip(svc, diveCenterSvc, pushSvc)))
 	mux.HandleFunc("PATCH /trips/{id}", withAuth(authIssuer, handleUpdateTrip(svc, diveCenterSvc, pushSvc)))
 	mux.HandleFunc("GET /trips/{id}/participants", withAuth(authIssuer, handleListParticipants(svc)))
@@ -77,6 +79,7 @@ type tripResponse struct {
 	UnreadCount       int        `json:"unreadCount"`
 	HasTransportAlert bool       `json:"hasTransportAlert"`
 	HasUnreadMention  bool       `json:"hasUnreadMention"`
+	HasBuddyAlert     bool       `json:"hasBuddyAlert"`
 
 	EndDate          *time.Time `json:"endDate,omitempty"`
 	Description      *string    `json:"description,omitempty"`
@@ -142,6 +145,7 @@ func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse
 		UnreadCount:       t.UnreadCount,
 		HasTransportAlert: t.HasTransportAlert,
 		HasUnreadMention:  t.HasUnreadMention,
+		HasBuddyAlert:     t.HasBuddyAlert,
 		EndDate:           nullTimePtr(t.EndDate),
 		Description:       nullStringPtr(t.Description),
 		MeetingPoint:      nullStringPtr(t.MeetingPoint),
@@ -560,7 +564,7 @@ func handleUpdateTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 // business rule (organizer can't leave) plus transport's cascade (their own joins freed,
 // any offer *they* created dissolved with an alert for whoever had joined it — see
 // transport.Service.HandleUserLeavingTrip).
-func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service, buddySvc *buddy.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id := r.PathValue("id")
 		tripID, err := uuid.Parse(id)
@@ -593,15 +597,29 @@ func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service, pushSvc
 			writeError(w, http.StatusInternalServerError, "could not clean up transport offers")
 			return
 		}
-		if len(alertedUserIDs) > 0 {
+		buddyAlertedUserIDs, err := buddySvc.HandleUserLeavingTrip(r.Context(), tripID, userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not clean up buddy requests")
+			return
+		}
+		if len(alertedUserIDs) > 0 || len(buddyAlertedUserIDs) > 0 {
 			// Best-effort — the leave itself already succeeded; a failed re-fetch here just
 			// means this notification is skipped.
 			if t, err := svc.GetTrip(r.Context(), id); err == nil {
-				pushSvc.SendToUsers(r.Context(), dedupeUsers(alertedUserIDs), push.Notification{
-					Title: t.Title,
-					Body:  "A transport offer you joined was cancelled — check the Transport tab.",
-					Data:  map[string]string{"tripId": t.ID.String(), "type": "transport_alert"},
-				})
+				if len(alertedUserIDs) > 0 {
+					pushSvc.SendToUsers(r.Context(), dedupeUsers(alertedUserIDs), push.Notification{
+						Title: t.Title,
+						Body:  "A transport offer you joined was cancelled — check the Transport tab.",
+						Data:  map[string]string{"tripId": t.ID.String(), "type": "transport_alert"},
+					})
+				}
+				if len(buddyAlertedUserIDs) > 0 {
+					pushSvc.SendToUsers(r.Context(), dedupeUsers(buddyAlertedUserIDs), push.Notification{
+						Title: t.Title,
+						Body:  "A buddy group you joined was cancelled — check the Buddy tab.",
+						Data:  map[string]string{"tripId": t.ID.String(), "type": "buddy_alert"},
+					})
+				}
 			}
 		}
 

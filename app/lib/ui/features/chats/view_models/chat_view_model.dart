@@ -17,6 +17,7 @@ class ChatViewModel extends ChangeNotifier {
     required this.tripId,
     required this.currentUserId,
     this.offerId,
+    this.buddyRequestId,
     this.onDissolved,
   })  : _repository = repository,
         _realtimeService = realtimeService;
@@ -27,12 +28,14 @@ class ChatViewModel extends ChangeNotifier {
   final String tripId;
   final String currentUserId;
 
-  // Null = the trip's main chat; set = this car offer's own chat. Threaded through to the
-  // repository (which swaps the REST path) and the realtime channel name.
+  // Neither set = the trip's main chat; offerId = a car offer's own chat; buddyRequestId = a
+  // buddy group's own chat. Threaded through to the repository (which swaps the REST path)
+  // and the realtime channel name. Mutually exclusive, mirroring the backend's own scope.
   final String? offerId;
+  final String? buddyRequestId;
 
-  // Fired when the realtime "dissolved" sentinel arrives (offer chats only) — the creator
-  // cancelled this car; the view uses this to bounce back to the offers list.
+  // Fired when the realtime "dissolved" sentinel arrives (offer/buddy chats only) — the
+  // creator cancelled this car/group; the view uses this to bounce back to the list.
   final VoidCallback? onDissolved;
 
   centrifuge.Subscription? _subscription;
@@ -61,7 +64,7 @@ class ChatViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _messages = await _repository.getMessages(tripId, offerId: offerId);
+      _messages = await _repository.getMessages(tripId, offerId: offerId, buddyRequestId: buddyRequestId);
       try {
         blockedUserIds = (await profileRepository.getBlockedUserIds()).toSet();
       } catch (_) {
@@ -78,7 +81,11 @@ class ChatViewModel extends ChangeNotifier {
   }
 
   Future<void> _subscribeToRealtime() async {
-    final channel = offerId != null ? 'transport_offer:$offerId' : 'trip:$tripId';
+    final channel = offerId != null
+        ? 'transport_offer:$offerId'
+        : buddyRequestId != null
+            ? 'buddy_request:$buddyRequestId'
+            : 'trip:$tripId';
     _subscription = await _realtimeService.subscribe(channel);
     // The channel Subscription can now be shared with other screens (e.g. the Bubbles
     // list also watches trip:$id) — cancel just this listener in dispose(), not the
@@ -157,8 +164,8 @@ class ChatViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _repository.sendMessage(tripId, body, offerId: offerId, mentionsDiveCenter: mentionsDiveCenter);
-      _messages = await _repository.getMessages(tripId, offerId: offerId);
+      await _repository.sendMessage(tripId, body, offerId: offerId, buddyRequestId: buddyRequestId, mentionsDiveCenter: mentionsDiveCenter);
+      _messages = await _repository.getMessages(tripId, offerId: offerId, buddyRequestId: buddyRequestId);
     } catch (e) {
       _error = e.toString();
     } finally {

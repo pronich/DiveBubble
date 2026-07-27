@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/buddy_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
@@ -8,6 +9,8 @@ import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
+import '../../buddy/view_models/buddy_view_model.dart';
+import '../../buddy/views/buddy_view.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../../transport/views/transport_view.dart';
 import '../../trips/view_models/trip_view_model.dart';
@@ -23,11 +26,13 @@ class TripConversationPage extends StatefulWidget {
     super.key,
     required this.chatViewModel,
     required this.transportViewModel,
+    required this.buddyViewModel,
     required this.tripTitle,
     this.tripPhotoUrl,
     required this.tripRepository,
     required this.chatRepository,
     required this.transportRepository,
+    required this.buddyRepository,
     required this.realtimeService,
     required this.authRepository,
     required this.profileRepository,
@@ -35,10 +40,13 @@ class TripConversationPage extends StatefulWidget {
     required this.diveCenterRepository,
     required this.initialHasTransportAlert,
     this.onTransportAlertCleared,
+    required this.initialHasBuddyAlert,
+    this.onBuddyAlertCleared,
   });
 
   final ChatViewModel chatViewModel;
   final TransportViewModel transportViewModel;
+  final BuddyViewModel buddyViewModel;
   final String tripTitle;
   // Rendered as a small tappable thumbnail on the right of the AppBar (see build) —
   // null shows a plain placeholder icon instead, same fallback every other trip photo spot
@@ -47,6 +55,7 @@ class TripConversationPage extends StatefulWidget {
   final TripRepository tripRepository;
   final ChatRepository chatRepository;
   final TransportRepository transportRepository;
+  final BuddyRepository buddyRepository;
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
@@ -60,6 +69,9 @@ class TripConversationPage extends StatefulWidget {
   // lets MyTripsViewModel flip the same flag locally so the bottom-nav dot and Bubbles
   // row indicator update immediately, without MyTripsView refetching the whole list.
   final VoidCallback? onTransportAlertCleared;
+  // Same two as above, for BuddyViewModel.hasAlert.
+  final bool initialHasBuddyAlert;
+  final VoidCallback? onBuddyAlertCleared;
 
   @override
   State<TripConversationPage> createState() => _TripConversationPageState();
@@ -77,12 +89,13 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_onTabChanged);
     // Seeded from the Trip already in hand (see the field's own comment) — the dot itself
     // lives in the AppBar, always visible regardless of which tab is active, so this is
-    // what actually surfaces it before the diver ever switches to Transport.
+    // what actually surfaces it before the diver ever switches to Transport/Buddy.
     widget.transportViewModel.seedAlert(widget.initialHasTransportAlert);
+    widget.buddyViewModel.seedAlert(widget.initialHasBuddyAlert);
     _refreshTripDerivedState();
   }
 
@@ -125,6 +138,8 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
     if (_tabController.indexIsChanging) return;
     if (_tabController.index == 1) {
       widget.transportViewModel.checkAlert().then((_) => widget.onTransportAlertCleared?.call());
+    } else if (_tabController.index == 2) {
+      widget.buddyViewModel.checkAlert().then((_) => widget.onBuddyAlertCleared?.call());
     }
   }
 
@@ -225,6 +240,58 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
                 );
               },
             ),
+            ListenableBuilder(
+              listenable: widget.buddyViewModel,
+              builder: (context, _) {
+                final myRequest = widget.buddyViewModel.myRequest;
+                return Tab(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Buddy'),
+                          // Same "only reachable once you're in it" reasoning as Transport's
+                          // own ⓘ above — three unambiguous tap targets (title → TripPage,
+                          // avatar → DiverIdCard, this ⓘ → group info/leave/dissolve).
+                          if (myRequest != null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Material(
+                                type: MaterialType.transparency,
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: () => showBuddyRequestDetailSheet(
+                                    context,
+                                    requestId: myRequest.id,
+                                    viewModel: widget.buddyViewModel,
+                                    isCancelled: _isCancelled,
+                                  ),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(2),
+                                    child: Icon(Icons.info_outline, size: 16),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (widget.buddyViewModel.hasAlert)
+                        Positioned(
+                          right: -8,
+                          top: -2,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -243,6 +310,12 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
             realtimeService: widget.realtimeService,
             isCancelled: _isCancelled,
             businessName: _businessName,
+          ),
+          BuddyView(
+            viewModel: widget.buddyViewModel,
+            chatRepository: widget.chatRepository,
+            realtimeService: widget.realtimeService,
+            isCancelled: _isCancelled,
           ),
         ],
       ),
@@ -265,6 +338,7 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
           tripRepository: widget.tripRepository,
           chatRepository: widget.chatRepository,
           transportRepository: widget.transportRepository,
+          buddyRepository: widget.buddyRepository,
           realtimeService: widget.realtimeService,
           diveCenterRepository: widget.diveCenterRepository,
           openedFromConversation: true,

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'data/repositories/auth_repository.dart';
+import 'data/repositories/buddy_repository.dart';
 import 'data/repositories/chat_repository.dart';
 import 'data/repositories/dive_center_repository.dart';
 import 'data/repositories/gear_repository.dart';
@@ -13,6 +14,7 @@ import 'data/repositories/specialty_repository.dart';
 import 'data/repositories/transport_repository.dart';
 import 'data/repositories/trip_repository.dart';
 import 'data/services/auth_api_service.dart';
+import 'data/services/buddy_api_service.dart';
 import 'data/services/chat_api_service.dart';
 import 'data/services/dive_center_api_service.dart';
 import 'data/services/gear_api_service.dart';
@@ -26,6 +28,7 @@ import 'data/services/transport_api_service.dart';
 import 'data/services/trip_api_service.dart';
 import 'ui/core/navigation/root_shell.dart';
 import 'ui/core/theme/app_theme.dart';
+import 'ui/features/buddy/view_models/buddy_view_model.dart';
 import 'ui/features/chats/view_models/chat_view_model.dart';
 import 'ui/features/chats/views/trip_conversation_page.dart';
 import 'ui/features/onboarding/views/app_entry_gate.dart';
@@ -86,6 +89,9 @@ class _MyAppState extends State<MyApp> {
   );
   late final _transportRepository = TransportRepository(
     service: TransportApiService(baseUrl: _apiBaseUrl, getAccessToken: _authRepository.getValidAccessToken),
+  );
+  late final _buddyRepository = BuddyRepository(
+    service: BuddyApiService(baseUrl: _apiBaseUrl, getAccessToken: _authRepository.getValidAccessToken),
   );
   late final _realtimeService = RealtimeService(
     wsUrl: _centrifugoWsUrl,
@@ -219,17 +225,27 @@ class _MyAppState extends State<MyApp> {
               tripId: trip.id,
               currentUserId: currentUserId,
             ),
+            buddyViewModel: BuddyViewModel(
+              repository: _buddyRepository,
+              authRepository: _authRepository,
+              profileRepository: _profileRepository,
+              pushRepository: _pushRepository,
+              tripId: trip.id,
+              currentUserId: currentUserId,
+            ),
             tripTitle: trip.title,
             tripPhotoUrl: trip.photoUrl,
             tripRepository: _tripRepository,
             chatRepository: _chatRepository,
             transportRepository: _transportRepository,
+            buddyRepository: _buddyRepository,
             realtimeService: _realtimeService,
             authRepository: _authRepository,
             profileRepository: _profileRepository,
             pushRepository: _pushRepository,
             diveCenterRepository: _diveCenterRepository,
             initialHasTransportAlert: trip.hasTransportAlert,
+            initialHasBuddyAlert: trip.hasBuddyAlert,
           ),
         ),
       );
@@ -255,6 +271,7 @@ class _MyAppState extends State<MyApp> {
           tripRepository: _tripRepository,
           chatRepository: _chatRepository,
           transportRepository: _transportRepository,
+          buddyRepository: _buddyRepository,
           realtimeService: _realtimeService,
           authRepository: _authRepository,
           profileRepository: _profileRepository,

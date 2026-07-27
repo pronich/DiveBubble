@@ -16,6 +16,7 @@ abstract class TripApiModel with _$TripApiModel {
     @Default(0) int participantCount,
     @Default(0) int unreadCount,
     @Default(false) bool hasTransportAlert,
+    @Default(false) bool hasBuddyAlert,
     DateTime? endDate,
     String? description,
     String? meetingPoint,

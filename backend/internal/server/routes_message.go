@@ -208,7 +208,7 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 		// A mention only means something on a business trip — there's no dive center to
 		// notify on an individual one, so the flag is silently dropped rather than erroring.
 		mentionsDiveCenter := req.MentionsDiveCenter && t.DiveCenterID.Valid
-		m, err := svc.Send(r.Context(), tripID, userID, uuid.NullUUID{}, req.Body, mentionsDiveCenter)
+		m, err := svc.Send(r.Context(), tripID, userID, message.Scope{}, req.Body, mentionsDiveCenter)
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, "body is required")

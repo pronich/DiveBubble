@@ -12,6 +12,7 @@ extension TripApiMapper on TripApiModel {
         participantCount: participantCount,
         unreadCount: unreadCount,
         hasTransportAlert: hasTransportAlert,
+        hasBuddyAlert: hasBuddyAlert,
         endDate: endDate,
         description: description,
         meetingPoint: meetingPoint,

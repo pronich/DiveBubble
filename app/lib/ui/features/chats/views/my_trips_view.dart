@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/buddy_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
@@ -13,6 +14,7 @@ import '../../../core/assets/app_assets.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
+import '../../buddy/view_models/buddy_view_model.dart';
 import '../../onboarding/views/login_sheet.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../view_models/chat_view_model.dart';
@@ -26,6 +28,7 @@ class MyTripsView extends StatefulWidget {
     required this.chatRepository,
     required this.tripRepository,
     required this.transportRepository,
+    required this.buddyRepository,
     required this.realtimeService,
     required this.authRepository,
     required this.profileRepository,
@@ -39,6 +42,7 @@ class MyTripsView extends StatefulWidget {
   final ChatRepository chatRepository;
   final TripRepository tripRepository;
   final TransportRepository transportRepository;
+  final BuddyRepository buddyRepository;
   final RealtimeService realtimeService;
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
@@ -184,11 +188,20 @@ class _MyTripsViewState extends State<MyTripsView> {
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),
+          buddyViewModel: BuddyViewModel(
+            repository: widget.buddyRepository,
+            authRepository: widget.authRepository,
+            profileRepository: widget.profileRepository,
+            pushRepository: widget.pushRepository,
+            tripId: trip.id,
+            currentUserId: widget.currentUserId,
+          ),
           tripTitle: trip.title,
           tripPhotoUrl: trip.photoUrl,
           tripRepository: widget.tripRepository,
           chatRepository: widget.chatRepository,
           transportRepository: widget.transportRepository,
+          buddyRepository: widget.buddyRepository,
           realtimeService: widget.realtimeService,
           authRepository: widget.authRepository,
           profileRepository: widget.profileRepository,
@@ -196,6 +209,8 @@ class _MyTripsViewState extends State<MyTripsView> {
           diveCenterRepository: widget.diveCenterRepository,
           initialHasTransportAlert: trip.hasTransportAlert,
           onTransportAlertCleared: () => widget.viewModel.markTransportAlertCleared(trip.id),
+          initialHasBuddyAlert: trip.hasBuddyAlert,
+          onBuddyAlertCleared: () => widget.viewModel.markBuddyAlertCleared(trip.id),
         ),
       ),
     );
@@ -267,6 +282,10 @@ class _TripRow extends StatelessWidget {
                         const SizedBox(width: 6),
                         const _TransportAlertDot(),
                       ],
+                      if (trip.hasBuddyAlert) ...[
+                        const SizedBox(width: 6),
+                        const _BuddyAlertDot(),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 2),
@@ -336,6 +355,22 @@ class _TransportAlertDot extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(color: semantic.infoContainer, shape: BoxShape.circle),
       child: Icon(Icons.directions_car, size: 12, color: semantic.onInfoContainer),
+    );
+  }
+}
+
+class _BuddyAlertDot extends StatelessWidget {
+  const _BuddyAlertDot();
+
+  @override
+  Widget build(BuildContext context) {
+    final semantic = Theme.of(context).extension<SemanticColors>()!;
+    return Container(
+      width: 18,
+      height: 18,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: semantic.infoContainer, shape: BoxShape.circle),
+      child: Icon(Icons.people_outline, size: 12, color: semantic.onInfoContainer),
     );
   }
 }

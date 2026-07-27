@@ -8,6 +8,7 @@ import (
 
 	"divebubble_be/internal/account"
 	"divebubble_be/internal/auth"
+	"divebubble_be/internal/buddy"
 	"divebubble_be/internal/certification"
 	"divebubble_be/internal/config"
 	"divebubble_be/internal/divecenter"
@@ -31,6 +32,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	messageSvc := message.NewService(message.NewRepository(db))
 	moderationSvc := moderation.NewService(moderation.NewRepository(db))
 	transportSvc := transport.NewService(transport.NewRepository(db))
+	buddySvc := buddy.NewService(buddy.NewRepository(db))
 	profileSvc := profile.NewService(profile.NewRepository(db))
 	certificationSvc := certification.NewService(certification.NewRepository(db))
 	gearSvc := gear.NewService(gear.NewRepository(db))
@@ -66,10 +68,11 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", handleHealth)
-	registerTripRoutes(mux, tripSvc, transportSvc, diveCenterSvc, profileSvc, authIssuer, pushSvc, accountSvc)
+	registerTripRoutes(mux, tripSvc, transportSvc, buddySvc, diveCenterSvc, profileSvc, authIssuer, pushSvc, accountSvc)
 	registerMessageRoutes(mux, messageSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, publisher, pushSvc, moderationSvc)
 	registerModerationRoutes(mux, moderationSvc, messageSvc, tripSvc, authIssuer)
 	registerTransportRoutes(mux, transportSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, pushSvc, messageSvc, moderationSvc, publisher)
+	registerBuddyRoutes(mux, buddySvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, pushSvc, messageSvc, moderationSvc, publisher)
 	registerRealtimeRoutes(mux, realtimeTokenIssuer, authIssuer)
 	registerAuthRoutes(mux, cfg, identityRepo, sessionRepo, authIssuer, appleKeys, appleTokens, emailCodeRepo, emailSvc, diveCenterSvc)
 	registerProfileRoutes(mux, profileSvc, authIssuer)

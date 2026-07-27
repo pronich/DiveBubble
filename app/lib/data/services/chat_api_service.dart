@@ -20,8 +20,11 @@ class ChatApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
-  Future<List<ChatMessageApiModel>> fetchMessages(String tripId, {String? offerId}) async {
-    final res = await _client.get(Uri.parse('$baseUrl${_messagesPath(tripId, offerId)}'), headers: await _authHeaders());
+  Future<List<ChatMessageApiModel>> fetchMessages(String tripId, {String? offerId, String? buddyRequestId}) async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl${_messagesPath(tripId, offerId, buddyRequestId)}'),
+      headers: await _authHeaders(),
+    );
     if (res.statusCode != 200) {
       throw Exception('fetchMessages failed: ${res.statusCode} ${res.body}');
     }
@@ -31,9 +34,13 @@ class ChatApiService {
         .toList();
   }
 
-  // Null offerId is the trip's main chat; set is a single car offer's own chat.
-  String _messagesPath(String tripId, String? offerId) =>
-      offerId != null ? '/trips/$tripId/transport/$offerId/messages' : '/trips/$tripId/messages';
+  // Neither set: the trip's main chat. offerId: a car offer's own chat. buddyRequestId: a
+  // buddy group's own chat. The two are mutually exclusive (mirrors the DB's own CHECK).
+  String _messagesPath(String tripId, String? offerId, String? buddyRequestId) {
+    if (offerId != null) return '/trips/$tripId/transport/$offerId/messages';
+    if (buddyRequestId != null) return '/trips/$tripId/buddy/$buddyRequestId/messages';
+    return '/trips/$tripId/messages';
+  }
 
   Future<String> fetchRealtimeToken() async {
     final res = await _client.get(Uri.parse('$baseUrl/realtime/token'), headers: await _authHeaders());
@@ -43,9 +50,15 @@ class ChatApiService {
     return (jsonDecode(res.body) as Map<String, dynamic>)['token'] as String;
   }
 
-  Future<void> sendMessage(String tripId, String body, {String? offerId, bool mentionsDiveCenter = false}) async {
+  Future<void> sendMessage(
+    String tripId,
+    String body, {
+    String? offerId,
+    String? buddyRequestId,
+    bool mentionsDiveCenter = false,
+  }) async {
     final res = await _client.post(
-      Uri.parse('$baseUrl${_messagesPath(tripId, offerId)}'),
+      Uri.parse('$baseUrl${_messagesPath(tripId, offerId, buddyRequestId)}'),
       headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
       body: jsonEncode({'body': body, 'mentionsDiveCenter': mentionsDiveCenter}),
     );

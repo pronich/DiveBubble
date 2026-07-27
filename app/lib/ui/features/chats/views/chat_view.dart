@@ -472,7 +472,7 @@ class _SystemMessageRow extends StatelessWidget {
               ),
               switch (message.kind) {
                 'feedback_prompt' => _FeedbackButton(provided: message.feedbackProvided, onPressed: onGiveFeedback),
-                // car_joined (and any future system kind) is just an announcement — no action.
+                // car_joined/buddy_joined (and any future system kind) are just announcements — no action.
                 _ => const SizedBox.shrink(),
               },
             ],

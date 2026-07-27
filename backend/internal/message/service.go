@@ -20,14 +20,14 @@ func NewService(repo *Repository) *Service {
 	return &Service{Repo: repo}
 }
 
-// Send persists a user-authored message. offerID is the zero value (invalid) for the trip's
-// main chat, or set for a car offer's own chat.
-func (s *Service) Send(ctx context.Context, tripID, userID uuid.UUID, offerID uuid.NullUUID, body string, mentionsDiveCenter bool) (Message, error) {
+// Send persists a user-authored message. scope is the zero value for the trip's main chat,
+// or set for a car offer's or buddy group's own chat.
+func (s *Service) Send(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool) (Message, error) {
 	body = strings.TrimSpace(body)
 	if body == "" {
 		return Message{}, ErrInvalidArgument
 	}
-	return s.Repo.Create(ctx, tripID, userID, offerID, body, mentionsDiveCenter)
+	return s.Repo.Create(ctx, tripID, userID, scope, body, mentionsDiveCenter)
 }
 
 // SendSystem creates a system message of the given kind for the trip's main chat, unless one
@@ -42,7 +42,7 @@ func (s *Service) SendSystem(ctx context.Context, tripID uuid.UUID, kind, body s
 	if exists {
 		return Message{}, false, nil
 	}
-	msg, err = s.Repo.CreateSystem(ctx, tripID, uuid.NullUUID{}, kind, body)
+	msg, err = s.Repo.CreateSystem(ctx, tripID, Scope{}, kind, body)
 	if err != nil {
 		return Message{}, false, err
 	}
@@ -50,9 +50,10 @@ func (s *Service) SendSystem(ctx context.Context, tripID uuid.UUID, kind, body s
 }
 
 // PostSystemEvent always inserts a system message — unlike SendSystem, it has no "only once
-// per trip" idempotency check, since events like a car-offer join are expected to repeat.
-func (s *Service) PostSystemEvent(ctx context.Context, tripID uuid.UUID, offerID uuid.NullUUID, kind, body string) (Message, error) {
-	return s.Repo.CreateSystem(ctx, tripID, offerID, kind, body)
+// per trip" idempotency check, since events like a car-offer/buddy-group join are expected
+// to repeat.
+func (s *Service) PostSystemEvent(ctx context.Context, tripID uuid.UUID, scope Scope, kind, body string) (Message, error) {
+	return s.Repo.CreateSystem(ctx, tripID, scope, kind, body)
 }
 
 func (s *Service) List(ctx context.Context, tripID uuid.UUID) ([]Message, error) {
@@ -61,6 +62,10 @@ func (s *Service) List(ctx context.Context, tripID uuid.UUID) ([]Message, error)
 
 func (s *Service) ListByOffer(ctx context.Context, offerID uuid.UUID) ([]Message, error) {
 	return s.Repo.ListByOffer(ctx, offerID)
+}
+
+func (s *Service) ListByBuddyRequest(ctx context.Context, requestID uuid.UUID) ([]Message, error) {
+	return s.Repo.ListByBuddyRequest(ctx, requestID)
 }
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (Message, error) {

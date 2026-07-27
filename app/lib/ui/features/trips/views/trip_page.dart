@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/buddy_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
@@ -22,6 +23,7 @@ import '../../../core/utils/external_url.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/photo_manager_grid.dart';
 import '../../../core/widgets/pick_image.dart';
+import '../../buddy/view_models/buddy_view_model.dart';
 import '../../chats/view_models/chat_view_model.dart';
 import '../../chats/views/trip_conversation_page.dart';
 import '../../profile/views/diver_id_card.dart';
@@ -37,6 +39,7 @@ class TripPage extends StatefulWidget {
     required this.tripRepository,
     required this.chatRepository,
     required this.transportRepository,
+    required this.buddyRepository,
     required this.realtimeService,
     required this.diveCenterRepository,
     this.openedFromConversation = false,
@@ -46,6 +49,7 @@ class TripPage extends StatefulWidget {
   final TripRepository tripRepository;
   final ChatRepository chatRepository;
   final TransportRepository transportRepository;
+  final BuddyRepository buddyRepository;
   final RealtimeService realtimeService;
   final DiveCenterRepository diveCenterRepository;
 
@@ -331,6 +335,7 @@ class _TripPageState extends State<TripPage> {
                         trip: trip,
                         chatRepository: widget.chatRepository,
                         transportRepository: widget.transportRepository,
+                        buddyRepository: widget.buddyRepository,
                         realtimeService: widget.realtimeService,
                         tripRepository: widget.tripRepository,
                         authRepository: widget.viewModel.authRepository,
@@ -348,6 +353,7 @@ class _TripPageState extends State<TripPage> {
                               tripRepository: widget.tripRepository,
                               chatRepository: widget.chatRepository,
                               transportRepository: widget.transportRepository,
+                              buddyRepository: widget.buddyRepository,
                               realtimeService: widget.realtimeService,
                               diveCenterRepository: widget.diveCenterRepository,
                             )
@@ -732,6 +738,7 @@ class _BookNowSection extends StatelessWidget {
     required this.tripRepository,
     required this.chatRepository,
     required this.transportRepository,
+    required this.buddyRepository,
     required this.realtimeService,
     required this.diveCenterRepository,
   });
@@ -742,6 +749,7 @@ class _BookNowSection extends StatelessWidget {
   final TripRepository tripRepository;
   final ChatRepository chatRepository;
   final TransportRepository transportRepository;
+  final BuddyRepository buddyRepository;
   final RealtimeService realtimeService;
   final DiveCenterRepository diveCenterRepository;
 
@@ -809,6 +817,7 @@ class _BookNowSection extends StatelessWidget {
           tripRepository: tripRepository,
           chatRepository: chatRepository,
           transportRepository: transportRepository,
+          buddyRepository: buddyRepository,
           realtimeService: realtimeService,
           diveCenterRepository: diveCenterRepository,
         ),
@@ -1037,6 +1046,7 @@ class _DiveInButton extends StatelessWidget {
     required this.trip,
     required this.chatRepository,
     required this.transportRepository,
+    required this.buddyRepository,
     required this.realtimeService,
     required this.tripRepository,
     required this.authRepository,
@@ -1049,6 +1059,7 @@ class _DiveInButton extends StatelessWidget {
   final Trip trip;
   final ChatRepository chatRepository;
   final TransportRepository transportRepository;
+  final BuddyRepository buddyRepository;
   final RealtimeService realtimeService;
   final TripRepository tripRepository;
   final AuthRepository authRepository;
@@ -1082,17 +1093,27 @@ class _DiveInButton extends StatelessWidget {
                   tripId: trip.id,
                   currentUserId: currentUserId,
                 ),
+                buddyViewModel: BuddyViewModel(
+                  repository: buddyRepository,
+                  authRepository: authRepository,
+                  profileRepository: profileRepository,
+                  pushRepository: pushRepository,
+                  tripId: trip.id,
+                  currentUserId: currentUserId,
+                ),
                 tripTitle: trip.title,
                 tripPhotoUrl: trip.photoUrl,
                 tripRepository: tripRepository,
                 chatRepository: chatRepository,
                 transportRepository: transportRepository,
+                buddyRepository: buddyRepository,
                 realtimeService: realtimeService,
                 authRepository: authRepository,
                 profileRepository: profileRepository,
                 pushRepository: pushRepository,
                 diveCenterRepository: diveCenterRepository,
                 initialHasTransportAlert: trip.hasTransportAlert,
+                initialHasBuddyAlert: trip.hasBuddyAlert,
               ),
             ),
           );

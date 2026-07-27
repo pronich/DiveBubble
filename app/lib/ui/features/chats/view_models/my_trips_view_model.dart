@@ -35,7 +35,7 @@ class MyTripsViewModel extends ChangeNotifier {
   List<Trip> _trips = [];
   List<Trip> get trips => _trips;
 
-  bool get hasAnyAttention => _trips.any((t) => t.unreadCount > 0 || t.hasTransportAlert);
+  bool get hasAnyAttention => _trips.any((t) => t.unreadCount > 0 || t.hasTransportAlert || t.hasBuddyAlert);
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -112,6 +112,13 @@ class MyTripsViewModel extends ChangeNotifier {
     final index = _trips.indexWhere((t) => t.id == tripId);
     if (index == -1) return;
     _trips[index] = _trips[index].copyWith(hasTransportAlert: false);
+    notifyListeners();
+  }
+
+  void markBuddyAlertCleared(String tripId) {
+    final index = _trips.indexWhere((t) => t.id == tripId);
+    if (index == -1) return;
+    _trips[index] = _trips[index].copyWith(hasBuddyAlert: false);
     notifyListeners();
   }
 

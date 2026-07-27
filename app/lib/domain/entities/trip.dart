@@ -16,6 +16,9 @@ abstract class Trip with _$Trip {
     // A dissolved transport offer this diver had joined — see CLAUDE.md's Leave Bubble
     // section. Cleared by visiting the Transport tab (see TransportViewModel.checkAlert).
     @Default(false) bool hasTransportAlert,
+    // Same idea as hasTransportAlert, for a dissolved buddy group this diver had joined —
+    // cleared by visiting the Buddy tab (see BuddyViewModel.checkAlert).
+    @Default(false) bool hasBuddyAlert,
     DateTime? endDate,
     String? description,
     String? meetingPoint,
