@@ -181,118 +181,12 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
             ),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [
-            const Tab(text: 'Chat'),
-            ListenableBuilder(
-              listenable: widget.transportViewModel,
-              builder: (context, _) {
-                final myOffer = widget.transportViewModel.myOffer;
-                return Tab(
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('Transport'),
-                          // Only reachable once you're actually in a car — a plain offers
-                          // list has nothing to show info about or leave/dissolve yet. This
-                          // tap target is separate from the trip title (→ TripPage) and from
-                          // a message sender's avatar (→ DiverIdCard) — three unambiguous
-                          // ways to reach three different things.
-                          if (myOffer != null)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4),
-                              child: Material(
-                                type: MaterialType.transparency,
-                                child: InkWell(
-                                  customBorder: const CircleBorder(),
-                                  onTap: () => showTransportOfferDetailSheet(
-                                    context,
-                                    offerId: myOffer.id,
-                                    viewModel: widget.transportViewModel,
-                                    isCancelled: _isCancelled,
-                                    businessName: _businessName,
-                                  ),
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(2),
-                                    child: Icon(Icons.info_outline, size: 16),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      if (widget.transportViewModel.hasAlert)
-                        Positioned(
-                          right: -8,
-                          top: -2,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            ListenableBuilder(
-              listenable: widget.buddyViewModel,
-              builder: (context, _) {
-                final myRequest = widget.buddyViewModel.myRequest;
-                return Tab(
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('Buddy'),
-                          // Same "only reachable once you're in it" reasoning as Transport's
-                          // own ⓘ above — three unambiguous tap targets (title → TripPage,
-                          // avatar → DiverIdCard, this ⓘ → group info/leave/dissolve).
-                          if (myRequest != null)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4),
-                              child: Material(
-                                type: MaterialType.transparency,
-                                child: InkWell(
-                                  customBorder: const CircleBorder(),
-                                  onTap: () => showBuddyRequestDetailSheet(
-                                    context,
-                                    requestId: myRequest.id,
-                                    viewModel: widget.buddyViewModel,
-                                    isCancelled: _isCancelled,
-                                  ),
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(2),
-                                    child: Icon(Icons.info_outline, size: 16),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      if (widget.buddyViewModel.hasAlert)
-                        Positioned(
-                          right: -8,
-                          top: -2,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ],
+        bottom: _PillTabBar(
+          tabController: _tabController,
+          transportViewModel: widget.transportViewModel,
+          buddyViewModel: widget.buddyViewModel,
+          isCancelled: _isCancelled,
+          businessName: _businessName,
         ),
       ),
       body: TabBarView(
@@ -348,5 +242,205 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
     // Trip Page is the only place bookingStatus can change (Cancel Trip) — refresh once
     // back, since ChatView/TransportView otherwise have no reason to know it changed.
     if (mounted) _refreshTripDerivedState();
+  }
+}
+
+/// Airbnb/iOS-style segmented pill tab bar — the active segment expands to icon+label, the
+/// other two collapse to icon-only circles. Pure restyle of a plain TabBar: same controller,
+/// same 3 tabs, same tap-to-switch behavior, alert dot and ⓘ affordances carried over.
+class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
+  const _PillTabBar({
+    required this.tabController,
+    required this.transportViewModel,
+    required this.buddyViewModel,
+    required this.isCancelled,
+    required this.businessName,
+  });
+
+  final TabController tabController;
+  final TransportViewModel transportViewModel;
+  final BuddyViewModel buddyViewModel;
+  final bool isCancelled;
+  final String? businessName;
+
+  static const _compactWidth = 44.0;
+  static const _trackHeight = 44.0;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(_trackHeight + 12);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AnimatedBuilder(
+      animation: Listenable.merge([tabController, transportViewModel, buddyViewModel]),
+      builder: (context, _) {
+        final activeIndex = tabController.index;
+        final myOffer = transportViewModel.myOffer;
+        final myRequest = buddyViewModel.myRequest;
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final activeWidth = constraints.maxWidth - _compactWidth * 2;
+              return Container(
+                height: _trackHeight,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(_trackHeight / 2),
+                ),
+                child: Row(
+                  children: [
+                    _PillSegment(
+                      isActive: activeIndex == 0,
+                      width: activeIndex == 0 ? activeWidth : _compactWidth,
+                      outlinedIcon: Icons.chat_bubble_outline,
+                      filledIcon: Icons.chat_bubble,
+                      label: 'Chat',
+                      hasAlert: false,
+                      onTap: () => tabController.animateTo(0),
+                    ),
+                    _PillSegment(
+                      isActive: activeIndex == 1,
+                      width: activeIndex == 1 ? activeWidth : _compactWidth,
+                      outlinedIcon: Icons.directions_car_outlined,
+                      filledIcon: Icons.directions_car,
+                      label: 'Transport',
+                      hasAlert: transportViewModel.hasAlert,
+                      onTap: () => tabController.animateTo(1),
+                      // Only reachable once you're actually in a car — a plain offers list has
+                      // nothing to show info about or leave/dissolve yet. Only surfaced on the
+                      // active, expanded segment — no room for a second tap target once
+                      // collapsed to an icon.
+                      onInfoTap: myOffer == null
+                          ? null
+                          : () => showTransportOfferDetailSheet(
+                                context,
+                                offerId: myOffer.id,
+                                viewModel: transportViewModel,
+                                isCancelled: isCancelled,
+                                businessName: businessName,
+                              ),
+                    ),
+                    _PillSegment(
+                      isActive: activeIndex == 2,
+                      width: activeIndex == 2 ? activeWidth : _compactWidth,
+                      outlinedIcon: Icons.people_outline,
+                      filledIcon: Icons.people,
+                      label: 'Buddy',
+                      hasAlert: buddyViewModel.hasAlert,
+                      onTap: () => tabController.animateTo(2),
+                      onInfoTap: myRequest == null
+                          ? null
+                          : () => showBuddyRequestDetailSheet(
+                                context,
+                                requestId: myRequest.id,
+                                viewModel: buddyViewModel,
+                                isCancelled: isCancelled,
+                              ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PillSegment extends StatelessWidget {
+  const _PillSegment({
+    required this.isActive,
+    required this.width,
+    required this.outlinedIcon,
+    required this.filledIcon,
+    required this.label,
+    required this.hasAlert,
+    required this.onTap,
+    this.onInfoTap,
+  });
+
+  final bool isActive;
+  final double width;
+  final IconData outlinedIcon;
+  final IconData filledIcon;
+  final String label;
+  final bool hasAlert;
+  final VoidCallback onTap;
+  final VoidCallback? onInfoTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final contentColor = isActive ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      width: width,
+      height: double.infinity,
+      decoration: BoxDecoration(
+        color: isActive ? theme.colorScheme.primary : null,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      clipBehavior: Clip.none,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onTap,
+          child: Center(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(isActive ? filledIcon : outlinedIcon, size: 20, color: contentColor),
+                    if (isActive) ...[
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          label,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelLarge?.copyWith(color: contentColor, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      if (onInfoTap != null)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 2),
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: onInfoTap,
+                              child: Padding(
+                                padding: const EdgeInsets.all(2),
+                                child: Icon(Icons.info_outline, size: 16, color: contentColor),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+                if (hasAlert)
+                  Positioned(
+                    right: isActive ? -2 : -6,
+                    top: -2,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(color: theme.colorScheme.error, shape: BoxShape.circle),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
