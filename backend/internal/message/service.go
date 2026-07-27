@@ -28,6 +28,23 @@ func (s *Service) Send(ctx context.Context, tripID, userID uuid.UUID, body strin
 	return s.Repo.Create(ctx, tripID, userID, body, mentionsDiveCenter)
 }
 
+// SendSystem creates a system message of the given kind for the trip, unless one has already
+// been sent — sent is false when it was skipped, so callers know not to publish/notify again.
+func (s *Service) SendSystem(ctx context.Context, tripID uuid.UUID, kind, body string) (msg Message, sent bool, err error) {
+	exists, err := s.Repo.ExistsByTripAndKind(ctx, tripID, kind)
+	if err != nil {
+		return Message{}, false, err
+	}
+	if exists {
+		return Message{}, false, nil
+	}
+	msg, err = s.Repo.CreateSystem(ctx, tripID, kind, body)
+	if err != nil {
+		return Message{}, false, err
+	}
+	return msg, true, nil
+}
+
 func (s *Service) List(ctx context.Context, tripID uuid.UUID) ([]Message, error) {
 	return s.Repo.ListByTrip(ctx, tripID)
 }

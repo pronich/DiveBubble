@@ -10,7 +10,10 @@ import (
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/config"
 	"divebubble_be/internal/db"
+	"divebubble_be/internal/message"
+	"divebubble_be/internal/realtime"
 	"divebubble_be/internal/server"
+	"divebubble_be/internal/trip"
 )
 
 func main() {
@@ -29,6 +32,7 @@ func main() {
 	srv := server.New(cfg, sqlDB)
 
 	go runSessionRetention(sqlDB, cfg.SessionRetentionGrace)
+	go runFeedbackPromptScan(sqlDB, cfg)
 
 	log.Printf("listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, srv); err != nil {
@@ -48,6 +52,64 @@ func runSessionRetention(sqlDB *sql.DB, grace time.Duration) {
 		}
 		if n > 0 {
 			log.Printf("session retention cleanup: removed %d expired session(s)", n)
+		}
+	}
+
+	cleanup()
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		cleanup()
+	}
+}
+
+// runFeedbackPromptScan sends the post-trip feedback system message once per trip whose dive
+// date has passed — same in-process ticker shape as runSessionRetention, no separate
+// cron/deploy step. A trip could wait up to 24h after its dive date before the prompt appears;
+// shorten the ticker if that turns out to matter.
+func runFeedbackPromptScan(sqlDB *sql.DB, cfg config.Config) {
+	tripRepo := trip.NewRepository(sqlDB)
+	messageSvc := message.NewService(message.NewRepository(sqlDB))
+	publisher := realtime.NewPublisher(cfg.CentrifugoURL, cfg.CentrifugoAPIKey)
+
+	cleanup := func() {
+		ctx := context.Background()
+		tripIDs, err := tripRepo.ListTripIDsAwaitingFeedbackPrompt(ctx)
+		if err != nil {
+			log.Printf("feedback prompt scan: could not list trips: %v", err)
+			return
+		}
+		sent := 0
+		for _, tripID := range tripIDs {
+			msg, ok, err := messageSvc.SendSystem(ctx, tripID, message.KindFeedbackPrompt, "How was your trip? We'd love your feedback.")
+			if err != nil {
+				log.Printf("feedback prompt scan: could not send prompt for trip:%s: %v", tripID, err)
+				continue
+			}
+			if !ok {
+				continue
+			}
+			// Field names kept in sync with messageResponse in internal/server/routes_message.go.
+			// feedbackProvided is false for everyone at creation time — each client's next
+			// GET /trips/{id}/messages recomputes it correctly per-viewer, same as isDiveCenterStaff.
+			payload := map[string]any{
+				"id":                 msg.ID,
+				"tripId":             msg.TripID,
+				"userId":             msg.UserID,
+				"body":               msg.Body,
+				"createdAt":          msg.CreatedAt,
+				"isDiveCenterStaff":  false,
+				"mentionsDiveCenter": false,
+				"kind":               msg.Kind,
+				"feedbackProvided":   false,
+			}
+			if pubErr := publisher.Publish(ctx, "trip:"+tripID.String(), payload); pubErr != nil {
+				log.Printf("feedback prompt scan: realtime publish failed for trip:%s: %v", tripID, pubErr)
+			}
+			sent++
+		}
+		if sent > 0 {
+			log.Printf("feedback prompt scan: sent %d prompt(s)", sent)
 		}
 	}
 

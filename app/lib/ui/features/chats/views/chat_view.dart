@@ -136,6 +136,14 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
     );
   }
 
+  void _showFeedbackSheet(ChatMessage message) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _FeedbackSheet(viewModel: widget.viewModel, messageId: message.id),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -161,9 +169,9 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
 
               final items = _buildDisplayItems(messages);
               for (final item in items) {
-                final senderId = item.message?.userId;
-                if (senderId != null && senderId != widget.viewModel.currentUserId) {
-                  _loadProfile(senderId);
+                final message = item.message;
+                if (message != null && message.kind == 'user' && message.userId != widget.viewModel.currentUserId) {
+                  _loadProfile(message.userId);
                 }
               }
               // Rendered with reverse: true (see below), so item 0 is the newest — reverse
@@ -200,6 +208,12 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
                         return _DateSeparator(date: item.date!);
                       }
                       final message = item.message!;
+                      if (message.kind != 'user') {
+                        return _SystemMessageRow(
+                          message: message,
+                          onGiveFeedback: () => _showFeedbackSheet(message),
+                        );
+                      }
                       final isMine = message.userId == widget.viewModel.currentUserId;
                       return _MessageRow(
                         message: message,
@@ -348,9 +362,13 @@ List<_MessageCluster> _buildClusters(List<ChatMessage> messages) {
     final local = m.createdAt.toLocal();
     final day = DateTime(local.year, local.month, local.day);
     final last = clusters.isEmpty ? null : clusters.last;
+    // A system message (kind != 'user') always starts its own cluster — it renders as a
+    // centered row, never grouped with a neighboring real message.
     final continuesCluster = last != null &&
         last.day == day &&
         last.messages.last.userId == m.userId &&
+        m.kind == 'user' &&
+        last.messages.last.kind == 'user' &&
         m.createdAt.difference(last.messages.last.createdAt) <= _groupingWindow;
     if (continuesCluster) {
       last.messages.add(m);
@@ -418,6 +436,72 @@ class _DateSeparator extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A system-generated row (kind != 'user') — centered, no bubble/avatar, same pill look as
+/// _DateSeparator. The switch on message.kind is the deliberate extension point for future
+/// system kinds (Car/Buddy chat join messages); each just adds another case here.
+class _SystemMessageRow extends StatelessWidget {
+  const _SystemMessageRow({required this.message, required this.onGiveFeedback});
+
+  final ChatMessage message;
+  final VoidCallback onGiveFeedback;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: Container(
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                message.body,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              switch (message.kind) {
+                'feedback_prompt' => _FeedbackButton(provided: message.feedbackProvided, onPressed: onGiveFeedback),
+                _ => const SizedBox.shrink(),
+              },
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedbackButton extends StatelessWidget {
+  const _FeedbackButton({required this.provided, required this.onPressed});
+
+  final bool provided;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    if (provided) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Chip(
+          label: const Text('Thank you!'),
+          avatar: const Icon(Icons.check, size: 16),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: FilledButton(onPressed: onPressed, child: const Text('Give feedback')),
     );
   }
 }
@@ -614,6 +698,162 @@ class _ReportMessageSheetState extends State<_ReportMessageSheet> {
                 child: _isSubmitting
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Text('Send report'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Fixed checklist for "what did DiveBubble help you with" — 'Nothing yet' is exclusive with
+// the rest (see _FeedbackSheetState._toggleHelpedWith), so it's never combined with a real
+// answer in the stored comma-joined string.
+const _helpedWithOptions = [
+  'Trip information',
+  'Chatting with participants',
+  'Finding transport',
+  'Finding Buddy',
+  'Nothing yet',
+];
+
+class _FeedbackSheet extends StatefulWidget {
+  const _FeedbackSheet({required this.viewModel, required this.messageId});
+
+  final ChatViewModel viewModel;
+  final String messageId;
+
+  @override
+  State<_FeedbackSheet> createState() => _FeedbackSheetState();
+}
+
+class _FeedbackSheetState extends State<_FeedbackSheet> {
+  int _rating = 0;
+  final Set<String> _helpedWith = {};
+  final _commentController = TextEditingController();
+  bool _contactOk = false;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  void _toggleHelpedWith(String option, bool selected) {
+    setState(() {
+      if (option == 'Nothing yet') {
+        _helpedWith
+          ..clear()
+          ..addAll(selected ? {option} : {});
+        return;
+      }
+      if (selected) {
+        _helpedWith
+          ..remove('Nothing yet')
+          ..add(option);
+      } else {
+        _helpedWith.remove(option);
+      }
+    });
+  }
+
+  Future<void> _submit() async {
+    setState(() => _isSubmitting = true);
+    final error = await widget.viewModel.submitFeedback(
+      widget.messageId,
+      _rating,
+      _helpedWith.toList(),
+      _commentController.text.trim().isEmpty ? null : _commentController.text.trim(),
+      _contactOk,
+    );
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thank you!')));
+    } else {
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not send feedback: $error')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 16 + MediaQuery.of(context).viewInsets.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('How useful was DiveBubble for this trip?', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var star = 1; star <= 5; star++)
+                  IconButton(
+                    onPressed: () => setState(() => _rating = star),
+                    icon: Icon(
+                      star <= _rating ? Icons.star : Icons.star_border,
+                      color: theme.colorScheme.primary,
+                      size: 32,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text('What did DiveBubble help you with?', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _helpedWithOptions.map((option) {
+                final selected = _helpedWith.contains(option);
+                return FilterChip(
+                  // The built-in checkmark animates its own width in/out of the avatar slot,
+                  // which visibly resizes/reflows every chip in the Wrap on toggle. Reserving
+                  // a fixed-size icon slot ourselves (check when selected, invisible otherwise)
+                  // keeps every chip's width constant regardless of selection state.
+                  showCheckmark: false,
+                  avatar: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: selected
+                        ? Icon(Icons.check, size: 18, color: theme.colorScheme.onSecondaryContainer)
+                        : null,
+                  ),
+                  label: Text(option),
+                  selected: selected,
+                  onSelected: (value) => _toggleHelpedWith(option, value),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+            Text('What should we improve?', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _commentController,
+              decoration: const InputDecoration(hintText: 'Optional'),
+              maxLines: 3,
+            ),
+            CheckboxListTile(
+              value: _contactOk,
+              onChanged: (value) => setState(() => _contactOk = value ?? false),
+              title: const Text('Can we contact you about your feedback?'),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: (_isSubmitting || _rating == 0) ? null : _submit,
+                child: _isSubmitting
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Submit feedback'),
               ),
             ),
           ],

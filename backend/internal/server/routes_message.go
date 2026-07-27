@@ -45,9 +45,13 @@ type messageResponse struct {
 	CreatedAt          time.Time `json:"createdAt"`
 	IsDiveCenterStaff  bool      `json:"isDiveCenterStaff"`
 	MentionsDiveCenter bool      `json:"mentionsDiveCenter"`
+	Kind               string    `json:"kind"`
+	// FeedbackProvided is per-viewer (has the requesting user submitted trip feedback yet) —
+	// only meaningful when Kind is message.KindFeedbackPrompt, false/ignored otherwise.
+	FeedbackProvided bool `json:"feedbackProvided"`
 }
 
-func toMessageResponse(m message.Message, isDiveCenterStaff bool) messageResponse {
+func toMessageResponse(m message.Message, isDiveCenterStaff, feedbackProvided bool) messageResponse {
 	return messageResponse{
 		ID:                 m.ID,
 		TripID:             m.TripID,
@@ -56,6 +60,8 @@ func toMessageResponse(m message.Message, isDiveCenterStaff bool) messageRespons
 		CreatedAt:          m.CreatedAt,
 		IsDiveCenterStaff:  isDiveCenterStaff,
 		MentionsDiveCenter: m.MentionsDiveCenter,
+		Kind:               m.Kind,
+		FeedbackProvided:   feedbackProvided,
 	}
 }
 
@@ -146,10 +152,19 @@ func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterS
 			messages = filtered
 		}
 
+		// One per-trip fact for the viewer, not per-message — computed once regardless of how
+		// many feedback_prompt rows exist (normally at most one).
+		hasFeedback, err := tripSvc.HasFeedback(r.Context(), tripID.String(), userID)
+		if err != nil {
+			log.Printf("list messages: could not check feedback state for trip:%s: %v", tripID, err)
+			hasFeedback = false
+		}
+
 		checker := newDiveCenterStaffChecker(diveCenterSvc, t.DiveCenterID)
 		out := make([]messageResponse, 0, len(messages))
 		for _, m := range messages {
-			out = append(out, toMessageResponse(m, checker.isStaff(r.Context(), m.UserID)))
+			feedbackProvided := m.Kind == message.KindFeedbackPrompt && hasFeedback
+			out = append(out, toMessageResponse(m, checker.isStaff(r.Context(), m.UserID), feedbackProvided))
 		}
 		writeJSON(w, http.StatusOK, out)
 	}
@@ -210,7 +225,7 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 				isDiveCenterStaff = false
 			}
 		}
-		resp := toMessageResponse(m, isDiveCenterStaff)
+		resp := toMessageResponse(m, isDiveCenterStaff, false)
 		// Best-effort — sending implies you've read up to now, so this keeps your own
 		// message from ever showing up in your own unread count.
 		_ = tripSvc.MarkRead(r.Context(), tripID.String(), userID)

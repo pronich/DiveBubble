@@ -15,6 +15,8 @@ _ChatMessageApiModel _$ChatMessageApiModelFromJson(Map<String, dynamic> json) =>
       createdAt: DateTime.parse(json['createdAt'] as String),
       isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
       mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
+      kind: json['kind'] as String? ?? 'user',
+      feedbackProvided: json['feedbackProvided'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$ChatMessageApiModelToJson(
@@ -27,4 +29,6 @@ Map<String, dynamic> _$ChatMessageApiModelToJson(
   'createdAt': instance.createdAt.toIso8601String(),
   'isDiveCenterStaff': instance.isDiveCenterStaff,
   'mentionsDiveCenter': instance.mentionsDiveCenter,
+  'kind': instance.kind,
+  'feedbackProvided': instance.feedbackProvided,
 };

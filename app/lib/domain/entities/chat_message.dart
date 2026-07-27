@@ -18,5 +18,11 @@ abstract class ChatMessage with _$ChatMessage {
     // chip. Only ever true on a business trip; Stage 2 push will gate staff notifications
     // on it instead of pushing every message.
     @Default(false) bool mentionsDiveCenter,
+    // 'user' for a normal message; a system kind (e.g. 'feedback_prompt') renders as a
+    // centered row instead of a bubble — see ChatView's _SystemMessageRow.
+    @Default('user') String kind,
+    // Per-viewer: has the current user already submitted feedback for this trip? Only
+    // meaningful when kind is 'feedback_prompt'.
+    @Default(false) bool feedbackProvided,
   }) = _ChatMessage;
 }

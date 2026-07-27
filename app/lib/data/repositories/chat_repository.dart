@@ -18,5 +18,8 @@ class ChatRepository {
   Future<void> reportMessage(String tripId, String messageId, String reason, {String? details}) =>
       _service.reportMessage(tripId, messageId, reason, details: details);
 
+  Future<void> submitFeedback(String tripId, int rating, List<String> helpedWith, String? comment, bool contactOk) =>
+      _service.submitFeedback(tripId, rating, helpedWith, comment, contactOk);
+
   Future<String> getRealtimeToken() => _service.fetchRealtimeToken();
 }

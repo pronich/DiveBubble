@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "583379001701",
+    "project_id": "divebubble-a96e2",
+    "storage_bucket": "divebubble-a96e2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:583379001701:android:44330a034764a8e05ec18c",
+        "android_client_info": {
+          "package_name": "io.divebubble.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "583379001701-lghj2h816vkatq05n85pan56cb1rms2c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.divebubble.app",
+            "certificate_hash": "b3e3de6c00cf44ed522edfbaa8339f53cb88494b"
+          }
+        },
+        {
+          "client_id": "583379001701-t311i3i63bbmrp739t3ob5lekc3gbo1r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.divebubble.app",
+            "certificate_hash": "4e8461ca6240a92d00bb4df09393e824b82ca226"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZjpk4MTKlkwz6ylgNriX_Ri8hmhXILRs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

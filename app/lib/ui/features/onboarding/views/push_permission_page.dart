@@ -18,6 +18,7 @@ class PushPermissionPage extends StatefulWidget {
     required this.profileRepository,
     required this.pushRepository,
     this.initialLocation,
+    this.standalone = false,
   });
 
   final ProfileRepository profileRepository;
@@ -26,6 +27,10 @@ class PushPermissionPage extends StatefulWidget {
   // prefilled into Edit Profile here rather than letting it auto-detect again, since that
   // auto-detect is skipped during onboarding (see EditProfilePage.initState).
   final String? initialLocation;
+  // True when shown to a returning diver on a device that's never decided push permission
+  // (new phone, reinstall) rather than as part of new-account onboarding — just asks and
+  // pops, skipping the location/profile/certificates chain that follows it for new accounts.
+  final bool standalone;
 
   @override
   State<PushPermissionPage> createState() => _PushPermissionPageState();
@@ -35,6 +40,10 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
   bool _requesting = false;
 
   Future<void> _continue() async {
+    if (widget.standalone) {
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
     var profile = await widget.profileRepository.getProfile();
     if (widget.initialLocation != null && widget.initialLocation!.isNotEmpty) {
       profile = profile.copyWith(location: widget.initialLocation);

@@ -22,6 +22,10 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
   // OS-level denial can't be reversed from inside the app (no re-prompt) — surfaced as a
   // disabled switch with an explanatory subtitle rather than silently failing on tap.
   bool _deniedAtOSLevel = false;
+  // Never asked on this device (a new phone or reinstall resets this independently of our
+  // own stored preference) — unlike denied, requestPermission() can still show the OS prompt
+  // here, so the switch stays tappable instead of redirecting to system settings.
+  bool _notDeterminedAtOSLevel = false;
 
   @override
   void initState() {
@@ -33,10 +37,14 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
     final storedEnabled = await PushPreferences.isEnabled();
     final settings = await FirebaseMessaging.instance.getNotificationSettings();
     final denied = settings.authorizationStatus == AuthorizationStatus.denied;
+    final notDetermined = settings.authorizationStatus == AuthorizationStatus.notDetermined;
     if (!mounted) return;
     setState(() {
       _deniedAtOSLevel = denied;
-      _enabled = storedEnabled && !denied;
+      _notDeterminedAtOSLevel = notDetermined;
+      // Only genuinely "on" once the OS has actually authorized it — otherwise no token was
+      // ever registered and nothing would arrive, regardless of our own stored preference.
+      _enabled = storedEnabled && !denied && !notDetermined;
       _loading = false;
     });
   }
@@ -52,10 +60,12 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
           setState(() {
             _enabled = false;
             _deniedAtOSLevel = true;
+            _notDeterminedAtOSLevel = false;
           });
         }
         return;
       }
+      if (mounted) setState(() => _notDeterminedAtOSLevel = false);
       final token = await FirebaseMessaging.instance.getToken();
       if (token != null) {
         try {
@@ -90,9 +100,11 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
               children: [
                 SwitchListTile(
                   title: const Text('Push notifications'),
-                  subtitle: _deniedAtOSLevel
-                      ? const Text('Disabled in system settings — enable DiveBubble notifications there first')
-                      : const Text('New messages, trip updates and more'),
+                  subtitle: switch ((_deniedAtOSLevel, _notDeterminedAtOSLevel)) {
+                    (true, _) => const Text('Disabled in system settings — enable DiveBubble notifications there first'),
+                    (_, true) => const Text('Tap to enable notifications'),
+                    _ => const Text('New messages, trip updates and more'),
+                  },
                   value: _enabled,
                   onChanged: _deniedAtOSLevel && !_enabled ? null : _onChanged,
                 ),

@@ -2,6 +2,7 @@ package trip
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 	"time"
@@ -441,4 +442,28 @@ func (s *Service) IsMuted(ctx context.Context, id string, userID uuid.UUID) (boo
 // fan-out, not an HTTP-exposed listing (same pattern as divecenter.ListMemberUserIDs).
 func (s *Service) ListMutedUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
 	return s.Repo.ListMutedUserIDs(ctx, tripID)
+}
+
+func (s *Service) SubmitFeedback(ctx context.Context, id string, userID uuid.UUID, rating int, helpedWith string, comment sql.NullString, contactOk bool) error {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return ErrInvalidArgument
+	}
+	if rating < 1 || rating > 5 {
+		return ErrInvalidArgument
+	}
+	return s.Repo.SubmitFeedback(ctx, tripID, userID, rating, helpedWith, comment, contactOk)
+}
+
+func (s *Service) HasFeedback(ctx context.Context, id string, userID uuid.UUID) (bool, error) {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return false, ErrInvalidArgument
+	}
+	return s.Repo.HasFeedback(ctx, tripID, userID)
+}
+
+// ListTripIDsAwaitingFeedbackPrompt is un-gated — for the internal periodic scan job only.
+func (s *Service) ListTripIDsAwaitingFeedbackPrompt(ctx context.Context) ([]uuid.UUID, error) {
+	return s.Repo.ListTripIDsAwaitingFeedbackPrompt(ctx)
 }

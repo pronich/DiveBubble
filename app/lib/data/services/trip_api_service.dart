@@ -33,7 +33,7 @@ class TripApiService {
     final uri = Uri.parse('$baseUrl/trips').replace(
       queryParameters: (query != null && query.trim().isNotEmpty) ? {'q': query.trim()} : null,
     );
-    final res = await _client.get(uri);
+    final res = await _client.get(uri, headers: await _optionalAuthHeaders());
     if (res.statusCode != 200) {
       throw Exception('fetchTrips failed: ${res.statusCode} ${res.body}');
     }

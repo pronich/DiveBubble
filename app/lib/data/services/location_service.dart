@@ -22,12 +22,26 @@ class LocationService {
         return null;
       }
 
+      // Without a time limit this can hang indefinitely waiting for a fix that never
+      // arrives — a fresh Android emulator with no location set is the easiest way to hit
+      // it, but a real device with poor GPS signal (indoors, cold start) can too, and every
+      // caller here disables its own "skip/not now" escape hatch while awaiting this.
       return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 10)),
       );
     } catch (_) {
       return null;
     }
+  }
+
+  /// True if this device has never been asked (or was asked and declined once, but could
+  /// still be re-asked) — deniedForever and already-granted are both false, since neither
+  /// benefits from prompting again. Used to decide whether a returning diver on a new
+  /// device/reinstall should see the "why" explanation before the OS dialog, same as a
+  /// brand-new account does (see LoginSheet).
+  Future<bool> permissionUndecided() async {
+    final permission = await Geolocator.checkPermission();
+    return permission == LocationPermission.denied;
   }
 
   Future<String?> currentCityCountry() async {

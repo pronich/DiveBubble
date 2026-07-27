@@ -1,10 +1,14 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
+import '../../../../data/services/location_service.dart';
 import 'location_permission_page.dart';
+import 'push_permission_page.dart';
 
 /// Google/Apple/email sign-in choice sheet, opened from anywhere a gated action needs a
 /// signed-in user.
@@ -111,6 +115,37 @@ class _LoginSheetState extends State<LoginSheet> {
           ),
         );
       }
+    } else {
+      // Returning diver, but this device has never decided — a new phone or a reinstall
+      // both reset OS permissions with no auth-chain event to hook into otherwise. Location
+      // still self-heals the next time LocationService is used elsewhere (Nearest sort, Edit
+      // Profile), just without this explanation first; push has no such fallback, so main.dart's
+      // silent re-sync would otherwise never get the chance to register a token.
+      final locationUndecided = await LocationService().permissionUndecided();
+      if (mounted && locationUndecided) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => LocationPermissionPage(
+              profileRepository: widget.profileRepository,
+              pushRepository: widget.pushRepository,
+              standalone: true,
+            ),
+          ),
+        );
+      }
+
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      if (mounted && settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PushPermissionPage(
+              profileRepository: widget.profileRepository,
+              pushRepository: widget.pushRepository,
+              standalone: true,
+            ),
+          ),
+        );
+      }
     }
 
     if (mounted) Navigator.of(context).pop(true);
@@ -202,14 +237,19 @@ class _LoginSheetState extends State<LoginSheet> {
             : const Icon(Icons.g_mobiledata, size: 26),
         label: const Text('Continue with Google'),
       ),
-      const SizedBox(height: 12),
-      ElevatedButton.icon(
-        onPressed: _loading ? null : _signInWithApple,
-        icon: _pendingProvider == _AuthProvider.apple
-            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Icon(Icons.apple, size: 20),
-        label: const Text('Continue with Apple'),
-      ),
+      // Apple's native credential requires webAuthenticationOptions (Services ID + redirect
+      // URI) on Android, which we don't configure — Google Play has no equivalent-to-Apple's
+      // 5.1.1(v) requirement to offer it, so it's simplest to just hide the button there.
+      if (defaultTargetPlatform == TargetPlatform.iOS) ...[
+        const SizedBox(height: 12),
+        ElevatedButton.icon(
+          onPressed: _loading ? null : _signInWithApple,
+          icon: _pendingProvider == _AuthProvider.apple
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.apple, size: 20),
+          label: const Text('Continue with Apple'),
+        ),
+      ],
       const SizedBox(height: 12),
       OutlinedButton.icon(
         onPressed: _loading ? null : () => setState(() => _showEmailForm = true),

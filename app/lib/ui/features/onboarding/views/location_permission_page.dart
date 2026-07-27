@@ -9,10 +9,20 @@ import 'push_permission_page.dart';
 /// location before the OS permission dialog appears, rather than firing it silently later
 /// the moment the diver first opens Edit Profile (the old behavior).
 class LocationPermissionPage extends StatefulWidget {
-  const LocationPermissionPage({super.key, required this.profileRepository, required this.pushRepository});
+  const LocationPermissionPage({
+    super.key,
+    required this.profileRepository,
+    required this.pushRepository,
+    this.standalone = false,
+  });
 
   final ProfileRepository profileRepository;
   final PushRepository pushRepository;
+  // True when shown to a returning diver on a device that's never decided location
+  // permission (new phone, reinstall) rather than as part of new-account onboarding — just
+  // asks and pops, skipping the push/profile/certificates chain that follows it for new
+  // accounts (see LoginSheet).
+  final bool standalone;
 
   @override
   State<LocationPermissionPage> createState() => _LocationPermissionPageState();
@@ -23,6 +33,13 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
   bool _requesting = false;
 
   Future<void> _continue({String? resolvedLocation}) async {
+    if (widget.standalone) {
+      // Resolved location has nowhere to go without the profile step that follows for new
+      // accounts — LocationService itself already persists it via EditProfilePage's own
+      // auto-detect the next time a returning diver opens their profile, so it's not lost.
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => PushPermissionPage(

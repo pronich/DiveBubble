@@ -60,4 +60,26 @@ class ChatApiService {
       throw Exception('reportMessage failed: ${res.statusCode} ${res.body}');
     }
   }
+
+  Future<void> submitFeedback(
+    String tripId,
+    int rating,
+    List<String> helpedWith,
+    String? comment,
+    bool contactOk,
+  ) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$tripId/feedback'),
+      headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'rating': rating,
+        'helpedWith': helpedWith,
+        'comment': comment ?? '',
+        'contactOk': contactOk,
+      }),
+    );
+    if (res.statusCode != 204) {
+      throw Exception('submitFeedback failed: ${res.statusCode} ${res.body}');
+    }
+  }
 }

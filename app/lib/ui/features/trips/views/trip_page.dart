@@ -112,7 +112,10 @@ class _TripPageState extends State<TripPage> {
           final isOrganizer = widget.viewModel.isOrganizer;
 
           return ListView(
-            padding: EdgeInsets.zero,
+            // Bottom-only: the hero image intentionally runs full-bleed under the app bar,
+            // but the last item (Join/Book now button) needs room above the system nav bar —
+            // otherwise 3-button nav on Android overlaps it (no MediaQuery inset otherwise).
+            padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom),
             children: [
               Builder(builder: (context) {
                 final photos = widget.viewModel.photos;

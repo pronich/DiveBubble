@@ -20,24 +20,45 @@ func (r *Repository) Create(ctx context.Context, tripID, userID uuid.UUID, body 
 	err := r.DB.QueryRowContext(ctx, `
 		INSERT INTO chat_messages (trip_id, user_id, body, mentions_dive_center)
 		VALUES ($1, $2, $3, $4)
-		RETURNING id, trip_id, user_id, body, created_at, mentions_dive_center
-	`, tripID, userID, body, mentionsDiveCenter).Scan(&m.ID, &m.TripID, &m.UserID, &m.Body, &m.CreatedAt, &m.MentionsDiveCenter)
+		RETURNING id, trip_id, user_id, body, created_at, mentions_dive_center, kind
+	`, tripID, userID, body, mentionsDiveCenter).Scan(&m.ID, &m.TripID, &m.UserID, &m.Body, &m.CreatedAt, &m.MentionsDiveCenter, &m.Kind)
 	return m, err
+}
+
+// CreateSystem inserts a message sent by SystemUserID with the given kind (never KindUser).
+func (r *Repository) CreateSystem(ctx context.Context, tripID uuid.UUID, kind, body string) (Message, error) {
+	var m Message
+	err := r.DB.QueryRowContext(ctx, `
+		INSERT INTO chat_messages (trip_id, user_id, body, kind)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id, trip_id, user_id, body, created_at, mentions_dive_center, kind
+	`, tripID, SystemUserID, body, kind).Scan(&m.ID, &m.TripID, &m.UserID, &m.Body, &m.CreatedAt, &m.MentionsDiveCenter, &m.Kind)
+	return m, err
+}
+
+// ExistsByTripAndKind reports whether a message of the given kind has already been sent for
+// this trip — used to keep the periodic feedback-prompt scan idempotent.
+func (r *Repository) ExistsByTripAndKind(ctx context.Context, tripID uuid.UUID, kind string) (bool, error) {
+	var exists bool
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM chat_messages WHERE trip_id = $1 AND kind = $2)
+	`, tripID, kind).Scan(&exists)
+	return exists, err
 }
 
 func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Message, error) {
 	var m Message
 	err := r.DB.QueryRowContext(ctx, `
-		SELECT id, trip_id, user_id, body, created_at, mentions_dive_center
+		SELECT id, trip_id, user_id, body, created_at, mentions_dive_center, kind
 		FROM chat_messages
 		WHERE id = $1
-	`, id).Scan(&m.ID, &m.TripID, &m.UserID, &m.Body, &m.CreatedAt, &m.MentionsDiveCenter)
+	`, id).Scan(&m.ID, &m.TripID, &m.UserID, &m.Body, &m.CreatedAt, &m.MentionsDiveCenter, &m.Kind)
 	return m, err
 }
 
 func (r *Repository) ListByTrip(ctx context.Context, tripID uuid.UUID) ([]Message, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-		SELECT id, trip_id, user_id, body, created_at, mentions_dive_center
+		SELECT id, trip_id, user_id, body, created_at, mentions_dive_center, kind
 		FROM chat_messages
 		WHERE trip_id = $1
 		ORDER BY created_at ASC
@@ -50,7 +71,7 @@ func (r *Repository) ListByTrip(ctx context.Context, tripID uuid.UUID) ([]Messag
 	messages := []Message{}
 	for rows.Next() {
 		var m Message
-		if err := rows.Scan(&m.ID, &m.TripID, &m.UserID, &m.Body, &m.CreatedAt, &m.MentionsDiveCenter); err != nil {
+		if err := rows.Scan(&m.ID, &m.TripID, &m.UserID, &m.Body, &m.CreatedAt, &m.MentionsDiveCenter, &m.Kind); err != nil {
 			return nil, err
 		}
 		messages = append(messages, m)

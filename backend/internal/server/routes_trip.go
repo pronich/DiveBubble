@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"divebubble_be/internal/account"
@@ -46,6 +47,7 @@ func registerTripRoutes(
 	mux.HandleFunc("GET /trips/{id}/mute", withAuth(authIssuer, handleGetTripMute(svc)))
 	mux.HandleFunc("POST /trips/{id}/mute", withAuth(authIssuer, handleMuteTrip(svc)))
 	mux.HandleFunc("DELETE /trips/{id}/mute", withAuth(authIssuer, handleUnmuteTrip(svc)))
+	mux.HandleFunc("POST /trips/{id}/feedback", withAuth(authIssuer, handleSubmitFeedback(svc)))
 	// Same "browsable without an account" posture as GET /trips/{id} — the gallery is part
 	// of the trip's own public detail, not gated behind participation. Adding a photo (POST)
 	// is a multipart upload, so it's registered in routes_upload.go alongside the others.
@@ -682,6 +684,47 @@ func handleUnmuteTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 				return
 			}
 			writeError(w, http.StatusInternalServerError, "could not unmute trip")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+type submitFeedbackRequest struct {
+	Rating     int      `json:"rating"`
+	HelpedWith []string `json:"helpedWith"`
+	Comment    string   `json:"comment"`
+	ContactOk  bool     `json:"contactOk"`
+}
+
+// handleSubmitFeedback is gated by requireParticipant, unlike mute — feedback only makes
+// sense from someone who was actually on the trip.
+func handleSubmitFeedback(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		tripID, ok := requireParticipant(w, r, svc, r.PathValue("id"), userID)
+		if !ok {
+			return
+		}
+
+		var req submitFeedbackRequest
+		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
+		if err := dec.Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+
+		comment := sql.NullString{}
+		if trimmed := strings.TrimSpace(req.Comment); trimmed != "" {
+			comment = sql.NullString{String: trimmed, Valid: true}
+		}
+		helpedWith := strings.Join(req.HelpedWith, ", ")
+
+		if err := svc.SubmitFeedback(r.Context(), tripID.String(), userID, req.Rating, helpedWith, comment, req.ContactOk); err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "rating must be between 1 and 5")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not submit feedback")
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

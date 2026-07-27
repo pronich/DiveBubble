@@ -10,5 +10,7 @@ extension ChatMessageApiMapper on ChatMessageApiModel {
         createdAt: createdAt,
         isDiveCenterStaff: isDiveCenterStaff,
         mentionsDiveCenter: mentionsDiveCenter,
+        kind: kind,
+        feedbackProvided: feedbackProvided,
       );
 }

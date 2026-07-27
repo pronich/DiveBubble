@@ -469,3 +469,50 @@ func (r *Repository) CountParticipants(ctx context.Context, tripID uuid.UUID) (i
 	`, tripID).Scan(&count)
 	return count, err
 }
+
+// SubmitFeedback records one participant's post-trip feedback. Resubmitting is a silent
+// no-op — there's no edit flow, first submission wins. helpedWith is a comma-joined free
+// string from a fixed client-side checklist, same convention as users.languages.
+func (r *Repository) SubmitFeedback(ctx context.Context, tripID, userID uuid.UUID, rating int, helpedWith string, comment sql.NullString, contactOk bool) error {
+	_, err := r.DB.ExecContext(ctx, `
+		INSERT INTO trip_feedback (trip_id, user_id, rating, helped_with, comment, contact_ok)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (trip_id, user_id) DO NOTHING
+	`, tripID, userID, rating, helpedWith, comment, contactOk)
+	return err
+}
+
+func (r *Repository) HasFeedback(ctx context.Context, tripID, userID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM trip_feedback WHERE trip_id = $1 AND user_id = $2)
+	`, tripID, userID).Scan(&exists)
+	return exists, err
+}
+
+// ListTripIDsAwaitingFeedbackPrompt backs the periodic scan job — trips whose dive date has
+// passed, weren't cancelled, and haven't had a feedback-prompt system message sent yet.
+func (r *Repository) ListTripIDsAwaitingFeedbackPrompt(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT t.id FROM trips t
+		WHERE t.start_time <= now()
+		  AND t.booking_status != 'cancelled'
+		  AND NOT EXISTS (
+		      SELECT 1 FROM chat_messages cm WHERE cm.trip_id = t.id AND cm.kind = 'feedback_prompt'
+		  )
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}

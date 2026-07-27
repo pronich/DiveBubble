@@ -82,6 +82,8 @@ class ChatViewModel extends ChangeNotifier {
         createdAt: DateTime.parse(json['createdAt'] as String),
         isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
         mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
+        kind: json['kind'] as String? ?? 'user',
+        feedbackProvided: json['feedbackProvided'] as bool? ?? false,
       );
       if (blockedUserIds.contains(message.userId)) return;
       if (_messages.any((m) => m.id == message.id)) return;
@@ -104,6 +106,26 @@ class ChatViewModel extends ChangeNotifier {
       await profileRepository.blockUser(userId);
       blockedUserIds = {...blockedUserIds, userId};
       _messages = _messages.where((m) => m.userId != userId).toList();
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> submitFeedback(
+    String messageId,
+    int rating,
+    List<String> helpedWith,
+    String? comment,
+    bool contactOk,
+  ) async {
+    try {
+      await _repository.submitFeedback(tripId, rating, helpedWith, comment, contactOk);
+      _messages = [
+        for (final m in _messages)
+          if (m.id == messageId) m.copyWith(feedbackProvided: true) else m,
+      ];
       notifyListeners();
       return null;
     } catch (e) {
