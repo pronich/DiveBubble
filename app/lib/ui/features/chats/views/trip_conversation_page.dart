@@ -15,6 +15,7 @@ import '../../transport/view_models/transport_view_model.dart';
 import '../../transport/views/transport_view.dart';
 import '../../trips/view_models/trip_view_model.dart';
 import '../../trips/views/trip_page.dart';
+import '../../../core/theme/app_colors.dart';
 import '../view_models/chat_view_model.dart';
 import 'chat_view.dart';
 
@@ -77,7 +78,8 @@ class TripConversationPage extends StatefulWidget {
   State<TripConversationPage> createState() => _TripConversationPageState();
 }
 
-class _TripConversationPageState extends State<TripConversationPage> with SingleTickerProviderStateMixin {
+class _TripConversationPageState extends State<TripConversationPage>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   bool _isCancelled = false;
   String? _businessName;
@@ -105,18 +107,24 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
   // footguns, see RealtimeService) into multiple ViewModels.
   Future<void> _refreshTripDerivedState() async {
     try {
-      final trip = await widget.tripRepository.getTrip(widget.chatViewModel.tripId);
+      final trip = await widget.tripRepository.getTrip(
+        widget.chatViewModel.tripId,
+      );
       final diveCenterId = trip.diveCenterId;
       String? businessName;
       var isDiveCenterStaff = false;
       if (diveCenterId != null) {
         try {
-          businessName = (await widget.diveCenterRepository.getById(diveCenterId)).name;
+          businessName = (await widget.diveCenterRepository.getById(
+            diveCenterId,
+          )).name;
         } catch (_) {
           // Best-effort — chat messages just fall back to the sender's plain name.
         }
         try {
-          isDiveCenterStaff = await widget.diveCenterRepository.isMember(diveCenterId);
+          isDiveCenterStaff = await widget.diveCenterRepository.isMember(
+            diveCenterId,
+          );
         } catch (_) {
           // Best-effort — worst case the mention chip stays visible for a staff member.
         }
@@ -137,9 +145,13 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
     if (_tabController.index == 1) {
-      widget.transportViewModel.checkAlert().then((_) => widget.onTransportAlertCleared?.call());
+      widget.transportViewModel.checkAlert().then(
+        (_) => widget.onTransportAlertCleared?.call(),
+      );
     } else if (_tabController.index == 2) {
-      widget.buddyViewModel.checkAlert().then((_) => widget.onBuddyAlertCleared?.call());
+      widget.buddyViewModel.checkAlert().then(
+        (_) => widget.onBuddyAlertCleared?.call(),
+      );
     }
   }
 
@@ -173,10 +185,16 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
               child: CircleAvatar(
                 radius: 18,
                 backgroundColor: theme.colorScheme.secondaryContainer,
-                backgroundImage: (widget.tripPhotoUrl?.isNotEmpty ?? false) ? NetworkImage(widget.tripPhotoUrl!) : null,
+                backgroundImage: (widget.tripPhotoUrl?.isNotEmpty ?? false)
+                    ? NetworkImage(widget.tripPhotoUrl!)
+                    : null,
                 child: (widget.tripPhotoUrl?.isNotEmpty ?? false)
                     ? null
-                    : Icon(Icons.image_outlined, size: 18, color: theme.colorScheme.onSecondaryContainer),
+                    : Icon(
+                        Icons.image_outlined,
+                        size: 18,
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
               ),
             ),
           ),
@@ -264,32 +282,38 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
   final String? businessName;
 
   static const _compactWidth = 44.0;
-  static const _trackHeight = 44.0;
+  static const _pillHeight = 44.0;
+  static const _gap = 8.0;
+  // Both tab-tap page transitions and the pill's own width morph share this duration/curve —
+  // kept in sync deliberately so the two motions read as one, not two competing animations.
+  static const _switchDuration = Duration(milliseconds: 320);
+  static const _switchCurve = Curves.easeOutCubic;
+
+  static const _topGap = 10.0;
 
   @override
-  Size get preferredSize => const Size.fromHeight(_trackHeight + 12);
+  Size get preferredSize => const Size.fromHeight(_pillHeight + _topGap + 12);
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return AnimatedBuilder(
-      animation: Listenable.merge([tabController, transportViewModel, buddyViewModel]),
+      animation: Listenable.merge([
+        tabController,
+        transportViewModel,
+        buddyViewModel,
+      ]),
       builder: (context, _) {
         final activeIndex = tabController.index;
         final myOffer = transportViewModel.myOffer;
         final myRequest = buddyViewModel.myRequest;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, _topGap, 16, 12),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final activeWidth = constraints.maxWidth - _compactWidth * 2;
-              return Container(
-                height: _trackHeight,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(_trackHeight / 2),
-                ),
+              final activeWidth =
+                  constraints.maxWidth - _gap * 2 - _compactWidth * 2;
+              return SizedBox(
+                height: _pillHeight,
                 child: Row(
                   children: [
                     _PillSegment(
@@ -299,8 +323,13 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                       filledIcon: Icons.chat_bubble,
                       label: 'Chat',
                       hasAlert: false,
-                      onTap: () => tabController.animateTo(0),
+                      onTap: () => tabController.animateTo(
+                        0,
+                        duration: _switchDuration,
+                        curve: _switchCurve,
+                      ),
                     ),
+                    const SizedBox(width: _gap),
                     _PillSegment(
                       isActive: activeIndex == 1,
                       width: activeIndex == 1 ? activeWidth : _compactWidth,
@@ -308,7 +337,11 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                       filledIcon: Icons.directions_car,
                       label: 'Transport',
                       hasAlert: transportViewModel.hasAlert,
-                      onTap: () => tabController.animateTo(1),
+                      onTap: () => tabController.animateTo(
+                        1,
+                        duration: _switchDuration,
+                        curve: _switchCurve,
+                      ),
                       // Only reachable once you're actually in a car — a plain offers list has
                       // nothing to show info about or leave/dissolve yet. Only surfaced on the
                       // active, expanded segment — no room for a second tap target once
@@ -316,29 +349,34 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                       onInfoTap: myOffer == null
                           ? null
                           : () => showTransportOfferDetailSheet(
-                                context,
-                                offerId: myOffer.id,
-                                viewModel: transportViewModel,
-                                isCancelled: isCancelled,
-                                businessName: businessName,
-                              ),
+                              context,
+                              offerId: myOffer.id,
+                              viewModel: transportViewModel,
+                              isCancelled: isCancelled,
+                              businessName: businessName,
+                            ),
                     ),
+                    const SizedBox(width: _gap),
                     _PillSegment(
                       isActive: activeIndex == 2,
                       width: activeIndex == 2 ? activeWidth : _compactWidth,
-                      outlinedIcon: Icons.people_outline,
-                      filledIcon: Icons.people,
+                      outlinedIcon: Icons.emoji_people_outlined,
+                      filledIcon: Icons.emoji_people,
                       label: 'Buddy',
                       hasAlert: buddyViewModel.hasAlert,
-                      onTap: () => tabController.animateTo(2),
+                      onTap: () => tabController.animateTo(
+                        2,
+                        duration: _switchDuration,
+                        curve: _switchCurve,
+                      ),
                       onInfoTap: myRequest == null
                           ? null
                           : () => showBuddyRequestDetailSheet(
-                                context,
-                                requestId: myRequest.id,
-                                viewModel: buddyViewModel,
-                                isCancelled: isCancelled,
-                              ),
+                              context,
+                              requestId: myRequest.id,
+                              viewModel: buddyViewModel,
+                              isCancelled: isCancelled,
+                            ),
                     ),
                   ],
                 ),
@@ -375,69 +413,85 @@ class _PillSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final contentColor = isActive ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
-      width: width,
-      height: double.infinity,
-      decoration: BoxDecoration(
-        color: isActive ? theme.colorScheme.primary : null,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      clipBehavior: Clip.none,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onTap,
-          child: Center(
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(isActive ? filledIcon : outlinedIcon, size: 20, color: contentColor),
-                    if (isActive) ...[
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          label,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelLarge?.copyWith(color: contentColor, fontWeight: FontWeight.w600),
+    // Both states sit on soft, near-identical light-blue backgrounds — content color stays
+    // the same dark navy in both, only the background shade shifts (see AppColors.surfaceSelected
+    // vs surfaceSecondary and the textOnLightBlue token, all straight from Figma).
+    const contentColor = AppColors.textOnLightBlue;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: _PillTabBar._switchDuration,
+        curve: _PillTabBar._switchCurve,
+        width: width,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.surfaceSelected
+              : AppColors.surfaceSecondary,
+          borderRadius: BorderRadius.circular(_PillTabBar._pillHeight / 2),
+        ),
+        clipBehavior: Clip.none,
+        child: Center(
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isActive ? filledIcon : outlinedIcon,
+                    size: 20,
+                    color: contentColor,
+                  ),
+                  if (isActive) ...[
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        label,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: contentColor,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (onInfoTap != null)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 2),
-                          child: Material(
-                            type: MaterialType.transparency,
-                            child: InkWell(
-                              customBorder: const CircleBorder(),
-                              onTap: onInfoTap,
-                              child: Padding(
-                                padding: const EdgeInsets.all(2),
-                                child: Icon(Icons.info_outline, size: 16, color: contentColor),
+                    ),
+                    if (onInfoTap != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 2),
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: onInfoTap,
+                            child: const Padding(
+                              padding: EdgeInsets.all(2),
+                              child: Icon(
+                                Icons.info_outline,
+                                size: 16,
+                                color: contentColor,
                               ),
                             ),
                           ),
                         ),
-                    ],
+                      ),
                   ],
-                ),
-                if (hasAlert)
-                  Positioned(
-                    right: isActive ? -2 : -6,
-                    top: -2,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(color: theme.colorScheme.error, shape: BoxShape.circle),
+                ],
+              ),
+              if (hasAlert)
+                Positioned(
+                  right: isActive ? -2 : -6,
+                  top: -2,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.error,
+                      shape: BoxShape.circle,
                     ),
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
       ),
