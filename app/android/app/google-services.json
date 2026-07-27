@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "583379001701-lghj2h816vkatq05n85pan56cb1rms2c.apps.googleusercontent.com",
+          "client_id": "583379001701-bo7qc3377sqcfipoe4oln8huq3cdvh8g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.divebubble.app",
+            "certificate_hash": "4e8461ca6240a92d00bb4df09393e824b82ca226"
+          }
+        },
+        {
+          "client_id": "583379001701-svpvp24pmc7k39bvgvnhr9as20o10j0o.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "io.divebubble.app",
@@ -22,11 +30,11 @@
           }
         },
         {
-          "client_id": "583379001701-t311i3i63bbmrp739t3ob5lekc3gbo1r.apps.googleusercontent.com",
+          "client_id": "583379001701-ujrk2vc0mgi5r6f0vn953uct6mo2712c.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "io.divebubble.app",
-            "certificate_hash": "4e8461ca6240a92d00bb4df09393e824b82ca226"
+            "certificate_hash": "8ba077b980f19364b4fa6421dc6f8d64623a687a"
           }
         }
       ],
