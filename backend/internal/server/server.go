@@ -69,7 +69,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	registerTripRoutes(mux, tripSvc, transportSvc, diveCenterSvc, profileSvc, authIssuer, pushSvc, accountSvc)
 	registerMessageRoutes(mux, messageSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, publisher, pushSvc, moderationSvc)
 	registerModerationRoutes(mux, moderationSvc, messageSvc, tripSvc, authIssuer)
-	registerTransportRoutes(mux, transportSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, pushSvc)
+	registerTransportRoutes(mux, transportSvc, tripSvc, diveCenterSvc, profileSvc, authIssuer, pushSvc, messageSvc, moderationSvc, publisher)
 	registerRealtimeRoutes(mux, realtimeTokenIssuer, authIssuer)
 	registerAuthRoutes(mux, cfg, identityRepo, sessionRepo, authIssuer, appleKeys, appleTokens, emailCodeRepo, emailSvc, diveCenterSvc)
 	registerProfileRoutes(mux, profileSvc, authIssuer)

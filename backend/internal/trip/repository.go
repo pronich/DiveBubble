@@ -193,7 +193,8 @@ func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (
 // entirely rather than joining for nothing). Sort stays date order here; distance-based
 // "Nearest" sort is computed client-side (see CLAUDE.md's Search & Filters sheet section).
 // includeTestCenters lets users.is_owner accounts see test dive centers' trips too — everyone
-// else has them excluded from Explore.
+// else has them excluded from Explore. Also excludes trips whose dive date has already
+// passed — Explore is upcoming trips to join, not history (that's My Trips/ListJoinedByUser).
 func (r *Repository) List(ctx context.Context, query string, includeTestCenters bool) ([]Trip, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT `+tripColumnsPrefixed("t")+`
@@ -201,6 +202,7 @@ func (r *Repository) List(ctx context.Context, query string, includeTestCenters 
 		LEFT JOIN users creator ON creator.id = t.creator_user_id
 		LEFT JOIN dive_centers dc ON dc.id = t.dive_center_id
 		WHERE t.booking_status != 'cancelled'
+		  AND t.start_time > now()
 		  AND ($1 = '' OR t.title ILIKE '%' || $1 || '%' OR t.location ILIKE '%' || $1 || '%'
 		       OR creator.display_name ILIKE '%' || $1 || '%' OR dc.name ILIKE '%' || $1 || '%')
 		  AND (dc.is_test IS NOT TRUE OR $2)

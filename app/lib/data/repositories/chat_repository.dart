@@ -7,13 +7,13 @@ class ChatRepository {
 
   final ChatApiService _service;
 
-  Future<List<ChatMessage>> getMessages(String tripId) async {
-    final apiModels = await _service.fetchMessages(tripId);
+  Future<List<ChatMessage>> getMessages(String tripId, {String? offerId}) async {
+    final apiModels = await _service.fetchMessages(tripId, offerId: offerId);
     return apiModels.map((m) => m.toDomain()).toList();
   }
 
-  Future<void> sendMessage(String tripId, String body, {bool mentionsDiveCenter = false}) =>
-      _service.sendMessage(tripId, body, mentionsDiveCenter: mentionsDiveCenter);
+  Future<void> sendMessage(String tripId, String body, {String? offerId, bool mentionsDiveCenter = false}) =>
+      _service.sendMessage(tripId, body, offerId: offerId, mentionsDiveCenter: mentionsDiveCenter);
 
   Future<void> reportMessage(String tripId, String messageId, String reason, {String? details}) =>
       _service.reportMessage(tripId, messageId, reason, details: details);

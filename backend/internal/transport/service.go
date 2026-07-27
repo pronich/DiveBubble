@@ -11,6 +11,7 @@ import (
 var ErrInvalidArgument = errors.New("invalid argument")
 var ErrFull = errors.New("no seats left")
 var ErrAlreadyBooked = errors.New("already joined a transport offer on this trip")
+var ErrForbidden = errors.New("only the creator can do that")
 
 type Service struct {
 	Repo *Repository
@@ -84,6 +85,26 @@ func (s *Service) Join(ctx context.Context, offerID, userID uuid.UUID) (Offer, e
 
 func (s *Service) ListJoins(ctx context.Context, offerID uuid.UUID) ([]uuid.UUID, error) {
 	return s.Repo.ListJoins(ctx, offerID)
+}
+
+// Leave lets a joined diver step out of a single car — the offer itself (and its chat)
+// carries on for whoever's left. Deleting a non-existent join is a harmless no-op.
+func (s *Service) Leave(ctx context.Context, offerID, userID uuid.UUID) error {
+	return s.Repo.Leave(ctx, offerID, userID)
+}
+
+// Dissolve is the creator cancelling their own car outright — deletes the offer, cascading
+// its joins and chat history (see migration 000046's ON DELETE CASCADE on chat_messages).
+// Only the creator may dissolve; anyone else gets ErrForbidden.
+func (s *Service) Dissolve(ctx context.Context, offerID, userID uuid.UUID) error {
+	offer, err := s.Repo.GetByID(ctx, offerID)
+	if err != nil {
+		return err
+	}
+	if offer.UserID != userID {
+		return ErrForbidden
+	}
+	return s.Repo.DeleteOffer(ctx, offerID)
 }
 
 // HandleUserLeavingTrip is called when a diver leaves a trip entirely (see trip.Service —

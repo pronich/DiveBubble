@@ -147,6 +147,14 @@ func (r *Repository) Join(ctx context.Context, offerID, userID uuid.UUID) error 
 	return err
 }
 
+// Leave removes a single user's join on a single offer — unlike RemoveUserJoinsInTrip, this
+// doesn't touch any other offer the user might be joined to (they can only be joined to one,
+// but this stays scoped to the one offer being left regardless).
+func (r *Repository) Leave(ctx context.Context, offerID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `DELETE FROM transport_offer_joins WHERE offer_id = $1 AND user_id = $2`, offerID, userID)
+	return err
+}
+
 // ListCreatedByUserInTrip finds offers this user made on this trip — used when they leave
 // the trip, since an offer with its creator gone no longer makes sense.
 func (r *Repository) ListCreatedByUserInTrip(ctx context.Context, tripID, userID uuid.UUID) ([]Offer, error) {

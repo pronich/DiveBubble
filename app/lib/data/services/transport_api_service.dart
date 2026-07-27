@@ -88,6 +88,26 @@ class TransportApiService {
     return decoded.map((e) => (e as Map<String, dynamic>)['userId'] as String).toList();
   }
 
+  Future<void> leaveOffer(String tripId, String offerId) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$tripId/transport/$offerId/leave'),
+      headers: await _authHeaders(),
+    );
+    if (res.statusCode != 204) {
+      throw Exception(_extractError(res.body) ?? 'Could not leave car');
+    }
+  }
+
+  Future<void> dissolveOffer(String tripId, String offerId) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$tripId/transport/$offerId/dissolve'),
+      headers: await _authHeaders(),
+    );
+    if (res.statusCode != 204) {
+      throw Exception(_extractError(res.body) ?? 'Could not dissolve car');
+    }
+  }
+
   // Also clears the alert server-side — checking is the acknowledgment, same as opening a chat.
   Future<bool> fetchHasAlert(String tripId) async {
     final res = await _client.get(

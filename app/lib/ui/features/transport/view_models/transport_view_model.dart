@@ -41,6 +41,17 @@ class TransportViewModel extends ChangeNotifier {
   bool _hasAlert = false;
   bool get hasAlert => _hasAlert;
 
+  /// The car (created or joined) this diver is currently part of on this trip, if any — at
+  /// most one, since joining is capped to one ride per trip (see transport.ErrAlreadyBooked
+  /// server-side). Drives both the Transport tab's chat-vs-list swap (TransportView) and the
+  /// ⓘ affordance's visibility (TripConversationPage).
+  TransportOffer? get myOffer {
+    for (final o in _offers) {
+      if (o.joined || o.userId == currentUserId) return o;
+    }
+    return null;
+  }
+
   Future<void> load() async {
     _isLoading = true;
     _error = null;
@@ -113,4 +124,29 @@ class TransportViewModel extends ChangeNotifier {
   }
 
   Future<List<String>> getJoinedUserIds(String offerId) => _repository.getJoinedUserIds(tripId, offerId);
+
+  /// Steps a joiner out of a car — returns an error message on failure, null on success.
+  Future<String?> leave(String offerId) async {
+    try {
+      await _repository.leaveOffer(tripId, offerId);
+      _offers = await _repository.getOffers(tripId);
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
+
+  /// Creator-only: cancels the car outright. Returns an error message on failure, null on
+  /// success.
+  Future<String?> dissolve(String offerId) async {
+    try {
+      await _repository.dissolveOffer(tripId, offerId);
+      _offers = await _repository.getOffers(tripId);
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    }
+  }
 }

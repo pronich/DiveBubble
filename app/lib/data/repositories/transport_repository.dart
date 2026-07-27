@@ -21,5 +21,9 @@ class TransportRepository {
 
   Future<List<String>> getJoinedUserIds(String tripId, String offerId) => _service.fetchJoinedUserIds(tripId, offerId);
 
+  Future<void> leaveOffer(String tripId, String offerId) => _service.leaveOffer(tripId, offerId);
+
+  Future<void> dissolveOffer(String tripId, String offerId) => _service.dissolveOffer(tripId, offerId);
+
   Future<bool> getHasAlert(String tripId) => _service.fetchHasAlert(tripId);
 }

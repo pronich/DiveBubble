@@ -172,24 +172,58 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
             const Tab(text: 'Chat'),
             ListenableBuilder(
               listenable: widget.transportViewModel,
-              builder: (context, _) => Tab(
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Text('Transport'),
-                    if (widget.transportViewModel.hasAlert)
-                      Positioned(
-                        right: -8,
-                        top: -2,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
-                        ),
+              builder: (context, _) {
+                final myOffer = widget.transportViewModel.myOffer;
+                return Tab(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Transport'),
+                          // Only reachable once you're actually in a car — a plain offers
+                          // list has nothing to show info about or leave/dissolve yet. This
+                          // tap target is separate from the trip title (→ TripPage) and from
+                          // a message sender's avatar (→ DiverIdCard) — three unambiguous
+                          // ways to reach three different things.
+                          if (myOffer != null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Material(
+                                type: MaterialType.transparency,
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: () => showTransportOfferDetailSheet(
+                                    context,
+                                    offerId: myOffer.id,
+                                    viewModel: widget.transportViewModel,
+                                    isCancelled: _isCancelled,
+                                    businessName: _businessName,
+                                  ),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(2),
+                                    child: Icon(Icons.info_outline, size: 16),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                  ],
-                ),
-              ),
+                      if (widget.transportViewModel.hasAlert)
+                        Positioned(
+                          right: -8,
+                          top: -2,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(color: Theme.of(context).colorScheme.error, shape: BoxShape.circle),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -203,7 +237,13 @@ class _TripConversationPageState extends State<TripConversationPage> with Single
             businessName: _businessName,
             canMentionDiveCenter: !_isDiveCenterStaff,
           ),
-          TransportView(viewModel: widget.transportViewModel, isCancelled: _isCancelled, businessName: _businessName),
+          TransportView(
+            viewModel: widget.transportViewModel,
+            chatRepository: widget.chatRepository,
+            realtimeService: widget.realtimeService,
+            isCancelled: _isCancelled,
+            businessName: _businessName,
+          ),
         ],
       ),
     );

@@ -20,8 +20,8 @@ class ChatApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
-  Future<List<ChatMessageApiModel>> fetchMessages(String tripId) async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips/$tripId/messages'), headers: await _authHeaders());
+  Future<List<ChatMessageApiModel>> fetchMessages(String tripId, {String? offerId}) async {
+    final res = await _client.get(Uri.parse('$baseUrl${_messagesPath(tripId, offerId)}'), headers: await _authHeaders());
     if (res.statusCode != 200) {
       throw Exception('fetchMessages failed: ${res.statusCode} ${res.body}');
     }
@@ -31,6 +31,10 @@ class ChatApiService {
         .toList();
   }
 
+  // Null offerId is the trip's main chat; set is a single car offer's own chat.
+  String _messagesPath(String tripId, String? offerId) =>
+      offerId != null ? '/trips/$tripId/transport/$offerId/messages' : '/trips/$tripId/messages';
+
   Future<String> fetchRealtimeToken() async {
     final res = await _client.get(Uri.parse('$baseUrl/realtime/token'), headers: await _authHeaders());
     if (res.statusCode != 200) {
@@ -39,9 +43,9 @@ class ChatApiService {
     return (jsonDecode(res.body) as Map<String, dynamic>)['token'] as String;
   }
 
-  Future<void> sendMessage(String tripId, String body, {bool mentionsDiveCenter = false}) async {
+  Future<void> sendMessage(String tripId, String body, {String? offerId, bool mentionsDiveCenter = false}) async {
     final res = await _client.post(
-      Uri.parse('$baseUrl/trips/$tripId/messages'),
+      Uri.parse('$baseUrl${_messagesPath(tripId, offerId)}'),
       headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
       body: jsonEncode({'body': body, 'mentionsDiveCenter': mentionsDiveCenter}),
     );

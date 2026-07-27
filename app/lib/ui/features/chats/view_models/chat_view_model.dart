@@ -16,6 +16,8 @@ class ChatViewModel extends ChangeNotifier {
     required this.profileRepository,
     required this.tripId,
     required this.currentUserId,
+    this.offerId,
+    this.onDissolved,
   })  : _repository = repository,
         _realtimeService = realtimeService;
 
@@ -24,6 +26,14 @@ class ChatViewModel extends ChangeNotifier {
   final ProfileRepository profileRepository;
   final String tripId;
   final String currentUserId;
+
+  // Null = the trip's main chat; set = this car offer's own chat. Threaded through to the
+  // repository (which swaps the REST path) and the realtime channel name.
+  final String? offerId;
+
+  // Fired when the realtime "dissolved" sentinel arrives (offer chats only) — the creator
+  // cancelled this car; the view uses this to bounce back to the offers list.
+  final VoidCallback? onDissolved;
 
   centrifuge.Subscription? _subscription;
   StreamSubscription<centrifuge.PublicationEvent>? _publicationListener;
@@ -51,7 +61,7 @@ class ChatViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _messages = await _repository.getMessages(tripId);
+      _messages = await _repository.getMessages(tripId, offerId: offerId);
       try {
         blockedUserIds = (await profileRepository.getBlockedUserIds()).toSet();
       } catch (_) {
@@ -68,12 +78,20 @@ class ChatViewModel extends ChangeNotifier {
   }
 
   Future<void> _subscribeToRealtime() async {
-    _subscription = await _realtimeService.subscribe('trip:$tripId');
+    final channel = offerId != null ? 'transport_offer:$offerId' : 'trip:$tripId';
+    _subscription = await _realtimeService.subscribe(channel);
     // The channel Subscription can now be shared with other screens (e.g. the Bubbles
     // list also watches trip:$id) — cancel just this listener in dispose(), not the
     // whole channel, or a later reopen would stack a second listener on top of it.
     _publicationListener = _subscription!.publication.listen((event) {
       final json = jsonDecode(utf8.decode(event.data)) as Map<String, dynamic>;
+      // Sentinel published by the backend right before a dissolved offer's chat disappears —
+      // distinct shape from a real message (see handleDissolveTransportOffer), checked first
+      // so it's never mistaken for one.
+      if (json['event'] == 'dissolved') {
+        onDissolved?.call();
+        return;
+      }
       final message = ChatMessage(
         id: json['id'] as String,
         tripId: json['tripId'] as String,
@@ -139,8 +157,8 @@ class ChatViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _repository.sendMessage(tripId, body, mentionsDiveCenter: mentionsDiveCenter);
-      _messages = await _repository.getMessages(tripId);
+      await _repository.sendMessage(tripId, body, offerId: offerId, mentionsDiveCenter: mentionsDiveCenter);
+      _messages = await _repository.getMessages(tripId, offerId: offerId);
     } catch (e) {
       _error = e.toString();
     } finally {

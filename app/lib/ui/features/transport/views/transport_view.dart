@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/transport_offer.dart';
 import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
+import '../../chats/view_models/chat_view_model.dart';
+import '../../chats/views/chat_view.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../view_models/transport_view_model.dart';
 
@@ -19,9 +23,21 @@ const _typeIcons = {
 };
 
 class TransportView extends StatefulWidget {
-  const TransportView({super.key, required this.viewModel, this.isCancelled = false, this.businessName});
+  const TransportView({
+    super.key,
+    required this.viewModel,
+    required this.chatRepository,
+    required this.realtimeService,
+    this.isCancelled = false,
+    this.businessName,
+  });
 
   final TransportViewModel viewModel;
+
+  /// Needed only once the diver is in a car (see myOffer) — builds that car's own ChatView,
+  /// reusing the exact same repository/service the main Bubble chat uses.
+  final ChatRepository chatRepository;
+  final RealtimeService realtimeService;
 
   /// See ChatView.isCancelled — same source of truth (TripConversationPage), same idea:
   /// existing offers/joins stay visible, but nothing new can be created or joined.
@@ -42,6 +58,16 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
   @override
   bool get wantKeepAlive => true;
 
+  // Cached purely so the same ChatViewModel (and its realtime subscription) survives
+  // rebuilds triggered by the shared TransportViewModel's notifyListeners() while showing
+  // the same car — NOT a disposal owner. ChatView.dispose() already disposes whatever
+  // ChatViewModel it's given (see chat_view_model.dart) whenever its Element unmounts, which
+  // happens automatically on every transition away from it (back to the list, to a different
+  // car, or this whole page going away) since that's always a widget-type change at this
+  // position in the tree. Disposing it again here would double-dispose and crash.
+  ChatViewModel? _carChatViewModel;
+  String? _carChatOfferId;
+
   @override
   void initState() {
     super.initState();
@@ -52,52 +78,94 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
     Future.microtask(widget.viewModel.load);
   }
 
+  ChatViewModel _ensureCarChatViewModel(TransportOffer offer) {
+    if (_carChatOfferId != offer.id) {
+      _carChatOfferId = offer.id;
+      _carChatViewModel = ChatViewModel(
+        repository: widget.chatRepository,
+        realtimeService: widget.realtimeService,
+        profileRepository: widget.viewModel.profileRepository,
+        tripId: offer.tripId,
+        currentUserId: widget.viewModel.currentUserId,
+        offerId: offer.id,
+        onDissolved: _onCarDissolved,
+      );
+    }
+    return _carChatViewModel!;
+  }
+
+  // The creator cancelled this car while we were viewing it — the offer's gone server-side.
+  // Just refresh the list; myOffer will be null after, which swaps ChatView out for the
+  // offers list on the next build and disposes the car ChatViewModel via its own dispose().
+  void _onCarDissolved() {
+    widget.viewModel.load();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This car was cancelled by the organizer.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return Scaffold(
-      body: ListenableBuilder(
-        listenable: widget.viewModel,
-        builder: (context, _) {
-          if (widget.viewModel.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return ListenableBuilder(
+      listenable: widget.viewModel,
+      builder: (context, _) {
+        if (widget.viewModel.isLoading) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
 
-          final error = widget.viewModel.error;
-          if (error != null) {
-            return Center(child: Text('Error: $error'));
-          }
+        final error = widget.viewModel.error;
+        if (error != null) {
+          return Scaffold(body: Center(child: Text('Error: $error')));
+        }
 
-          final offers = widget.viewModel.offers;
-          if (offers.isEmpty) {
-            return EmptyStateView(
-              icon: Icons.directions_car_outlined,
-              title: widget.isCancelled ? 'No transport was arranged' : 'Be the first to share transport',
-              subtitle: widget.isCancelled
-                  ? 'This trip has been cancelled.'
-                  : 'Offer a ride or share a rental so others can join you.',
-              ctaLabel: widget.isCancelled ? null : 'Add transport info',
-              onCtaPressed: widget.isCancelled ? null : () => _openAddSheet(context),
-            );
-          }
+        final myOffer = widget.viewModel.myOffer;
+        if (myOffer != null) {
+          // No FAB while in a car — "Add transport info" doesn't apply once you're already
+          // committed to one (a diver can only book one ride per trip).
+          return Scaffold(body: ChatView(viewModel: _ensureCarChatViewModel(myOffer), isCancelled: widget.isCancelled));
+        }
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: offers.length,
-            separatorBuilder: (context, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) => _OfferTile(
-              offer: offers[index],
-              onTap: () => _openDetailSheet(context, offers[index]),
-            ),
-          );
-        },
-      ),
-      floatingActionButton: widget.isCancelled
-          ? null
-          : FloatingActionButton(
-              onPressed: () => _openAddSheet(context),
-              child: const Icon(Icons.add),
-            ),
+        // No active car right now — whatever ChatView was showing one (if any) has already
+        // unmounted and disposed its ChatViewModel by rendering here instead (see the myOffer
+        // branch above). Clearing the cache means the *next* time a car chat renders — even
+        // for the very same offer, e.g. leave then rejoin — _ensureCarChatViewModel builds a
+        // fresh instance instead of handing back the stale disposed one (matching offer.id
+        // alone isn't enough to know the old ChatViewModel is still alive).
+        _carChatOfferId = null;
+        _carChatViewModel = null;
+
+        final offers = widget.viewModel.offers;
+        return Scaffold(
+          body: offers.isEmpty
+              ? EmptyStateView(
+                  icon: Icons.directions_car_outlined,
+                  title: widget.isCancelled ? 'No transport was arranged' : 'Be the first to share transport',
+                  subtitle: widget.isCancelled
+                      ? 'This trip has been cancelled.'
+                      : 'Offer a ride or share a rental so others can join you.',
+                  ctaLabel: widget.isCancelled ? null : 'Add transport info',
+                  onCtaPressed: widget.isCancelled ? null : () => _openAddSheet(context),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: offers.length,
+                  separatorBuilder: (context, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) => _OfferTile(
+                    offer: offers[index],
+                    onTap: () => _openDetailSheet(context, offers[index]),
+                  ),
+                ),
+          floatingActionButton: widget.isCancelled
+              ? null
+              : FloatingActionButton(
+                  onPressed: () => _openAddSheet(context),
+                  child: const Icon(Icons.add),
+                ),
+        );
+      },
     );
   }
 
@@ -110,17 +178,37 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
   }
 
   void _openDetailSheet(BuildContext context, TransportOffer offer) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _TransportOfferDetailSheet(
-        offerId: offer.id,
-        viewModel: widget.viewModel,
-        isCancelled: widget.isCancelled,
-        businessName: widget.businessName,
-      ),
+    showTransportOfferDetailSheet(
+      context,
+      offerId: offer.id,
+      viewModel: widget.viewModel,
+      isCancelled: widget.isCancelled,
+      businessName: widget.businessName,
     );
   }
+}
+
+/// Public entry point so the ⓘ affordance on the Transport tab itself (TripConversationPage)
+/// can open the same sheet a diver already in a car would reach by tapping its row in the
+/// list — that's the same sheet, just also reachable one level higher up once you're in it
+/// and the list is replaced by the chat.
+void showTransportOfferDetailSheet(
+  BuildContext context, {
+  required String offerId,
+  required TransportViewModel viewModel,
+  bool isCancelled = false,
+  String? businessName,
+}) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => _TransportOfferDetailSheet(
+      offerId: offerId,
+      viewModel: viewModel,
+      isCancelled: isCancelled,
+      businessName: businessName,
+    ),
+  );
 }
 
 class _OfferTile extends StatelessWidget {
@@ -220,17 +308,24 @@ class _TransportOfferDetailSheetState
   final Map<String, Profile> _profiles = {};
   String? _error;
   String? _joinError;
+  String? _actionError;
+  bool _isActing = false;
 
-  TransportOffer get _offer => widget.viewModel.offers.firstWhere(
-        (o) => o.id == widget.offerId,
-        orElse: () => widget.viewModel.offers.first,
-      );
+  // Null once the offer's gone from the list — dissolved (by us or the creator, live via
+  // realtime while this sheet was open) or, for a joiner, left. The old firstWhere(orElse:
+  // () => offers.first) fallback this replaces would throw on an empty list instead.
+  TransportOffer? get _offer {
+    final offers = widget.viewModel.offers;
+    final index = offers.indexWhere((o) => o.id == widget.offerId);
+    return index == -1 ? null : offers[index];
+  }
 
   @override
   void initState() {
     super.initState();
     _loadJoinedUserIds();
-    _loadProfile(_offer.userId);
+    final offer = _offer;
+    if (offer != null) _loadProfile(offer.userId);
   }
 
   // Best-effort, one-at-a-time — a profile fetch failing just leaves that row on the
@@ -295,10 +390,15 @@ class _TransportOfferDetailSheetState
         child: ListenableBuilder(
           listenable: widget.viewModel,
           builder: (context, _) {
-            final offer = widget.viewModel.offers.firstWhere(
-              (o) => o.id == widget.offerId,
-              orElse: () => widget.viewModel.offers.first,
-            );
+            final offer = _offer;
+            if (offer == null) {
+              // Gone (dissolved, or we just left it) while this sheet was open — close it
+              // next frame rather than rendering against a missing offer.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
+              });
+              return const SizedBox.shrink();
+            }
             final isFull =
                 offer.seats != null && offer.joinedCount >= offer.seats!;
             final isOrganizer = offer.userId == widget.viewModel.currentUserId;
@@ -437,6 +537,25 @@ class _TransportOfferDetailSheetState
                       style: TextStyle(color: theme.colorScheme.error),
                     ),
                   ],
+                ] else if (!widget.isCancelled && (isOrganizer || offer.joined)) ...[
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _isActing ? null : (isOrganizer ? () => _dissolve(offer) : () => _leave(offer)),
+                      style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error),
+                      child: _isActing
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text(isOrganizer ? 'Dissolve car' : 'Leave car'),
+                    ),
+                  ),
+                  if (_actionError != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _actionError!,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
+                  ],
                 ],
               ],
             );
@@ -444,6 +563,40 @@ class _TransportOfferDetailSheetState
         ),
       ),
     );
+  }
+
+  Future<void> _leave(TransportOffer offer) async {
+    setState(() {
+      _isActing = true;
+      _actionError = null;
+    });
+    final error = await widget.viewModel.leave(offer.id);
+    if (!mounted) return;
+    if (error != null) {
+      setState(() {
+        _isActing = false;
+        _actionError = error;
+      });
+    } else {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _dissolve(TransportOffer offer) async {
+    setState(() {
+      _isActing = true;
+      _actionError = null;
+    });
+    final error = await widget.viewModel.dissolve(offer.id);
+    if (!mounted) return;
+    if (error != null) {
+      setState(() {
+        _isActing = false;
+        _actionError = error;
+      });
+    } else {
+      Navigator.of(context).pop();
+    }
   }
 }
 
