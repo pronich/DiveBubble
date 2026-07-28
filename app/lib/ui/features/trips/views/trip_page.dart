@@ -119,13 +119,13 @@ class _TripPageState extends State<TripPage> {
           final theme = Theme.of(context);
           final isOrganizer = widget.viewModel.isOrganizer;
 
-          // The photo carousel is a sibling of the scrollable body, not its first item —
-          // nesting a horizontal PageView inside a vertical ListView put both gesture
-          // recognizers in the same arena for any drag starting on the photo, and an
-          // imprecise diagonal swipe could get won by the outer (vertical) one instead of
-          // the carousel, sometimes swallowing taps too. Splitting them into a fixed header
-          // + Expanded(ListView(...)) removes the vertical recognizer from that area entirely.
-          return Column(
+          return ListView(
+            // Bottom-only: the hero image intentionally runs full-bleed under the app bar,
+            // but the last item (Join/Book now button) needs room above the system nav bar —
+            // otherwise 3-button nav on Android overlaps it (no MediaQuery inset otherwise).
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.paddingOf(context).bottom,
+            ),
             children: [
               Builder(
                 builder: (context) {
@@ -144,8 +144,10 @@ class _TripPageState extends State<TripPage> {
                             ? PageView.builder(
                                 controller: _photoPageController,
                                 itemCount: photos.length,
-                                onPageChanged: (i) =>
-                                    setState(() => _currentPhotoIndex = i),
+                                onPageChanged: (i) {
+                                  debugPrint('[photo-debug] onPageChanged: $i');
+                                  setState(() => _currentPhotoIndex = i);
+                                },
                                 // Tap-left/tap-right zones live *inside* each page (descendants
                                 // of PageView), not stacked on top of it — a GestureDetector
                                 // overlaying PageView from outside competes with its own drag
@@ -176,15 +178,26 @@ class _TripPageState extends State<TripPage> {
                                             3,
                                         child: GestureDetector(
                                           behavior: HitTestBehavior.translucent,
-                                          onTap: _currentPhotoIndex > 0
-                                              ? () => _photoPageController
+                                          onTap: () {
+                                            debugPrint(
+                                              '[photo-debug] left zone tapped, currentIndex=$_currentPhotoIndex',
+                                            );
+                                            if (_currentPhotoIndex > 0) {
+                                              try {
+                                                _photoPageController
                                                     .previousPage(
                                                       duration: const Duration(
                                                         milliseconds: 250,
                                                       ),
                                                       curve: Curves.easeOut,
-                                                    )
-                                              : null,
+                                                    );
+                                              } catch (e) {
+                                                debugPrint(
+                                                  '[photo-debug] previousPage threw: $e',
+                                                );
+                                              }
+                                            }
+                                          },
                                         ),
                                       ),
                                       Positioned(
@@ -196,17 +209,26 @@ class _TripPageState extends State<TripPage> {
                                             3,
                                         child: GestureDetector(
                                           behavior: HitTestBehavior.translucent,
-                                          onTap:
-                                              _currentPhotoIndex <
-                                                  photos.length - 1
-                                              ? () => _photoPageController
-                                                    .nextPage(
-                                                      duration: const Duration(
-                                                        milliseconds: 250,
-                                                      ),
-                                                      curve: Curves.easeOut,
-                                                    )
-                                              : null,
+                                          onTap: () {
+                                            debugPrint(
+                                              '[photo-debug] right zone tapped, currentIndex=$_currentPhotoIndex, count=${photos.length}',
+                                            );
+                                            if (_currentPhotoIndex <
+                                                photos.length - 1) {
+                                              try {
+                                                _photoPageController.nextPage(
+                                                  duration: const Duration(
+                                                    milliseconds: 250,
+                                                  ),
+                                                  curve: Curves.easeOut,
+                                                );
+                                              } catch (e) {
+                                                debugPrint(
+                                                  '[photo-debug] nextPage threw: $e',
+                                                );
+                                              }
+                                            }
+                                          },
                                         ),
                                       ),
                                     ],
@@ -297,192 +319,171 @@ class _TripPageState extends State<TripPage> {
                   );
                 },
               ),
-              Expanded(
-                child: ListView(
-                  // Bottom-only: the last item (Join/Book now button) needs room above the
-                  // system nav bar — otherwise 3-button nav on Android overlaps it (no
-                  // MediaQuery inset otherwise).
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.paddingOf(context).bottom,
-                  ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  trip.title,
-                                  style: theme.textTheme.headlineSmall,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              _TripStatusPill(
-                                trip: trip,
-                                isOrganizer: isOrganizer,
-                              ),
-                            ],
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            trip.title,
+                            style: theme.textTheme.headlineSmall,
                           ),
-                          // Quick actions row, Telegram-Group-Info-style — only meaningful once
-                          // already inside the Bubble (see openedFromConversation's own doc).
-                          if (widget.openedFromConversation) ...[
-                            const SizedBox(height: 16),
-                            _ActionPillsRow(
+                        ),
+                        const SizedBox(width: 8),
+                        _TripStatusPill(trip: trip, isOrganizer: isOrganizer),
+                      ],
+                    ),
+                    // Quick actions row, Telegram-Group-Info-style — only meaningful once
+                    // already inside the Bubble (see openedFromConversation's own doc).
+                    if (widget.openedFromConversation) ...[
+                      const SizedBox(height: 16),
+                      _ActionPillsRow(
+                        viewModel: widget.viewModel,
+                        trip: trip,
+                        isOrganizer: isOrganizer,
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 16,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          trip.location,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 16,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          formatDateRange(trip.startTime, trip.endDate),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'MEETING POINT',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _InfoGrid(trip: trip),
+                    if (trip.description != null) ...[
+                      const SizedBox(height: 20),
+                      Text(
+                        'About this dive',
+                        style: theme.textTheme.labelLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        trip.description!,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    _OrganizerCard(
+                      isOrganizer: isOrganizer,
+                      profile: widget.viewModel.organizerProfile,
+                      creatorUserId: trip.creatorUserId,
+                      currentUserId: widget.viewModel.currentUserId,
+                      profileRepository: widget.viewModel.profileRepository,
+                      diveCenter: widget.viewModel.organizerDiveCenter,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.groups_outlined,
+                          size: 16,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _participantsText(trip),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    // Deliberately gated on *how this screen was reached*, not just
+                    // trip.joined: Explore's "general" trip detail never shows who's in
+                    // it, even for a trip the viewer has already joined — the member list
+                    // only appears on the "specific" view reached from inside the Bubble
+                    // itself. Two privacy postures for the same data, not two widgets.
+                    if (widget.openedFromConversation) ...[
+                      const SizedBox(height: 8),
+                      _TripParticipantsList(
+                        tripId: trip.id,
+                        currentUserId: widget.viewModel.currentUserId,
+                        tripRepository: widget.tripRepository,
+                        profileRepository: widget.viewModel.profileRepository,
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    if (trip.joined && !widget.openedFromConversation)
+                      _DiveInButton(
+                        trip: trip,
+                        chatRepository: widget.chatRepository,
+                        transportRepository: widget.transportRepository,
+                        buddyRepository: widget.buddyRepository,
+                        realtimeService: widget.realtimeService,
+                        tripRepository: widget.tripRepository,
+                        authRepository: widget.viewModel.authRepository,
+                        profileRepository: widget.viewModel.profileRepository,
+                        pushRepository: widget.viewModel.pushRepository,
+                        diveCenterRepository: widget.diveCenterRepository,
+                        currentUserId: widget.viewModel.currentUserId,
+                      )
+                    else if (!trip.joined &&
+                        !isOrganizer &&
+                        trip.bookingStatus == 'open')
+                      trip.diveCenterId != null
+                          ? _BookNowSection(
+                              trip: trip,
+                              diveCenter: widget.viewModel.organizerDiveCenter,
                               viewModel: widget.viewModel,
-                              trip: trip,
-                              isOrganizer: isOrganizer,
-                            ),
-                          ],
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_on_outlined,
-                                size: 16,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                trip.location,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today_outlined,
-                                size: 16,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                formatDateRange(trip.startTime, trip.endDate),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'MEETING POINT',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _InfoGrid(trip: trip),
-                          if (trip.description != null) ...[
-                            const SizedBox(height: 20),
-                            Text(
-                              'About this dive',
-                              style: theme.textTheme.labelLarge,
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              trip.description!,
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                          ],
-                          const SizedBox(height: 20),
-                          _OrganizerCard(
-                            isOrganizer: isOrganizer,
-                            profile: widget.viewModel.organizerProfile,
-                            creatorUserId: trip.creatorUserId,
-                            currentUserId: widget.viewModel.currentUserId,
-                            profileRepository:
-                                widget.viewModel.profileRepository,
-                            diveCenter: widget.viewModel.organizerDiveCenter,
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.groups_outlined,
-                                size: 16,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _participantsText(trip),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                          // Deliberately gated on *how this screen was reached*, not just
-                          // trip.joined: Explore's "general" trip detail never shows who's in
-                          // it, even for a trip the viewer has already joined — the member list
-                          // only appears on the "specific" view reached from inside the Bubble
-                          // itself. Two privacy postures for the same data, not two widgets.
-                          if (widget.openedFromConversation) ...[
-                            const SizedBox(height: 8),
-                            _TripParticipantsList(
-                              tripId: trip.id,
-                              currentUserId: widget.viewModel.currentUserId,
                               tripRepository: widget.tripRepository,
-                              profileRepository:
-                                  widget.viewModel.profileRepository,
-                            ),
-                          ],
-                          const SizedBox(height: 24),
-                          if (trip.joined && !widget.openedFromConversation)
-                            _DiveInButton(
-                              trip: trip,
                               chatRepository: widget.chatRepository,
                               transportRepository: widget.transportRepository,
                               buddyRepository: widget.buddyRepository,
                               realtimeService: widget.realtimeService,
-                              tripRepository: widget.tripRepository,
-                              authRepository: widget.viewModel.authRepository,
-                              profileRepository:
-                                  widget.viewModel.profileRepository,
-                              pushRepository: widget.viewModel.pushRepository,
                               diveCenterRepository: widget.diveCenterRepository,
-                              currentUserId: widget.viewModel.currentUserId,
                             )
-                          else if (!trip.joined &&
-                              !isOrganizer &&
-                              trip.bookingStatus == 'open')
-                            trip.diveCenterId != null
-                                ? _BookNowSection(
-                                    trip: trip,
-                                    diveCenter:
-                                        widget.viewModel.organizerDiveCenter,
-                                    viewModel: widget.viewModel,
-                                    tripRepository: widget.tripRepository,
-                                    chatRepository: widget.chatRepository,
-                                    transportRepository:
-                                        widget.transportRepository,
-                                    buddyRepository: widget.buddyRepository,
-                                    realtimeService: widget.realtimeService,
-                                    diveCenterRepository:
-                                        widget.diveCenterRepository,
-                                  )
-                                : _JoinButton(
-                                    trip: trip,
-                                    viewModel: widget.viewModel,
-                                  ),
-                          // Leave/Cancel now live in _ActionPillsRow up top, Telegram-Group-Info-style.
-                        ],
-                      ),
-                    ),
+                          : _JoinButton(
+                              trip: trip,
+                              viewModel: widget.viewModel,
+                            ),
+                    // Leave/Cancel now live in _ActionPillsRow up top, Telegram-Group-Info-style.
                   ],
                 ),
               ),
