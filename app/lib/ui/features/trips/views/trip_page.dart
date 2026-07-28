@@ -274,6 +274,12 @@ class _TripPageState extends State<TripPage> {
                                   AppAssets.tripPlaceholder,
                                   fit: BoxFit.cover,
                                 ),
+                          Listener(
+                            behavior: HitTestBehavior.translucent,
+                            onPointerDown: (event) => debugPrint(
+                              '[photo-debug] SIBLING (Stack child, not inside PageView) pointer down at ${event.localPosition}',
+                            ),
+                          ),
                           const DecoratedBox(
                             decoration: BoxDecoration(
                               gradient: AppGradients.imageScrim,
