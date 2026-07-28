@@ -36,7 +36,8 @@ class BuddyView extends StatefulWidget {
   State<BuddyView> createState() => _BuddyViewState();
 }
 
-class _BuddyViewState extends State<BuddyView> with AutomaticKeepAliveClientMixin {
+class _BuddyViewState extends State<BuddyView>
+    with AutomaticKeepAliveClientMixin {
   // Same reasoning as ChatView/TransportView — TabBarView disposes offscreen tabs by
   // default, which otherwise re-triggers a full request reload every time this tab scrolls
   // back into view.
@@ -88,7 +89,9 @@ class _BuddyViewState extends State<BuddyView> with AutomaticKeepAliveClientMixi
     widget.viewModel.load();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This buddy group was cancelled by the organizer.')),
+        const SnackBar(
+          content: Text('This buddy group was cancelled by the organizer.'),
+        ),
       );
     }
   }
@@ -100,7 +103,9 @@ class _BuddyViewState extends State<BuddyView> with AutomaticKeepAliveClientMixi
       listenable: widget.viewModel,
       builder: (context, _) {
         if (widget.viewModel.isLoading) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
         final error = widget.viewModel.error;
@@ -113,7 +118,10 @@ class _BuddyViewState extends State<BuddyView> with AutomaticKeepAliveClientMixi
           // No FAB while in a group — "Request a buddy" doesn't apply once you're already
           // committed to one (a diver can only be in one buddy group per trip).
           return Scaffold(
-            body: ChatView(viewModel: _ensureBuddyChatViewModel(myRequest), isCancelled: widget.isCancelled),
+            body: ChatView(
+              viewModel: _ensureBuddyChatViewModel(myRequest),
+              isCancelled: widget.isCancelled,
+            ),
           );
         }
 
@@ -132,12 +140,16 @@ class _BuddyViewState extends State<BuddyView> with AutomaticKeepAliveClientMixi
           body: requests.isEmpty
               ? EmptyStateView(
                   icon: Icons.people_outline,
-                  title: widget.isCancelled ? 'No buddy requests were made' : 'Be the first to look for a buddy',
+                  title: widget.isCancelled
+                      ? 'No buddy requests were made'
+                      : 'Be the first to look for a buddy',
                   subtitle: widget.isCancelled
                       ? 'This trip has been cancelled.'
                       : 'Request a buddy so others can join you for this dive.',
                   ctaLabel: widget.isCancelled ? null : 'Request a buddy',
-                  onCtaPressed: widget.isCancelled ? null : () => _openAddSheet(context),
+                  onCtaPressed: widget.isCancelled
+                      ? null
+                      : () => _openAddSheet(context),
                 )
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
@@ -222,7 +234,10 @@ class _RequestTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline, color: theme.colorScheme.onSurfaceVariant),
+            Icon(
+              Icons.people_outline,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -230,15 +245,20 @@ class _RequestTile extends StatelessWidget {
                 children: [
                   Text(
                     request.creatorName,
-                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     [
-                      if (request.creatorLevel?.isNotEmpty ?? false) request.creatorLevel!,
+                      if (request.creatorLevel?.isNotEmpty ?? false)
+                        request.creatorLevel!,
                       '${request.creatorDiveCount} dives',
                     ].join(' · '),
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -269,7 +289,8 @@ class _BuddyRequestDetailSheet extends StatefulWidget {
   final bool isCancelled;
 
   @override
-  State<_BuddyRequestDetailSheet> createState() => _BuddyRequestDetailSheetState();
+  State<_BuddyRequestDetailSheet> createState() =>
+      _BuddyRequestDetailSheetState();
 }
 
 class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
@@ -301,7 +322,9 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
   Future<void> _loadProfile(String userId) async {
     if (_profiles.containsKey(userId)) return;
     try {
-      final p = await widget.viewModel.profileRepository.getPublicProfile(userId);
+      final p = await widget.viewModel.profileRepository.getPublicProfile(
+        userId,
+      );
       if (mounted) setState(() => _profiles[userId] = p);
     } catch (_) {
       // ignore — row falls back to "Diver"
@@ -344,7 +367,10 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
     if (error != null) {
       setState(() => _joinError = error);
     } else {
-      _loadJoinedUserIds();
+      // Close the sheet so the now-joined group's chat (myRequest swaps in automatically via
+      // BuddyView's ListenableBuilder) is immediately visible, instead of leaving this sheet
+      // sitting on top of it.
+      Navigator.of(context).pop();
     }
   }
 
@@ -363,7 +389,8 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
               // Gone (dissolved, or we just left it) while this sheet was open — close it
               // next frame rather than rendering against a missing request.
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
+                if (mounted && Navigator.of(context).canPop())
+                  Navigator.of(context).pop();
               });
               return const SizedBox.shrink();
             }
@@ -372,7 +399,9 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
             final isCreator = request.userId == widget.viewModel.currentUserId;
             // A diver can only be in one buddy group per trip — don't offer a Join button
             // on other requests once they've already joined one.
-            final hasGroupElsewhere = !request.joined && widget.viewModel.requests.any((r) => r.joined);
+            final hasGroupElsewhere =
+                !request.joined &&
+                widget.viewModel.requests.any((r) => r.joined);
 
             return Column(
               mainAxisSize: MainAxisSize.min,
@@ -383,66 +412,95 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
                     const Icon(Icons.people_outline),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text('Buddy request', style: theme.textTheme.titleMedium),
+                      child: Text(
+                        'Buddy request',
+                        style: theme.textTheme.titleMedium,
+                      ),
                     ),
                     if (request.joined)
-                      const _StatusPill(label: 'Joined', kind: _StatusKind.success)
+                      const _StatusPill(
+                        label: 'Joined',
+                        kind: _StatusKind.success,
+                      )
                     else if (isFull)
                       const _StatusPill(label: 'Full', kind: _StatusKind.info),
                   ],
                 ),
                 const SizedBox(height: 16),
-                Builder(builder: (context) {
-                  final creatorProfile = _profiles[request.userId];
-                  final creatorName = (creatorProfile?.displayName?.isNotEmpty ?? false)
-                      ? creatorProfile!.displayName!
-                      : request.creatorName;
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => _openProfile(request.userId),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: theme.colorScheme.secondaryContainer,
-                          backgroundImage: (creatorProfile?.avatarUrl?.isNotEmpty ?? false)
-                              ? NetworkImage(creatorProfile!.avatarUrl!)
-                              : null,
-                          child: (creatorProfile?.avatarUrl?.isNotEmpty ?? false)
-                              ? null
-                              : Icon(Icons.person, color: theme.colorScheme.onSecondaryContainer),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(creatorName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                            Text(
-                              isCreator ? 'Creator · You' : 'Creator',
-                              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                }),
+                Builder(
+                  builder: (context) {
+                    final creatorProfile = _profiles[request.userId];
+                    final creatorName =
+                        (creatorProfile?.displayName?.isNotEmpty ?? false)
+                        ? creatorProfile!.displayName!
+                        : request.creatorName;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => _openProfile(request.userId),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor:
+                                theme.colorScheme.secondaryContainer,
+                            backgroundImage:
+                                (creatorProfile?.avatarUrl?.isNotEmpty ?? false)
+                                ? NetworkImage(creatorProfile!.avatarUrl!)
+                                : null,
+                            child:
+                                (creatorProfile?.avatarUrl?.isNotEmpty ?? false)
+                                ? null
+                                : Icon(
+                                    Icons.person,
+                                    color:
+                                        theme.colorScheme.onSecondaryContainer,
+                                  ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                creatorName,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                isCreator ? 'Creator · You' : 'Creator',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 16),
                 Text('Group', style: theme.textTheme.labelLarge),
                 const SizedBox(height: 8),
                 if (_error != null)
-                  Text('Error: $_error', style: TextStyle(color: theme.colorScheme.error))
+                  Text(
+                    'Error: $_error',
+                    style: TextStyle(color: theme.colorScheme.error),
+                  )
                 else if (_joinedUserIds == null)
                   const Center(child: CircularProgressIndicator())
                 else if (_joinedUserIds!.isEmpty)
                   Text(
                     'No one has joined yet',
-                    style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   )
                 else
                   ..._joinedUserIds!.map((userId) {
                     final isMe = userId == widget.viewModel.currentUserId;
                     final diverProfile = _profiles[userId];
-                    final name = (diverProfile?.displayName?.isNotEmpty ?? false)
+                    final name =
+                        (diverProfile?.displayName?.isNotEmpty ?? false)
                         ? diverProfile!.displayName!
                         : (isMe ? 'You' : 'Diver');
                     return Padding(
@@ -454,13 +512,22 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
                           children: [
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor: theme.colorScheme.secondaryContainer,
-                              backgroundImage: (diverProfile?.avatarUrl?.isNotEmpty ?? false)
+                              backgroundColor:
+                                  theme.colorScheme.secondaryContainer,
+                              backgroundImage:
+                                  (diverProfile?.avatarUrl?.isNotEmpty ?? false)
                                   ? NetworkImage(diverProfile!.avatarUrl!)
                                   : null,
-                              child: (diverProfile?.avatarUrl?.isNotEmpty ?? false)
+                              child:
+                                  (diverProfile?.avatarUrl?.isNotEmpty ?? false)
                                   ? null
-                                  : Icon(Icons.person, size: 18, color: theme.colorScheme.onSecondaryContainer),
+                                  : Icon(
+                                      Icons.person,
+                                      size: 18,
+                                      color: theme
+                                          .colorScheme
+                                          .onSecondaryContainer,
+                                    ),
                             ),
                             const SizedBox(width: 12),
                             Text(name, style: theme.textTheme.bodyMedium),
@@ -469,7 +536,11 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
                       ),
                     );
                   }),
-                if (!request.joined && !isFull && !hasGroupElsewhere && !widget.isCancelled) ...[
+                if (!isCreator &&
+                    !request.joined &&
+                    !isFull &&
+                    !hasGroupElsewhere &&
+                    !widget.isCancelled) ...[
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -481,23 +552,44 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
                   ),
                   if (_joinError != null) ...[
                     const SizedBox(height: 8),
-                    Text(_joinError!, style: TextStyle(color: theme.colorScheme.error)),
+                    Text(
+                      _joinError!,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
                   ],
-                ] else if (!widget.isCancelled && (isCreator || request.joined)) ...[
+                ] else if (!widget.isCancelled &&
+                    (isCreator || request.joined)) ...[
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: _isActing ? null : (isCreator ? () => _dissolve(request) : () => _leave(request)),
-                      style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error),
+                      onPressed: _isActing
+                          ? null
+                          : (isCreator
+                                ? () => _dissolve(request)
+                                : () => _leave(request)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error,
+                      ),
                       child: _isActing
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(isCreator ? 'Cancel buddy request' : 'Leave buddy group'),
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              isCreator
+                                  ? 'Cancel buddy request'
+                                  : 'Leave buddy group',
+                            ),
                     ),
                   ),
                   if (_actionError != null) ...[
                     const SizedBox(height: 8),
-                    Text(_actionError!, style: TextStyle(color: theme.colorScheme.error)),
+                    Text(
+                      _actionError!,
+                      style: TextStyle(color: theme.colorScheme.error),
+                    ),
                   ],
                 ],
               ],
@@ -555,22 +647,36 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final semantic = Theme.of(context).extension<SemanticColors>()!;
     final theme = Theme.of(context);
-    final background = kind == _StatusKind.success ? semantic.successContainer : semantic.infoContainer;
-    final foreground = kind == _StatusKind.success ? semantic.onSuccessContainer : semantic.onInfoContainer;
+    final background = kind == _StatusKind.success
+        ? semantic.successContainer
+        : semantic.infoContainer;
+    final foreground = kind == _StatusKind.success
+        ? semantic.onSuccessContainer
+        : semantic.onInfoContainer;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Text(
         label,
-        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
 }
 
 class _JoinButton extends StatelessWidget {
-  const _JoinButton({required this.request, required this.viewModel, required this.onPressed});
+  const _JoinButton({
+    required this.request,
+    required this.viewModel,
+    required this.onPressed,
+  });
 
   final BuddyRequest request;
   final BuddyViewModel viewModel;
@@ -582,7 +688,11 @@ class _JoinButton extends StatelessWidget {
     return ElevatedButton(
       onPressed: isJoining ? null : onPressed,
       child: isJoining
-          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
           : const Text('Join'),
     );
   }
@@ -605,16 +715,26 @@ class _AddBuddyRequestSheetState extends State<_AddBuddyRequestSheet> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 16 + MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Request a buddy', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Request a buddy',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             Text(
               'Other divers on this trip will see your request and can join you.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 20),
             SizedBox(
@@ -622,7 +742,11 @@ class _AddBuddyRequestSheetState extends State<_AddBuddyRequestSheet> {
               child: ElevatedButton(
                 onPressed: widget.viewModel.isSubmitting ? null : _submit,
                 child: widget.viewModel.isSubmitting
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Request'),
               ),
             ),

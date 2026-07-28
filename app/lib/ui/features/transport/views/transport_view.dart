@@ -52,7 +52,8 @@ class TransportView extends StatefulWidget {
   State<TransportView> createState() => _TransportViewState();
 }
 
-class _TransportViewState extends State<TransportView> with AutomaticKeepAliveClientMixin {
+class _TransportViewState extends State<TransportView>
+    with AutomaticKeepAliveClientMixin {
   // Same reasoning as ChatView — TabBarView disposes offscreen tabs by default, which
   // otherwise re-triggers a full offer reload every time this tab scrolls back into view.
   @override
@@ -101,7 +102,9 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
     widget.viewModel.load();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This car was cancelled by the organizer.')),
+        const SnackBar(
+          content: Text('This car was cancelled by the organizer.'),
+        ),
       );
     }
   }
@@ -113,7 +116,9 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
       listenable: widget.viewModel,
       builder: (context, _) {
         if (widget.viewModel.isLoading) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
         final error = widget.viewModel.error;
@@ -125,7 +130,12 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
         if (myOffer != null) {
           // No FAB while in a car — "Add transport info" doesn't apply once you're already
           // committed to one (a diver can only book one ride per trip).
-          return Scaffold(body: ChatView(viewModel: _ensureCarChatViewModel(myOffer), isCancelled: widget.isCancelled));
+          return Scaffold(
+            body: ChatView(
+              viewModel: _ensureCarChatViewModel(myOffer),
+              isCancelled: widget.isCancelled,
+            ),
+          );
         }
 
         // No active car right now — whatever ChatView was showing one (if any) has already
@@ -142,12 +152,16 @@ class _TransportViewState extends State<TransportView> with AutomaticKeepAliveCl
           body: offers.isEmpty
               ? EmptyStateView(
                   icon: Icons.directions_car_outlined,
-                  title: widget.isCancelled ? 'No transport was arranged' : 'Be the first to share transport',
+                  title: widget.isCancelled
+                      ? 'No transport was arranged'
+                      : 'Be the first to share transport',
                   subtitle: widget.isCancelled
                       ? 'This trip has been cancelled.'
                       : 'Offer a ride or share a rental so others can join you.',
                   ctaLabel: widget.isCancelled ? null : 'Add transport info',
-                  onCtaPressed: widget.isCancelled ? null : () => _openAddSheet(context),
+                  onCtaPressed: widget.isCancelled
+                      ? null
+                      : () => _openAddSheet(context),
                 )
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
@@ -333,7 +347,9 @@ class _TransportOfferDetailSheetState
   Future<void> _loadProfile(String userId) async {
     if (_profiles.containsKey(userId)) return;
     try {
-      final p = await widget.viewModel.profileRepository.getPublicProfile(userId);
+      final p = await widget.viewModel.profileRepository.getPublicProfile(
+        userId,
+      );
       if (mounted) setState(() => _profiles[userId] = p);
     } catch (_) {
       // ignore — row falls back to "Diver"
@@ -376,7 +392,10 @@ class _TransportOfferDetailSheetState
     if (error != null) {
       setState(() => _joinError = error);
     } else {
-      _loadJoinedUserIds();
+      // Close the sheet so the now-joined car's chat (myOffer swaps in automatically via
+      // TransportView's ListenableBuilder) is immediately visible, instead of leaving this
+      // sheet sitting on top of it.
+      Navigator.of(context).pop();
     }
   }
 
@@ -395,7 +414,8 @@ class _TransportOfferDetailSheetState
               // Gone (dissolved, or we just left it) while this sheet was open — close it
               // next frame rather than rendering against a missing offer.
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted && Navigator.of(context).canPop()) Navigator.of(context).pop();
+                if (mounted && Navigator.of(context).canPop())
+                  Navigator.of(context).pop();
               });
               return const SizedBox.shrink();
             }
@@ -404,8 +424,8 @@ class _TransportOfferDetailSheetState
             final isOrganizer = offer.userId == widget.viewModel.currentUserId;
             // A diver can only book one ride per trip — don't offer a Join button
             // on other offers once they've already joined one.
-            final hasBookingElsewhere = !offer.joined &&
-                widget.viewModel.offers.any((o) => o.joined);
+            final hasBookingElsewhere =
+                !offer.joined && widget.viewModel.offers.any((o) => o.joined);
 
             return Column(
               mainAxisSize: MainAxisSize.min,
@@ -435,43 +455,64 @@ class _TransportOfferDetailSheetState
                   Text(offer.details!, style: theme.textTheme.bodyMedium),
                 ],
                 const SizedBox(height: 16),
-                Builder(builder: (context) {
-                  final organizerProfile = _profiles[offer.userId];
-                  final baseOrganizerName = (organizerProfile?.displayName?.isNotEmpty ?? false)
-                      ? organizerProfile!.displayName!
-                      : 'Organizer';
-                  final organizerName = (offer.isDiveCenterStaff && (widget.businessName?.isNotEmpty ?? false))
-                      ? '$baseOrganizerName | ${widget.businessName}'
-                      : baseOrganizerName;
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () => _openProfile(offer.userId),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: theme.colorScheme.secondaryContainer,
-                          backgroundImage: (organizerProfile?.avatarUrl?.isNotEmpty ?? false)
-                              ? NetworkImage(organizerProfile!.avatarUrl!)
-                              : null,
-                          child: (organizerProfile?.avatarUrl?.isNotEmpty ?? false)
-                              ? null
-                              : Icon(Icons.person, color: theme.colorScheme.onSecondaryContainer),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(organizerName, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
-                            Text(
-                              isOrganizer ? 'Organizer · You' : 'Organizer',
-                              style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                }),
+                Builder(
+                  builder: (context) {
+                    final organizerProfile = _profiles[offer.userId];
+                    final baseOrganizerName =
+                        (organizerProfile?.displayName?.isNotEmpty ?? false)
+                        ? organizerProfile!.displayName!
+                        : 'Organizer';
+                    final organizerName =
+                        (offer.isDiveCenterStaff &&
+                            (widget.businessName?.isNotEmpty ?? false))
+                        ? '$baseOrganizerName | ${widget.businessName}'
+                        : baseOrganizerName;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => _openProfile(offer.userId),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor:
+                                theme.colorScheme.secondaryContainer,
+                            backgroundImage:
+                                (organizerProfile?.avatarUrl?.isNotEmpty ??
+                                    false)
+                                ? NetworkImage(organizerProfile!.avatarUrl!)
+                                : null,
+                            child:
+                                (organizerProfile?.avatarUrl?.isNotEmpty ??
+                                    false)
+                                ? null
+                                : Icon(
+                                    Icons.person,
+                                    color:
+                                        theme.colorScheme.onSecondaryContainer,
+                                  ),
+                          ),
+                          const SizedBox(width: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                organizerName,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                isOrganizer ? 'Organizer · You' : 'Organizer',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 16),
                 Text('Joined divers', style: theme.textTheme.labelLarge),
                 const SizedBox(height: 8),
@@ -493,7 +534,8 @@ class _TransportOfferDetailSheetState
                   ..._joinedUserIds!.map((userId) {
                     final isMe = userId == widget.viewModel.currentUserId;
                     final diverProfile = _profiles[userId];
-                    final name = (diverProfile?.displayName?.isNotEmpty ?? false)
+                    final name =
+                        (diverProfile?.displayName?.isNotEmpty ?? false)
                         ? diverProfile!.displayName!
                         : (isMe ? 'You' : 'Diver');
                     return Padding(
@@ -505,13 +547,22 @@ class _TransportOfferDetailSheetState
                           children: [
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor: theme.colorScheme.secondaryContainer,
-                              backgroundImage: (diverProfile?.avatarUrl?.isNotEmpty ?? false)
+                              backgroundColor:
+                                  theme.colorScheme.secondaryContainer,
+                              backgroundImage:
+                                  (diverProfile?.avatarUrl?.isNotEmpty ?? false)
                                   ? NetworkImage(diverProfile!.avatarUrl!)
                                   : null,
-                              child: (diverProfile?.avatarUrl?.isNotEmpty ?? false)
+                              child:
+                                  (diverProfile?.avatarUrl?.isNotEmpty ?? false)
                                   ? null
-                                  : Icon(Icons.person, size: 18, color: theme.colorScheme.onSecondaryContainer),
+                                  : Icon(
+                                      Icons.person,
+                                      size: 18,
+                                      color: theme
+                                          .colorScheme
+                                          .onSecondaryContainer,
+                                    ),
                             ),
                             const SizedBox(width: 12),
                             Text(name, style: theme.textTheme.bodyMedium),
@@ -520,7 +571,11 @@ class _TransportOfferDetailSheetState
                       ),
                     );
                   }),
-                if (!offer.joined && !isFull && !hasBookingElsewhere && !widget.isCancelled) ...[
+                if (!isOrganizer &&
+                    !offer.joined &&
+                    !isFull &&
+                    !hasBookingElsewhere &&
+                    !widget.isCancelled) ...[
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -537,16 +592,29 @@ class _TransportOfferDetailSheetState
                       style: TextStyle(color: theme.colorScheme.error),
                     ),
                   ],
-                ] else if (!widget.isCancelled && (isOrganizer || offer.joined)) ...[
+                ] else if (!widget.isCancelled &&
+                    (isOrganizer || offer.joined)) ...[
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
-                      onPressed: _isActing ? null : (isOrganizer ? () => _dissolve(offer) : () => _leave(offer)),
-                      style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error),
+                      onPressed: _isActing
+                          ? null
+                          : (isOrganizer
+                                ? () => _dissolve(offer)
+                                : () => _leave(offer)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: theme.colorScheme.error,
+                      ),
                       child: _isActing
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(isOrganizer ? 'Cancel car offer' : 'Leave car'),
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              isOrganizer ? 'Cancel car offer' : 'Leave car',
+                            ),
                     ),
                   ),
                   if (_actionError != null) ...[
