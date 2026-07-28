@@ -61,7 +61,7 @@ services:
       CENTRIFUGO_API_KEY: "${CENTRIFUGO_API_KEY:?CENTRIFUGO_API_KEY must be set}"
       CENTRIFUGO_TOKEN_SECRET: "${CENTRIFUGO_TOKEN_SECRET:?CENTRIFUGO_TOKEN_SECRET must be set}"
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set}"
-      GOOGLE_SERVER_CLIENT_ID: "${GOOGLE_SERVER_CLIENT_ID:?GOOGLE_SERVER_CLIENT_ID must be set}"
+      GOOGLE_SERVER_CLIENT_IDS: "${GOOGLE_SERVER_CLIENT_IDS:?GOOGLE_SERVER_CLIENT_IDS must be set}"
       # Optional — defaults to io.divebubble.app in config.go if unset (the only bundle id
       # this project ships). APPLE_TEAM_ID/KEY_ID/PRIVATE_KEY are all optional together too —
       # unset disables Apple token revocation on account deletion only, sign-in still works.
