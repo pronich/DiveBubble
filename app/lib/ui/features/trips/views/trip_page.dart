@@ -131,6 +131,9 @@ class _TripPageState extends State<TripPage> {
                 builder: (context) {
                   final photos = widget.viewModel.photos;
                   final hasPhotos = photos.isNotEmpty;
+                  debugPrint(
+                    '[photo-debug] carousel built, ${photos.length} photos',
+                  );
                   if (hasPhotos && _currentPhotoIndex >= photos.length) {
                     _currentPhotoIndex = photos.length - 1;
                   }
