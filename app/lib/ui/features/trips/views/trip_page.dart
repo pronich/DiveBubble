@@ -131,234 +131,174 @@ class _TripPageState extends State<TripPage> {
                 builder: (context) {
                   final photos = widget.viewModel.photos;
                   final hasPhotos = photos.isNotEmpty;
-                  debugPrint(
-                    '[photo-debug] carousel built, ${photos.length} photos',
-                  );
                   if (hasPhotos && _currentPhotoIndex >= photos.length) {
                     _currentPhotoIndex = photos.length - 1;
                   }
 
-                  return Listener(
-                    behavior: HitTestBehavior.translucent,
-                    onPointerDown: (event) => debugPrint(
-                      '[photo-debug] RAW pointer DOWN at ${event.localPosition}',
-                    ),
-                    onPointerMove: (event) => debugPrint(
-                      '[photo-debug] RAW pointer MOVE at ${event.localPosition}, delta=${event.delta}',
-                    ),
-                    onPointerUp: (event) => debugPrint(
-                      '[photo-debug] RAW pointer UP at ${event.localPosition}',
-                    ),
-                    onPointerCancel: (event) =>
-                        debugPrint('[photo-debug] RAW pointer CANCEL'),
-                    child: AspectRatio(
-                      aspectRatio: 4 / 3,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          hasPhotos
-                              ? PageView.builder(
-                                  controller: _photoPageController,
-                                  itemCount: photos.length,
-                                  onPageChanged: (i) {
-                                    debugPrint(
-                                      '[photo-debug] onPageChanged: $i',
-                                    );
-                                    setState(() => _currentPhotoIndex = i);
-                                  },
-                                  // Tap-left/tap-right zones live *inside* each page (descendants
-                                  // of PageView), not stacked on top of it — a GestureDetector
-                                  // overlaying PageView from outside competes with its own drag
-                                  // recognizer for the same pointer and swallows real swipes;
-                                  // nested inside a page, Flutter's normal ancestor-scrollable/
-                                  // descendant-tap disambiguation lets a drag fall through to the
-                                  // PageView while a stationary tap still resolves here.
-                                  itemBuilder: (context, i) => Listener(
-                                    behavior: HitTestBehavior.translucent,
-                                    onPointerDown: (event) => debugPrint(
-                                      '[photo-debug] INNER (itemBuilder $i) pointer down at ${event.localPosition}',
+                  return AspectRatio(
+                    aspectRatio: 4 / 3,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        hasPhotos
+                            ? PageView.builder(
+                                controller: _photoPageController,
+                                itemCount: photos.length,
+                                onPageChanged: (i) =>
+                                    setState(() => _currentPhotoIndex = i),
+                                // Tap-left/tap-right zones live *inside* each page (descendants
+                                // of PageView), not stacked on top of it — a GestureDetector
+                                // overlaying PageView from outside competes with its own drag
+                                // recognizer for the same pointer and swallows real swipes;
+                                // nested inside a page, Flutter's normal ancestor-scrollable/
+                                // descendant-tap disambiguation lets a drag fall through to the
+                                // PageView while a stationary tap still resolves here.
+                                itemBuilder: (context, i) => Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    Image.network(
+                                      photos[i].url,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) =>
+                                              Image.asset(
+                                                AppAssets.tripPlaceholder,
+                                                fit: BoxFit.cover,
+                                              ),
                                     ),
-                                    child: Stack(
-                                      fit: StackFit.expand,
-                                      children: [
-                                        Image.network(
-                                          photos[i].url,
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) =>
-                                                  Image.asset(
-                                                    AppAssets.tripPlaceholder,
-                                                    fit: BoxFit.cover,
-                                                  ),
+                                    if (photos.length > 1) ...[
+                                      Positioned(
+                                        left: 0,
+                                        top: 0,
+                                        bottom: 0,
+                                        width:
+                                            MediaQuery.sizeOf(context).width /
+                                            3,
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.translucent,
+                                          onTap: _currentPhotoIndex > 0
+                                              ? () => _photoPageController
+                                                    .previousPage(
+                                                      duration: const Duration(
+                                                        milliseconds: 250,
+                                                      ),
+                                                      curve: Curves.easeOut,
+                                                    )
+                                              : null,
                                         ),
-                                        if (photos.length > 1) ...[
-                                          Positioned(
-                                            left: 0,
-                                            top: 0,
-                                            bottom: 0,
-                                            width:
-                                                MediaQuery.sizeOf(
-                                                  context,
-                                                ).width /
-                                                3,
-                                            child: GestureDetector(
-                                              behavior:
-                                                  HitTestBehavior.translucent,
-                                              onTap: () {
-                                                debugPrint(
-                                                  '[photo-debug] left zone tapped, currentIndex=$_currentPhotoIndex',
-                                                );
-                                                if (_currentPhotoIndex > 0) {
-                                                  try {
-                                                    _photoPageController
-                                                        .previousPage(
-                                                          duration:
-                                                              const Duration(
-                                                                milliseconds:
-                                                                    250,
-                                                              ),
-                                                          curve: Curves.easeOut,
-                                                        );
-                                                  } catch (e) {
-                                                    debugPrint(
-                                                      '[photo-debug] previousPage threw: $e',
-                                                    );
-                                                  }
-                                                }
-                                              },
-                                            ),
-                                          ),
-                                          Positioned(
-                                            right: 0,
-                                            top: 0,
-                                            bottom: 0,
-                                            width:
-                                                MediaQuery.sizeOf(
-                                                  context,
-                                                ).width /
-                                                3,
-                                            child: GestureDetector(
-                                              behavior:
-                                                  HitTestBehavior.translucent,
-                                              onTap: () {
-                                                debugPrint(
-                                                  '[photo-debug] right zone tapped, currentIndex=$_currentPhotoIndex, count=${photos.length}',
-                                                );
-                                                if (_currentPhotoIndex <
-                                                    photos.length - 1) {
-                                                  try {
-                                                    _photoPageController
-                                                        .nextPage(
-                                                          duration:
-                                                              const Duration(
-                                                                milliseconds:
-                                                                    250,
-                                                              ),
-                                                          curve: Curves.easeOut,
-                                                        );
-                                                  } catch (e) {
-                                                    debugPrint(
-                                                      '[photo-debug] nextPage threw: $e',
-                                                    );
-                                                  }
-                                                }
-                                              },
-                                            ),
-                                          ),
-                                        ],
-                                      ],
+                                      ),
+                                      Positioned(
+                                        right: 0,
+                                        top: 0,
+                                        bottom: 0,
+                                        width:
+                                            MediaQuery.sizeOf(context).width /
+                                            3,
+                                        child: GestureDetector(
+                                          behavior: HitTestBehavior.translucent,
+                                          onTap:
+                                              _currentPhotoIndex <
+                                                  photos.length - 1
+                                              ? () => _photoPageController
+                                                    .nextPage(
+                                                      duration: const Duration(
+                                                        milliseconds: 250,
+                                                      ),
+                                                      curve: Curves.easeOut,
+                                                    )
+                                              : null,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              )
+                            : Image.asset(
+                                AppAssets.tripPlaceholder,
+                                fit: BoxFit.cover,
+                              ),
+                        // IgnorePointer is load-bearing: a bare DecoratedBox with no gesture
+                        // handling still claimed the hit test ahead of the PageView beneath it
+                        // in the Stack, silently swallowing every tap and swipe on the photo —
+                        // found by bisecting with temporary raw Listeners at each Stack layer.
+                        const IgnorePointer(
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: AppGradients.imageScrim,
+                            ),
+                          ),
+                        ),
+                        // Dot page indicator — only worth showing once there's more than one
+                        // photo to swipe between.
+                        if (photos.length > 1)
+                          Positioned(
+                            bottom: 16,
+                            left: 0,
+                            right: 0,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                for (var i = 0; i < photos.length; i++)
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white.withValues(
+                                        alpha: i == _currentPhotoIndex
+                                            ? 1
+                                            : 0.4,
+                                      ),
                                     ),
                                   ),
-                                )
-                              : Image.asset(
-                                  AppAssets.tripPlaceholder,
-                                  fit: BoxFit.cover,
-                                ),
-                          Listener(
-                            behavior: HitTestBehavior.translucent,
-                            onPointerDown: (event) => debugPrint(
-                              '[photo-debug] SIBLING (Stack child, not inside PageView) pointer down at ${event.localPosition}',
+                              ],
                             ),
                           ),
-                          const IgnorePointer(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: AppGradients.imageScrim,
-                              ),
-                            ),
-                          ),
-                          // Dot page indicator — only worth showing once there's more than one
-                          // photo to swipe between.
-                          if (photos.length > 1)
-                            Positioned(
-                              bottom: 16,
-                              left: 0,
-                              right: 0,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  for (var i = 0; i < photos.length; i++)
-                                    Container(
-                                      width: 6,
-                                      height: 6,
-                                      margin: const EdgeInsets.symmetric(
-                                        horizontal: 3,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.white.withValues(
-                                          alpha: i == _currentPhotoIndex
-                                              ? 1
-                                              : 0.4,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          // A single "Manage photos" entry point, not inline add/remove
-                          // controls on the slider itself — editing now happens in its own
-                          // grid (see _ManagePhotosPage), so this hero is a pure viewer for
-                          // every visitor, organizer included.
-                          if (isOrganizer)
-                            Positioned(
-                              right: 16,
-                              bottom: 16,
-                              child: Material(
-                                color: Colors.black.withValues(alpha: 0.45),
+                        // A single "Manage photos" entry point, not inline add/remove
+                        // controls on the slider itself — editing now happens in its own
+                        // grid (see _ManagePhotosPage), so this hero is a pure viewer for
+                        // every visitor, organizer included.
+                        if (isOrganizer)
+                          Positioned(
+                            right: 16,
+                            bottom: 16,
+                            child: Material(
+                              color: Colors.black.withValues(alpha: 0.45),
+                              borderRadius: BorderRadius.circular(20),
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(20),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(20),
-                                  onTap: () => _openManagePhotos(context),
-                                  child: const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 8,
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.photo_library_outlined,
+                                onTap: () => _openManagePhotos(context),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.photo_library_outlined,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Manage photos',
+                                        style: TextStyle(
                                           color: Colors.white,
-                                          size: 18,
+                                          fontWeight: FontWeight.w600,
                                         ),
-                                        SizedBox(width: 6),
-                                        Text(
-                                          'Manage photos',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
                   );
                 },
