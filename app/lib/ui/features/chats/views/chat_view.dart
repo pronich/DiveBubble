@@ -42,7 +42,8 @@ class ChatView extends StatefulWidget {
   State<ChatView> createState() => _ChatViewState();
 }
 
-class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin {
+class _ChatViewState extends State<ChatView>
+    with AutomaticKeepAliveClientMixin {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
   final Map<String, Profile> _profiles = {};
@@ -87,7 +88,8 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
     // The list renders reverse: true (see build) so "bottom"/newest is offset 0, not
     // maxScrollExtent — pixels near 0 is what "near the bottom" means here.
     final nearBottom = _scrollController.position.pixels <= 80;
-    if (nearBottom == _isNearBottom && !(nearBottom && _showNewMessagesPill)) return;
+    if (nearBottom == _isNearBottom && !(nearBottom && _showNewMessagesPill))
+      return;
     setState(() {
       _isNearBottom = nearBottom;
       if (nearBottom) _showNewMessagesPill = false;
@@ -101,7 +103,11 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
   void _scrollToBottom({required bool animate}) {
     if (!_scrollController.hasClients) return;
     if (animate) {
-      _scrollController.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
     } else {
       _scrollController.jumpTo(0);
     }
@@ -110,13 +116,18 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
   // Best-effort, one-at-a-time per sender — a profile fetch failing just leaves that
   // cluster's name/avatar on the generic "Diver" fallback rather than blocking the chat.
   void _loadProfile(String userId) {
-    if (_profiles.containsKey(userId) || _fetchingProfileIds.contains(userId)) return;
+    if (_profiles.containsKey(userId) || _fetchingProfileIds.contains(userId))
+      return;
     _fetchingProfileIds.add(userId);
-    widget.viewModel.profileRepository.getPublicProfile(userId).then((p) {
-      if (mounted) setState(() => _profiles[userId] = p);
-    }).catchError((_) {
-      // ignore — stays on the fallback
-    }).whenComplete(() => _fetchingProfileIds.remove(userId));
+    widget.viewModel.profileRepository
+        .getPublicProfile(userId)
+        .then((p) {
+          if (mounted) setState(() => _profiles[userId] = p);
+        })
+        .catchError((_) {
+          // ignore — stays on the fallback
+        })
+        .whenComplete(() => _fetchingProfileIds.remove(userId));
   }
 
   void _openProfile(String userId) {
@@ -132,7 +143,10 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _ReportMessageSheet(viewModel: widget.viewModel, messageId: message.id),
+      builder: (_) => _ReportMessageSheet(
+        viewModel: widget.viewModel,
+        messageId: message.id,
+      ),
     );
   }
 
@@ -140,7 +154,8 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _FeedbackSheet(viewModel: widget.viewModel, messageId: message.id),
+      builder: (_) =>
+          _FeedbackSheet(viewModel: widget.viewModel, messageId: message.id),
     );
   }
 
@@ -150,100 +165,119 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
     return Column(
       children: [
         Expanded(
-          child: ListenableBuilder(
-            listenable: widget.viewModel,
-            builder: (context, _) {
-              if (widget.viewModel.isLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final error = widget.viewModel.error;
-              if (error != null) {
-                return Center(child: Text('Error: $error'));
-              }
-
-              final messages = widget.viewModel.messages;
-              if (messages.isEmpty) {
-                return const Center(child: Text('No messages yet'));
-              }
-
-              final items = _buildDisplayItems(messages);
-              for (final item in items) {
-                final message = item.message;
-                if (message != null && message.kind == 'user' && message.userId != widget.viewModel.currentUserId) {
-                  _loadProfile(message.userId);
+          // Telegram-style: tapping anywhere in the message list dismisses the keyboard —
+          // translucent so it never steals the scroll drag or a message bubble's own onTap,
+          // both of which keep working exactly as before.
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: ListenableBuilder(
+              listenable: widget.viewModel,
+              builder: (context, _) {
+                if (widget.viewModel.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
                 }
-              }
-              // Rendered with reverse: true (see below), so item 0 is the newest — reverse
-              // the ascending list built above rather than reworking the clustering logic
-              // (isFirstInCluster/isLastInCluster/date separators) to run backwards.
-              final reversedItems = items.reversed.toList();
 
-              if (messages.length != _lastMessageCount) {
-                final wasEmpty = _lastMessageCount == 0;
-                // Sending a message always snaps you to it, regardless of scroll position —
-                // an incoming message from someone else only does that if you were already
-                // near the bottom; otherwise it'd yank you away mid-read, so it just raises
-                // the "new messages" pill instead. wasEmpty (initial load) needs no explicit
-                // scroll at all: offset 0 in a reversed list is already the newest message.
-                final isOwnMessage = messages.isNotEmpty && messages.last.userId == widget.viewModel.currentUserId;
-                _lastMessageCount = messages.length;
-                if (!wasEmpty && (isOwnMessage || _isNearBottom)) {
-                  WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(animate: true));
-                } else if (!wasEmpty && !isOwnMessage) {
-                  _showNewMessagesPill = true;
+                final error = widget.viewModel.error;
+                if (error != null) {
+                  return Center(child: Text('Error: $error'));
                 }
-              }
 
-              return Stack(
-                children: [
-                  ListView.builder(
-                    controller: _scrollController,
-                    reverse: true,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    itemCount: reversedItems.length,
-                    itemBuilder: (context, index) {
-                      final item = reversedItems[index];
-                      if (item.date != null) {
-                        return _DateSeparator(date: item.date!);
-                      }
-                      final message = item.message!;
-                      if (message.kind != 'user') {
-                        return _SystemMessageRow(
+                final messages = widget.viewModel.messages;
+                if (messages.isEmpty) {
+                  return const Center(child: Text('No messages yet'));
+                }
+
+                final items = _buildDisplayItems(messages);
+                for (final item in items) {
+                  final message = item.message;
+                  if (message != null &&
+                      message.kind == 'user' &&
+                      message.userId != widget.viewModel.currentUserId) {
+                    _loadProfile(message.userId);
+                  }
+                }
+                // Rendered with reverse: true (see below), so item 0 is the newest — reverse
+                // the ascending list built above rather than reworking the clustering logic
+                // (isFirstInCluster/isLastInCluster/date separators) to run backwards.
+                final reversedItems = items.reversed.toList();
+
+                if (messages.length != _lastMessageCount) {
+                  final wasEmpty = _lastMessageCount == 0;
+                  // Sending a message always snaps you to it, regardless of scroll position —
+                  // an incoming message from someone else only does that if you were already
+                  // near the bottom; otherwise it'd yank you away mid-read, so it just raises
+                  // the "new messages" pill instead. wasEmpty (initial load) needs no explicit
+                  // scroll at all: offset 0 in a reversed list is already the newest message.
+                  final isOwnMessage =
+                      messages.isNotEmpty &&
+                      messages.last.userId == widget.viewModel.currentUserId;
+                  _lastMessageCount = messages.length;
+                  if (!wasEmpty && (isOwnMessage || _isNearBottom)) {
+                    WidgetsBinding.instance.addPostFrameCallback(
+                      (_) => _scrollToBottom(animate: true),
+                    );
+                  } else if (!wasEmpty && !isOwnMessage) {
+                    _showNewMessagesPill = true;
+                  }
+                }
+
+                return Stack(
+                  children: [
+                    ListView.builder(
+                      controller: _scrollController,
+                      reverse: true,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      itemCount: reversedItems.length,
+                      itemBuilder: (context, index) {
+                        final item = reversedItems[index];
+                        if (item.date != null) {
+                          return _DateSeparator(date: item.date!);
+                        }
+                        final message = item.message!;
+                        if (message.kind != 'user') {
+                          return _SystemMessageRow(
+                            message: message,
+                            onGiveFeedback: () => _showFeedbackSheet(message),
+                          );
+                        }
+                        final isMine =
+                            message.userId == widget.viewModel.currentUserId;
+                        return _MessageRow(
                           message: message,
-                          onGiveFeedback: () => _showFeedbackSheet(message),
+                          isMine: isMine,
+                          isFirstInCluster: item.isFirstInCluster,
+                          isLastInCluster: item.isLastInCluster,
+                          profile: _profiles[message.userId],
+                          businessName: widget.businessName,
+                          onTapSender: () => _openProfile(message.userId),
+                          onLongPress: isMine
+                              ? null
+                              : () => _showReportSheet(message),
                         );
-                      }
-                      final isMine = message.userId == widget.viewModel.currentUserId;
-                      return _MessageRow(
-                        message: message,
-                        isMine: isMine,
-                        isFirstInCluster: item.isFirstInCluster,
-                        isLastInCluster: item.isLastInCluster,
-                        profile: _profiles[message.userId],
-                        businessName: widget.businessName,
-                        onTapSender: () => _openProfile(message.userId),
-                        onLongPress: isMine ? null : () => _showReportSheet(message),
-                      );
-                    },
-                  ),
-                  if (_showNewMessagesPill)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 8,
-                      child: Center(
-                        child: _NewMessagesPill(
-                          onTap: () {
-                            setState(() => _showNewMessagesPill = false);
-                            _scrollToBottom(animate: true);
-                          },
+                      },
+                    ),
+                    if (_showNewMessagesPill)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 8,
+                        child: Center(
+                          child: _NewMessagesPill(
+                            onTap: () {
+                              setState(() => _showNewMessagesPill = false);
+                              _scrollToBottom(animate: true);
+                            },
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
         ),
         SafeArea(
@@ -254,7 +288,9 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
                   child: Text(
                     'This trip has been cancelled — the chat is read-only.',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 )
               : Column(
@@ -265,16 +301,21 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
                     // a message as actually needing staff attention (Stage 2 push will only
                     // notify staff on a mention, not every message, to avoid spamming
                     // several staff members over one trip's chat).
-                    if (widget.businessName != null && widget.canMentionDiveCenter)
+                    if (widget.businessName != null &&
+                        widget.canMentionDiveCenter)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                         child: Align(
                           alignment: Alignment.centerLeft,
                           child: FilterChip(
-                            avatar: const Icon(Icons.campaign_outlined, size: 16),
+                            avatar: const Icon(
+                              Icons.campaign_outlined,
+                              size: 16,
+                            ),
                             label: Text('@${widget.businessName}'),
                             selected: _mentionArmed,
-                            onSelected: (value) => setState(() => _mentionArmed = value),
+                            onSelected: (value) =>
+                                setState(() => _mentionArmed = value),
                           ),
                         ),
                       ),
@@ -290,7 +331,9 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
                               maxLines: 5,
                               keyboardType: TextInputType.multiline,
                               textCapitalization: TextCapitalization.sentences,
-                              decoration: const InputDecoration(hintText: 'Message'),
+                              decoration: const InputDecoration(
+                                hintText: 'Message',
+                              ),
                             ),
                           ),
                           IconButton(
@@ -300,7 +343,10 @@ class _ChatViewState extends State<ChatView> with AutomaticKeepAliveClientMixin 
                               final mentionsDiveCenter = _mentionArmed;
                               _textController.clear();
                               setState(() => _mentionArmed = false);
-                              widget.viewModel.send(text, mentionsDiveCenter: mentionsDiveCenter);
+                              widget.viewModel.send(
+                                text,
+                                mentionsDiveCenter: mentionsDiveCenter,
+                              );
                             },
                           ),
                         ],
@@ -334,11 +380,18 @@ class _NewMessagesPill extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.arrow_downward, size: 16, color: theme.colorScheme.onPrimary),
+              Icon(
+                Icons.arrow_downward,
+                size: 16,
+                color: theme.colorScheme.onPrimary,
+              ),
               const SizedBox(width: 6),
               Text(
                 'New messages',
-                style: theme.textTheme.labelMedium?.copyWith(color: theme.colorScheme.onPrimary, fontWeight: FontWeight.w600),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -364,7 +417,8 @@ List<_MessageCluster> _buildClusters(List<ChatMessage> messages) {
     final last = clusters.isEmpty ? null : clusters.last;
     // A system message (kind != 'user') always starts its own cluster — it renders as a
     // centered row, never grouped with a neighboring real message.
-    final continuesCluster = last != null &&
+    final continuesCluster =
+        last != null &&
         last.day == day &&
         last.messages.last.userId == m.userId &&
         m.kind == 'user' &&
@@ -381,11 +435,15 @@ List<_MessageCluster> _buildClusters(List<ChatMessage> messages) {
 
 class _ChatDisplayItem {
   const _ChatDisplayItem.separator(this.date)
-      : message = null,
-        isFirstInCluster = false,
-        isLastInCluster = false;
+    : message = null,
+      isFirstInCluster = false,
+      isLastInCluster = false;
 
-  const _ChatDisplayItem.message(this.message, {required this.isFirstInCluster, required this.isLastInCluster}) : date = null;
+  const _ChatDisplayItem.message(
+    this.message, {
+    required this.isFirstInCluster,
+    required this.isLastInCluster,
+  }) : date = null;
 
   final DateTime? date;
   final ChatMessage? message;
@@ -403,11 +461,13 @@ List<_ChatDisplayItem> _buildDisplayItems(List<ChatMessage> messages) {
       lastDay = cluster.day;
     }
     for (var i = 0; i < cluster.messages.length; i++) {
-      items.add(_ChatDisplayItem.message(
-        cluster.messages[i],
-        isFirstInCluster: i == 0,
-        isLastInCluster: i == cluster.messages.length - 1,
-      ));
+      items.add(
+        _ChatDisplayItem.message(
+          cluster.messages[i],
+          isFirstInCluster: i == 0,
+          isLastInCluster: i == cluster.messages.length - 1,
+        ),
+      );
     }
   }
   return items;
@@ -432,7 +492,10 @@ class _DateSeparator extends StatelessWidget {
           ),
           child: Text(
             formatChatDateSeparator(date),
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -444,7 +507,10 @@ class _DateSeparator extends StatelessWidget {
 /// _DateSeparator. The switch on message.kind is the deliberate extension point for future
 /// system kinds (Car/Buddy chat join messages); each just adds another case here.
 class _SystemMessageRow extends StatelessWidget {
-  const _SystemMessageRow({required this.message, required this.onGiveFeedback});
+  const _SystemMessageRow({
+    required this.message,
+    required this.onGiveFeedback,
+  });
 
   final ChatMessage message;
   final VoidCallback onGiveFeedback;
@@ -456,7 +522,9 @@ class _SystemMessageRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Center(
         child: Container(
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.8,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHighest,
@@ -468,10 +536,15 @@ class _SystemMessageRow extends StatelessWidget {
               Text(
                 message.body,
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
               switch (message.kind) {
-                'feedback_prompt' => _FeedbackButton(provided: message.feedbackProvided, onPressed: onGiveFeedback),
+                'feedback_prompt' => _FeedbackButton(
+                  provided: message.feedbackProvided,
+                  onPressed: onGiveFeedback,
+                ),
                 // car_joined/buddy_joined (and any future system kind) are just announcements — no action.
                 _ => const SizedBox.shrink(),
               },
@@ -502,7 +575,10 @@ class _FeedbackButton extends StatelessWidget {
     }
     return Padding(
       padding: const EdgeInsets.only(top: 8),
-      child: FilledButton(onPressed: onPressed, child: const Text('Give feedback')),
+      child: FilledButton(
+        onPressed: onPressed,
+        child: const Text('Give feedback'),
+      ),
     );
   }
 }
@@ -541,41 +617,60 @@ class _MessageRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final bubbleColor = isMine ? colorScheme.primary : colorScheme.secondaryContainer;
-    final onBubbleColor = isMine ? colorScheme.onPrimary : colorScheme.onSecondaryContainer;
+    final bubbleColor = isMine
+        ? colorScheme.primary
+        : colorScheme.secondaryContainer;
+    final onBubbleColor = isMine
+        ? colorScheme.onPrimary
+        : colorScheme.onSecondaryContainer;
 
-    final baseName = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
+    final baseName = (profile?.displayName?.isNotEmpty ?? false)
+        ? profile!.displayName!
+        : 'Diver';
     // Staff display always wins over the Observer label — in his own dive center's Bubbles
     // the founder shows up as staff, not as an observer (see users.is_product_observer).
-    final isObserver = !message.isDiveCenterStaff && (profile?.isProductObserver ?? false);
-    final name = (message.isDiveCenterStaff && (businessName?.isNotEmpty ?? false))
+    final isObserver =
+        !message.isDiveCenterStaff && (profile?.isProductObserver ?? false);
+    final name =
+        (message.isDiveCenterStaff && (businessName?.isNotEmpty ?? false))
         ? '$baseName | $businessName'
         : isObserver
-            ? '$baseName | Product Observer'
-            : baseName;
+        ? '$baseName | Product Observer'
+        : baseName;
     // Staff/Observer messages always carry a name, even mid-cluster — a trip's chat is
     // effectively a group conversation (organizer + every diver) even though it's framed as
     // one thread, so it should always be clear which staff member/observer is replying, not
     // just the first message in a burst. Regular divers keep the usual "only the first
     // message in a cluster" rule.
-    final showName = !isMine && (isFirstInCluster || message.isDiveCenterStaff || isObserver);
+    final showName =
+        !isMine &&
+        (isFirstInCluster || message.isDiveCenterStaff || isObserver);
 
     final bubble = GestureDetector(
       onLongPress: onLongPress,
       child: Container(
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.72,
+        ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(color: bubbleColor, borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(
+          color: bubbleColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (message.mentionsDiveCenter && (businessName?.isNotEmpty ?? false))
+            if (message.mentionsDiveCenter &&
+                (businessName?.isNotEmpty ?? false))
               Padding(
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
                   '@$businessName',
-                  style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: onBubbleColor,
+                  ),
                 ),
               ),
             if (showName)
@@ -585,11 +680,18 @@ class _MessageRow extends StatelessWidget {
                   onTap: onTapSender,
                   child: Text(
                     name,
-                    style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: onBubbleColor),
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: onBubbleColor,
+                    ),
                   ),
                 ),
               ),
-            _MessageBody(body: message.body, time: formatTime(message.createdAt), color: onBubbleColor),
+            _MessageBody(
+              body: message.body,
+              time: formatTime(message.createdAt),
+              color: onBubbleColor,
+            ),
           ],
         ),
       ),
@@ -615,10 +717,16 @@ class _MessageRow extends StatelessWidget {
                     child: CircleAvatar(
                       radius: 16,
                       backgroundColor: colorScheme.secondaryContainer,
-                      backgroundImage: (profile?.avatarUrl?.isNotEmpty ?? false) ? NetworkImage(profile!.avatarUrl!) : null,
+                      backgroundImage: (profile?.avatarUrl?.isNotEmpty ?? false)
+                          ? NetworkImage(profile!.avatarUrl!)
+                          : null,
                       child: (profile?.avatarUrl?.isNotEmpty ?? false)
                           ? null
-                          : Icon(Icons.person, size: 18, color: colorScheme.onSecondaryContainer),
+                          : Icon(
+                              Icons.person,
+                              size: 18,
+                              color: colorScheme.onSecondaryContainer,
+                            ),
                     ),
                   )
                 : null,
@@ -659,15 +767,21 @@ class _ReportMessageSheetState extends State<_ReportMessageSheet> {
     final error = await widget.viewModel.reportMessage(
       widget.messageId,
       _reason,
-      details: _detailsController.text.trim().isEmpty ? null : _detailsController.text.trim(),
+      details: _detailsController.text.trim().isEmpty
+          ? null
+          : _detailsController.text.trim(),
     );
     if (!mounted) return;
     if (error == null) {
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report sent — thank you.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Report sent — thank you.')));
     } else {
       setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not send report: $error')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not send report: $error')));
     }
   }
 
@@ -675,28 +789,40 @@ class _ReportMessageSheetState extends State<_ReportMessageSheet> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 16 + MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Report message', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Report message',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: _reportReasons
-                  .map((reason) => ChoiceChip(
-                        label: Text(reason),
-                        selected: _reason == reason,
-                        onSelected: (_) => setState(() => _reason = reason),
-                      ))
+                  .map(
+                    (reason) => ChoiceChip(
+                      label: Text(reason),
+                      selected: _reason == reason,
+                      onSelected: (_) => setState(() => _reason = reason),
+                    ),
+                  )
                   .toList(),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _detailsController,
-              decoration: const InputDecoration(labelText: 'Details (optional)'),
+              decoration: const InputDecoration(
+                labelText: 'Details (optional)',
+              ),
               maxLines: 2,
             ),
             const SizedBox(height: 20),
@@ -705,7 +831,11 @@ class _ReportMessageSheetState extends State<_ReportMessageSheet> {
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : _submit,
                 child: _isSubmitting
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Send report'),
               ),
             ),
@@ -774,16 +904,22 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
       widget.messageId,
       _rating,
       _helpedWith.toList(),
-      _commentController.text.trim().isEmpty ? null : _commentController.text.trim(),
+      _commentController.text.trim().isEmpty
+          ? null
+          : _commentController.text.trim(),
       _contactOk,
     );
     if (!mounted) return;
     if (error == null) {
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thank you!')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Thank you!')));
     } else {
       setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not send feedback: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not send feedback: $error')),
+      );
     }
   }
 
@@ -792,12 +928,20 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
     final theme = Theme.of(context);
     return SafeArea(
       child: SingleChildScrollView(
-        padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 16 + MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('How useful was DiveBubble for this trip?', style: theme.textTheme.titleMedium),
+            Text(
+              'How useful was DiveBubble for this trip?',
+              style: theme.textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -814,7 +958,10 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               ],
             ),
             const SizedBox(height: 16),
-            Text('What did DiveBubble help you with?', style: theme.textTheme.titleMedium),
+            Text(
+              'What did DiveBubble help you with?',
+              style: theme.textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -831,7 +978,11 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                     width: 18,
                     height: 18,
                     child: selected
-                        ? Icon(Icons.check, size: 18, color: theme.colorScheme.onSecondaryContainer)
+                        ? Icon(
+                            Icons.check,
+                            size: 18,
+                            color: theme.colorScheme.onSecondaryContainer,
+                          )
                         : null,
                   ),
                   label: Text(option),
@@ -861,7 +1012,11 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               child: ElevatedButton(
                 onPressed: (_isSubmitting || _rating == 0) ? null : _submit,
                 child: _isSubmitting
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Submit feedback'),
               ),
             ),
@@ -878,7 +1033,11 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
 /// if the last line is already full); the real, visible timestamp is then drawn on top at the
 /// bottom-right corner via [Stack]+[Positioned], landing in that reserved space.
 class _MessageBody extends StatelessWidget {
-  const _MessageBody({required this.body, required this.time, required this.color});
+  const _MessageBody({
+    required this.body,
+    required this.time,
+    required this.color,
+  });
 
   final String body;
   final String time;
@@ -888,7 +1047,10 @@ class _MessageBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final bodyStyle = TextStyle(color: color);
-    final timeStyle = theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.7), fontSize: 11);
+    final timeStyle = theme.textTheme.labelSmall?.copyWith(
+      color: color.withValues(alpha: 0.7),
+      fontSize: 11,
+    );
     return Stack(
       children: [
         Text.rich(
@@ -901,7 +1063,10 @@ class _MessageBody extends StatelessWidget {
                 baseline: TextBaseline.alphabetic,
                 child: Opacity(
                   opacity: 0,
-                  child: Padding(padding: const EdgeInsets.only(left: 8), child: Text(time, style: timeStyle)),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(time, style: timeStyle),
+                  ),
                 ),
               ),
             ],

@@ -207,8 +207,13 @@ class _TripConversationPageState extends State<TripConversationPage>
           businessName: _businessName,
         ),
       ),
+      // Swipe-to-switch-tabs disabled: TabBarView's own horizontal drag recognizer competed
+      // with each tab's vertical message scroll for any diagonal drag, sometimes hijacking a
+      // scroll attempt into an accidental tab switch. The pill bar above already covers
+      // switching tabs by tap, so nothing is lost by requiring that instead of a swipe.
       body: TabBarView(
         controller: _tabController,
+        physics: const NeverScrollableScrollPhysics(),
         children: [
           ChatView(
             viewModel: widget.chatViewModel,
