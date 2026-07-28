@@ -280,9 +280,11 @@ class _TripPageState extends State<TripPage> {
                               '[photo-debug] SIBLING (Stack child, not inside PageView) pointer down at ${event.localPosition}',
                             ),
                           ),
-                          const DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: AppGradients.imageScrim,
+                          const IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: AppGradients.imageScrim,
+                              ),
                             ),
                           ),
                           // Dot page indicator — only worth showing once there's more than one
