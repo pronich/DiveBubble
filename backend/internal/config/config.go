@@ -16,7 +16,10 @@ type Config struct {
 	CentrifugoAPIKey      string
 	CentrifugoTokenSecret string
 	JWTSecret             string
-	GoogleServerClientID  string
+	// Every Web OAuth client id whose id_tokens we accept as valid — normally just one, but
+	// briefly two during a credential migration (old app builds already in the wild keep
+	// sending id_tokens audienced to the retired client id until they're updated).
+	GoogleServerClientIDs []string
 	// AppleAudience is the iOS app's bundle id (the App ID, not a Services ID — DiveBubble
 	// has no web Sign in with Apple flow). Defaults to the one and only bundle id this
 	// project ships, so no env var is required in dev.
@@ -80,7 +83,10 @@ func Load() Config {
 	centrifugoAPIKey := require("CENTRIFUGO_API_KEY")
 	centrifugoTokenSecret := require("CENTRIFUGO_TOKEN_SECRET")
 	jwtSecret := require("JWT_SECRET")
-	googleServerClientID := require("GOOGLE_SERVER_CLIENT_ID")
+	googleServerClientIDs := strings.Split(require("GOOGLE_SERVER_CLIENT_IDS"), ",")
+	for i, id := range googleServerClientIDs {
+		googleServerClientIDs[i] = strings.TrimSpace(id)
+	}
 	appleAudience := os.Getenv("APPLE_AUDIENCE")
 	if appleAudience == "" {
 		appleAudience = "io.divebubble.app"
@@ -149,7 +155,7 @@ func Load() Config {
 		CentrifugoAPIKey:        centrifugoAPIKey,
 		CentrifugoTokenSecret:   centrifugoTokenSecret,
 		JWTSecret:               jwtSecret,
-		GoogleServerClientID:    googleServerClientID,
+		GoogleServerClientIDs:   googleServerClientIDs,
 		AppleAudience:           appleAudience,
 		AppleTeamID:             appleTeamID,
 		AppleKeyID:              appleKeyID,

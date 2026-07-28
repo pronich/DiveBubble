@@ -42,7 +42,9 @@ import 'ui/features/transport/view_models/transport_view_model.dart';
 // build shipped without remembering the flag must never silently point at localhost.
 const _apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: kReleaseMode ? 'https://api.divebubble.io' : 'http://localhost:8080',
+  defaultValue: kReleaseMode
+      ? 'https://api.divebubble.io'
+      : 'http://localhost:8080',
 );
 const _centrifugoWsUrl = String.fromEnvironment(
   'CENTRIFUGO_WS_URL',
@@ -51,10 +53,15 @@ const _centrifugoWsUrl = String.fromEnvironment(
       : 'ws://localhost:8000/connection/websocket',
 );
 
-// Google Cloud Console (project backing DiveBuddy) — iOS client identifies the app to Google,
-// the Web (server) client is the ID token audience the backend verifies against.
-const _googleIosClientId = '267576474476-t6kh8ps4pffq3ftfic3tghuqeg7hdj92.apps.googleusercontent.com';
-const _googleServerClientId = '267576474476-ea5pbefve96l3oqd1j59oo276sskv54f.apps.googleusercontent.com';
+// Google Cloud Console project divebubble-a96e2 (the Firebase-linked project, same one push
+// notifications already use) — iOS client identifies the app to Google, the Web (server)
+// client is the ID token audience the backend verifies against. The backend accepts this
+// alongside the older client id from before this migration (see GOOGLE_SERVER_CLIENT_IDS)
+// so already-shipped app builds keep working until they update.
+const _googleIosClientId =
+    '583379001701-1kncasa92pin9ib1laae9obn5t9mum14.apps.googleusercontent.com';
+const _googleServerClientId =
+    '583379001701-i0nsfpnl2l4c7cis0t1cbhl7i6kupk3s.apps.googleusercontent.com';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -82,35 +89,62 @@ class _MyAppState extends State<MyApp> {
     tokenStorage: TokenStorageService(),
   );
   late final _tripRepository = TripRepository(
-    service: TripApiService(baseUrl: _apiBaseUrl, getAccessToken: _authRepository.getValidAccessToken),
+    service: TripApiService(
+      baseUrl: _apiBaseUrl,
+      getAccessToken: _authRepository.getValidAccessToken,
+    ),
   );
   late final _chatRepository = ChatRepository(
-    service: ChatApiService(baseUrl: _apiBaseUrl, getAccessToken: _authRepository.getValidAccessToken),
+    service: ChatApiService(
+      baseUrl: _apiBaseUrl,
+      getAccessToken: _authRepository.getValidAccessToken,
+    ),
   );
   late final _transportRepository = TransportRepository(
-    service: TransportApiService(baseUrl: _apiBaseUrl, getAccessToken: _authRepository.getValidAccessToken),
+    service: TransportApiService(
+      baseUrl: _apiBaseUrl,
+      getAccessToken: _authRepository.getValidAccessToken,
+    ),
   );
   late final _buddyRepository = BuddyRepository(
-    service: BuddyApiService(baseUrl: _apiBaseUrl, getAccessToken: _authRepository.getValidAccessToken),
+    service: BuddyApiService(
+      baseUrl: _apiBaseUrl,
+      getAccessToken: _authRepository.getValidAccessToken,
+    ),
   );
   late final _realtimeService = RealtimeService(
     wsUrl: _centrifugoWsUrl,
     getToken: _chatRepository.getRealtimeToken,
   );
   late final _profileRepository = ProfileRepository(
-    service: ProfileApiService(baseUrl: _apiBaseUrl, getAccessToken: _authRepository.getValidAccessToken),
+    service: ProfileApiService(
+      baseUrl: _apiBaseUrl,
+      getAccessToken: _authRepository.getValidAccessToken,
+    ),
   );
   late final _specialtyRepository = SpecialtyRepository(
-    service: SpecialtyApiService(baseUrl: _apiBaseUrl, getAccessToken: _authRepository.getValidAccessToken),
+    service: SpecialtyApiService(
+      baseUrl: _apiBaseUrl,
+      getAccessToken: _authRepository.getValidAccessToken,
+    ),
   );
   late final _gearRepository = GearRepository(
-    service: GearApiService(baseUrl: _apiBaseUrl, getAccessToken: _authRepository.getValidAccessToken),
+    service: GearApiService(
+      baseUrl: _apiBaseUrl,
+      getAccessToken: _authRepository.getValidAccessToken,
+    ),
   );
   late final _diveCenterRepository = DiveCenterRepository(
-    service: DiveCenterApiService(baseUrl: _apiBaseUrl, getAccessToken: _authRepository.getValidAccessToken),
+    service: DiveCenterApiService(
+      baseUrl: _apiBaseUrl,
+      getAccessToken: _authRepository.getValidAccessToken,
+    ),
   );
   late final _pushRepository = PushRepository(
-    service: PushApiService(baseUrl: _apiBaseUrl, getAccessToken: _authRepository.getValidAccessToken),
+    service: PushApiService(
+      baseUrl: _apiBaseUrl,
+      getAccessToken: _authRepository.getValidAccessToken,
+    ),
   );
 
   @override
@@ -131,11 +165,12 @@ class _MyAppState extends State<MyApp> {
   Future<void> _setUpPushNotifications() async {
     // iOS shows a system banner for a foreground notification-payload message only if asked —
     // otherwise a push that arrives while the app is open is silently swallowed.
-    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    await FirebaseMessaging.instance
+        .setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
 
     FirebaseMessaging.instance.onTokenRefresh.listen(_registerToken);
     FirebaseMessaging.onMessageOpenedApp.listen(_openTripFromPush);
@@ -161,8 +196,10 @@ class _MyAppState extends State<MyApp> {
     if (!await PushPreferences.isEnabled()) return;
 
     try {
-      final settings = await FirebaseMessaging.instance.getNotificationSettings();
-      if (settings.authorizationStatus != AuthorizationStatus.authorized) return;
+      final settings = await FirebaseMessaging.instance
+          .getNotificationSettings();
+      if (settings.authorizationStatus != AuthorizationStatus.authorized)
+        return;
 
       // iOS-only gotcha: the APNS device token arrives from Apple asynchronously — calling
       // getToken() before it lands throws apns-token-not-set, even when already authorized
@@ -175,7 +212,8 @@ class _MyAppState extends State<MyApp> {
           apnsToken = await FirebaseMessaging.instance.getAPNSToken();
           attempts++;
         }
-        if (apnsToken == null) return; // gave up — next app resume/token-refresh retries
+        if (apnsToken == null)
+          return; // gave up — next app resume/token-refresh retries
       }
 
       final token = await FirebaseMessaging.instance.getToken();
@@ -191,7 +229,12 @@ class _MyAppState extends State<MyApp> {
     // silently re-enable push after an explicit opt-out via NotificationsSettingsPage.
     if (!await PushPreferences.isEnabled()) return;
     try {
-      await _pushRepository.registerToken(token: token, platform: defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios');
+      await _pushRepository.registerToken(
+        token: token,
+        platform: defaultTargetPlatform == TargetPlatform.android
+            ? 'android'
+            : 'ios',
+      );
     } catch (e) {
       // Best-effort — a failed registration just means this device misses pushes until the
       // next token refresh or sign-in retries it, not something worth surfacing to the diver.

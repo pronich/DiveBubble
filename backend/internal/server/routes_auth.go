@@ -119,7 +119,7 @@ func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, se
 			return
 		}
 
-		identity, err := auth.VerifyGoogleIDToken(r.Context(), req.IDToken, cfg.GoogleServerClientID)
+		identity, err := auth.VerifyGoogleIDToken(r.Context(), req.IDToken, cfg.GoogleServerClientIDs)
 		if err != nil {
 			writeError(w, http.StatusUnauthorized, "Google ID token verification failed")
 			return
