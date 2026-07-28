@@ -173,87 +173,101 @@ class _TripPageState extends State<TripPage> {
                                   // nested inside a page, Flutter's normal ancestor-scrollable/
                                   // descendant-tap disambiguation lets a drag fall through to the
                                   // PageView while a stationary tap still resolves here.
-                                  itemBuilder: (context, i) => Stack(
-                                    fit: StackFit.expand,
-                                    children: [
-                                      Image.network(
-                                        photos[i].url,
-                                        fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) =>
-                                                Image.asset(
-                                                  AppAssets.tripPlaceholder,
-                                                  fit: BoxFit.cover,
-                                                ),
-                                      ),
-                                      if (photos.length > 1) ...[
-                                        Positioned(
-                                          left: 0,
-                                          top: 0,
-                                          bottom: 0,
-                                          width:
-                                              MediaQuery.sizeOf(context).width /
-                                              3,
-                                          child: GestureDetector(
-                                            behavior:
-                                                HitTestBehavior.translucent,
-                                            onTap: () {
-                                              debugPrint(
-                                                '[photo-debug] left zone tapped, currentIndex=$_currentPhotoIndex',
-                                              );
-                                              if (_currentPhotoIndex > 0) {
-                                                try {
-                                                  _photoPageController
-                                                      .previousPage(
-                                                        duration:
-                                                            const Duration(
-                                                              milliseconds: 250,
-                                                            ),
-                                                        curve: Curves.easeOut,
-                                                      );
-                                                } catch (e) {
-                                                  debugPrint(
-                                                    '[photo-debug] previousPage threw: $e',
-                                                  );
-                                                }
-                                              }
-                                            },
-                                          ),
+                                  itemBuilder: (context, i) => Listener(
+                                    behavior: HitTestBehavior.translucent,
+                                    onPointerDown: (event) => debugPrint(
+                                      '[photo-debug] INNER (itemBuilder $i) pointer down at ${event.localPosition}',
+                                    ),
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        Image.network(
+                                          photos[i].url,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Image.asset(
+                                                    AppAssets.tripPlaceholder,
+                                                    fit: BoxFit.cover,
+                                                  ),
                                         ),
-                                        Positioned(
-                                          right: 0,
-                                          top: 0,
-                                          bottom: 0,
-                                          width:
-                                              MediaQuery.sizeOf(context).width /
-                                              3,
-                                          child: GestureDetector(
-                                            behavior:
-                                                HitTestBehavior.translucent,
-                                            onTap: () {
-                                              debugPrint(
-                                                '[photo-debug] right zone tapped, currentIndex=$_currentPhotoIndex, count=${photos.length}',
-                                              );
-                                              if (_currentPhotoIndex <
-                                                  photos.length - 1) {
-                                                try {
-                                                  _photoPageController.nextPage(
-                                                    duration: const Duration(
-                                                      milliseconds: 250,
-                                                    ),
-                                                    curve: Curves.easeOut,
-                                                  );
-                                                } catch (e) {
-                                                  debugPrint(
-                                                    '[photo-debug] nextPage threw: $e',
-                                                  );
+                                        if (photos.length > 1) ...[
+                                          Positioned(
+                                            left: 0,
+                                            top: 0,
+                                            bottom: 0,
+                                            width:
+                                                MediaQuery.sizeOf(
+                                                  context,
+                                                ).width /
+                                                3,
+                                            child: GestureDetector(
+                                              behavior:
+                                                  HitTestBehavior.translucent,
+                                              onTap: () {
+                                                debugPrint(
+                                                  '[photo-debug] left zone tapped, currentIndex=$_currentPhotoIndex',
+                                                );
+                                                if (_currentPhotoIndex > 0) {
+                                                  try {
+                                                    _photoPageController
+                                                        .previousPage(
+                                                          duration:
+                                                              const Duration(
+                                                                milliseconds:
+                                                                    250,
+                                                              ),
+                                                          curve: Curves.easeOut,
+                                                        );
+                                                  } catch (e) {
+                                                    debugPrint(
+                                                      '[photo-debug] previousPage threw: $e',
+                                                    );
+                                                  }
                                                 }
-                                              }
-                                            },
+                                              },
+                                            ),
                                           ),
-                                        ),
+                                          Positioned(
+                                            right: 0,
+                                            top: 0,
+                                            bottom: 0,
+                                            width:
+                                                MediaQuery.sizeOf(
+                                                  context,
+                                                ).width /
+                                                3,
+                                            child: GestureDetector(
+                                              behavior:
+                                                  HitTestBehavior.translucent,
+                                              onTap: () {
+                                                debugPrint(
+                                                  '[photo-debug] right zone tapped, currentIndex=$_currentPhotoIndex, count=${photos.length}',
+                                                );
+                                                if (_currentPhotoIndex <
+                                                    photos.length - 1) {
+                                                  try {
+                                                    _photoPageController
+                                                        .nextPage(
+                                                          duration:
+                                                              const Duration(
+                                                                milliseconds:
+                                                                    250,
+                                                              ),
+                                                          curve: Curves.easeOut,
+                                                        );
+                                                  } catch (e) {
+                                                    debugPrint(
+                                                      '[photo-debug] nextPage threw: $e',
+                                                    );
+                                                  }
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                        ],
                                       ],
-                                    ],
+                                    ),
                                   ),
                                 )
                               : Image.asset(
