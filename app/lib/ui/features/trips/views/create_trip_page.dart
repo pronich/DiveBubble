@@ -86,11 +86,13 @@ class _CreateTripPageState extends State<CreateTripPage> {
               const SizedBox(height: 20),
               TextField(
                 controller: _titleController,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(labelText: 'Title'),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _locationController,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(labelText: 'Location'),
               ),
               const SizedBox(height: 12),
@@ -116,11 +118,13 @@ class _CreateTripPageState extends State<CreateTripPage> {
               const SizedBox(height: 20),
               TextField(
                 controller: _meetingPointController,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(labelText: 'Meeting point (optional)'),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _descriptionController,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(labelText: 'Description (optional)'),
                 maxLines: 3,
               ),

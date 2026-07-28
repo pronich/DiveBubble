@@ -109,6 +109,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             children: [
               TextField(
                 controller: _nameController,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
                   labelText: 'Display name',
                   helperText: 'Shown to other divers instead of your real name',
@@ -117,6 +118,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               const SizedBox(height: 12),
               TextField(
                 controller: _locationController,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
                   labelText: 'Location',
                   suffixIcon: _locating
@@ -134,6 +136,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               const SizedBox(height: 12),
               TextField(
                 controller: _bioController,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(labelText: 'Bio'),
                 maxLines: 3,
               ),

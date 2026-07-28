@@ -88,6 +88,7 @@ class _UpdateLevelSheetState extends State<UpdateLevelSheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _numberController,
+              textCapitalization: TextCapitalization.characters,
               decoration: const InputDecoration(labelText: 'Certification number (optional)'),
             ),
             const SizedBox(height: 20),

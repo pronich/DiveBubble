@@ -248,6 +248,7 @@ class _AddGearItemSheetState extends State<_AddGearItemSheet> {
             TextField(
               controller: _controller,
               autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(labelText: 'Item name'),
               onSubmitted: (_) => _submit(),
             ),

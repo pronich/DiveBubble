@@ -72,6 +72,7 @@ class _AddSpecialtySheetState extends State<AddSpecialtySheet> {
               const SizedBox(height: 12),
               TextField(
                 controller: _customLabelController,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(labelText: 'Speciality name'),
               ),
             ],
@@ -90,6 +91,7 @@ class _AddSpecialtySheetState extends State<AddSpecialtySheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _numberController,
+              textCapitalization: TextCapitalization.characters,
               decoration: const InputDecoration(labelText: 'Certification number (optional)'),
             ),
             const SizedBox(height: 20),

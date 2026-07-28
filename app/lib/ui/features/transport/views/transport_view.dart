@@ -546,7 +546,7 @@ class _TransportOfferDetailSheetState
                       style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error),
                       child: _isActing
                           ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(isOrganizer ? 'Dissolve car' : 'Leave car'),
+                          : Text(isOrganizer ? 'Cancel car offer' : 'Leave car'),
                     ),
                   ),
                   if (_actionError != null) ...[
@@ -724,6 +724,7 @@ class _AddTransportOfferSheetState extends State<_AddTransportOfferSheet> {
             const SizedBox(height: 12),
             TextField(
               controller: _detailsController,
+              textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(
                 labelText: 'Details — time, pickup point (optional)',
               ),

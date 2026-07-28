@@ -432,11 +432,11 @@ class _PillSegment extends StatelessWidget {
           borderRadius: BorderRadius.circular(_PillTabBar._pillHeight / 2),
         ),
         clipBehavior: Clip.none,
-        child: Center(
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Row(
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Center(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
@@ -456,43 +456,47 @@ class _PillSegment extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (onInfoTap != null)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 2),
-                        child: Material(
-                          type: MaterialType.transparency,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: onInfoTap,
-                            child: const Padding(
-                              padding: EdgeInsets.all(2),
-                              child: Icon(
-                                Icons.info_outline,
-                                size: 16,
-                                color: contentColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
                   ],
                 ],
               ),
-              if (hasAlert)
-                Positioned(
-                  right: isActive ? -2 : -6,
-                  top: -2,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.error,
-                      shape: BoxShape.circle,
+            ),
+            if (isActive && onInfoTap != null)
+              Positioned(
+                right: 4,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: onInfoTap,
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: contentColor,
+                        ),
+                      ),
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+            if (hasAlert)
+              Positioned(
+                right: isActive ? -2 : -6,
+                top: -2,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.error,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

@@ -492,7 +492,7 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
                       style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error),
                       child: _isActing
                           ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(isCreator ? 'Dissolve buddy group' : 'Leave buddy group'),
+                          : Text(isCreator ? 'Cancel buddy request' : 'Leave buddy group'),
                     ),
                   ),
                   if (_actionError != null) ...[
