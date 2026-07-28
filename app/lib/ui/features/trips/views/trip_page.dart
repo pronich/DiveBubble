@@ -141,8 +141,16 @@ class _TripPageState extends State<TripPage> {
                   return Listener(
                     behavior: HitTestBehavior.translucent,
                     onPointerDown: (event) => debugPrint(
-                      '[photo-debug] RAW pointer down at ${event.localPosition}',
+                      '[photo-debug] RAW pointer DOWN at ${event.localPosition}',
                     ),
+                    onPointerMove: (event) => debugPrint(
+                      '[photo-debug] RAW pointer MOVE at ${event.localPosition}, delta=${event.delta}',
+                    ),
+                    onPointerUp: (event) => debugPrint(
+                      '[photo-debug] RAW pointer UP at ${event.localPosition}',
+                    ),
+                    onPointerCancel: (event) =>
+                        debugPrint('[photo-debug] RAW pointer CANCEL'),
                     child: AspectRatio(
                       aspectRatio: 4 / 3,
                       child: Stack(
