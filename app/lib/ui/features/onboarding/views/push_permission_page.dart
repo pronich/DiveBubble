@@ -90,7 +90,10 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
       // Best-effort — worst case this device just doesn't get pushes until the diver
       // later enables it from NotificationsSettingsPage.
     }
-    if (mounted) setState(() => _requesting = false);
+    // Diver may have already tapped "Not now" and left while this was in flight — calling
+    // _continue() again here would push onto a Navigator that's no longer in the tree.
+    if (!mounted) return;
+    setState(() => _requesting = false);
     await _continue();
   }
 
@@ -120,10 +123,12 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
                 onPressed: _requesting ? null : _enableNotifications,
                 child: _requesting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Enable notifications'),
+                    : const Text('Continue'),
               ),
               const SizedBox(height: 8),
-              TextButton(onPressed: _requesting ? null : _continue, child: const Text('Not now')),
+              // Stays tappable even mid-request — push permission must stay optional and
+              // never block onboarding (see App Store Guideline 4.5.4 rejection).
+              TextButton(onPressed: _continue, child: const Text('Not now')),
               const SizedBox(height: 24),
             ],
           ),

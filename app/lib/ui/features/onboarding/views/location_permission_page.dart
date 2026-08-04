@@ -59,7 +59,10 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
     // during onboarding specifically so tapping "Not now" here doesn't get silently
     // re-asked a screen later (see EditProfilePage.initState's own comment).
     final resolved = await _locationService.currentCityCountry();
-    if (mounted) setState(() => _requesting = false);
+    // Diver may have already tapped "Not now" and left while this was in flight — calling
+    // _continue() again here would push onto a Navigator that's no longer in the tree.
+    if (!mounted) return;
+    setState(() => _requesting = false);
     await _continue(resolvedLocation: resolved);
   }
 
@@ -89,10 +92,13 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
                 onPressed: _requesting ? null : _enableLocation,
                 child: _requesting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Enable location'),
+                    : const Text('Continue'),
               ),
               const SizedBox(height: 8),
-              TextButton(onPressed: _requesting ? null : () => _continue(), child: const Text('Not now')),
+              // Stays tappable even mid-request — currentCityCountry() has no hard upper
+              // bound (geocoding can stall), and a diver must always have a way out of this
+              // screen rather than waiting on it (see App Store Guideline 2.1(a) rejection).
+              TextButton(onPressed: () => _continue(), child: const Text('Not now')),
               const SizedBox(height: 24),
             ],
           ),

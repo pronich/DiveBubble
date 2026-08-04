@@ -49,7 +49,12 @@ class LocationService {
       final position = await currentPosition();
       if (position == null) return null;
 
-      final placemarks = await _geocoding.placemarkFromCoordinates(position.latitude, position.longitude);
+      // No built-in timeout on the geocoding call itself — without one, a stalled network
+      // (e.g. a sandboxed review environment) can hang this well past getCurrentPosition's
+      // own 10s limit above.
+      final placemarks = await _geocoding
+          .placemarkFromCoordinates(position.latitude, position.longitude)
+          .timeout(const Duration(seconds: 10));
       if (placemarks.isEmpty) return null;
 
       final place = placemarks.first;
