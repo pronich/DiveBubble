@@ -7,30 +7,29 @@ import '../../../../data/repositories/push_repository.dart';
 import '../../profile/view_models/profile_view_model.dart';
 import '../../profile/views/edit_profile_page.dart';
 
-/// Second step of new-account onboarding (see LoginSheet) — same "explain before asking"
-/// reasoning as LocationPermissionPage. This is the one place in the app that ever calls
-/// FirebaseMessaging.requestPermission() for a brand-new account; everywhere else
-/// (main.dart's auto-sync on sign-in/token-refresh, NotificationsSettingsPage) either only
-/// checks an already-decided status or is a settings toggle the diver tapped themselves.
+/// Same "explain before asking" reasoning as LocationPermissionPage. This is the one place
+/// in the app that ever calls FirebaseMessaging.requestPermission() from onboarding;
+/// everywhere else (main.dart's auto-sync on sign-in/token-refresh, NotificationsSettingsPage)
+/// either only checks an already-decided status or is a settings toggle the diver tapped
+/// themselves. Shown by [LoginSheet] only when the device hasn't decided this permission yet.
 class PushPermissionPage extends StatefulWidget {
   const PushPermissionPage({
     super.key,
     required this.profileRepository,
     required this.pushRepository,
+    required this.isNewUser,
     this.initialLocation,
-    this.standalone = false,
   });
 
   final ProfileRepository profileRepository;
   final PushRepository pushRepository;
-  // Resolved on the previous step (LocationPermissionPage) if the diver granted location —
-  // prefilled into Edit Profile here rather than letting it auto-detect again, since that
-  // auto-detect is skipped during onboarding (see EditProfilePage.initState).
+  final bool isNewUser;
+  // Resolved on the previous step (LocationPermissionPage) if the diver granted location and
+  // this screen was reached via that chain — prefilled into Edit Profile here rather than
+  // letting it auto-detect again, since that auto-detect is skipped during onboarding (see
+  // EditProfilePage.initState). Null when this screen is reached directly (location was
+  // already decided on this device, so there was nothing to chain from).
   final String? initialLocation;
-  // True when shown to a returning diver on a device that's never decided push permission
-  // (new phone, reinstall) rather than as part of new-account onboarding — just asks and
-  // pops, skipping the location/profile/certificates chain that follows it for new accounts.
-  final bool standalone;
 
   @override
   State<PushPermissionPage> createState() => _PushPermissionPageState();
@@ -39,25 +38,25 @@ class PushPermissionPage extends StatefulWidget {
 class _PushPermissionPageState extends State<PushPermissionPage> {
   bool _requesting = false;
 
-  Future<void> _continue() async {
-    if (widget.standalone) {
+  Future<void> _finish() async {
+    if (widget.isNewUser) {
+      var profile = await widget.profileRepository.getProfile();
+      if (widget.initialLocation != null && widget.initialLocation!.isNotEmpty) {
+        profile = profile.copyWith(location: widget.initialLocation);
+      }
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EditProfilePage(
+            viewModel: ProfileViewModel(repository: widget.profileRepository),
+            profile: profile,
+            isOnboarding: true,
+          ),
+        ),
+      );
       if (mounted) Navigator.of(context).pop();
       return;
     }
-    var profile = await widget.profileRepository.getProfile();
-    if (widget.initialLocation != null && widget.initialLocation!.isNotEmpty) {
-      profile = profile.copyWith(location: widget.initialLocation);
-    }
-    if (!mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => EditProfilePage(
-          viewModel: ProfileViewModel(repository: widget.profileRepository),
-          profile: profile,
-          isOnboarding: true,
-        ),
-      ),
-    );
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -91,10 +90,10 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
       // later enables it from NotificationsSettingsPage.
     }
     // Diver may have already tapped "Not now" and left while this was in flight — calling
-    // _continue() again here would push onto a Navigator that's no longer in the tree.
+    // _finish() again here would push onto a Navigator that's no longer in the tree.
     if (!mounted) return;
     setState(() => _requesting = false);
-    await _continue();
+    await _finish();
   }
 
   @override
@@ -128,7 +127,7 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
               const SizedBox(height: 8),
               // Stays tappable even mid-request — push permission must stay optional and
               // never block onboarding (see App Store Guideline 4.5.4 rejection).
-              TextButton(onPressed: _continue, child: const Text('Not now')),
+              TextButton(onPressed: _finish, child: const Text('Not now')),
               const SizedBox(height: 24),
             ],
           ),

@@ -7,8 +7,15 @@ import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/services/location_service.dart';
+import '../../profile/view_models/profile_view_model.dart';
+import '../../profile/views/edit_profile_page.dart';
 import 'location_permission_page.dart';
 import 'push_permission_page.dart';
+
+// What LoginSheet's own modal route resolves with — decided once, up front, so the
+// permission-chain screens (pushed after the sheet is already gone, see `show()`) never
+// need to re-check anything or fall back on a standalone/isNewUser split of their own.
+typedef _SignInOutcome = ({bool isNewUser, bool needsLocation, bool needsPush});
 
 /// Google/Apple/email sign-in choice sheet, opened from anywhere a gated action needs a
 /// signed-in user.
@@ -31,7 +38,13 @@ class LoginSheet extends StatefulWidget {
     required ProfileRepository profileRepository,
     required PushRepository pushRepository,
   }) async {
-    final result = await showModalBottomSheet<bool>(
+    // Captured before the sheet (and its own BuildContext) closes — the permission chain
+    // below pushes onto this only once the sheet is already gone. Pushing a full-screen
+    // route while a showModalBottomSheet route is still on the stack made iOS's push
+    // transition apply its outgoing-route parallax/scrim to the sheet itself, producing a
+    // broken half-sheet/half-page slide (the "slider" glitch seen on reinstall + log back in).
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final outcome = await showModalBottomSheet<_SignInOutcome>(
       context: context,
       isScrollControlled: true,
       builder: (_) => LoginSheet(
@@ -40,7 +53,43 @@ class LoginSheet extends StatefulWidget {
         pushRepository: pushRepository,
       ),
     );
-    return result ?? false;
+    if (outcome == null) return false;
+
+    if (outcome.needsLocation) {
+      await navigator.push(
+        MaterialPageRoute(
+          builder: (_) => LocationPermissionPage(
+            profileRepository: profileRepository,
+            pushRepository: pushRepository,
+            needsPush: outcome.needsPush,
+            isNewUser: outcome.isNewUser,
+          ),
+        ),
+      );
+    } else if (outcome.needsPush) {
+      await navigator.push(
+        MaterialPageRoute(
+          builder: (_) => PushPermissionPage(
+            profileRepository: profileRepository,
+            pushRepository: pushRepository,
+            isNewUser: outcome.isNewUser,
+          ),
+        ),
+      );
+    } else if (outcome.isNewUser) {
+      final profile = await profileRepository.getProfile();
+      await navigator.push(
+        MaterialPageRoute(
+          builder: (_) => EditProfilePage(
+            viewModel: ProfileViewModel(repository: profileRepository),
+            profile: profile,
+            isOnboarding: true,
+          ),
+        ),
+      );
+    }
+
+    return true;
   }
 
   @override
@@ -96,59 +145,16 @@ class _LoginSheetState extends State<LoginSheet> {
   }
 
   Future<void> _onSignedIn(SignInResult result) async {
+    // Checked for every sign-in, new account or returning — a returning diver's device can
+    // still have undecided permissions (new phone, reinstall), and a brand-new account isn't
+    // guaranteed to be undecided either (e.g. this device previously ran the app under a
+    // different account). The sign-in button's own spinner (_loading) stays up through this
+    // — it's a plain status read, no OS dialog involved, so there's nothing to show yet.
+    final needsLocation = await LocationService().permissionUndecided();
+    final pushSettings = await FirebaseMessaging.instance.getNotificationSettings();
+    final needsPush = pushSettings.authorizationStatus == AuthorizationStatus.notDetermined;
     if (!mounted) return;
-
-    if (result.isNewUser) {
-      // A brand-new account gets a short guided setup instead of landing on an empty
-      // screen: location -> push permission (each with its own "why", one screen per
-      // decision rather than surprise system prompts) -> profile basics -> certificates
-      // (skippable). Each screen pushes the next and awaits it, then pops itself once its
-      // child returns — the same chaining EditProfilePage already used for its own
-      // certificates step, just extended two steps earlier.
-      if (mounted) {
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => LocationPermissionPage(
-              profileRepository: widget.profileRepository,
-              pushRepository: widget.pushRepository,
-            ),
-          ),
-        );
-      }
-    } else {
-      // Returning diver, but this device has never decided — a new phone or a reinstall
-      // both reset OS permissions with no auth-chain event to hook into otherwise. Location
-      // still self-heals the next time LocationService is used elsewhere (Nearest sort, Edit
-      // Profile), just without this explanation first; push has no such fallback, so main.dart's
-      // silent re-sync would otherwise never get the chance to register a token.
-      final locationUndecided = await LocationService().permissionUndecided();
-      if (mounted && locationUndecided) {
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => LocationPermissionPage(
-              profileRepository: widget.profileRepository,
-              pushRepository: widget.pushRepository,
-              standalone: true,
-            ),
-          ),
-        );
-      }
-
-      final settings = await FirebaseMessaging.instance.getNotificationSettings();
-      if (mounted && settings.authorizationStatus == AuthorizationStatus.notDetermined) {
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => PushPermissionPage(
-              profileRepository: widget.profileRepository,
-              pushRepository: widget.pushRepository,
-              standalone: true,
-            ),
-          ),
-        );
-      }
-    }
-
-    if (mounted) Navigator.of(context).pop(true);
+    Navigator.of(context).pop((isNewUser: result.isNewUser, needsLocation: needsLocation, needsPush: needsPush));
   }
 
   Future<void> _sendEmailCode() async {
@@ -185,7 +191,7 @@ class _LoginSheetState extends State<LoginSheet> {
     });
     try {
       final result = await widget.authRepository.verifyEmailLogin(_emailController.text.trim(), code);
-      await _onSignedIn(result);
+      if (mounted) await _onSignedIn(result);
     } catch (e) {
       if (mounted) {
         setState(() {

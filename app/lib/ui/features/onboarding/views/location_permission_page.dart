@@ -3,26 +3,30 @@ import 'package:flutter/material.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/services/location_service.dart';
+import '../../profile/view_models/profile_view_model.dart';
+import '../../profile/views/edit_profile_page.dart';
 import 'push_permission_page.dart';
 
-/// First step of new-account onboarding (see LoginSheet) — explains why DiveBubble wants
-/// location before the OS permission dialog appears, rather than firing it silently later
-/// the moment the diver first opens Edit Profile (the old behavior).
+/// Explains why DiveBubble wants location before the OS permission dialog appears, rather
+/// than firing it silently later. Shown by [LoginSheet] only when the device hasn't decided
+/// this permission yet — for a brand-new account or a reinstall/new-device returning diver
+/// alike, never unconditionally.
 class LocationPermissionPage extends StatefulWidget {
   const LocationPermissionPage({
     super.key,
     required this.profileRepository,
     required this.pushRepository,
-    this.standalone = false,
+    required this.needsPush,
+    required this.isNewUser,
   });
 
   final ProfileRepository profileRepository;
   final PushRepository pushRepository;
-  // True when shown to a returning diver on a device that's never decided location
-  // permission (new phone, reinstall) rather than as part of new-account onboarding — just
-  // asks and pops, skipping the push/profile/certificates chain that follows it for new
-  // accounts (see LoginSheet).
-  final bool standalone;
+  // Whether push permission also needs asking — chains straight into PushPermissionPage
+  // instead of popping, so the two explanation screens slide one into the next instead of
+  // both landing back on whatever screen opened LoginSheet in between.
+  final bool needsPush;
+  final bool isNewUser;
 
   @override
   State<LocationPermissionPage> createState() => _LocationPermissionPageState();
@@ -32,23 +36,39 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
   final _locationService = LocationService();
   bool _requesting = false;
 
-  Future<void> _continue({String? resolvedLocation}) async {
-    if (widget.standalone) {
-      // Resolved location has nowhere to go without the profile step that follows for new
-      // accounts — LocationService itself already persists it via EditProfilePage's own
-      // auto-detect the next time a returning diver opens their profile, so it's not lost.
+  Future<void> _finish({String? resolvedLocation}) async {
+    if (widget.needsPush) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PushPermissionPage(
+            profileRepository: widget.profileRepository,
+            pushRepository: widget.pushRepository,
+            initialLocation: resolvedLocation,
+            isNewUser: widget.isNewUser,
+          ),
+        ),
+      );
       if (mounted) Navigator.of(context).pop();
       return;
     }
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PushPermissionPage(
-          profileRepository: widget.profileRepository,
-          pushRepository: widget.pushRepository,
-          initialLocation: resolvedLocation,
+    if (widget.isNewUser) {
+      var profile = await widget.profileRepository.getProfile();
+      if (resolvedLocation != null && resolvedLocation.isNotEmpty) {
+        profile = profile.copyWith(location: resolvedLocation);
+      }
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EditProfilePage(
+            viewModel: ProfileViewModel(repository: widget.profileRepository),
+            profile: profile,
+            isOnboarding: true,
+          ),
         ),
-      ),
-    );
+      );
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -60,10 +80,10 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
     // re-asked a screen later (see EditProfilePage.initState's own comment).
     final resolved = await _locationService.currentCityCountry();
     // Diver may have already tapped "Not now" and left while this was in flight — calling
-    // _continue() again here would push onto a Navigator that's no longer in the tree.
+    // _finish() again here would push onto a Navigator that's no longer in the tree.
     if (!mounted) return;
     setState(() => _requesting = false);
-    await _continue(resolvedLocation: resolved);
+    await _finish(resolvedLocation: resolved);
   }
 
   @override
@@ -98,7 +118,7 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
               // Stays tappable even mid-request — currentCityCountry() has no hard upper
               // bound (geocoding can stall), and a diver must always have a way out of this
               // screen rather than waiting on it (see App Store Guideline 2.1(a) rejection).
-              TextButton(onPressed: () => _continue(), child: const Text('Not now')),
+              TextButton(onPressed: () => _finish(), child: const Text('Not now')),
               const SizedBox(height: 24),
             ],
           ),
