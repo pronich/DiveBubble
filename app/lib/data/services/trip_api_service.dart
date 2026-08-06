@@ -79,16 +79,22 @@ class TripApiService {
       body: jsonEncode({'code': code}),
     );
     if (res.statusCode != 200) {
-      String message = 'joinTripByCode failed: ${res.statusCode}';
-      try {
-        final decoded = jsonDecode(res.body) as Map<String, dynamic>;
-        if (decoded['error'] is String) message = decoded['error'] as String;
-      } catch (_) {
-        // best-effort — fall back to the generic message above
-      }
-      throw Exception(message);
+      throw Exception(_extractError(res.body) ?? 'joinTripByCode failed: ${res.statusCode}');
     }
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  // Server errors come back as {"error": "..."} — surface that message directly instead of the raw body.
+  String? _extractError(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic> && decoded['error'] is String) {
+        return decoded['error'] as String;
+      }
+    } catch (_) {
+      // fall through
+    }
+    return null;
   }
 
   // 403 (mapped to an Exception here) if the caller is the trip's organizer — they cancel
@@ -218,7 +224,7 @@ class TripApiService {
       body: jsonEncode(body),
     );
     if (res.statusCode != 201) {
-      throw Exception('createTrip failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'createTrip failed: ${res.statusCode}');
     }
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }

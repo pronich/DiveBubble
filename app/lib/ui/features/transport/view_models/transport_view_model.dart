@@ -87,17 +87,19 @@ class TransportViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> submit({required String type, int? seats, String? details}) async {
+  /// Returns null on success, or an error message on failure — same reasoning as [join]:
+  /// a failed submission shouldn't blow away the whole list via the shared [error] field,
+  /// just the "Add transport info" sheet that's still open.
+  Future<String?> submit({required String type, int? seats, String? details}) async {
     _isSubmitting = true;
     notifyListeners();
 
     try {
       await _repository.createOffer(tripId, type: type, seats: seats, details: details);
       _offers = await _repository.getOffers(tripId);
-      return true;
+      return null;
     } catch (e) {
-      _error = e.toString();
-      return false;
+      return e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isSubmitting = false;
       notifyListeners();

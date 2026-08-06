@@ -43,6 +43,11 @@ class _CreateTripPageState extends State<CreateTripPage> {
   List<String> _photoPaths = [];
   bool _isPickingPhotos = false;
 
+  bool _showTitleError = false;
+  bool _showLocationError = false;
+  bool _showDateError = false;
+  bool _showTimeError = false;
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -87,25 +92,49 @@ class _CreateTripPageState extends State<CreateTripPage> {
               TextField(
                 controller: _titleController,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(labelText: 'Title'),
+                decoration: InputDecoration(
+                  labelText: 'Title',
+                  errorText: _showTitleError ? 'Title is required' : null,
+                ),
+                onChanged: (value) {
+                  if (_showTitleError && value.trim().isNotEmpty) setState(() => _showTitleError = false);
+                },
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _locationController,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(labelText: 'Location'),
+                decoration: InputDecoration(
+                  labelText: 'Location',
+                  errorText: _showLocationError ? 'Location is required' : null,
+                ),
+                onChanged: (value) {
+                  if (_showLocationError && value.trim().isNotEmpty) setState(() => _showLocationError = false);
+                },
               ),
               const SizedBox(height: 12),
               _DatePickerField(
                 label: 'Date',
                 value: _startDate,
-                onPick: (date) => setState(() => _startDate = date),
+                errorText: _showDateError ? 'Date is required' : null,
+                onPick: (date) => setState(() {
+                  _startDate = date;
+                  _showDateError = false;
+                  // A previously picked end date can now sit before the new start date —
+                  // clearing it here is what stops "end date is before the start date"
+                  // from only surfacing as a raw server error at submit time.
+                  if (_endDate != null && _endDate!.isBefore(date)) _endDate = null;
+                }),
               ),
               const SizedBox(height: 12),
               _TimePickerField(
                 label: 'Meeting time',
                 value: _startTimeOfDay,
-                onPick: (time) => setState(() => _startTimeOfDay = time),
+                errorText: _showTimeError ? 'Meeting time is required' : null,
+                onPick: (time) => setState(() {
+                  _startTimeOfDay = time;
+                  _showTimeError = false;
+                }),
               ),
               const SizedBox(height: 12),
               _DatePickerField(
@@ -223,9 +252,12 @@ class _CreateTripPageState extends State<CreateTripPage> {
     final title = _titleController.text.trim();
     final location = _locationController.text.trim();
     if (title.isEmpty || location.isEmpty || _startDate == null || _startTimeOfDay == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Title, location, date and meeting time are required')),
-      );
+      setState(() {
+        _showTitleError = title.isEmpty;
+        _showLocationError = location.isEmpty;
+        _showDateError = _startDate == null;
+        _showTimeError = _startTimeOfDay == null;
+      });
       return;
     }
 
@@ -337,13 +369,21 @@ Future<DateTime?> _showWheelPicker(
 }
 
 class _DatePickerField extends StatelessWidget {
-  const _DatePickerField({required this.label, required this.value, required this.onPick, this.onClear, this.minimumDate});
+  const _DatePickerField({
+    required this.label,
+    required this.value,
+    required this.onPick,
+    this.onClear,
+    this.minimumDate,
+    this.errorText,
+  });
 
   final String label;
   final DateTime? value;
   final ValueChanged<DateTime> onPick;
   final VoidCallback? onClear;
   final DateTime? minimumDate;
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {
@@ -355,6 +395,7 @@ class _DatePickerField extends StatelessWidget {
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
+          errorText: errorText,
           suffixIcon: value != null && onClear != null
               ? IconButton(icon: const Icon(Icons.clear), onPressed: onClear)
               : const Icon(Icons.calendar_today_outlined),
@@ -366,11 +407,12 @@ class _DatePickerField extends StatelessWidget {
 }
 
 class _TimePickerField extends StatelessWidget {
-  const _TimePickerField({required this.label, required this.value, required this.onPick});
+  const _TimePickerField({required this.label, required this.value, required this.onPick, this.errorText});
 
   final String label;
   final TimeOfDay? value;
   final ValueChanged<TimeOfDay> onPick;
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {
@@ -387,6 +429,7 @@ class _TimePickerField extends StatelessWidget {
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
+          errorText: errorText,
           suffixIcon: const Icon(Icons.access_time_outlined),
         ),
         child: Text(value != null ? value!.format(context) : 'Select a time'),

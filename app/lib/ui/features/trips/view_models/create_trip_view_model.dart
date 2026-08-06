@@ -52,7 +52,7 @@ class CreateTripViewModel extends ChangeNotifier {
         longitude: longitude,
       );
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       return null;
     } finally {
       _isSubmitting = false;

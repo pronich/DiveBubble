@@ -48,7 +48,7 @@ class TransportApiService {
       body: jsonEncode(body),
     );
     if (res.statusCode != 201) {
-      throw Exception('createOffer failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'createOffer failed: ${res.statusCode}');
     }
     return TransportOfferApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }

@@ -745,6 +745,8 @@ class _AddTransportOfferSheetState extends State<_AddTransportOfferSheet> {
   String _type = 'offer_ride';
   final _seatsController = TextEditingController();
   final _detailsController = TextEditingController();
+  bool _isSubmitting = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -798,12 +800,16 @@ class _AddTransportOfferSheetState extends State<_AddTransportOfferSheet> {
               ),
               maxLines: 2,
             ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            ],
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: widget.viewModel.isSubmitting ? null : _submit,
-                child: widget.viewModel.isSubmitting
+                onPressed: _isSubmitting ? null : _submit,
+                child: _isSubmitting
                     ? const SizedBox(
                         width: 16,
                         height: 16,
@@ -819,15 +825,25 @@ class _AddTransportOfferSheetState extends State<_AddTransportOfferSheet> {
   }
 
   Future<void> _submit() async {
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
     final seats = int.tryParse(_seatsController.text.trim());
     final details = _detailsController.text.trim();
-    final ok = await widget.viewModel.submit(
+    final error = await widget.viewModel.submit(
       type: _type,
       seats: seats,
       details: details.isEmpty ? null : details,
     );
-    if (ok && mounted) {
+    if (!mounted) return;
+    if (error == null) {
       Navigator.of(context).pop();
+    } else {
+      setState(() {
+        _isSubmitting = false;
+        _error = error;
+      });
     }
   }
 }
