@@ -20,6 +20,7 @@ class CertificationsOnboardingPage extends StatefulWidget {
 class _CertificationsOnboardingPageState extends State<CertificationsOnboardingPage> {
   String? _level;
   String? _agency;
+  bool _showLevelError = false;
   final _numberController = TextEditingController();
 
   @override
@@ -29,7 +30,10 @@ class _CertificationsOnboardingPageState extends State<CertificationsOnboardingP
   }
 
   Future<void> _save() async {
-    if (_level == null) return;
+    if (_level == null) {
+      setState(() => _showLevelError = true);
+      return;
+    }
     final ok = await widget.viewModel.updateLevel(
       certificationLevel: _level!,
       certificationAgency: _agency,
@@ -61,12 +65,18 @@ class _CertificationsOnboardingPageState extends State<CertificationsOnboardingP
               const SizedBox(height: 28),
               DropdownButtonFormField<String?>(
                 initialValue: _level,
-                decoration: const InputDecoration(labelText: 'Level'),
+                decoration: InputDecoration(
+                  labelText: 'Level',
+                  errorText: _showLevelError ? 'Please select a level' : null,
+                ),
                 hint: const Text('Select level'),
                 items: kCertificationLevels
                     .map((level) => DropdownMenuItem<String?>(value: level, child: Text(level)))
                     .toList(),
-                onChanged: (value) => setState(() => _level = value),
+                onChanged: (value) => setState(() {
+                  _level = value;
+                  _showLevelError = false;
+                }),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String?>(
@@ -87,7 +97,7 @@ class _CertificationsOnboardingPageState extends State<CertificationsOnboardingP
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: (widget.viewModel.isSubmitting || _level == null) ? null : _save,
+                onPressed: widget.viewModel.isSubmitting ? null : _save,
                 child: const Text('Save and continue'),
               ),
               const SizedBox(height: 8),

@@ -38,6 +38,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   final _locationService = LocationService();
   bool _locating = false;
+  bool _showNameError = false;
 
   @override
   void initState() {
@@ -78,6 +79,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _save() async {
+    if (_nameController.text.trim().isEmpty) {
+      setState(() => _showNameError = true);
+      return;
+    }
     final success = await widget.viewModel.submit(
       displayName: _nameController.text.trim(),
       location: _locationController.text.trim(),
@@ -110,10 +115,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
               TextField(
                 controller: _nameController,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Display name',
                   helperText: 'Shown to other divers instead of your real name',
+                  errorText: _showNameError ? 'Please enter a display name' : null,
                 ),
+                onChanged: (value) {
+                  if (_showNameError && value.trim().isNotEmpty) setState(() => _showNameError = false);
+                },
               ),
               const SizedBox(height: 12),
               TextField(

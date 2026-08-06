@@ -133,6 +133,17 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: AppColors.borderFocused, width: 1.5),
         ),
+        // Explicit, not left to InputDecorator's fallback default — TextField and
+        // DropdownButtonFormField resolve a missing errorBorder differently, which made the
+        // same errorText render a red outline on one and nothing on the other.
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+        ),
       ),
     );
   }
