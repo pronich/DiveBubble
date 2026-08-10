@@ -1,44 +1,40 @@
-import Image from "next/image";
-import { QRCodeSVG } from "qrcode.react";
-
-// Neither store listing exists yet — both the QR target and the badges are non-functional
-// "Soon" stubs (see CLAUDE.md: Apple Sign-In/App Store submission are both still blocked on
-// external setup). The QR encodes the site itself for now so scanning it isn't a dead end,
-// and gets swapped for the real store link once one exists.
-const PLACEHOLDER_TARGET = "https://divebubble.io";
-
-function SoonTag() {
-  return (
-    <span className="absolute -right-2 -top-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand-blue shadow">
-      Soon
-    </span>
-  );
-}
+import { AppQrCode } from "@/components/AppQrCode";
+import { StoreBadge } from "@/components/StoreBadge";
+import { APP_LINKS_LIVE, APP_STORE_URL, GOOGLE_PLAY_URL } from "@/config/appLaunch";
 
 export function DownloadSection() {
   return (
     <div>
       {/* Desktop/tablet: a QR code reads better than store badges when you can't tap them
-          straight from your phone anyway. */}
+          straight from your phone anyway. Always points at /app_launch — see
+          src/config/appLaunch.ts for how that page behaves before/after launch. */}
       <div className="hidden items-center gap-4 md:flex">
-        <div className="relative rounded-2xl bg-white p-3">
-          <QRCodeSVG value={PLACEHOLDER_TARGET} size={96} />
-          <SoonTag />
+        <div className="rounded-2xl bg-white p-3">
+          <AppQrCode size={96} />
         </div>
-        <p className="max-w-[14rem] text-sm text-white/70">Scan with your phone to get DiveBubble once it&apos;s live.</p>
+        <p className="max-w-[14rem] text-sm text-white/70">Scan with your phone to get DiveBubble.</p>
       </div>
 
       {/* Mobile browser: badges are the useful affordance here, a QR code pointing at the
           same page you're already on isn't. */}
       <div className="flex items-center gap-3 md:hidden">
-        <div className="relative">
-          <Image src="/images/app-store-badge.svg" alt="Download on the App Store" width={120} height={40} />
-          <SoonTag />
-        </div>
-        <div className="relative">
-          <Image src="/images/google-play-badge.svg" alt="Get it on Google Play" width={135} height={40} />
-          <SoonTag />
-        </div>
+        <StoreBadge
+          href={APP_STORE_URL}
+          live={APP_LINKS_LIVE}
+          src="/images/app-store-badge.svg"
+          alt="Download on the App Store"
+          width={120}
+          height={40}
+        />
+        <StoreBadge
+          href={GOOGLE_PLAY_URL}
+          live={APP_LINKS_LIVE}
+          src="/images/google-play-badge.svg"
+          alt="Get it on Google Play"
+          width={135}
+          height={40}
+          tag="Beta"
+        />
       </div>
     </div>
   );
