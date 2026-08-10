@@ -41,7 +41,6 @@ export default function IndividualsPage() {
               <div className="mt-8">
                 <DownloadSection />
               </div>
-              <p className="mt-4 text-sm text-white/60">Free to join · iOS &amp; Android</p>
             </div>
 
             <div className="rounded-2xl bg-white p-6 text-brand-blue shadow-xl">

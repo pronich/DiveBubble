@@ -1,18 +1,20 @@
-import { AppQrCode } from "@/components/AppQrCode";
+import Image from "next/image";
 import { StoreBadge } from "@/components/StoreBadge";
 import { APP_LINKS_LIVE, APP_STORE_URL, GOOGLE_PLAY_URL } from "@/config/appLaunch";
 
 export function DownloadSection() {
   return (
     <div>
-      {/* Desktop/tablet: a QR code reads better than store badges when you can't tap them
-          straight from your phone anyway. Always points at /app_launch — see
-          src/config/appLaunch.ts for how that page behaves before/after launch. */}
-      <div className="hidden items-center gap-4 md:flex">
-        <div className="rounded-2xl bg-white p-3">
-          <AppQrCode size={96} />
-        </div>
-        <p className="max-w-[14rem] text-sm text-white/70">Scan with your phone to get DiveBubble.</p>
+      {/* Desktop/tablet: the Figma-designed download card (QR + copy + badges, all
+          baked in) — a QR code reads better than tappable badges here anyway. */}
+      <div className="hidden md:block">
+        <Image
+          src="/images/download-card.svg"
+          alt="Scan to download DiveBubble, or get it on the App Store or Google Play"
+          width={2334}
+          height={922}
+          className="h-auto w-full max-w-md"
+        />
       </div>
 
       {/* Mobile browser: badges are the useful affordance here, a QR code pointing at the
