@@ -11,8 +11,8 @@ export function DownloadSection() {
         <Image
           src="/images/download-card.svg"
           alt="Scan to download DiveBubble, or get it on the App Store or Google Play"
-          width={2334}
-          height={922}
+          width={7138}
+          height={3138}
           className="h-auto w-full max-w-md"
         />
       </div>
