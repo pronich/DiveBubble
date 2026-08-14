@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { BubbleBackground } from "@/components/BubbleBackground";
-import { DiveInButton } from "@/components/DiveInButton";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { ADMIN_URL } from "@/lib/constants";
 
 const ACTIVE_TRIPS = [
   { title: "Kelp Forest · Sat", subtitle: "12 divers" },
@@ -57,9 +57,12 @@ export default function BusinessPage() {
                 roster, manage your team, and get discovered by divers browsing DiveBubble.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <DiveInButton className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-blue hover:bg-white/90">
+                <a
+                  href={ADMIN_URL}
+                  className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-blue hover:bg-white/90"
+                >
                   Dive in
-                </DiveInButton>
+                </a>
                 <Link
                   href="/faq"
                   className="rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10"
@@ -105,9 +108,12 @@ export default function BusinessPage() {
               <h3 className="font-serif text-xl font-semibold">Ready to get your center on DiveBubble?</h3>
               <p className="mt-1 text-sm text-brand-blue/70">Open the workspace and start with your first trip.</p>
             </div>
-            <DiveInButton className="rounded-full bg-brand-blue px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-navy">
+            <a
+              href={ADMIN_URL}
+              className="rounded-full bg-brand-blue px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-navy"
+            >
               Dive in
-            </DiveInButton>
+            </a>
           </div>
         </section>
       </main>
