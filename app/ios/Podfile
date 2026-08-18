@@ -40,5 +40,12 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    # CocoaPods' aggregate targets (Pods-Runner, Pods-RunnerTests) don't always pick up the
+    # Podfile's `platform :ios, '15.0'` the way individual pod library targets do, leaving them
+    # stuck at CocoaPods' 13.0 default and conflicting with pods (file_picker_ios,
+    # firebase-core/-messaging) that require 14.0/15.0 — force every target's config to match.
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
   end
 end
