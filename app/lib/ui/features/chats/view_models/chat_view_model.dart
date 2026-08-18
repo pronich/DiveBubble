@@ -121,7 +121,7 @@ class ChatViewModel extends ChangeNotifier {
       );
       if (blockedUserIds.contains(message.userId)) return;
       if (_messages.any((m) => m.id == message.id)) return;
-      _messages = [..._messages, message];
+      _reconcilePending(message);
       notifyListeners();
     });
   }
@@ -195,15 +195,22 @@ class ChatViewModel extends ChangeNotifier {
     attachmentSizeBytes: attachmentSizeBytes,
   );
 
-  // Swaps the pending bubble for the server-confirmed message. Realtime can beat this call's
-  // own response back (the backend publishes as soon as the row is written, before the HTTP
-  // response finishes streaming), in which case the real message is already in `_messages`
-  // under its real id — drop that copy too so the swap never leaves a duplicate behind.
-  void _resolvePending(String tempId, ChatMessage sent) {
+  // Swaps the oldest still-pending bubble from the same sender for a server-confirmed
+  // message. Called from both the HTTP response and the realtime publication — whichever
+  // arrives first does the swap; the backend publishes to Centrifugo as soon as the row is
+  // written, which regularly beats the HTTP response finishing its own round trip back to
+  // this same client, so waiting on the HTTP path alone left a window where the realtime
+  // listener's naive append and the still-present pending bubble were both on screen. No
+  // client-supplied id round-trips through the realtime payload to match on directly, so
+  // "oldest pending from this sender" is the correlation — good enough since a given sender's
+  // own messages are delivered in the order they were sent.
+  void _reconcilePending(ChatMessage real) {
+    final pending = _messages.where((m) => m.isPending && m.userId == real.userId);
+    final pendingId = pending.isEmpty ? real.id : pending.first.id;
     _messages = [
       for (final m in _messages)
-        if (m.id != tempId && m.id != sent.id) m,
-      sent,
+        if (m.id != pendingId && m.id != real.id) m,
+      real,
     ];
   }
 
@@ -224,7 +231,7 @@ class ChatViewModel extends ChangeNotifier {
         buddyRequestId: buddyRequestId,
         mentionsDiveCenter: mentionsDiveCenter,
       );
-      _resolvePending(tempId, sent);
+      _reconcilePending(sent);
     } catch (e) {
       _messages = _messages.where((m) => m.id != tempId).toList();
       _error = e.toString();
@@ -276,7 +283,7 @@ class ChatViewModel extends ChangeNotifier {
         attachmentFilename: result.filename,
         attachmentSizeBytes: result.sizeBytes,
       );
-      _resolvePending(tempId, sent);
+      _reconcilePending(sent);
     } catch (e) {
       _messages = _messages.where((m) => m.id != tempId).toList();
       rethrow;
