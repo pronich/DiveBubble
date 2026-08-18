@@ -23,6 +23,7 @@ import 'level_card.dart';
 import 'notifications_settings_page.dart';
 import 'profile_overview_card.dart';
 import 'specialties_section.dart';
+import 'storage_settings_page.dart';
 import 'update_level_sheet.dart';
 
 class ProfileView extends StatefulWidget {
@@ -445,6 +446,7 @@ class _SignedInBody extends StatelessWidget {
           page: NotificationsSettingsPage(pushRepository: pushRepository),
         ),
         _SettingsRow(icon: Icons.block, label: 'Blocked users', page: BlockedUsersPage(profileRepository: profileRepository)),
+        const _SettingsRow(icon: Icons.storage_outlined, label: 'Storage', page: StorageSettingsPage()),
         const _SettingsRow(icon: Icons.info_outline, label: 'About', page: AboutPage()),
         const _SettingsRow(icon: Icons.description_outlined, label: 'Legal', page: LegalPage()),
         const Divider(height: 32),

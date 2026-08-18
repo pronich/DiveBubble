@@ -20,8 +20,9 @@ import '../view_models/chat_view_model.dart';
 import 'chat_view.dart';
 
 /// Shell for a joined trip: Chat and Transport are the two things worth reaching
-/// immediately, so they're tabs here rather than buried inside Trip Page (which
-/// stays reachable by tapping the title, for the fuller trip overview).
+/// immediately, so they're tabs here rather than buried inside Trip Page — reachable via
+/// either the AppBar title or avatar, both opening the same "Bubble Info" screen (People/
+/// Media/Files/Links tabs alongside the trip's own details).
 class TripConversationPage extends StatefulWidget {
   const TripConversationPage({
     super.key,

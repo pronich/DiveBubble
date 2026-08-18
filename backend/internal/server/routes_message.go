@@ -2,12 +2,16 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 
 	"errors"
 	"io"
 	"log"
 	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"divebubble_be/internal/auth"
@@ -35,6 +39,8 @@ func registerMessageRoutes(
 ) {
 	mux.HandleFunc("GET /trips/{id}/messages", withAuth(authIssuer, handleListMessages(svc, tripSvc, diveCenterSvc, moderationSvc)))
 	mux.HandleFunc("POST /trips/{id}/messages", withAuth(authIssuer, handleSendMessage(svc, tripSvc, diveCenterSvc, profileSvc, publisher, pushSvc)))
+	mux.HandleFunc("GET /trips/{id}/messages/attachments", withAuth(authIssuer, handleListMessageAttachments(svc, tripSvc)))
+	mux.HandleFunc("GET /trips/{id}/messages/links", withAuth(authIssuer, handleListMessageLinks(svc, tripSvc)))
 }
 
 type messageResponse struct {
@@ -48,21 +54,64 @@ type messageResponse struct {
 	Kind               string    `json:"kind"`
 	// FeedbackProvided is per-viewer (has the requesting user submitted trip feedback yet) —
 	// only meaningful when Kind is message.KindFeedbackPrompt, false/ignored otherwise.
-	FeedbackProvided bool `json:"feedbackProvided"`
+	FeedbackProvided    bool    `json:"feedbackProvided"`
+	AttachmentURL       *string `json:"attachmentUrl,omitempty"`
+	AttachmentType      *string `json:"attachmentType,omitempty"`
+	AttachmentFilename  *string `json:"attachmentFilename,omitempty"`
+	AttachmentSizeBytes *int64  `json:"attachmentSizeBytes,omitempty"`
 }
 
 func toMessageResponse(m message.Message, isDiveCenterStaff, feedbackProvided bool) messageResponse {
 	return messageResponse{
-		ID:                 m.ID,
-		TripID:             m.TripID,
-		UserID:             m.UserID,
-		Body:               m.Body,
-		CreatedAt:          m.CreatedAt,
-		IsDiveCenterStaff:  isDiveCenterStaff,
-		MentionsDiveCenter: m.MentionsDiveCenter,
-		Kind:               m.Kind,
-		FeedbackProvided:   feedbackProvided,
+		ID:                  m.ID,
+		TripID:              m.TripID,
+		UserID:              m.UserID,
+		Body:                m.Body,
+		CreatedAt:           m.CreatedAt,
+		IsDiveCenterStaff:   isDiveCenterStaff,
+		MentionsDiveCenter:  m.MentionsDiveCenter,
+		Kind:                m.Kind,
+		FeedbackProvided:    feedbackProvided,
+		AttachmentURL:       nullStringPtr(m.AttachmentURL),
+		AttachmentType:      nullStringPtr(m.AttachmentType),
+		AttachmentFilename:  nullStringPtr(m.AttachmentFilename),
+		AttachmentSizeBytes: nullInt64Ptr(m.AttachmentSizeBytes),
 	}
+}
+
+func nullInt64Ptr(v sql.NullInt64) *int64 {
+	if !v.Valid {
+		return nil
+	}
+	return &v.Int64
+}
+
+// attachmentRequest is embedded in sendMessageRequest/sendOfferMessageRequest/
+// sendBuddyMessageRequest — the client uploads via POST .../messages/attachment first (see
+// handleUploadMessageAttachment), then passes the returned fields back here unchanged.
+type attachmentRequest struct {
+	AttachmentURL       *string `json:"attachmentUrl,omitempty"`
+	AttachmentType      *string `json:"attachmentType,omitempty"`
+	AttachmentFilename  *string `json:"attachmentFilename,omitempty"`
+	AttachmentSizeBytes *int64  `json:"attachmentSizeBytes,omitempty"`
+}
+
+// toAttachment returns nil when no attachment URL was sent (a plain text message).
+func (a attachmentRequest) toAttachment() *message.Attachment {
+	if a.AttachmentURL == nil || *a.AttachmentURL == "" {
+		return nil
+	}
+	att := &message.Attachment{URL: *a.AttachmentURL}
+	if a.AttachmentType != nil {
+		att.Type = *a.AttachmentType
+	}
+	if a.AttachmentFilename != nil {
+		att.Filename = *a.AttachmentFilename
+	}
+	if a.AttachmentSizeBytes != nil {
+		att.SizeBytes = *a.AttachmentSizeBytes
+	}
+	return att
 }
 
 // requireParticipant is shared by message/transport/participants handlers — access means
@@ -173,6 +222,7 @@ func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterS
 type sendMessageRequest struct {
 	Body               string `json:"body"`
 	MentionsDiveCenter bool   `json:"mentionsDiveCenter"`
+	attachmentRequest
 }
 
 func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, publisher *realtime.Publisher, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -208,10 +258,10 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 		// A mention only means something on a business trip — there's no dive center to
 		// notify on an individual one, so the flag is silently dropped rather than erroring.
 		mentionsDiveCenter := req.MentionsDiveCenter && t.DiveCenterID.Valid
-		m, err := svc.Send(r.Context(), tripID, userID, message.Scope{}, req.Body, mentionsDiveCenter)
+		m, err := svc.Send(r.Context(), tripID, userID, message.Scope{}, req.Body, mentionsDiveCenter, req.toAttachment())
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "body is required")
+				writeError(w, http.StatusBadRequest, "body or attachment is required")
 				return
 			}
 			writeError(w, http.StatusInternalServerError, "could not send message")
@@ -276,9 +326,140 @@ func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *pr
 
 	pushSvc.SendToUsers(ctx, recipients, push.Notification{
 		Title: senderName + " · " + t.Title,
-		Body:  truncateForPush(m.Body),
+		Body:  pushBodyFor(m),
 		Data:  map[string]string{"tripId": t.ID.String(), "type": "message"},
 	})
+}
+
+// pushBodyFor falls back to a label when the message is attachment-only (empty body) — an
+// empty push notification body would otherwise look broken.
+func pushBodyFor(m message.Message) string {
+	body := truncateForPush(m.Body)
+	if body != "" {
+		return body
+	}
+	switch m.AttachmentType.String {
+	case message.AttachmentTypeImage:
+		return "📷 Photo"
+	case message.AttachmentTypePDF:
+		return "📄 PDF"
+	default:
+		return body
+	}
+}
+
+// parseBeforeParam parses the optional "before" cursor (RFC3339) — nil means "most recent page".
+func parseBeforeParam(r *http.Request) (*time.Time, error) {
+	raw := r.URL.Query().Get("before")
+	if raw == "" {
+		return nil, nil
+	}
+	t, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// parseLimitParam clamps to [1, max]; an unparsable or missing value falls back to def.
+func parseLimitParam(r *http.Request, def, max int) int {
+	raw := r.URL.Query().Get("limit")
+	if raw == "" {
+		return def
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 {
+		return def
+	}
+	if n > max {
+		return max
+	}
+	return n
+}
+
+// handleListMessageAttachments backs the Media ("type=image") and Files ("type=pdf") tabs —
+// main trip chat only (v1 scope), newest first, cursor-paginated via ?before=<RFC3339>.
+func handleListMessageAttachments(svc *message.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
+		if !ok {
+			return
+		}
+
+		attachmentType := r.URL.Query().Get("type")
+		if attachmentType != message.AttachmentTypeImage && attachmentType != message.AttachmentTypePDF {
+			writeError(w, http.StatusBadRequest, "type must be 'image' or 'pdf'")
+			return
+		}
+		before, err := parseBeforeParam(r)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid before cursor")
+			return
+		}
+		limit := parseLimitParam(r, 50, 100)
+
+		messages, err := svc.ListAttachments(r.Context(), tripID, attachmentType, before, limit)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not list attachments")
+			return
+		}
+
+		out := make([]messageResponse, 0, len(messages))
+		for _, m := range messages {
+			out = append(out, toMessageResponse(m, false, false))
+		}
+		writeJSON(w, http.StatusOK, out)
+	}
+}
+
+type linkResponse struct {
+	MessageID uuid.UUID `json:"messageId"`
+	UserID    uuid.UUID `json:"userId"`
+	URL       string    `json:"url"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// urlPattern mirrors the Postgres prefilter in ListLinksByTrip; trailingPunctuation strips
+// characters a URL is unlikely to end with but that commonly follow one in prose ("see
+// https://x.com/plan.", "(https://x.com/plan)").
+var urlPattern = regexp.MustCompile(`https?://\S+`)
+var trailingPunctuation = ".,)]!?\"'"
+
+// handleListMessageLinks backs the Links tab — every URL mentioned in main-chat message text
+// (not uploaded files), newest first, cursor-paginated via ?before=<RFC3339>.
+func handleListMessageLinks(svc *message.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
+		if !ok {
+			return
+		}
+
+		before, err := parseBeforeParam(r)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid before cursor")
+			return
+		}
+		limit := parseLimitParam(r, 50, 100)
+
+		rows, err := svc.ListLinks(r.Context(), tripID, before, limit)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not list links")
+			return
+		}
+
+		out := []linkResponse{}
+		for _, row := range rows {
+			for _, match := range urlPattern.FindAllString(row.Body, -1) {
+				out = append(out, linkResponse{
+					MessageID: row.ID,
+					UserID:    row.UserID,
+					URL:       strings.TrimRight(match, trailingPunctuation),
+					CreatedAt: row.CreatedAt,
+				})
+			}
+		}
+		writeJSON(w, http.StatusOK, out)
+	}
 }
 
 // truncateForPush keeps push payloads small — cuts on a rune boundary since message bodies

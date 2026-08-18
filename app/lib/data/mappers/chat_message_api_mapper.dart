@@ -12,5 +12,9 @@ extension ChatMessageApiMapper on ChatMessageApiModel {
         mentionsDiveCenter: mentionsDiveCenter,
         kind: kind,
         feedbackProvided: feedbackProvided,
+        attachmentUrl: attachmentUrl,
+        attachmentType: attachmentType,
+        attachmentFilename: attachmentFilename,
+        attachmentSizeBytes: attachmentSizeBytes,
       );
 }

@@ -74,7 +74,7 @@ class ProfileApiService {
   }
 
   Future<ProfileApiModel> uploadAvatar(String filePath) async {
-    final json = await uploadImageFile(Uri.parse('$baseUrl/me/avatar'), filePath: filePath, headers: await _authHeaders());
+    final json = await uploadFile(Uri.parse('$baseUrl/me/avatar'), filePath: filePath, headers: await _authHeaders());
     return ProfileApiModel.fromJson(json);
   }
 
@@ -89,7 +89,7 @@ class ProfileApiService {
   // Level card's single photo (users.certification_photo_url) — distinct from a
   // specialty's own photo, see SpecialtyApiService.uploadSpecialtyPhoto.
   Future<ProfileApiModel> uploadCertificationPhoto(String filePath) async {
-    final json = await uploadImageFile(Uri.parse('$baseUrl/me/certification-photo'), filePath: filePath, headers: await _authHeaders());
+    final json = await uploadFile(Uri.parse('$baseUrl/me/certification-photo'), filePath: filePath, headers: await _authHeaders());
     return ProfileApiModel.fromJson(json);
   }
 

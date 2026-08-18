@@ -138,7 +138,7 @@ class TripApiService {
   // 403 if the caller isn't the trip's organizer, 409 if the trip is already at the cap
   // (trip.MaxPhotosPerTrip server-side) — both mapped to a plain Exception here.
   Future<TripPhotoApiModel> addTripPhoto(String id, String filePath) async {
-    final json = await uploadImageFile(
+    final json = await uploadFile(
       Uri.parse('$baseUrl/trips/$id/photos'),
       filePath: filePath,
       headers: await _requiredAuthHeaders(),

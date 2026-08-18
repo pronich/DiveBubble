@@ -24,5 +24,11 @@ abstract class ChatMessage with _$ChatMessage {
     // Per-viewer: has the current user already submitted feedback for this trip? Only
     // meaningful when kind is 'feedback_prompt'.
     @Default(false) bool feedbackProvided,
+    // Set together or not at all — a message carries at most one attachment (photo or PDF),
+    // with `body` doubling as its caption when both are present.
+    String? attachmentUrl,
+    String? attachmentType, // 'image' | 'pdf'
+    String? attachmentFilename,
+    int? attachmentSizeBytes,
   }) = _ChatMessage;
 }

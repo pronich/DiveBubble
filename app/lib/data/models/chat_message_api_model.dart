@@ -15,6 +15,10 @@ abstract class ChatMessageApiModel with _$ChatMessageApiModel {
     @Default(false) bool mentionsDiveCenter,
     @Default('user') String kind,
     @Default(false) bool feedbackProvided,
+    String? attachmentUrl,
+    String? attachmentType,
+    String? attachmentFilename,
+    int? attachmentSizeBytes,
   }) = _ChatMessageApiModel;
 
   factory ChatMessageApiModel.fromJson(Map<String, dynamic> json) =>

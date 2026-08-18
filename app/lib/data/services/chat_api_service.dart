@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../domain/entities/chat_link.dart';
 import '../models/chat_message_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'multipart_upload.dart';
 
 class ChatApiService {
   ChatApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
@@ -56,15 +58,70 @@ class ChatApiService {
     String? offerId,
     String? buddyRequestId,
     bool mentionsDiveCenter = false,
+    String? attachmentUrl,
+    String? attachmentType,
+    String? attachmentFilename,
+    int? attachmentSizeBytes,
   }) async {
     final res = await _client.post(
       Uri.parse('$baseUrl${_messagesPath(tripId, offerId, buddyRequestId)}'),
       headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
-      body: jsonEncode({'body': body, 'mentionsDiveCenter': mentionsDiveCenter}),
+      body: jsonEncode({
+        'body': body,
+        'mentionsDiveCenter': mentionsDiveCenter,
+        if (attachmentUrl != null) 'attachmentUrl': attachmentUrl,
+        if (attachmentType != null) 'attachmentType': attachmentType,
+        if (attachmentFilename != null) 'attachmentFilename': attachmentFilename,
+        if (attachmentSizeBytes != null) 'attachmentSizeBytes': attachmentSizeBytes,
+      }),
     );
     if (res.statusCode != 201) {
       throw Exception('sendMessage failed: ${res.statusCode} ${res.body}');
     }
+  }
+
+  // Scope-agnostic by design (no offerId/buddyRequestId) — the backend only needs the caller to
+  // be a trip participant, not which chat the resulting message will land in. Upload first, then
+  // pass the returned fields into sendMessage above.
+  Future<Map<String, dynamic>> uploadAttachment(String tripId, String filePath) async =>
+      uploadFile(Uri.parse('$baseUrl/trips/$tripId/messages/attachment'), filePath: filePath, headers: await _authHeaders());
+
+  // Backs the Media ("image") / Files ("pdf") tabs in Chat Info — main trip chat only,
+  // newest-first, cursor-paginated. Reuses ChatMessageApiModel since the response is a normal
+  // message list, just filtered/scoped server-side.
+  Future<List<ChatMessageApiModel>> fetchAttachments(
+    String tripId, {
+    required String type,
+    DateTime? before,
+    int limit = 50,
+  }) async {
+    final query = {
+      'type': type,
+      'limit': '$limit',
+      if (before != null) 'before': before.toUtc().toIso8601String(),
+    };
+    final uri = Uri.parse('$baseUrl/trips/$tripId/messages/attachments').replace(queryParameters: query);
+    final res = await _client.get(uri, headers: await _authHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('fetchAttachments failed: ${res.statusCode} ${res.body}');
+    }
+    final decoded = jsonDecode(res.body) as List<dynamic>;
+    return decoded.map((e) => ChatMessageApiModel.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // Backs the Links tab in Chat Info — every URL mentioned in main-chat message text.
+  Future<List<ChatLink>> fetchLinks(String tripId, {DateTime? before, int limit = 50}) async {
+    final query = {
+      'limit': '$limit',
+      if (before != null) 'before': before.toUtc().toIso8601String(),
+    };
+    final uri = Uri.parse('$baseUrl/trips/$tripId/messages/links').replace(queryParameters: query);
+    final res = await _client.get(uri, headers: await _authHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('fetchLinks failed: ${res.statusCode} ${res.body}');
+    }
+    final decoded = jsonDecode(res.body) as List<dynamic>;
+    return decoded.map((e) => ChatLink.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<void> reportMessage(String tripId, String messageId, String reason, {String? details}) async {

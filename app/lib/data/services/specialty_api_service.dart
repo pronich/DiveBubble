@@ -66,7 +66,7 @@ class SpecialtyApiService {
   }
 
   Future<String> uploadSpecialtyPhoto(String id, String filePath) async {
-    final json = await uploadImageFile(
+    final json = await uploadFile(
       Uri.parse('$baseUrl/me/specialties/$id/photo'),
       filePath: filePath,
       headers: await _authHeaders(),
