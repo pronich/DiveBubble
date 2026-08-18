@@ -25,6 +25,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "10.2.0"
+  android_file_picker:
+    dependency: transitive
+    description:
+      name: android_file_picker
+      sha256: "665a5a57dfca27f91a715d300e4852a784f9f98e503dcff281bec9afb55767be"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   archive:
     dependency: transitive
     description:
@@ -249,6 +257,46 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.1"
+  file_picker:
+    dependency: "direct main"
+    description:
+      name: file_picker
+      sha256: afbaa8015d9efabd224f41084ed9fdeddfa65389ebd7cd3a9eb1476aca66b46d
+      url: "https://pub.dev"
+    source: hosted
+    version: "12.0.0"
+  file_picker_darwin:
+    dependency: transitive
+    description:
+      name: file_picker_darwin
+      sha256: "5d87d156c1d63920447a662b7117d3498c67e3444a44d2cb01ed955d6efa62ef"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
+  file_picker_linux:
+    dependency: transitive
+    description:
+      name: file_picker_linux
+      sha256: "93d3f62f97c657053e7b184fe0f5e22347d85067c053640a30b1ac8ad7844e3b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
+  file_picker_platform_interface:
+    dependency: transitive
+    description:
+      name: file_picker_platform_interface
+      sha256: "9e7a7e01e179929241f0afeb2c8c69ac95e29e17c0abea36ed193881c6bef90c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.1"
+  file_picker_web:
+    dependency: transitive
+    description:
+      name: file_picker_web
+      sha256: f1af38b3c91fafe0ca97f659b5c6818a057473ef09bb8b722f9f3f5364aa7eed
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.1"
   file_selector_linux:
     dependency: transitive
     description:
@@ -342,6 +390,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_cache_manager:
+    dependency: "direct main"
+    description:
+      name: flutter_cache_manager
+      sha256: "400b6592f16a4409a7f2bb929a9a7e38c72cceb8ffb99ee57bbf2cb2cecf8386"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.4.1"
   flutter_launcher_icons:
     dependency: "direct dev"
     description:
@@ -1000,6 +1056,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.0"
+  rxdart:
+    dependency: transitive
+    description:
+      name: rxdart
+      sha256: "5c3004a4a8dbb94bd4bf5412a4def4acdaa12e12f269737a5751369e12d1a962"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.28.0"
   shared_preferences:
     dependency: "direct main"
     description:
@@ -1125,6 +1189,46 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.10.2"
+  sqflite:
+    dependency: transitive
+    description:
+      name: sqflite
+      sha256: "58a799e6ac17dd32fbab93813d39ed835a75ccc0f8f85b8955fe318c6712b082"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.3"
+  sqflite_android:
+    dependency: transitive
+    description:
+      name: sqflite_android
+      sha256: d0548f9d7422a2dae99ec6f8b0a3074463b132d216fa5ba0d230eeefc901983b
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.3"
+  sqflite_common:
+    dependency: transitive
+    description:
+      name: sqflite_common
+      sha256: "5bf6a55c166e73bf651ba7ec3ed486e577620e3dc8f3a9c6a258a8031b624590"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.5.11"
+  sqflite_darwin:
+    dependency: transitive
+    description:
+      name: sqflite_darwin
+      sha256: c86ca18b8f666bbf903924687fe21cc16fc385d086005067e26619ca530bef9f
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.3+1"
+  sqflite_platform_interface:
+    dependency: transitive
+    description:
+      name: sqflite_platform_interface
+      sha256: f84939f84350d92d04416f8bc4dc52d3896aec7716cc9e80cf0146342139dc50
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.1"
   stack_trace:
     dependency: transitive
     description:
@@ -1157,6 +1261,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
+  synchronized:
+    dependency: transitive
+    description:
+      name: synchronized
+      sha256: "3a7b5d17422dd0f8d5c6c14feaa5a1c65638b9455f871a96f08437562c046931"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.4.1+2"
   term_glyph:
     dependency: transitive
     description:
@@ -1309,6 +1421,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.3.0"
+  windows_file_picker:
+    dependency: transitive
+    description:
+      name: windows_file_picker
+      sha256: "72cf23466e146f2c0f19e1d78be97ff6409dc15b0c090f8eb284f94f4a33de26"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   xdg_directories:
     dependency: transitive
     description:

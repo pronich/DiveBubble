@@ -55,6 +55,9 @@ class ChatViewModel extends ChangeNotifier {
   bool _isSending = false;
   bool get isSending => _isSending;
 
+  bool _isUploadingAttachment = false;
+  bool get isUploadingAttachment => _isUploadingAttachment;
+
   String? _error;
   String? get error => _error;
 
@@ -109,6 +112,12 @@ class ChatViewModel extends ChangeNotifier {
         mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
         kind: json['kind'] as String? ?? 'user',
         feedbackProvided: json['feedbackProvided'] as bool? ?? false,
+        // Hand-decoded like every other field above, not via ChatMessageApiModel.fromJson —
+        // easy to forget when adding a new message field, so don't skip these on the next one.
+        attachmentUrl: json['attachmentUrl'] as String?,
+        attachmentType: json['attachmentType'] as String?,
+        attachmentFilename: json['attachmentFilename'] as String?,
+        attachmentSizeBytes: json['attachmentSizeBytes'] as int?,
       );
       if (blockedUserIds.contains(message.userId)) return;
       if (_messages.any((m) => m.id == message.id)) return;
@@ -158,17 +167,67 @@ class ChatViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> send(String body, {bool mentionsDiveCenter = false}) async {
-    if (body.trim().isEmpty) return;
+  Future<void> send(
+    String body, {
+    bool mentionsDiveCenter = false,
+    String? attachmentUrl,
+    String? attachmentType,
+    String? attachmentFilename,
+    int? attachmentSizeBytes,
+  }) async {
+    final trimmed = body.trim();
+    // An attachment can carry an empty caption — only reject when there's neither.
+    if (trimmed.isEmpty && attachmentUrl == null) return;
     _isSending = true;
     notifyListeners();
 
     try {
-      await _repository.sendMessage(tripId, body, offerId: offerId, buddyRequestId: buddyRequestId, mentionsDiveCenter: mentionsDiveCenter);
+      await _repository.sendMessage(
+        tripId,
+        trimmed,
+        offerId: offerId,
+        buddyRequestId: buddyRequestId,
+        mentionsDiveCenter: mentionsDiveCenter,
+        attachmentUrl: attachmentUrl,
+        attachmentType: attachmentType,
+        attachmentFilename: attachmentFilename,
+        attachmentSizeBytes: attachmentSizeBytes,
+      );
       _messages = await _repository.getMessages(tripId, offerId: offerId, buddyRequestId: buddyRequestId);
     } catch (e) {
       _error = e.toString();
     } finally {
+      _isSending = false;
+      notifyListeners();
+    }
+  }
+
+  /// Uploads a picked attachment, then sends it (with an optional caption) — the composer's
+  /// entry point once a file is picked. Unlike `send`, errors are NOT swallowed into `_error`:
+  /// they propagate so the composer's own try/catch can keep the pending attachment in place
+  /// and show a SnackBar, instead of the attachment silently vanishing on failure.
+  Future<void> uploadAndSend(String filePath, {String caption = '', bool mentionsDiveCenter = false}) async {
+    _isUploadingAttachment = true;
+    notifyListeners();
+    try {
+      final result = await _repository.uploadAttachment(tripId, filePath);
+      _isUploadingAttachment = false;
+      _isSending = true;
+      notifyListeners();
+      await _repository.sendMessage(
+        tripId,
+        caption.trim(),
+        offerId: offerId,
+        buddyRequestId: buddyRequestId,
+        mentionsDiveCenter: mentionsDiveCenter,
+        attachmentUrl: result.url,
+        attachmentType: result.type,
+        attachmentFilename: result.filename,
+        attachmentSizeBytes: result.sizeBytes,
+      );
+      _messages = await _repository.getMessages(tripId, offerId: offerId, buddyRequestId: buddyRequestId);
+    } finally {
+      _isUploadingAttachment = false;
       _isSending = false;
       notifyListeners();
     }

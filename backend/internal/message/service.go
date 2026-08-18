@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -21,13 +22,14 @@ func NewService(repo *Repository) *Service {
 }
 
 // Send persists a user-authored message. scope is the zero value for the trip's main chat,
-// or set for a car offer's or buddy group's own chat.
-func (s *Service) Send(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool) (Message, error) {
+// or set for a car offer's or buddy group's own chat. attachment may be nil (text-only
+// message); body may be empty only when attachment is set (an attachment's caption).
+func (s *Service) Send(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool, attachment *Attachment) (Message, error) {
 	body = strings.TrimSpace(body)
-	if body == "" {
+	if body == "" && attachment == nil {
 		return Message{}, ErrInvalidArgument
 	}
-	return s.Repo.Create(ctx, tripID, userID, scope, body, mentionsDiveCenter)
+	return s.Repo.Create(ctx, tripID, userID, scope, body, mentionsDiveCenter, attachment)
 }
 
 // SendSystem creates a system message of the given kind for the trip's main chat, unless one
@@ -66,6 +68,17 @@ func (s *Service) ListByOffer(ctx context.Context, offerID uuid.UUID) ([]Message
 
 func (s *Service) ListByBuddyRequest(ctx context.Context, requestID uuid.UUID) ([]Message, error) {
 	return s.Repo.ListByBuddyRequest(ctx, requestID)
+}
+
+// ListAttachments backs the Media/Files tabs — attachmentType must be AttachmentTypeImage or
+// AttachmentTypePDF. before nil starts from the most recent page.
+func (s *Service) ListAttachments(ctx context.Context, tripID uuid.UUID, attachmentType string, before *time.Time, limit int) ([]Message, error) {
+	return s.Repo.ListAttachmentsByTrip(ctx, tripID, attachmentType, before, limit)
+}
+
+// ListLinks backs the Links tab. before nil starts from the most recent page.
+func (s *Service) ListLinks(ctx context.Context, tripID uuid.UUID, before *time.Time, limit int) ([]LinkSourceMessage, error) {
+	return s.Repo.ListLinksByTrip(ctx, tripID, before, limit)
 }
 
 func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (Message, error) {

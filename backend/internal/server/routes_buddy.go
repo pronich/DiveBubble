@@ -346,6 +346,7 @@ func handleListBuddyMessages(buddySvc *buddy.Service, tripSvc *trip.Service, div
 
 type sendBuddyMessageRequest struct {
 	Body string `json:"body"`
+	attachmentRequest
 }
 
 func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, messageSvc *message.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -370,10 +371,10 @@ func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, dive
 			return
 		}
 
-		m, err := messageSvc.Send(r.Context(), req.TripID, userID, message.Scope{BuddyRequestID: uuid.NullUUID{UUID: req.ID, Valid: true}}, body.Body, false)
+		m, err := messageSvc.Send(r.Context(), req.TripID, userID, message.Scope{BuddyRequestID: uuid.NullUUID{UUID: req.ID, Valid: true}}, body.Body, false, body.toAttachment())
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "body is required")
+				writeError(w, http.StatusBadRequest, "body or attachment is required")
 				return
 			}
 			writeError(w, http.StatusInternalServerError, "could not send message")

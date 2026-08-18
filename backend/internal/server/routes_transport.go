@@ -374,6 +374,7 @@ func handleListOfferMessages(transportSvc *transport.Service, tripSvc *trip.Serv
 
 type sendOfferMessageRequest struct {
 	Body string `json:"body"`
+	attachmentRequest
 }
 
 func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, messageSvc *message.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -398,10 +399,10 @@ func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Servi
 			return
 		}
 
-		m, err := messageSvc.Send(r.Context(), offer.TripID, userID, message.Scope{OfferID: uuid.NullUUID{UUID: offer.ID, Valid: true}}, req.Body, false)
+		m, err := messageSvc.Send(r.Context(), offer.TripID, userID, message.Scope{OfferID: uuid.NullUUID{UUID: offer.ID, Valid: true}}, req.Body, false, req.toAttachment())
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "body is required")
+				writeError(w, http.StatusBadRequest, "body or attachment is required")
 				return
 			}
 			writeError(w, http.StatusInternalServerError, "could not send message")

@@ -1,16 +1,28 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+
+import '../../../../data/services/attachment_cache_service.dart';
 import '../../../../domain/entities/chat_message.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../core/formatting/date_format.dart';
+import '../../../core/widgets/cached_attachment_image.dart';
+import '../../../core/widgets/open_attachment.dart';
+import '../../../core/widgets/pick_attachment.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../view_models/chat_view_model.dart';
+import 'attachment_image_preview_page.dart';
 
 // Consecutive messages from the same sender on the same day collapse into one visual
 // cluster (name shown once, avatar anchored to the last bubble) as long as the gap
 // between them stays under this window — a longer gap reads as a separate "turn", so it
 // gets its own name + avatar again, Telegram-style.
 const _groupingWindow = Duration(minutes: 5);
+
+// Mirrors the backend's upload.MaxAttachmentSize — checked client-side before ever hitting the
+// network as a cheap UX win; the backend still enforces this authoritatively.
+const _maxAttachmentSizeBytes = 10 * 1024 * 1024;
 
 class ChatView extends StatefulWidget {
   const ChatView({
@@ -54,6 +66,9 @@ class _ChatViewState extends State<ChatView>
   // Armed via the "@DiveCenter" chip (business trips only — see the chip's own comment
   // below), reset once the armed message is actually sent.
   bool _mentionArmed = false;
+
+  PickedAttachment? _pendingAttachment;
+  bool _isUploadingAttachment = false;
 
   // TabBarView disposes offscreen tabs by default — without this, switching to Transport
   // and back tore down ChatView (and, since dispose() below tears down the ChatViewModel
@@ -150,6 +165,61 @@ class _ChatViewState extends State<ChatView>
     );
   }
 
+  Future<void> _pickAttachment() async {
+    final picked = await pickAttachment(context);
+    if (picked == null) return;
+    if (picked.sizeBytes > _maxAttachmentSizeBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('File is too large — max 10MB.')),
+      );
+      return;
+    }
+    setState(() => _pendingAttachment = picked);
+  }
+
+  // No-op while uploading — the chip hides its remove affordance in that state (see the
+  // Row below), so this only ever fires when it's safe to just drop the pick.
+  void _removePendingAttachment() => setState(() => _pendingAttachment = null);
+
+  Future<void> _handleSend() async {
+    final text = _textController.text;
+    final mentionsDiveCenter = _mentionArmed;
+    final attachment = _pendingAttachment;
+
+    if (attachment == null) {
+      if (text.trim().isEmpty) return;
+      _textController.clear();
+      setState(() => _mentionArmed = false);
+      widget.viewModel.send(text, mentionsDiveCenter: mentionsDiveCenter);
+      return;
+    }
+
+    setState(() => _isUploadingAttachment = true);
+    try {
+      await widget.viewModel.uploadAndSend(
+        attachment.path,
+        caption: text,
+        mentionsDiveCenter: mentionsDiveCenter,
+      );
+      if (!mounted) return;
+      _textController.clear();
+      setState(() {
+        _mentionArmed = false;
+        _pendingAttachment = null;
+        _isUploadingAttachment = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isUploadingAttachment = false);
+      // The pending attachment is deliberately left in place on failure (not cleared) — see
+      // ChatViewModel.uploadAndSend's own comment on why errors aren't swallowed there.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not send attachment: $e')),
+      );
+    }
+  }
+
   void _showFeedbackSheet(ChatMessage message) {
     showModalBottomSheet(
       context: context,
@@ -235,11 +305,15 @@ class _ChatViewState extends State<ChatView>
                       itemBuilder: (context, index) {
                         final item = reversedItems[index];
                         if (item.date != null) {
-                          return _DateSeparator(date: item.date!);
+                          return _DateSeparator(
+                            key: ValueKey(item.date),
+                            date: item.date!,
+                          );
                         }
                         final message = item.message!;
                         if (message.kind != 'user') {
                           return _SystemMessageRow(
+                            key: ValueKey(message.id),
                             message: message,
                             onGiveFeedback: () => _showFeedbackSheet(message),
                           );
@@ -247,6 +321,7 @@ class _ChatViewState extends State<ChatView>
                         final isMine =
                             message.userId == widget.viewModel.currentUserId;
                         return _MessageRow(
+                          key: ValueKey(message.id),
                           message: message,
                           isMine: isMine,
                           isFirstInCluster: item.isFirstInCluster,
@@ -319,11 +394,24 @@ class _ChatViewState extends State<ChatView>
                           ),
                         ),
                       ),
+                    if (_pendingAttachment != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                        child: _PendingAttachmentChip(
+                          attachment: _pendingAttachment!,
+                          isUploading: _isUploadingAttachment,
+                          onRemove: _isUploadingAttachment ? null : _removePendingAttachment,
+                        ),
+                      ),
                     Padding(
                       padding: const EdgeInsets.all(8),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
+                          IconButton(
+                            icon: const Icon(Icons.attach_file),
+                            onPressed: _isUploadingAttachment ? null : _pickAttachment,
+                          ),
                           Expanded(
                             child: TextField(
                               controller: _textController,
@@ -331,23 +419,14 @@ class _ChatViewState extends State<ChatView>
                               maxLines: 5,
                               keyboardType: TextInputType.multiline,
                               textCapitalization: TextCapitalization.sentences,
-                              decoration: const InputDecoration(
-                                hintText: 'Message',
+                              decoration: InputDecoration(
+                                hintText: _pendingAttachment != null ? 'Caption (optional)' : 'Message',
                               ),
                             ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.send),
-                            onPressed: () {
-                              final text = _textController.text;
-                              final mentionsDiveCenter = _mentionArmed;
-                              _textController.clear();
-                              setState(() => _mentionArmed = false);
-                              widget.viewModel.send(
-                                text,
-                                mentionsDiveCenter: mentionsDiveCenter,
-                              );
-                            },
+                            onPressed: _isUploadingAttachment ? null : _handleSend,
                           ),
                         ],
                       ),
@@ -356,6 +435,168 @@ class _ChatViewState extends State<ChatView>
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// Shown above the composer between picking a file and it actually sending — a small preview
+/// chip with a remove (X) affordance, replaced by a progress spinner while uploading.
+class _PendingAttachmentChip extends StatelessWidget {
+  const _PendingAttachmentChip({
+    required this.attachment,
+    required this.isUploading,
+    required this.onRemove,
+  });
+
+  final PickedAttachment attachment;
+  final bool isUploading;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: attachment.type == 'image'
+                ? Image.file(File(attachment.path), width: 44, height: 44, fit: BoxFit.cover)
+                : Container(
+                    width: 44,
+                    height: 44,
+                    color: theme.colorScheme.surface,
+                    alignment: Alignment.center,
+                    child: Icon(Icons.picture_as_pdf_outlined, color: theme.colorScheme.onSurfaceVariant),
+                  ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              attachment.filename,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          if (isUploading)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10),
+              child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else
+            IconButton(icon: const Icon(Icons.close, size: 18), onPressed: onRemove),
+        ],
+      ),
+    );
+  }
+}
+
+/// Renders a message's photo or PDF attachment above its caption (`_MessageBody`) — the caption
+/// still renders unconditionally below, even when empty, since it's what shows the timestamp.
+class _AttachmentPreview extends StatelessWidget {
+  const _AttachmentPreview({required this.message, required this.color});
+
+  final ChatMessage message;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    if (message.attachmentType == 'pdf') {
+      return _PdfAttachmentRow(message: message, color: color);
+    }
+    return _ImageAttachmentThumbnail(url: message.attachmentUrl!, color: color);
+  }
+}
+
+class _ImageAttachmentThumbnail extends StatelessWidget {
+  const _ImageAttachmentThumbnail({required this.url, required this.color});
+
+  final String url;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => AttachmentImagePreviewPage(url: url)),
+        ),
+        // No separate "downloaded" badge here (unlike the PDF row below) — the image itself
+        // is the badge: a spinner while it's fetching, the photo once it's on disk. A
+        // sibling badge fed by its own independent AttachmentCacheService.getCachedFileInfo
+        // call raced this widget's own download and settled first, so it showed "not
+        // downloaded" even after the photo had fully loaded and was visibly on-screen.
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: CachedAttachmentImage(url: url, width: 220, height: 160),
+        ),
+      ),
+    );
+  }
+}
+
+class _PdfAttachmentRow extends StatelessWidget {
+  const _PdfAttachmentRow({required this.message, required this.color});
+
+  final ChatMessage message;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final filename = message.attachmentFilename ?? 'Document.pdf';
+    final sizeLabel = formatAttachmentFileSize(message.attachmentSizeBytes);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: GestureDetector(
+        onTap: () => openAttachmentExternally(context, message.attachmentUrl!),
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 200),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.picture_as_pdf_outlined, color: color),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      filename,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: color, fontWeight: FontWeight.w600),
+                    ),
+                    if (sizeLabel != null)
+                      Text(sizeLabel, style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 12)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FutureBuilder<FileInfo?>(
+                future: AttachmentCacheService.getCachedFileInfo(message.attachmentUrl!),
+                builder: (context, snapshot) => Icon(
+                  snapshot.data != null ? Icons.check_circle_outline : Icons.cloud_download_outlined,
+                  size: 18,
+                  color: color.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -474,7 +715,7 @@ List<_ChatDisplayItem> _buildDisplayItems(List<ChatMessage> messages) {
 }
 
 class _DateSeparator extends StatelessWidget {
-  const _DateSeparator({required this.date});
+  const _DateSeparator({super.key, required this.date});
 
   final DateTime date;
 
@@ -508,6 +749,7 @@ class _DateSeparator extends StatelessWidget {
 /// system kinds (Car/Buddy chat join messages); each just adds another case here.
 class _SystemMessageRow extends StatelessWidget {
   const _SystemMessageRow({
+    super.key,
     required this.message,
     required this.onGiveFeedback,
   });
@@ -588,6 +830,7 @@ class _FeedbackButton extends StatelessWidget {
 /// so bubbles line up whether or not this particular row is the one showing the avatar.
 class _MessageRow extends StatelessWidget {
   const _MessageRow({
+    super.key,
     required this.message,
     required this.isMine,
     required this.isFirstInCluster,
@@ -687,6 +930,8 @@ class _MessageRow extends StatelessWidget {
                   ),
                 ),
               ),
+            if (message.attachmentUrl != null)
+              _AttachmentPreview(message: message, color: onBubbleColor),
             _MessageBody(
               body: message.body,
               time: formatTime(message.createdAt),

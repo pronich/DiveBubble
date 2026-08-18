@@ -8,6 +8,7 @@ import (
 	"divebubble_be/internal/auth"
 	"divebubble_be/internal/certification"
 	"divebubble_be/internal/divecenter"
+	"divebubble_be/internal/message"
 	"divebubble_be/internal/profile"
 	"divebubble_be/internal/trip"
 	"divebubble_be/internal/upload"
@@ -30,6 +31,7 @@ func registerUploadRoutes(
 	mux.HandleFunc("POST /me/specialties/{id}/photo", withAuth(authIssuer, handleUploadSpecialtyPhoto(uploadSvc, certificationSvc)))
 	mux.HandleFunc("POST /trips/{id}/photos", withAuth(authIssuer, handleUploadTripPhoto(uploadSvc, tripSvc)))
 	mux.HandleFunc("POST /dive-centers/{id}/logo", withAuth(authIssuer, handleUploadDiveCenterLogo(uploadSvc, diveCenterSvc)))
+	mux.HandleFunc("POST /trips/{id}/messages/attachment", withAuth(authIssuer, handleUploadMessageAttachment(uploadSvc, tripSvc)))
 }
 
 // parseUploadFile expects a single multipart field named "file". The size cap here is
@@ -222,5 +224,78 @@ func handleUploadTripPhoto(uploadSvc *upload.Service, tripSvc *trip.Service) fun
 		// multipart-upload helpers (uploadImageFile/uploadImageBytes) hardcode checking for
 		// it, so a 201 here would look like a failure to them.
 		writeJSON(w, http.StatusOK, toTripPhotoResponse(photo))
+	}
+}
+
+// parseUploadAttachmentFile mirrors parseUploadFile but sized for the larger chat-attachment
+// cap (upload.MaxAttachmentSize, not upload.MaxFileSize).
+func parseUploadAttachmentFile(r *http.Request) (multipart.File, *multipart.FileHeader, error) {
+	if err := r.ParseMultipartForm(upload.MaxAttachmentSize + 1<<20); err != nil {
+		return nil, nil, err
+	}
+	return r.FormFile("file")
+}
+
+func writeAttachmentUploadError(w http.ResponseWriter, err error) {
+	if errors.Is(err, upload.ErrInvalidAttachment) || errors.Is(err, upload.ErrAttachmentTooLarge) {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeError(w, http.StatusInternalServerError, "could not save file")
+}
+
+type attachmentUploadResponse struct {
+	URL       string `json:"url"`
+	Type      string `json:"type"`
+	Filename  string `json:"filename"`
+	SizeBytes int64  `json:"sizeBytes"`
+}
+
+// handleUploadMessageAttachment is scope-agnostic (main trip chat, a car offer's chat, or a
+// buddy group's chat) — it only needs the caller to be a trip participant, not which chat the
+// resulting message will land in. The caller uploads here first, then passes the returned
+// url/type/filename/sizeBytes into whichever POST .../messages call sends the actual message
+// (see internal/message.Attachment).
+func handleUploadMessageAttachment(uploadSvc *upload.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
+		if !ok {
+			return
+		}
+		// Same read-only guard as sending a message — no point uploading a file that can
+		// never be attached to a message once the trip's chat is closed.
+		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
+			if errors.Is(err, trip.ErrTripCancelled) {
+				writeError(w, http.StatusConflict, "trip has been cancelled")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not upload attachment")
+			return
+		}
+
+		file, header, err := parseUploadAttachmentFile(r)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			return
+		}
+		defer file.Close()
+
+		url, contentType, err := uploadSvc.SaveAttachment("chat-attachments", file, header)
+		if err != nil {
+			writeAttachmentUploadError(w, err)
+			return
+		}
+
+		attachmentType := message.AttachmentTypeImage
+		if contentType == "application/pdf" {
+			attachmentType = message.AttachmentTypePDF
+		}
+
+		writeJSON(w, http.StatusOK, attachmentUploadResponse{
+			URL:       url,
+			Type:      attachmentType,
+			Filename:  header.Filename,
+			SizeBytes: header.Size,
+		})
 	}
 }

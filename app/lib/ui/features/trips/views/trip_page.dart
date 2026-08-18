@@ -11,6 +11,8 @@ import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/certification_level.dart';
+import '../../../../domain/entities/chat_link.dart';
+import '../../../../domain/entities/chat_message.dart';
 import '../../../../domain/entities/dive_center.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/trip.dart';
@@ -24,7 +26,9 @@ import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/photo_manager_grid.dart';
 import '../../../core/widgets/pick_image.dart';
 import '../../buddy/view_models/buddy_view_model.dart';
+import '../../chats/view_models/chat_info_view_model.dart';
 import '../../chats/view_models/chat_view_model.dart';
+import '../../chats/views/chat_content_tabs.dart';
 import '../../chats/views/trip_conversation_page.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../../transport/view_models/transport_view_model.dart';
@@ -66,19 +70,63 @@ class TripPage extends StatefulWidget {
 // reached instead of letting the diver hit the 409 the hard way.
 const _maxTripPhotos = 10;
 
-class _TripPageState extends State<TripPage> {
+
+class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin {
   final _photoPageController = PageController();
   int _currentPhotoIndex = 0;
+
+  // Only meaningful when widget.openedFromConversation (see build) — created unconditionally
+  // anyway since TabController's own lifecycle needs to exist across the whole State either way.
+  late final TabController _tabController = TabController(length: 4, vsync: this);
+
+  // Lazily created once trip.id is known (unavailable until TripViewModel.load() resolves) —
+  // guarded by the null check in _ensureBubbleContentLoaded so a rebuild never refires these.
+  ChatInfoViewModel? _chatInfoViewModel;
+  Future<List<ChatMessage>>? _mediaFuture;
+  Future<List<ChatMessage>>? _filesFuture;
+  Future<List<ChatLink>>? _linksFuture;
+
+  void _ensureBubbleContentLoaded(String tripId) {
+    if (_chatInfoViewModel != null) return;
+    final vm = ChatInfoViewModel(repository: widget.chatRepository, tripId: tripId);
+    _chatInfoViewModel = vm;
+    _mediaFuture = vm.loadMedia();
+    _filesFuture = vm.loadFiles();
+    _linksFuture = vm.loadLinks();
+  }
+
+  // Drives Bubble Info's app bar: false while the large in-flow title (photoHero + title +
+  // action pills, see build's openedFromConversation branch) is still on screen, true once it
+  // has scrolled behind the toolbar — only one of the two titles is ever built at a time, so
+  // there's no risk of both being visible together (the bug the SliverAppBar approach had).
+  final _bubbleScrollController = ScrollController();
+  final ValueNotifier<bool> _showCollapsedTitle = ValueNotifier(false);
+
+  void _handleBubbleScroll() {
+    if (!_bubbleScrollController.hasClients) return;
+    final width = MediaQuery.sizeOf(context).width;
+    final photoHeight = width * 3 / 4; // matches photoHero's AspectRatio(4/3)
+    final toolbarHeight = kToolbarHeight + MediaQuery.paddingOf(context).top;
+    final threshold = photoHeight + 16 - toolbarHeight;
+    final collapsed = _bubbleScrollController.offset >= threshold;
+    if (collapsed != _showCollapsedTitle.value) {
+      _showCollapsedTitle.value = collapsed;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     widget.viewModel.load();
+    _bubbleScrollController.addListener(_handleBubbleScroll);
   }
 
   @override
   void dispose() {
     _photoPageController.dispose();
+    _tabController.dispose();
+    _bubbleScrollController.dispose();
+    _showCollapsedTitle.dispose();
     super.dispose();
   }
 
@@ -90,15 +138,94 @@ class _TripPageState extends State<TripPage> {
     );
   }
 
+  /// Everything below Bubble Info's collapsing header — location/date/meeting point/level/
+  /// duration/description. Mirrors the equivalent block inside detailContent (used by the
+  /// Explore-preview ListView path instead), since openedFromConversation never renders the
+  /// organizer/tail section that otherwise follows it there.
+  Widget _tripDetailBody(BuildContext context, ThemeData theme, Trip trip) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 4),
+              Text(
+                trip.location,
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(Icons.calendar_today_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 4),
+              Text(
+                formatDateRange(trip.startTime, trip.endDate),
+                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'MEETING POINT',
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
+            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 16),
+          _InfoGrid(trip: trip),
+          if (trip.description != null) ...[
+            const SizedBox(height: 20),
+            Text('About this dive', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 6),
+            Text(trip.description!, style: theme.textTheme.bodyMedium),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
+      // Both branches float their app bar over photoHero at the top (transparent, white
+      // back button) — Bubble Info's own bar additionally swaps to an opaque surface bar
+      // with the trip title once _showCollapsedTitle flips (see _handleBubbleScroll): the
+      // large in-flow title has scrolled behind it by then, so there is only ever one title
+      // visible, never both.
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
+      appBar: widget.openedFromConversation
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(kToolbarHeight),
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _showCollapsedTitle,
+                builder: (context, collapsed, _) => AppBar(
+                  backgroundColor: collapsed ? theme.colorScheme.surface : Colors.transparent,
+                  foregroundColor: collapsed ? theme.colorScheme.onSurface : Colors.white,
+                  elevation: 0,
+                  title: collapsed
+                      ? Text(
+                          widget.viewModel.trip?.title ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      : null,
+                ),
+              ),
+            )
+          : AppBar(
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
       body: ListenableBuilder(
         listenable: widget.viewModel,
         builder: (context, _) {
@@ -116,18 +243,11 @@ class _TripPageState extends State<TripPage> {
             return const SizedBox.shrink();
           }
 
-          final theme = Theme.of(context);
           final isOrganizer = widget.viewModel.isOrganizer;
 
-          return ListView(
-            // Bottom-only: the hero image intentionally runs full-bleed under the app bar,
-            // but the last item (Join/Book now button) needs room above the system nav bar —
-            // otherwise 3-button nav on Android overlaps it (no MediaQuery inset otherwise).
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.paddingOf(context).bottom,
-            ),
-            children: [
-              Builder(
+          // Shared by both branches below — Bubble Info reuses the exact same photo carousel
+          // Explore's own trip detail uses, rather than a separate circle-avatar treatment.
+          final photoHero = Builder(
                 builder: (context) {
                   final photos = widget.viewModel.photos;
                   final hasPhotos = photos.isNotEmpty;
@@ -302,8 +422,9 @@ class _TripPageState extends State<TripPage> {
                     ),
                   );
                 },
-              ),
-              Padding(
+              );
+
+          final detailContent = Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -321,16 +442,6 @@ class _TripPageState extends State<TripPage> {
                         _TripStatusPill(trip: trip, isOrganizer: isOrganizer),
                       ],
                     ),
-                    // Quick actions row, Telegram-Group-Info-style — only meaningful once
-                    // already inside the Bubble (see openedFromConversation's own doc).
-                    if (widget.openedFromConversation) ...[
-                      const SizedBox(height: 16),
-                      _ActionPillsRow(
-                        viewModel: widget.viewModel,
-                        trip: trip,
-                        isOrganizer: isOrganizer,
-                      ),
-                    ],
                     const SizedBox(height: 8),
                     Row(
                       children: [
@@ -393,44 +504,41 @@ class _TripPageState extends State<TripPage> {
                         style: theme.textTheme.bodyMedium,
                       ),
                     ],
-                    const SizedBox(height: 20),
-                    _OrganizerCard(
-                      isOrganizer: isOrganizer,
-                      profile: widget.viewModel.organizerProfile,
-                      creatorUserId: trip.creatorUserId,
-                      currentUserId: widget.viewModel.currentUserId,
-                      profileRepository: widget.viewModel.profileRepository,
-                      diveCenter: widget.viewModel.organizerDiveCenter,
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.groups_outlined,
-                          size: 16,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _participantsText(trip),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
                     // Deliberately gated on *how this screen was reached*, not just
                     // trip.joined: Explore's "general" trip detail never shows who's in
-                    // it, even for a trip the viewer has already joined — the member list
-                    // only appears on the "specific" view reached from inside the Bubble
-                    // itself. Two privacy postures for the same data, not two widgets.
-                    if (widget.openedFromConversation) ...[
-                      const SizedBox(height: 8),
-                      _TripParticipantsList(
-                        tripId: trip.id,
+                    // it, even for a trip the viewer has already joined — the People/Media/
+                    // Files/Links tabs (chat-derived, member-list-bearing) only appear on the
+                    // "specific" view reached from inside the Bubble itself. Two privacy
+                    // postures for the same data, not two widgets. When opened from the
+                    // conversation, this whole section is omitted here — it becomes the
+                    // People/Media/Files/Links tab bar pinned via the SliverAppBar's own
+                    // `bottom` instead (see build()).
+                    if (!widget.openedFromConversation) ...[
+                      const SizedBox(height: 20),
+                      _OrganizerCard(
+                        isOrganizer: isOrganizer,
+                        profile: widget.viewModel.organizerProfile,
+                        creatorUserId: trip.creatorUserId,
                         currentUserId: widget.viewModel.currentUserId,
-                        tripRepository: widget.tripRepository,
                         profileRepository: widget.viewModel.profileRepository,
+                        diveCenter: widget.viewModel.organizerDiveCenter,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.groups_outlined,
+                            size: 16,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _participantsText(trip),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -470,8 +578,82 @@ class _TripPageState extends State<TripPage> {
                     // Leave/Cancel now live in _ActionPillsRow up top, Telegram-Group-Info-style.
                   ],
                 ),
+              );
+
+          // Opened from the Bubble: single title, never duplicated — it lives once, in-flow,
+          // right below photoHero (large) and is the *only* place it's ever built while
+          // expanded; the app bar (built in this State's build(), above) only builds its own
+          // small title once _showCollapsedTitle flips true, at which point this large one has
+          // already scrolled behind the toolbar. People/Media/Files/Links are the one thing
+          // that pins — via their own SliverPersistentHeader below — once scrolled up to meet
+          // the toolbar; everything else (photo, title, mute/leave, dive info) scrolls away
+          // normally. Explore preview keeps the old full-photo scrolling page below instead —
+          // no chat to browse tabs for, no member list to show (see the privacy comment above
+          // detailContent's title Row).
+          if (widget.openedFromConversation) {
+            _ensureBubbleContentLoaded(trip.id);
+            final tabBar = TabBar(
+              controller: _tabController,
+              tabs: const [
+                Tab(text: 'People'),
+                Tab(text: 'Media'),
+                Tab(text: 'Files'),
+                Tab(text: 'Links'),
+              ],
+            );
+            return NestedScrollView(
+              controller: _bubbleScrollController,
+              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                SliverToBoxAdapter(child: photoHero),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Column(
+                      children: [
+                        Text(
+                          trip.title,
+                          style: theme.textTheme.headlineSmall,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        _ActionPillsRow(viewModel: widget.viewModel, trip: trip, isOrganizer: isOrganizer),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(child: _tripDetailBody(context, theme, trip)),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _PinnedTabBarDelegate(tabBar: tabBar, backgroundColor: theme.colorScheme.surface),
+                ),
+              ],
+              body: TabBarView(
+                controller: _tabController,
+                children: [
+                  PeopleTab(
+                    tripId: trip.id,
+                    currentUserId: widget.viewModel.currentUserId,
+                    tripRepository: widget.tripRepository,
+                    profileRepository: widget.viewModel.profileRepository,
+                    creatorUserId: trip.creatorUserId,
+                    organizerDiveCenter: widget.viewModel.organizerDiveCenter,
+                  ),
+                  MediaTab(future: _mediaFuture!),
+                  FilesTab(future: _filesFuture!),
+                  LinksTab(future: _linksFuture!),
+                ],
               ),
-            ],
+            );
+          }
+
+          return ListView(
+            // Bottom-only: the hero image intentionally runs full-bleed under the app bar,
+            // but the last item (Join/Book now button) needs room above the system nav bar —
+            // otherwise 3-button nav on Android overlaps it (no MediaQuery inset otherwise).
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.paddingOf(context).bottom,
+            ),
+            children: [photoHero, detailContent],
           );
         },
       ),
@@ -488,26 +670,69 @@ class _TripPageState extends State<TripPage> {
   }
 }
 
-/// Inline member list embedded right under "N people joined" — Telegram-style, no extra
-/// screen to get to it. Same lazy-per-id profile fetch pattern as Transport's joined-divers.
-class _TripParticipantsList extends StatefulWidget {
-  const _TripParticipantsList({
+/// People/Media/Files/Links tab bar, pinned once scrolled up to meet the toolbar (see
+/// build()'s openedFromConversation branch) — everything above it (photo, title, mute/leave,
+/// dive info) scrolls away normally instead.
+class _PinnedTabBarDelegate extends SliverPersistentHeaderDelegate {
+  _PinnedTabBarDelegate({required this.tabBar, required this.backgroundColor});
+
+  final TabBar tabBar;
+  final Color backgroundColor;
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Material(
+      color: backgroundColor,
+      elevation: overlapsContent ? 2 : 0,
+      child: tabBar,
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _PinnedTabBarDelegate oldDelegate) {
+    return tabBar != oldDelegate.tabBar || backgroundColor != oldDelegate.backgroundColor;
+  }
+}
+
+
+/// Flat participant list, Telegram-style — the organizer (individual diver or dive center)
+/// gets an "Organizer" pill next to their row instead of a separate card, so they never
+/// appear twice (previously: a standalone Organizer card *and*, if the organizer was a
+/// regular diver, an unlabeled second entry down in the plain participant list).
+class PeopleTab extends StatefulWidget {
+  const PeopleTab({
+    super.key,
     required this.tripId,
     required this.currentUserId,
     required this.tripRepository,
     required this.profileRepository,
+    required this.creatorUserId,
+    this.organizerDiveCenter,
   });
 
   final String tripId;
   final String currentUserId;
   final TripRepository tripRepository;
   final ProfileRepository profileRepository;
+  final String? creatorUserId;
+
+  /// Set for a business trip — the dive center's own identity is the organizer, not the
+  /// specific staff member who happened to create it (see CLAUDE.md's Business/dive centers
+  /// section). When set, the dive center gets its own pinned row; when null, the organizer
+  /// pill instead lands on whichever participant row matches [creatorUserId].
+  final DiveCenter? organizerDiveCenter;
 
   @override
-  State<_TripParticipantsList> createState() => _TripParticipantsListState();
+  State<PeopleTab> createState() => _PeopleTabState();
 }
 
-class _TripParticipantsListState extends State<_TripParticipantsList> {
+class _PeopleTabState extends State<PeopleTab> {
   List<String>? _userIds;
   final Map<String, Profile> _profiles = {};
   String? _error;
@@ -542,20 +767,43 @@ class _TripParticipantsListState extends State<_TripParticipantsList> {
     final theme = Theme.of(context);
 
     if (_error != null) {
-      return Text(
-        'Error: $_error',
-        style: TextStyle(color: theme.colorScheme.error),
+      return Center(
+        child: Text(
+          'Error: $_error',
+          style: TextStyle(color: theme.colorScheme.error),
+        ),
       );
     }
     if (_userIds == null) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
 
-    return Column(
+    final dc = widget.organizerDiveCenter;
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       children: [
+        if (dc != null) ...[
+          _PersonRow(
+            avatar: CircleAvatar(
+              radius: 16,
+              backgroundColor: theme.colorScheme.secondaryContainer,
+              backgroundImage: (dc.logoUrl?.isNotEmpty ?? false)
+                  ? NetworkImage(dc.logoUrl!)
+                  : null,
+              child: (dc.logoUrl?.isNotEmpty ?? false)
+                  ? null
+                  : Icon(
+                      Icons.storefront_outlined,
+                      size: 18,
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
+            ),
+            name: dc.name,
+            isOrganizer: true,
+            onTap: () => showDiveCenterCard(context, dc),
+          ),
+          const Divider(height: 20),
+        ],
         for (final userId in _userIds!)
           Builder(
             builder: (context) {
@@ -566,42 +814,92 @@ class _TripParticipantsListState extends State<_TripParticipantsList> {
               final name = (profile?.isProductObserver ?? false)
                   ? '$baseName | Product Observer'
                   : baseName;
-              return InkWell(
-                borderRadius: BorderRadius.circular(8),
+              return _PersonRow(
+                avatar: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: theme.colorScheme.secondaryContainer,
+                  backgroundImage: (profile?.avatarUrl?.isNotEmpty ?? false)
+                      ? NetworkImage(profile!.avatarUrl!)
+                      : null,
+                  child: (profile?.avatarUrl?.isNotEmpty ?? false)
+                      ? null
+                      : Icon(
+                          Icons.person,
+                          size: 18,
+                          color: theme.colorScheme.onSecondaryContainer,
+                        ),
+                ),
+                name: name,
+                isOrganizer: dc == null && userId == widget.creatorUserId,
                 onTap: () => showDiverIdCard(
                   context,
                   userId: userId,
                   currentUserId: widget.currentUserId,
                   profileRepository: widget.profileRepository,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: theme.colorScheme.secondaryContainer,
-                        backgroundImage:
-                            (profile?.avatarUrl?.isNotEmpty ?? false)
-                            ? NetworkImage(profile!.avatarUrl!)
-                            : null,
-                        child: (profile?.avatarUrl?.isNotEmpty ?? false)
-                            ? null
-                            : Icon(
-                                Icons.person,
-                                size: 18,
-                                color: theme.colorScheme.onSecondaryContainer,
-                              ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(name, style: theme.textTheme.bodyMedium),
-                    ],
-                  ),
-                ),
               );
             },
           ),
       ],
+    );
+  }
+}
+
+class _PersonRow extends StatelessWidget {
+  const _PersonRow({
+    required this.avatar,
+    required this.name,
+    required this.isOrganizer,
+    required this.onTap,
+  });
+
+  final Widget avatar;
+  final String name;
+  final bool isOrganizer;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Row(
+          children: [
+            avatar,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                name,
+                style: theme.textTheme.bodyMedium,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (isOrganizer) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  'Organizer',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
