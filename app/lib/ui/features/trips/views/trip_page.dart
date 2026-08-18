@@ -95,10 +95,13 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
     _linksFuture = vm.loadLinks();
   }
 
-  // Drives Bubble Info's app bar: false while the large in-flow title (photoHero + title +
-  // action pills, see build's openedFromConversation branch) is still on screen, true once it
-  // has scrolled behind the toolbar — only one of the two titles is ever built at a time, so
-  // there's no risk of both being visible together (the bug the SliverAppBar approach had).
+  // Drives Bubble Info's SliverAppBar (see build's openedFromConversation branch): false while
+  // photoHero is still (at least partly) expanded, true once it's fully collapsed to the
+  // toolbar. Deliberately not relying on SliverAppBar's own built-in title fade — that only
+  // fades in with `floating: true` + a non-null `bottom` present, and even then only kicks in
+  // right at the end, so driving the title's presence ourselves off this flag is what
+  // guarantees the large in-flow title (Column below the SliverAppBar) and the small toolbar
+  // title are never both visible at once.
   final _bubbleScrollController = ScrollController();
   final ValueNotifier<bool> _showCollapsedTitle = ValueNotifier(false);
 
@@ -107,7 +110,7 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
     final width = MediaQuery.sizeOf(context).width;
     final photoHeight = width * 3 / 4; // matches photoHero's AspectRatio(4/3)
     final toolbarHeight = kToolbarHeight + MediaQuery.paddingOf(context).top;
-    final threshold = photoHeight + 16 - toolbarHeight;
+    final threshold = photoHeight - toolbarHeight;
     final collapsed = _bubbleScrollController.offset >= threshold;
     if (collapsed != _showCollapsedTitle.value) {
       _showCollapsedTitle.value = collapsed;
@@ -196,31 +199,15 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      // Both branches float their app bar over photoHero at the top (transparent, white
-      // back button) — Bubble Info's own bar additionally swaps to an opaque surface bar
-      // with the trip title once _showCollapsedTitle flips (see _handleBubbleScroll): the
-      // large in-flow title has scrolled behind it by then, so there is only ever one title
-      // visible, never both.
-      extendBodyBehindAppBar: true,
+      // Explore preview floats a transparent app bar over its photo hero. Bubble Info does
+      // the same thing but as a SliverAppBar *inside* the NestedScrollView instead of a
+      // separate Scaffold.appBar (see build's openedFromConversation branch) — putting it in
+      // the same sliver list as the pinned People/Media/Files/Links tab bar is what makes the
+      // tab bar park correctly right below it once collapsed, instead of being painted over by
+      // a separately-layered app bar.
+      extendBodyBehindAppBar: !widget.openedFromConversation,
       appBar: widget.openedFromConversation
-          ? PreferredSize(
-              preferredSize: const Size.fromHeight(kToolbarHeight),
-              child: ValueListenableBuilder<bool>(
-                valueListenable: _showCollapsedTitle,
-                builder: (context, collapsed, _) => AppBar(
-                  backgroundColor: collapsed ? theme.colorScheme.surface : Colors.transparent,
-                  foregroundColor: collapsed ? theme.colorScheme.onSurface : Colors.white,
-                  elevation: 0,
-                  title: collapsed
-                      ? Text(
-                          widget.viewModel.trip?.title ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        )
-                      : null,
-                ),
-              ),
-            )
+          ? null
           : AppBar(
               backgroundColor: Colors.transparent,
               foregroundColor: Colors.white,
@@ -580,15 +567,16 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
                 ),
               );
 
-          // Opened from the Bubble: single title, never duplicated — it lives once, in-flow,
-          // right below photoHero (large) and is the *only* place it's ever built while
-          // expanded; the app bar (built in this State's build(), above) only builds its own
-          // small title once _showCollapsedTitle flips true, at which point this large one has
-          // already scrolled behind the toolbar. People/Media/Files/Links are the one thing
-          // that pins — via their own SliverPersistentHeader below — once scrolled up to meet
-          // the toolbar; everything else (photo, title, mute/leave, dive info) scrolls away
-          // normally. Explore preview keeps the old full-photo scrolling page below instead —
-          // no chat to browse tabs for, no member list to show (see the privacy comment above
+          // Opened from the Bubble: everything — the collapsing photo/toolbar, the in-flow
+          // title+buttons+dive-info, and the pinned People/Media/Files/Links tab bar — lives in
+          // one NestedScrollView sliver list (no separate Scaffold.appBar, see build() above).
+          // That's what makes the tab bar park correctly right below the collapsed toolbar
+          // instead of being painted over by it: multiple pinned slivers in the same list stack
+          // in order automatically, no manual offset math needed. The large in-flow title
+          // (Column right after the SliverAppBar) and the small toolbar title
+          // (SliverAppBar.title, gated on _showCollapsedTitle) are never both built at once.
+          // Explore preview keeps the old full-photo scrolling page below instead — no chat to
+          // browse tabs for, no member list to show (see the privacy comment above
           // detailContent's title Row).
           if (widget.openedFromConversation) {
             _ensureBubbleContentLoaded(trip.id);
@@ -601,10 +589,25 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
                 Tab(text: 'Links'),
               ],
             );
+            final photoHeight = MediaQuery.sizeOf(context).width * 3 / 4;
             return NestedScrollView(
               controller: _bubbleScrollController,
               headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                SliverToBoxAdapter(child: photoHero),
+                ValueListenableBuilder<bool>(
+                  valueListenable: _showCollapsedTitle,
+                  builder: (context, collapsed, child) => SliverAppBar(
+                    pinned: true,
+                    expandedHeight: photoHeight,
+                    backgroundColor: collapsed ? theme.colorScheme.surface : Colors.transparent,
+                    foregroundColor: collapsed ? theme.colorScheme.onSurface : Colors.white,
+                    elevation: 0,
+                    title: collapsed
+                        ? Text(trip.title, maxLines: 1, overflow: TextOverflow.ellipsis)
+                        : null,
+                    flexibleSpace: FlexibleSpaceBar(background: child),
+                  ),
+                  child: photoHero,
+                ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
