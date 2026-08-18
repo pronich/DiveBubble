@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Opens a chat PDF attachment in-app (SFSafariViewController on iOS) instead of switching to
-/// another app — same standard chrome (share, search, markup) as Mail/Safari's own PDF
-/// preview, so no custom viewer is needed. Safari View Controller only accepts http(s) URLs,
-/// not local file paths, so this always opens the remote attachment URL directly rather than
-/// the disk-cached copy used elsewhere. Shared by the chat bubble and Chat Info's Files tab.
+import '../../../data/services/attachment_cache_service.dart';
+
+/// Downloads (if needed) and opens a chat PDF attachment in-app — QuickLook on iOS
+/// (UIDocumentInteractionController.presentPreview, same chrome Mail uses for attachments:
+/// share, markup, page nav, no "open in Safari"/browser escape hatch) and the OS's registered
+/// viewer in place on Android. Reuses the same cached local file used everywhere else. Shared
+/// by the chat bubble and Chat Info's Files tab.
 Future<void> openAttachmentInApp(BuildContext context, String url) async {
   try {
-    final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.inAppWebView);
-    if (!opened) throw Exception('could not open this file');
+    final file = await AttachmentCacheService.getFile(url);
+    final result = await OpenFilex.open(file.path);
+    if (result.type != ResultType.done) throw Exception(result.message);
   } catch (e) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open file: $e')));
