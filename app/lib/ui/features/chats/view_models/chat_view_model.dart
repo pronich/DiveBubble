@@ -167,34 +167,66 @@ class ChatViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> send(
-    String body, {
-    bool mentionsDiveCenter = false,
-    String? attachmentUrl,
+  int _pendingCounter = 0;
+
+  // A pending bubble appears the instant send is tapped, keyed by a temp id local to this
+  // session — swapped for the server's real message (same content, real id) once the POST
+  // response comes back. Previously the "sending" state lived on the composer (a separate
+  // chip with its own spinner) while the real bubble came in via realtime — those two could
+  // both be on screen at once for a moment. Owning the pending state here instead means only
+  // ever one visual: the list bubble itself, loader over its attachment until it resolves.
+  ChatMessage _buildPendingMessage({
+    required String tempId,
+    required String body,
+    String? localAttachmentPath,
     String? attachmentType,
     String? attachmentFilename,
     int? attachmentSizeBytes,
-  }) async {
+  }) => ChatMessage(
+    id: tempId,
+    tripId: tripId,
+    userId: currentUserId,
+    body: body,
+    createdAt: DateTime.now(),
+    isPending: true,
+    localAttachmentPath: localAttachmentPath,
+    attachmentType: attachmentType,
+    attachmentFilename: attachmentFilename,
+    attachmentSizeBytes: attachmentSizeBytes,
+  );
+
+  // Swaps the pending bubble for the server-confirmed message. Realtime can beat this call's
+  // own response back (the backend publishes as soon as the row is written, before the HTTP
+  // response finishes streaming), in which case the real message is already in `_messages`
+  // under its real id — drop that copy too so the swap never leaves a duplicate behind.
+  void _resolvePending(String tempId, ChatMessage sent) {
+    _messages = [
+      for (final m in _messages)
+        if (m.id != tempId && m.id != sent.id) m,
+      sent,
+    ];
+  }
+
+  Future<void> send(String body, {bool mentionsDiveCenter = false}) async {
     final trimmed = body.trim();
-    // An attachment can carry an empty caption — only reject when there's neither.
-    if (trimmed.isEmpty && attachmentUrl == null) return;
+    if (trimmed.isEmpty) return;
+
+    final tempId = 'pending-${_pendingCounter++}';
+    _messages = [..._messages, _buildPendingMessage(tempId: tempId, body: trimmed)];
     _isSending = true;
     notifyListeners();
 
     try {
-      await _repository.sendMessage(
+      final sent = await _repository.sendMessage(
         tripId,
         trimmed,
         offerId: offerId,
         buddyRequestId: buddyRequestId,
         mentionsDiveCenter: mentionsDiveCenter,
-        attachmentUrl: attachmentUrl,
-        attachmentType: attachmentType,
-        attachmentFilename: attachmentFilename,
-        attachmentSizeBytes: attachmentSizeBytes,
       );
-      _messages = await _repository.getMessages(tripId, offerId: offerId, buddyRequestId: buddyRequestId);
+      _resolvePending(tempId, sent);
     } catch (e) {
+      _messages = _messages.where((m) => m.id != tempId).toList();
       _error = e.toString();
     } finally {
       _isSending = false;
@@ -203,10 +235,29 @@ class ChatViewModel extends ChangeNotifier {
   }
 
   /// Uploads a picked attachment, then sends it (with an optional caption) — the composer's
-  /// entry point once a file is picked. Unlike `send`, errors are NOT swallowed into `_error`:
-  /// they propagate so the composer's own try/catch can keep the pending attachment in place
-  /// and show a SnackBar, instead of the attachment silently vanishing on failure.
-  Future<void> uploadAndSend(String filePath, {String caption = '', bool mentionsDiveCenter = false}) async {
+  /// entry point once a file is picked. The pending bubble (with a loader over the attachment,
+  /// see ChatView's _AttachmentPreview) appears immediately; errors remove it and propagate so
+  /// the composer's own try/catch can keep the picked file staged and show a SnackBar, instead
+  /// of the attachment silently vanishing on failure.
+  Future<void> uploadAndSend(
+    String filePath, {
+    required String attachmentType,
+    required String attachmentFilename,
+    String caption = '',
+    bool mentionsDiveCenter = false,
+  }) async {
+    final tempId = 'pending-${_pendingCounter++}';
+    final trimmedCaption = caption.trim();
+    _messages = [
+      ..._messages,
+      _buildPendingMessage(
+        tempId: tempId,
+        body: trimmedCaption,
+        localAttachmentPath: filePath,
+        attachmentType: attachmentType,
+        attachmentFilename: attachmentFilename,
+      ),
+    ];
     _isUploadingAttachment = true;
     notifyListeners();
     try {
@@ -214,9 +265,9 @@ class ChatViewModel extends ChangeNotifier {
       _isUploadingAttachment = false;
       _isSending = true;
       notifyListeners();
-      await _repository.sendMessage(
+      final sent = await _repository.sendMessage(
         tripId,
-        caption.trim(),
+        trimmedCaption,
         offerId: offerId,
         buddyRequestId: buddyRequestId,
         mentionsDiveCenter: mentionsDiveCenter,
@@ -225,7 +276,10 @@ class ChatViewModel extends ChangeNotifier {
         attachmentFilename: result.filename,
         attachmentSizeBytes: result.sizeBytes,
       );
-      _messages = await _repository.getMessages(tripId, offerId: offerId, buddyRequestId: buddyRequestId);
+      _resolvePending(tempId, sent);
+    } catch (e) {
+      _messages = _messages.where((m) => m.id != tempId).toList();
+      rethrow;
     } finally {
       _isUploadingAttachment = false;
       _isSending = false;

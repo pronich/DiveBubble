@@ -14,7 +14,7 @@ class ChatRepository {
     return apiModels.map((m) => m.toDomain()).toList();
   }
 
-  Future<void> sendMessage(
+  Future<ChatMessage> sendMessage(
     String tripId,
     String body, {
     String? offerId,
@@ -24,18 +24,20 @@ class ChatRepository {
     String? attachmentType,
     String? attachmentFilename,
     int? attachmentSizeBytes,
-  }) =>
-      _service.sendMessage(
-        tripId,
-        body,
-        offerId: offerId,
-        buddyRequestId: buddyRequestId,
-        mentionsDiveCenter: mentionsDiveCenter,
-        attachmentUrl: attachmentUrl,
-        attachmentType: attachmentType,
-        attachmentFilename: attachmentFilename,
-        attachmentSizeBytes: attachmentSizeBytes,
-      );
+  }) async {
+    final apiModel = await _service.sendMessage(
+      tripId,
+      body,
+      offerId: offerId,
+      buddyRequestId: buddyRequestId,
+      mentionsDiveCenter: mentionsDiveCenter,
+      attachmentUrl: attachmentUrl,
+      attachmentType: attachmentType,
+      attachmentFilename: attachmentFilename,
+      attachmentSizeBytes: attachmentSizeBytes,
+    );
+    return apiModel.toDomain();
+  }
 
   // Returns the transport-only upload result (url/type/filename/sizeBytes) — the caller passes
   // it straight into sendMessage above; nothing here is persisted independently.

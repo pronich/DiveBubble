@@ -30,5 +30,12 @@ abstract class ChatMessage with _$ChatMessage {
     String? attachmentType, // 'image' | 'pdf'
     String? attachmentFilename,
     int? attachmentSizeBytes,
+    // Optimistic local echo, shown the instant "send" is tapped and replaced once the server
+    // confirms it (see ChatViewModel.send/uploadAndSend) — never true for a message that came
+    // from the REST list or realtime.
+    @Default(false) bool isPending,
+    // Set only on a pending attachment message, before attachmentUrl exists — lets the bubble
+    // render the picked file immediately (thumbnail/filename) while the upload is in flight.
+    String? localAttachmentPath,
   }) = _ChatMessage;
 }

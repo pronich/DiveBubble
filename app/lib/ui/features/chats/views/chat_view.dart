@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
@@ -68,7 +69,6 @@ class _ChatViewState extends State<ChatView>
   bool _mentionArmed = false;
 
   PickedAttachment? _pendingAttachment;
-  bool _isUploadingAttachment = false;
 
   // TabBarView disposes offscreen tabs by default — without this, switching to Transport
   // and back tore down ChatView (and, since dispose() below tears down the ChatViewModel
@@ -178,8 +178,6 @@ class _ChatViewState extends State<ChatView>
     setState(() => _pendingAttachment = picked);
   }
 
-  // No-op while uploading — the chip hides its remove affordance in that state (see the
-  // Row below), so this only ever fires when it's safe to just drop the pick.
   void _removePendingAttachment() => setState(() => _pendingAttachment = null);
 
   Future<void> _handleSend() async {
@@ -195,25 +193,24 @@ class _ChatViewState extends State<ChatView>
       return;
     }
 
-    setState(() => _isUploadingAttachment = true);
+    // Clear the composer immediately — a pending bubble (with its own loader over the
+    // attachment) takes over from here, see ChatViewModel.uploadAndSend, so there's no window
+    // where both the composer chip's spinner and the sent bubble are visible at once.
+    _textController.clear();
+    setState(() {
+      _mentionArmed = false;
+      _pendingAttachment = null;
+    });
     try {
       await widget.viewModel.uploadAndSend(
         attachment.path,
+        attachmentType: attachment.type,
+        attachmentFilename: attachment.filename,
         caption: text,
         mentionsDiveCenter: mentionsDiveCenter,
       );
-      if (!mounted) return;
-      _textController.clear();
-      setState(() {
-        _mentionArmed = false;
-        _pendingAttachment = null;
-        _isUploadingAttachment = false;
-      });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _isUploadingAttachment = false);
-      // The pending attachment is deliberately left in place on failure (not cleared) — see
-      // ChatViewModel.uploadAndSend's own comment on why errors aren't swallowed there.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not send attachment: $e')),
       );
@@ -399,8 +396,7 @@ class _ChatViewState extends State<ChatView>
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                         child: _PendingAttachmentChip(
                           attachment: _pendingAttachment!,
-                          isUploading: _isUploadingAttachment,
-                          onRemove: _isUploadingAttachment ? null : _removePendingAttachment,
+                          onRemove: _removePendingAttachment,
                         ),
                       ),
                     Padding(
@@ -410,7 +406,7 @@ class _ChatViewState extends State<ChatView>
                         children: [
                           IconButton(
                             icon: const Icon(Icons.attach_file),
-                            onPressed: _isUploadingAttachment ? null : _pickAttachment,
+                            onPressed: _pickAttachment,
                           ),
                           Expanded(
                             child: TextField(
@@ -426,7 +422,7 @@ class _ChatViewState extends State<ChatView>
                           ),
                           IconButton(
                             icon: const Icon(Icons.send),
-                            onPressed: _isUploadingAttachment ? null : _handleSend,
+                            onPressed: _handleSend,
                           ),
                         ],
                       ),
@@ -439,18 +435,17 @@ class _ChatViewState extends State<ChatView>
   }
 }
 
-/// Shown above the composer between picking a file and it actually sending — a small preview
-/// chip with a remove (X) affordance, replaced by a progress spinner while uploading.
+/// Shown above the composer between picking a file and tapping send — a small preview chip
+/// with a remove (X) affordance. Once send is tapped this is cleared immediately; the upload
+/// itself is tracked by a pending bubble in the message list instead (see ChatViewModel).
 class _PendingAttachmentChip extends StatelessWidget {
   const _PendingAttachmentChip({
     required this.attachment,
-    required this.isUploading,
     required this.onRemove,
   });
 
   final PickedAttachment attachment;
-  final bool isUploading;
-  final VoidCallback? onRemove;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -484,13 +479,7 @@ class _PendingAttachmentChip extends StatelessWidget {
               style: theme.textTheme.bodyMedium,
             ),
           ),
-          if (isUploading)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 10),
-              child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
-            )
-          else
-            IconButton(icon: const Icon(Icons.close, size: 18), onPressed: onRemove),
+          IconButton(icon: const Icon(Icons.close, size: 18), onPressed: onRemove),
         ],
       ),
     );
@@ -510,32 +499,60 @@ class _AttachmentPreview extends StatelessWidget {
     if (message.attachmentType == 'pdf') {
       return _PdfAttachmentRow(message: message, color: color);
     }
-    return _ImageAttachmentThumbnail(url: message.attachmentUrl!, color: color);
+    return _ImageAttachmentThumbnail(message: message, color: color);
   }
 }
 
 class _ImageAttachmentThumbnail extends StatelessWidget {
-  const _ImageAttachmentThumbnail({required this.url, required this.color});
+  const _ImageAttachmentThumbnail({required this.message, required this.color});
 
-  final String url;
+  final ChatMessage message;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
+    final url = message.attachmentUrl;
+    final localPath = message.localAttachmentPath;
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => AttachmentImagePreviewPage(url: url)),
-        ),
-        // No separate "downloaded" badge here (unlike the PDF row below) — the image itself
-        // is the badge: a spinner while it's fetching, the photo once it's on disk. A
-        // sibling badge fed by its own independent AttachmentCacheService.getCachedFileInfo
-        // call raced this widget's own download and settled first, so it showed "not
-        // downloaded" even after the photo had fully loaded and was visibly on-screen.
+        // Not tappable yet while it's still just a local pending echo — nothing to preview
+        // remotely until the upload actually resolves.
+        onTap: url == null
+            ? null
+            : () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => AttachmentImagePreviewPage(url: url)),
+              ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
-          child: CachedAttachmentImage(url: url, width: 220, height: 160),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // No separate "downloaded" badge here (unlike the PDF row below) — the image
+              // itself is the badge: a spinner while it's fetching, the photo once it's on
+              // disk. A sibling badge fed by its own independent
+              // AttachmentCacheService.getCachedFileInfo call raced this widget's own download
+              // and settled first, so it showed "not downloaded" even after the photo had
+              // fully loaded and was visibly on-screen.
+              if (url != null)
+                CachedAttachmentImage(url: url, width: 220, height: 160)
+              else if (localPath != null)
+                Image.file(File(localPath), width: 220, height: 160, fit: BoxFit.cover),
+              if (message.isPending)
+                Container(
+                  width: 220,
+                  height: 160,
+                  color: Colors.black.withValues(alpha: 0.35),
+                  child: const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -550,12 +567,13 @@ class _PdfAttachmentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final url = message.attachmentUrl;
     final filename = message.attachmentFilename ?? 'Document.pdf';
     final sizeLabel = formatAttachmentFileSize(message.attachmentSizeBytes);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: GestureDetector(
-        onTap: () => openAttachmentInApp(context, message.attachmentUrl!),
+        onTap: url == null ? null : () => openAttachmentInApp(context, url),
         child: Container(
           constraints: const BoxConstraints(minWidth: 200),
           padding: const EdgeInsets.all(10),
@@ -585,14 +603,21 @@ class _PdfAttachmentRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              FutureBuilder<FileInfo?>(
-                future: AttachmentCacheService.getCachedFileInfo(message.attachmentUrl!),
-                builder: (context, snapshot) => Icon(
-                  snapshot.data != null ? Icons.check_circle_outline : Icons.cloud_download_outlined,
-                  size: 18,
-                  color: color.withValues(alpha: 0.7),
+              if (message.isPending || url == null)
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: color.withValues(alpha: 0.7)),
+                )
+              else
+                FutureBuilder<FileInfo?>(
+                  future: AttachmentCacheService.getCachedFileInfo(url),
+                  builder: (context, snapshot) => Icon(
+                    snapshot.data != null ? Icons.check_circle_outline : Icons.cloud_download_outlined,
+                    size: 18,
+                    color: color.withValues(alpha: 0.7),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -930,7 +955,7 @@ class _MessageRow extends StatelessWidget {
                   ),
                 ),
               ),
-            if (message.attachmentUrl != null)
+            if (message.attachmentUrl != null || message.localAttachmentPath != null)
               _AttachmentPreview(message: message, color: onBubbleColor),
             _MessageBody(
               body: message.body,
@@ -1277,7 +1302,9 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
 /// [WidgetSpan] so the paragraph's line-wrapping reserves room for it (falling to a new line
 /// if the last line is already full); the real, visible timestamp is then drawn on top at the
 /// bottom-right corner via [Stack]+[Positioned], landing in that reserved space.
-class _MessageBody extends StatelessWidget {
+final _urlPattern = RegExp(r'(https?:\/\/\S+|www\.\S+)', caseSensitive: false);
+
+class _MessageBody extends StatefulWidget {
   const _MessageBody({
     required this.body,
     required this.time,
@@ -1289,11 +1316,65 @@ class _MessageBody extends StatelessWidget {
   final Color color;
 
   @override
+  State<_MessageBody> createState() => _MessageBodyState();
+}
+
+class _MessageBodyState extends State<_MessageBody> {
+  final _linkRecognizers = <TapGestureRecognizer>[];
+
+  @override
+  void dispose() {
+    for (final recognizer in _linkRecognizers) {
+      recognizer.dispose();
+    }
+    super.dispose();
+  }
+
+  List<TextSpan> _buildSpans(TextStyle? bodyStyle) {
+    for (final recognizer in _linkRecognizers) {
+      recognizer.dispose();
+    }
+    _linkRecognizers.clear();
+
+    final spans = <TextSpan>[];
+    var start = 0;
+    for (final match in _urlPattern.allMatches(widget.body)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: widget.body.substring(start, match.start)));
+      }
+      // Trailing punctuation (e.g. a sentence-ending period) usually isn't part of the URL.
+      var end = match.end;
+      while (end > match.start && '.,;:!?)'.contains(widget.body[end - 1])) {
+        end--;
+      }
+      final url = widget.body.substring(match.start, end);
+      final recognizer = TapGestureRecognizer()
+        ..onTap = () => launchUrlExternally(context, url.startsWith('http') ? url : 'https://$url');
+      _linkRecognizers.add(recognizer);
+      spans.add(
+        TextSpan(
+          text: url,
+          style: bodyStyle?.copyWith(decoration: TextDecoration.underline),
+          recognizer: recognizer,
+        ),
+      );
+      if (end < match.end) {
+        spans.add(TextSpan(text: widget.body.substring(end, match.end)));
+      }
+      start = match.end;
+    }
+    if (start < widget.body.length) {
+      spans.add(TextSpan(text: widget.body.substring(start)));
+    }
+    return spans;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bodyStyle = TextStyle(color: color);
+    final bodyStyle = TextStyle(color: widget.color);
     final timeStyle = theme.textTheme.labelSmall?.copyWith(
-      color: color.withValues(alpha: 0.7),
+      color: widget.color.withValues(alpha: 0.7),
       fontSize: 11,
     );
     return Stack(
@@ -1302,7 +1383,7 @@ class _MessageBody extends StatelessWidget {
           TextSpan(
             style: bodyStyle,
             children: [
-              TextSpan(text: body),
+              ..._buildSpans(bodyStyle),
               WidgetSpan(
                 alignment: PlaceholderAlignment.baseline,
                 baseline: TextBaseline.alphabetic,
@@ -1310,14 +1391,14 @@ class _MessageBody extends StatelessWidget {
                   opacity: 0,
                   child: Padding(
                     padding: const EdgeInsets.only(left: 8),
-                    child: Text(time, style: timeStyle),
+                    child: Text(widget.time, style: timeStyle),
                   ),
                 ),
               ),
             ],
           ),
         ),
-        Positioned(right: 0, bottom: 0, child: Text(time, style: timeStyle)),
+        Positioned(right: 0, bottom: 0, child: Text(widget.time, style: timeStyle)),
       ],
     );
   }

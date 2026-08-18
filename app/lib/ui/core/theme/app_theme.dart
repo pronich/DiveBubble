@@ -145,6 +145,13 @@ abstract final class AppTheme {
           borderSide: const BorderSide(color: AppColors.error, width: 1.5),
         ),
       ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: AppColors.surfaceDark,
+        contentTextStyle: textTheme.bodyMedium?.copyWith(color: AppColors.textInverse),
+        actionTextColor: AppColors.textAccent,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
     );
   }
 }

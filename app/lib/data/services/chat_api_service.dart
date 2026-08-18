@@ -52,7 +52,7 @@ class ChatApiService {
     return (jsonDecode(res.body) as Map<String, dynamic>)['token'] as String;
   }
 
-  Future<void> sendMessage(
+  Future<ChatMessageApiModel> sendMessage(
     String tripId,
     String body, {
     String? offerId,
@@ -78,6 +78,7 @@ class ChatApiService {
     if (res.statusCode != 201) {
       throw Exception('sendMessage failed: ${res.statusCode} ${res.body}');
     }
+    return ChatMessageApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
   // Scope-agnostic by design (no offerId/buddyRequestId) — the backend only needs the caller to
