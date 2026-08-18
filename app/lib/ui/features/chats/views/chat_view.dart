@@ -13,7 +13,6 @@ import '../../../core/widgets/pick_attachment.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../view_models/chat_view_model.dart';
 import 'attachment_image_preview_page.dart';
-import 'attachment_pdf_preview_page.dart';
 
 // Consecutive messages from the same sender on the same day collapse into one visual
 // cluster (name shown once, avatar anchored to the last bubble) as long as the gap
@@ -556,14 +555,7 @@ class _PdfAttachmentRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: GestureDetector(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => AttachmentPdfPreviewPage(
-              url: message.attachmentUrl!,
-              filename: message.attachmentFilename,
-            ),
-          ),
-        ),
+        onTap: () => openAttachmentInApp(context, message.attachmentUrl!),
         child: Container(
           constraints: const BoxConstraints(minWidth: 200),
           padding: const EdgeInsets.all(10),

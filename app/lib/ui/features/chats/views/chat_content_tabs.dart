@@ -6,7 +6,6 @@ import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/cached_attachment_image.dart';
 import '../../../core/widgets/open_attachment.dart';
 import 'attachment_image_preview_page.dart';
-import 'attachment_pdf_preview_page.dart';
 
 /// Media/Files/Links tab bodies for Bubble Info — shared by TripPage's People/Media/Files/Links
 /// tab bar (reached from either the Bubble title or avatar; see trip_conversation_page.dart).
@@ -91,14 +90,7 @@ class FilesTab extends StatelessWidget {
               leading: const Icon(Icons.picture_as_pdf_outlined),
               title: Text(m.attachmentFilename ?? 'Document.pdf', maxLines: 1, overflow: TextOverflow.ellipsis),
               subtitle: Text([?sizeLabel, formatChatDateSeparator(m.createdAt.toLocal())].join(' · ')),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => AttachmentPdfPreviewPage(
-                    url: m.attachmentUrl!,
-                    filename: m.attachmentFilename,
-                  ),
-                ),
-              ),
+              onTap: () => openAttachmentInApp(context, m.attachmentUrl!),
             );
           },
         );
