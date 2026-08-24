@@ -41,6 +41,31 @@ type Message struct {
 	Attachments []Attachment
 }
 
+// ReactionSummary is one emoji's aggregate on a message (migration 000055,
+// chat_message_reactions) — Count is viewer-independent, ReactedByMe is per-viewer and only
+// ever populated by a call that was given a specific viewer id (see
+// Repository.ListReactionsByMessageIDs). Never broadcast ReactedByMe over realtime as-is — a
+// Centrifugo publish is one shared payload for every subscriber, so it can only ever be true
+// for the one viewer it was computed for (see routes_message.go's publishReactionUpdate,
+// which strips it back down to just the counts before publishing).
+type ReactionSummary struct {
+	Count       int
+	ReactedByMe bool
+}
+
+// AllowedReactionEmojis mirrors migration 000055's CHECK constraint — checked here too so a
+// bad value gets a clean 400 instead of a raw constraint-violation 500.
+var AllowedReactionEmojis = []string{"❤️", "😅", "😁", "🙃", "😢", "😮", "😡", "👌"}
+
+func IsValidReactionEmoji(emoji string) bool {
+	for _, e := range AllowedReactionEmojis {
+		if e == emoji {
+			return true
+		}
+	}
+	return false
+}
+
 // Attachment is the caller-facing shape for one file on a message — used both for sending
 // (Repository.Create takes []Attachment) and for rows read back from chat_message_attachments.
 type Attachment struct {

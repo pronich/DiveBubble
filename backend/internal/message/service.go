@@ -58,6 +58,70 @@ func (s *Service) Delete(ctx context.Context, messageID, callerUserID uuid.UUID)
 	return s.Repo.SoftDelete(ctx, messageID, callerUserID)
 }
 
+// SetReaction upserts the caller's reaction (replacing any previous one) and returns the
+// target message (so the caller can tell which chat *scope* — main/offer/buddy — to republish
+// the realtime update on, see routes_message.go's handleSetReaction) plus the message's fresh
+// per-emoji summary from the caller's own point of view. ErrNotFound covers both a genuinely
+// missing message and one that doesn't belong to tripID or is soft-deleted — same
+// "don't distinguish" shape as Delete's own ownership check.
+func (s *Service) SetReaction(ctx context.Context, tripID, messageID, userID uuid.UUID, emoji string) (Message, map[string]ReactionSummary, error) {
+	if !IsValidReactionEmoji(emoji) {
+		return Message{}, nil, ErrInvalidArgument
+	}
+	m, err := s.reactableMessage(ctx, tripID, messageID)
+	if err != nil {
+		return Message{}, nil, err
+	}
+	if err := s.Repo.UpsertReaction(ctx, messageID, userID, emoji); err != nil {
+		return Message{}, nil, err
+	}
+	reactions, err := s.reactionsForViewer(ctx, messageID, userID)
+	return m, reactions, err
+}
+
+// RemoveReaction removes the caller's reaction, if any, and returns the target message plus
+// the message's fresh per-emoji summary from the caller's own point of view.
+func (s *Service) RemoveReaction(ctx context.Context, tripID, messageID, userID uuid.UUID) (Message, map[string]ReactionSummary, error) {
+	m, err := s.reactableMessage(ctx, tripID, messageID)
+	if err != nil {
+		return Message{}, nil, err
+	}
+	if err := s.Repo.RemoveReaction(ctx, messageID, userID); err != nil {
+		return Message{}, nil, err
+	}
+	reactions, err := s.reactionsForViewer(ctx, messageID, userID)
+	return m, reactions, err
+}
+
+// reactableMessage guards against reacting to a message from a different trip (a participant
+// of tripID could otherwise reference any message id by guessing/observing one elsewhere —
+// same concern Send's replyToID check already covers) or one that's been deleted.
+func (s *Service) reactableMessage(ctx context.Context, tripID, messageID uuid.UUID) (Message, error) {
+	m, err := s.GetByID(ctx, messageID)
+	if err != nil {
+		return Message{}, err
+	}
+	if m.TripID != tripID || m.DeletedAt.Valid {
+		return Message{}, ErrNotFound
+	}
+	return m, nil
+}
+
+func (s *Service) reactionsForViewer(ctx context.Context, messageID, userID uuid.UUID) (map[string]ReactionSummary, error) {
+	byMessage, err := s.Repo.ListReactionsByMessageIDs(ctx, []uuid.UUID{messageID}, userID)
+	if err != nil {
+		return nil, err
+	}
+	return byMessage[messageID], nil
+}
+
+// ListReactionsForMessages batch-fetches reaction summaries for a page of messages, from a
+// specific viewer's point of view — see handleListMessages, same batch-not-N+1 shape as
+// withAttachments.
+func (s *Service) ListReactionsForMessages(ctx context.Context, messageIDs []uuid.UUID, viewerID uuid.UUID) (map[uuid.UUID]map[string]ReactionSummary, error) {
+	return s.Repo.ListReactionsByMessageIDs(ctx, messageIDs, viewerID)
+}
+
 // SendSystem creates a system message of the given kind for the trip's main chat, unless one
 // has already been sent — sent is false when it was skipped, so callers know not to
 // publish/notify again. Only fits a "once per trip" system kind (e.g. the feedback prompt);

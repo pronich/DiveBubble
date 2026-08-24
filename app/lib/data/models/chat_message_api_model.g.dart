@@ -29,6 +29,14 @@ _ChatMessageApiModel _$ChatMessageApiModelFromJson(Map<String, dynamic> json) =>
       deletedAt: json['deletedAt'] == null
           ? null
           : DateTime.parse(json['deletedAt'] as String),
+      reactions:
+          (json['reactions'] as Map<String, dynamic>?)?.map(
+            (k, e) => MapEntry(
+              k,
+              ChatReactionApiModel.fromJson(e as Map<String, dynamic>),
+            ),
+          ) ??
+          const {},
     );
 
 Map<String, dynamic> _$ChatMessageApiModelToJson(
@@ -46,4 +54,5 @@ Map<String, dynamic> _$ChatMessageApiModelToJson(
   'attachments': instance.attachments,
   'replyToId': instance.replyToId,
   'deletedAt': instance.deletedAt?.toIso8601String(),
+  'reactions': instance.reactions,
 };

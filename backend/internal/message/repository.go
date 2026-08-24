@@ -118,6 +118,59 @@ func (r *Repository) ListAttachmentsByMessageIDs(ctx context.Context, messageIDs
 	return out, rows.Err()
 }
 
+// UpsertReaction sets the caller's reaction on a message, replacing any previous one they had
+// (one reaction per user per message, Messenger semantics — see migration 000055's PRIMARY KEY).
+func (r *Repository) UpsertReaction(ctx context.Context, messageID, userID uuid.UUID, emoji string) error {
+	_, err := r.DB.ExecContext(ctx, `
+		INSERT INTO chat_message_reactions (message_id, user_id, emoji)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (message_id, user_id) DO UPDATE SET emoji = excluded.emoji, created_at = now()
+	`, messageID, userID, emoji)
+	return err
+}
+
+// RemoveReaction removes the caller's reaction, if any — idempotent, no error when there wasn't
+// one to remove (mirrors DELETE semantics elsewhere in this package).
+func (r *Repository) RemoveReaction(ctx context.Context, messageID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `
+		DELETE FROM chat_message_reactions WHERE message_id = $1 AND user_id = $2
+	`, messageID, userID)
+	return err
+}
+
+// ListReactionsByMessageIDs batch-fetches per-emoji reaction summaries for a set of messages —
+// one query, not N+1, same shape as ListAttachmentsByMessageIDs. viewerID decides ReactedByMe;
+// Count itself is the same for every viewer. Messages with no reactions have no entry in the map.
+func (r *Repository) ListReactionsByMessageIDs(ctx context.Context, messageIDs []uuid.UUID, viewerID uuid.UUID) (map[uuid.UUID]map[string]ReactionSummary, error) {
+	out := map[uuid.UUID]map[string]ReactionSummary{}
+	if len(messageIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT message_id, emoji, COUNT(*), BOOL_OR(user_id = $2)
+		FROM chat_message_reactions
+		WHERE message_id = ANY($1)
+		GROUP BY message_id, emoji
+	`, messageIDs, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var messageID uuid.UUID
+		var emoji string
+		var summary ReactionSummary
+		if err := rows.Scan(&messageID, &emoji, &summary.Count, &summary.ReactedByMe); err != nil {
+			return nil, err
+		}
+		if out[messageID] == nil {
+			out[messageID] = map[string]ReactionSummary{}
+		}
+		out[messageID][emoji] = summary
+	}
+	return out, rows.Err()
+}
+
 // SoftDelete marks a message deleted — author-only, idempotent-safe (deleting an
 // already-deleted message just reports ErrNotFound rather than double-processing). The row
 // itself is kept (not removed) so any reply pointing at it via reply_to_id still resolves;

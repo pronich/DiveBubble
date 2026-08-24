@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../domain/entities/attachment_upload_result.dart';
 import '../../domain/entities/chat_link.dart';
 import '../models/chat_message_api_model.dart';
+import '../models/chat_reaction_api_model.dart';
 import '../models/media_item_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
@@ -103,6 +104,38 @@ class ChatApiService {
       throw Exception('deleteMessage failed: ${res.statusCode} ${res.body}');
     }
     return ChatMessageApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  // Both scope-agnostic (no offerId/buddyRequestId — the backend resolves the target message's
+  // own chat off the message row itself, same as deleteMessage above) and idempotent: setting
+  // the same emoji again is still just an upsert; removing a reaction that was never set is a
+  // no-op. Both return the message's fresh per-emoji summary from the caller's own point of view.
+  Future<Map<String, ChatReactionApiModel>> setReaction(String tripId, String messageId, String emoji) async {
+    final res = await _client.put(
+      Uri.parse('$baseUrl/trips/$tripId/messages/$messageId/reaction'),
+      headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode({'emoji': emoji}),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('setReaction failed: ${res.statusCode} ${res.body}');
+    }
+    return _decodeReactions(res.body);
+  }
+
+  Future<Map<String, ChatReactionApiModel>> removeReaction(String tripId, String messageId) async {
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/trips/$tripId/messages/$messageId/reaction'),
+      headers: await _authHeaders(),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('removeReaction failed: ${res.statusCode} ${res.body}');
+    }
+    return _decodeReactions(res.body);
+  }
+
+  Map<String, ChatReactionApiModel> _decodeReactions(String body) {
+    final reactions = (jsonDecode(body) as Map<String, dynamic>)['reactions'] as Map<String, dynamic>? ?? {};
+    return reactions.map((emoji, raw) => MapEntry(emoji, ChatReactionApiModel.fromJson(raw as Map<String, dynamic>)));
   }
 
   // Scope-agnostic by design (no offerId/buddyRequestId) — the backend only needs the caller to

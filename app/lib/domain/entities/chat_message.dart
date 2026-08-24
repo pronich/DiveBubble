@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'chat_attachment.dart';
+import 'chat_reaction.dart';
 
 part 'chat_message.freezed.dart';
 
@@ -41,5 +42,10 @@ abstract class ChatMessage with _$ChatMessage {
     // server by the time this is set (see backend's toMessageResponse), so the bubble just
     // renders a placeholder instead of trying to hide real content client-side.
     DateTime? deletedAt,
+    // Keyed by emoji, fixed 8-emoji set (see chat_view.dart's _reactionEmojis) — empty when
+    // nobody's reacted. A realtime "reaction_update" event patches only the Count half of each
+    // entry in place (see ChatViewModel._applyReactionUpdate); ReactedByMe only ever changes via
+    // this viewer's own PUT/DELETE .../reaction call.
+    @Default({}) Map<String, ChatReaction> reactions,
   }) = _ChatMessage;
 }

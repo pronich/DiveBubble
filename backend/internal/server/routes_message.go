@@ -40,6 +40,8 @@ func registerMessageRoutes(
 	mux.HandleFunc("GET /trips/{id}/messages", withAuth(authIssuer, handleListMessages(svc, tripSvc, diveCenterSvc, moderationSvc)))
 	mux.HandleFunc("POST /trips/{id}/messages", withAuth(authIssuer, handleSendMessage(svc, tripSvc, diveCenterSvc, profileSvc, publisher, pushSvc)))
 	mux.HandleFunc("DELETE /trips/{id}/messages/{messageId}", withAuth(authIssuer, handleDeleteMessage(svc, publisher)))
+	mux.HandleFunc("PUT /trips/{id}/messages/{messageId}/reaction", withAuth(authIssuer, handleSetReaction(svc, tripSvc, publisher)))
+	mux.HandleFunc("DELETE /trips/{id}/messages/{messageId}/reaction", withAuth(authIssuer, handleRemoveReaction(svc, tripSvc, publisher)))
 	mux.HandleFunc("GET /trips/{id}/messages/attachments", withAuth(authIssuer, handleListMessageAttachments(svc, tripSvc)))
 	mux.HandleFunc("GET /trips/{id}/messages/links", withAuth(authIssuer, handleListMessageLinks(svc, tripSvc)))
 }
@@ -55,10 +57,24 @@ type messageResponse struct {
 	Kind               string    `json:"kind"`
 	// FeedbackProvided is per-viewer (has the requesting user submitted trip feedback yet) —
 	// only meaningful when Kind is message.KindFeedbackPrompt, false/ignored otherwise.
-	FeedbackProvided bool                 `json:"feedbackProvided"`
-	Attachments      []attachmentResponse `json:"attachments"`
-	ReplyToID        *string              `json:"replyToId,omitempty"`
-	DeletedAt        *time.Time           `json:"deletedAt,omitempty"`
+	FeedbackProvided bool                               `json:"feedbackProvided"`
+	Attachments      []attachmentResponse               `json:"attachments"`
+	ReplyToID        *string                            `json:"replyToId,omitempty"`
+	DeletedAt        *time.Time                         `json:"deletedAt,omitempty"`
+	Reactions        map[string]reactionSummaryResponse `json:"reactions"`
+}
+
+type reactionSummaryResponse struct {
+	Count       int  `json:"count"`
+	ReactedByMe bool `json:"reactedByMe"`
+}
+
+func toReactionResponses(reactions map[string]message.ReactionSummary) map[string]reactionSummaryResponse {
+	out := make(map[string]reactionSummaryResponse, len(reactions))
+	for emoji, r := range reactions {
+		out[emoji] = reactionSummaryResponse{Count: r.Count, ReactedByMe: r.ReactedByMe}
+	}
+	return out
 }
 
 type attachmentResponse struct {
@@ -76,13 +92,15 @@ type attachmentResponse struct {
 // Normalizes both attachment eras into one list: m.Attachments (chat_message_attachments, see
 // migration 000054) if populated, else a single-item list synthesized from the legacy
 // AttachmentURL/Type/Filename/SizeBytes scalar columns for a message sent before that migration.
-func toMessageResponse(m message.Message, isDiveCenterStaff, feedbackProvided bool) messageResponse {
+func toMessageResponse(m message.Message, isDiveCenterStaff, feedbackProvided bool, reactions map[string]message.ReactionSummary) messageResponse {
 	body := m.Body
 	attachments := toAttachmentResponses(m)
+	reactionResp := toReactionResponses(reactions)
 	var deletedAt *time.Time
 	if m.DeletedAt.Valid {
 		body = ""
 		attachments = nil
+		reactionResp = map[string]reactionSummaryResponse{}
 		deletedAt = &m.DeletedAt.Time
 	}
 	var replyToID *string
@@ -103,6 +121,7 @@ func toMessageResponse(m message.Message, isDiveCenterStaff, feedbackProvided bo
 		Attachments:        attachments,
 		ReplyToID:          replyToID,
 		DeletedAt:          deletedAt,
+		Reactions:          reactionResp,
 	}
 }
 
@@ -254,11 +273,24 @@ func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterS
 			hasFeedback = false
 		}
 
+		ids := make([]uuid.UUID, len(messages))
+		for i, m := range messages {
+			ids[i] = m.ID
+		}
+		// Best-effort — same reasoning as the blocked-users lookup above: a reactions fetch
+		// failing shouldn't break the whole chat load, just show messages with no reaction
+		// pills until the next successful list.
+		reactionsByMessage, err := svc.ListReactionsForMessages(r.Context(), ids, userID)
+		if err != nil {
+			log.Printf("list messages: could not load reactions for trip:%s: %v", tripID, err)
+			reactionsByMessage = nil
+		}
+
 		checker := newDiveCenterStaffChecker(diveCenterSvc, t.DiveCenterID)
 		out := make([]messageResponse, 0, len(messages))
 		for _, m := range messages {
 			feedbackProvided := m.Kind == message.KindFeedbackPrompt && hasFeedback
-			out = append(out, toMessageResponse(m, checker.isStaff(r.Context(), m.UserID), feedbackProvided))
+			out = append(out, toMessageResponse(m, checker.isStaff(r.Context(), m.UserID), feedbackProvided, reactionsByMessage[m.ID]))
 		}
 		writeJSON(w, http.StatusOK, out)
 	}
@@ -335,7 +367,7 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 				isDiveCenterStaff = false
 			}
 		}
-		resp := toMessageResponse(m, isDiveCenterStaff, false)
+		resp := toMessageResponse(m, isDiveCenterStaff, false, nil)
 		// Best-effort — sending implies you've read up to now, so this keeps your own
 		// message from ever showing up in your own unread count.
 		_ = tripSvc.MarkRead(r.Context(), tripID.String(), userID)
@@ -372,7 +404,7 @@ func handleDeleteMessage(svc *message.Service, publisher *realtime.Publisher) fu
 			return
 		}
 
-		resp := toMessageResponse(m, false, false)
+		resp := toMessageResponse(m, false, false, nil)
 		// Best-effort — the delete itself already succeeded above; a failed publish just means
 		// other participants see the redacted message on their next list refresh instead of live.
 		if pubErr := publisher.Publish(r.Context(), "trip:"+m.TripID.String(), resp); pubErr != nil {
@@ -380,6 +412,114 @@ func handleDeleteMessage(svc *message.Service, publisher *realtime.Publisher) fu
 		}
 
 		writeJSON(w, http.StatusOK, resp)
+	}
+}
+
+type reactionRequest struct {
+	Emoji string `json:"emoji"`
+}
+
+type reactionResponse struct {
+	MessageID uuid.UUID                          `json:"messageId"`
+	Reactions map[string]reactionSummaryResponse `json:"reactions"`
+}
+
+// handleSetReaction upserts the caller's reaction (one per user per message — Messenger
+// semantics, see migration 000055) on a message from any of the three chat scopes (main,
+// offer, buddy) — the URL only ever carries the trip id, so this works the same regardless of
+// which chat the target message actually belongs to.
+func handleSetReaction(svc *message.Service, tripSvc *trip.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
+		if !ok {
+			return
+		}
+		messageID, err := uuid.Parse(r.PathValue("messageId"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid message id")
+			return
+		}
+
+		var req reactionRequest
+		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<10))
+		if err := dec.Decode(&req); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			return
+		}
+
+		m, reactions, err := svc.SetReaction(r.Context(), tripID, messageID, userID, req.Emoji)
+		if err != nil {
+			if errors.Is(err, message.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "emoji must be one of the supported reactions")
+				return
+			}
+			if errors.Is(err, message.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "message not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not set reaction")
+			return
+		}
+		publishReactionUpdate(r.Context(), publisher, m, reactions)
+		writeJSON(w, http.StatusOK, reactionResponse{MessageID: messageID, Reactions: toReactionResponses(reactions)})
+	}
+}
+
+// handleRemoveReaction removes the caller's own reaction from a message, if any — idempotent,
+// same "no error either way" shape as the rest of this package's delete-ish endpoints.
+func handleRemoveReaction(svc *message.Service, tripSvc *trip.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
+		if !ok {
+			return
+		}
+		messageID, err := uuid.Parse(r.PathValue("messageId"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid message id")
+			return
+		}
+
+		m, reactions, err := svc.RemoveReaction(r.Context(), tripID, messageID, userID)
+		if err != nil {
+			if errors.Is(err, message.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "message not found")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not remove reaction")
+			return
+		}
+		publishReactionUpdate(r.Context(), publisher, m, reactions)
+		writeJSON(w, http.StatusOK, reactionResponse{MessageID: messageID, Reactions: toReactionResponses(reactions)})
+	}
+}
+
+// publishReactionUpdate broadcasts only the viewer-independent per-emoji counts — ReactedByMe
+// is per-viewer and a Centrifugo publish is one shared payload for every subscriber, so it can
+// only ever be correct for the one viewer it was computed for. Unlike a full message republish
+// (fine for e.g. delete, where every field is viewer-independent), reactions need a distinct
+// event shape the app merges in specially — see ChatViewModel's realtime handler, which keeps
+// each emoji's own locally-known reactedByMe and only takes the incoming count. Published on
+// whichever channel actually matches the message's own chat scope (mirrors handleSendMessage/
+// handleSendOfferMessage/handleSendBuddyMessage's own three-way channel choice) — the reaction
+// endpoints only take a trip id in their URL, so the message's own Offer/BuddyRequestID (from
+// Service.SetReaction/RemoveReaction's returned Message) is what decides this, not the URL.
+func publishReactionUpdate(ctx context.Context, publisher *realtime.Publisher, m message.Message, reactions map[string]message.ReactionSummary) {
+	channel := "trip:" + m.TripID.String()
+	if m.OfferID.Valid {
+		channel = "transport_offer:" + m.OfferID.UUID.String()
+	} else if m.BuddyRequestID.Valid {
+		channel = "buddy_request:" + m.BuddyRequestID.UUID.String()
+	}
+	counts := make(map[string]int, len(reactions))
+	for emoji, r := range reactions {
+		counts[emoji] = r.Count
+	}
+	if pubErr := publisher.Publish(ctx, channel, map[string]any{
+		"event":     "reaction_update",
+		"messageId": m.ID.String(),
+		"counts":    counts,
+	}); pubErr != nil {
+		log.Printf("realtime publish failed for %s: %v", channel, pubErr)
 	}
 }
 

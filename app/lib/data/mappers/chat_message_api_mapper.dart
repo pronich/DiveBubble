@@ -1,7 +1,9 @@
 import '../../domain/entities/chat_attachment.dart';
 import '../../domain/entities/chat_message.dart';
+import '../../domain/entities/chat_reaction.dart';
 import '../models/chat_attachment_api_model.dart';
 import '../models/chat_message_api_model.dart';
+import '../models/chat_reaction_api_model.dart';
 
 extension ChatAttachmentApiMapper on ChatAttachmentApiModel {
   ChatAttachment toDomain() => ChatAttachment(
@@ -11,6 +13,10 @@ extension ChatAttachmentApiMapper on ChatAttachmentApiModel {
         sizeBytes: sizeBytes,
         durationSeconds: durationSeconds,
       );
+}
+
+extension ChatReactionApiMapper on ChatReactionApiModel {
+  ChatReaction toDomain() => ChatReaction(count: count, reactedByMe: reactedByMe);
 }
 
 extension ChatMessageApiMapper on ChatMessageApiModel {
@@ -27,5 +33,6 @@ extension ChatMessageApiMapper on ChatMessageApiModel {
         attachments: attachments.map((a) => a.toDomain()).toList(),
         replyToId: replyToId,
         deletedAt: deletedAt,
+        reactions: reactions.map((emoji, r) => MapEntry(emoji, r.toDomain())),
       );
 }

@@ -13,6 +13,7 @@ import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import '../../../../data/services/attachment_cache_service.dart';
 import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
+import '../../../../domain/entities/chat_reaction.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/cached_attachment_image.dart';
@@ -41,6 +42,10 @@ const _maxVideoAttachmentSizeBytes = 50 * 1024 * 1024;
 // Mirrors message.maxAttachmentsPerMessage backend-side — same "cheap client-side check, real
 // enforcement is server-side" split as the size cap above.
 const _maxAttachmentsPerMessage = 9;
+
+// Fixed set, Messenger-style — mirrors message.AllowedReactionEmojis / migration 000055's CHECK
+// constraint. No custom-emoji picker in v1.
+const _reactionEmojis = ['❤️', '😅', '😁', '🙃', '😢', '😮', '😡', '👌'];
 
 // One row in the @-mention autocomplete list — either the dive center (synthetic, not a real
 // participant) or a trip participant, both rendered/selected identically (see
@@ -345,6 +350,13 @@ class _ChatViewState extends State<ChatView>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not delete message: $error')));
   }
 
+  Future<void> _reactToMessage(String messageId, String emoji) async {
+    _settleFocus(focusComposer: false);
+    final error = await widget.viewModel.reactToMessage(messageId, emoji);
+    if (!mounted || error == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not react: $error')));
+  }
+
   // Long-press menu — iOS/Telegram-style: background dims+blurs, the pressed bubble stays put
   // (rendered from a snapshot taken at press time — see _MessageRow's onLongPress, which hands
   // over the bubble's on-screen Rect + a captured image), and the action list sits right below
@@ -366,6 +378,11 @@ class _ChatViewState extends State<ChatView>
             bubbleRect: bubbleRect,
             bubbleImage: bubbleImage,
             onDismiss: () => _settleFocus(focusComposer: false),
+            reactions: message.reactions,
+            onReact: (emoji) {
+              Navigator.of(context).pop();
+              _reactToMessage(message.id, emoji);
+            },
             actions: [
               _ContextMenuAction(icon: Icons.reply_outlined, label: 'Reply', onTap: () => _startReply(message)),
               _ContextMenuAction(icon: Icons.copy_outlined, label: 'Copy text', onTap: () => _copyMessageText(message)),
@@ -1614,6 +1631,11 @@ class _MessageRowState extends State<_MessageRow> {
                   time: formatTime(message.createdAt),
                   color: onBubbleColor,
                 ),
+                if (message.reactions.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: _ReactionSummary(reactions: message.reactions, color: onBubbleColor),
+                  ),
               ],
             ),
     );
@@ -1696,6 +1718,36 @@ class _MessageRowState extends State<_MessageRow> {
 
 /// The quoted strip inside a bubble that's replying to another message — tap scrolls to and
 /// highlights the original (see ChatView._scrollToMessage).
+/// "❤️ 3 😂 1" under a bubble that has any reactions — informational only for v1, no "who
+/// reacted" detail, no tap-shortcut beyond the long-press menu itself (see plan). Sorted by
+/// _reactionEmojis' own fixed order so the row doesn't visually reshuffle as counts change.
+class _ReactionSummary extends StatelessWidget {
+  const _ReactionSummary({required this.reactions, required this.color});
+
+  final Map<String, ChatReaction> reactions;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final entries = [
+      for (final emoji in _reactionEmojis)
+        if (reactions[emoji] != null) MapEntry(emoji, reactions[emoji]!),
+    ];
+    if (entries.isEmpty) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 6,
+      children: [
+        for (final entry in entries)
+          Text(
+            '${entry.key} ${entry.value.count}',
+            style: theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.85)),
+          ),
+      ],
+    );
+  }
+}
+
 class _ReplyQuoteStrip extends StatelessWidget {
   const _ReplyQuoteStrip({
     required this.senderName,
@@ -1765,6 +1817,8 @@ class _MessageContextMenu extends StatelessWidget {
     required this.bubbleImage,
     required this.actions,
     required this.onDismiss,
+    required this.reactions,
+    required this.onReact,
   });
 
   final Rect bubbleRect;
@@ -1775,10 +1829,21 @@ class _MessageContextMenu extends StatelessWidget {
   /// ChatView._settleFocus), so this must not also fire there or it'd fight Reply's intent.
   final VoidCallback onDismiss;
 
+  /// This viewer's current reactions on the message — used only to highlight whichever of the
+  /// fixed 8 emojis (if any) they've already picked; ChatViewModel.reactToMessage decides
+  /// set-vs-remove from this same data.
+  final Map<String, ChatReaction> reactions;
+  final void Function(String emoji) onReact;
+
   static const _menuWidth = 230.0;
   static const _gap = 8.0;
   static const _rowHeight = 48.0;
   static const _screenMargin = 16.0;
+  static const _reactionRowHeight = 52.0;
+  static const _reactionCellWidth = 36.0;
+  // 8 == _reactionEmojis.length — can't reference that in a const expression here, so kept in
+  // sync by hand; both live right next to each other at the top of this file.
+  static const _reactionRowWidth = _reactionCellWidth * 8 + 12;
 
   @override
   Widget build(BuildContext context) {
@@ -1787,25 +1852,34 @@ class _MessageContextMenu extends StatelessWidget {
     final safePadding = MediaQuery.paddingOf(context);
     final menuHeight = actions.length * _rowHeight + 16;
 
-    // Menu always renders below the bubble — never flipped above it — so a future emoji-reaction
-    // row (always above the bubble) and this menu (always below) stay in a consistent, fixed
-    // arrangement. When there isn't room below, the whole bubble+menu group shifts up together
-    // instead (Telegram/Messenger do the same for a bubble near the bottom of the screen).
+    // Menu always renders below the bubble, the reaction row always above it — a fixed,
+    // consistent arrangement. When there isn't room below for the menu, or above for the
+    // reaction row, the whole group shifts up together instead (Telegram/Messenger do the same
+    // for a bubble near the bottom of the screen); minTop reserves space above the bubble for
+    // the reaction row specifically, since that's a second thing (not just the menu) now
+    // competing for vertical space near the top of the screen.
     final spaceBelow = screenSize.height - safePadding.bottom - bubbleRect.bottom;
     final shortfall = (menuHeight + _gap + _screenMargin) - spaceBelow;
     final verticalShift = shortfall > 0 ? shortfall : 0.0;
     // max/min rather than .clamp() — a bubble already hard against the top of the screen can
     // make the "don't go above the safe area" floor exceed bubbleRect.top itself, which
     // .clamp(lower, upper) would throw on (lower > upper); this degrades to "no shift" instead.
-    final minTop = safePadding.top + _screenMargin;
+    final minTop = safePadding.top + _screenMargin + _reactionRowHeight + _gap;
     final shiftedBubbleTop = math.max(minTop, math.min(bubbleRect.top, bubbleRect.top - verticalShift));
     final menuTop = shiftedBubbleTop + bubbleRect.height + _gap;
+    final reactionRowTop = shiftedBubbleTop - _gap - _reactionRowHeight;
 
     var menuLeft = bubbleRect.left;
     if (menuLeft + _menuWidth > screenSize.width - _screenMargin) {
       menuLeft = screenSize.width - _screenMargin - _menuWidth;
     }
     if (menuLeft < _screenMargin) menuLeft = _screenMargin;
+
+    var reactionRowLeft = bubbleRect.left;
+    if (reactionRowLeft + _reactionRowWidth > screenSize.width - _screenMargin) {
+      reactionRowLeft = screenSize.width - _screenMargin - _reactionRowWidth;
+    }
+    if (reactionRowLeft < _screenMargin) reactionRowLeft = _screenMargin;
 
     return Material(
       color: Colors.transparent,
@@ -1831,6 +1905,46 @@ class _MessageContextMenu extends StatelessWidget {
             height: bubbleRect.height,
             child: IgnorePointer(
               child: RawImage(image: bubbleImage, width: bubbleRect.width, height: bubbleRect.height),
+            ),
+          ),
+          Positioned(
+            left: reactionRowLeft,
+            top: reactionRowTop,
+            width: _reactionRowWidth,
+            height: _reactionRowHeight,
+            child: Material(
+              color: theme.colorScheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(_reactionRowHeight / 2),
+              elevation: 8,
+              clipBehavior: Clip.antiAlias,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (final emoji in _reactionEmojis)
+                    InkWell(
+                      onTap: () => onReact(emoji),
+                      customBorder: const CircleBorder(),
+                      child: SizedBox(
+                        width: _reactionCellWidth,
+                        height: _reactionRowHeight,
+                        child: Center(
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            alignment: Alignment.center,
+                            decoration: (reactions[emoji]?.reactedByMe ?? false)
+                                ? BoxDecoration(
+                                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  )
+                                : null,
+                            child: Text(emoji, style: const TextStyle(fontSize: 20)),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           Positioned(
