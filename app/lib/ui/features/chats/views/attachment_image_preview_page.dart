@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:gal/gal.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../data/services/attachment_cache_service.dart';
 import '../../../core/widgets/cached_attachment_image.dart';
@@ -17,21 +17,27 @@ class AttachmentImagePreviewPage extends StatefulWidget {
 }
 
 class _AttachmentImagePreviewPageState extends State<AttachmentImagePreviewPage> {
-  bool _saving = false;
+  final _shareButtonKey = GlobalKey();
+  bool _sharing = false;
 
-  Future<void> _save() async {
-    if (_saving) return;
-    setState(() => _saving = true);
+  // The OS share sheet, not a dedicated "save to library" action — lets the user pick Save
+  // Image, AirDrop, another app, etc., same as tapping Share on any photo elsewhere on the
+  // phone, rather than DiveBubble reimplementing one specific destination itself.
+  Future<void> _share() async {
+    if (_sharing) return;
+    setState(() => _sharing = true);
     try {
       final file = await AttachmentCacheService.getFile(widget.url);
-      await Gal.putImage(file.path, album: 'DiveBubble');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved to Photos')));
+      // Anchors the share popover to the button on iPad/Mac — required there or it throws;
+      // harmless elsewhere (see ShareParams.sharePositionOrigin's own doc comment).
+      final box = _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
+      final origin = box == null ? null : (box.localToGlobal(Offset.zero) & box.size);
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], sharePositionOrigin: origin));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save photo: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not share photo: $e')));
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _sharing = false);
     }
   }
 
@@ -45,15 +51,16 @@ class _AttachmentImagePreviewPageState extends State<AttachmentImagePreviewPage>
         elevation: 0,
         actions: [
           IconButton(
-            icon: _saving
+            key: _shareButtonKey,
+            icon: _sharing
                 ? const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : const Icon(Icons.download_outlined),
-            tooltip: 'Save to Photos',
-            onPressed: _saving ? null : _save,
+                : const Icon(Icons.ios_share),
+            tooltip: 'Share',
+            onPressed: _sharing ? null : _share,
           ),
         ],
       ),

@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
@@ -231,50 +233,40 @@ class _ChatViewState extends State<ChatView>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not delete message: $error')));
   }
 
-  // Long-press menu — Reply/Copy are universal, Report (not-mine) vs Delete (mine) is the only
-  // branch. Deleted messages never reach here (see build's onLongPress gate).
-  void _showMessageActionsSheet(ChatMessage message) {
+  // Long-press menu — iOS/Telegram-style: background dims+blurs, the pressed bubble stays put
+  // (rendered from a snapshot taken at press time — see _MessageRow's onLongPress, which hands
+  // over the bubble's on-screen Rect + a captured image), and the action list sits right below
+  // it. Reply/Copy are universal, Report (not-mine) vs Delete (mine) is the only branch.
+  // Deleted messages never reach here (see build's onLongPress gate). The dimmed backdrop is
+  // deliberately its own overlay (not showModalBottomSheet) so it can leave room for a future
+  // emoji-reaction row above the bubble without restructuring this again.
+  void _showMessageActionsSheet(ChatMessage message, Rect bubbleRect, ui.Image bubbleImage) {
     final isMine = message.userId == widget.viewModel.currentUserId;
-    showModalBottomSheet(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.reply_outlined),
-              title: const Text('Reply'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _startReply(message);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.copy_outlined),
-              title: const Text('Copy text'),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                _copyMessageText(message);
-              },
-            ),
-            if (isMine)
-              ListTile(
-                leading: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
-                title: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  _confirmDeleteMessage(message);
-                },
-              )
-            else
-              ListTile(
-                leading: const Icon(Icons.flag_outlined),
-                title: const Text('Report'),
-                onTap: () {
-                  Navigator.of(sheetContext).pop();
-                  _showReportSheet(message);
-                },
-              ),
-          ],
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        transitionDuration: const Duration(milliseconds: 180),
+        reverseTransitionDuration: const Duration(milliseconds: 120),
+        pageBuilder: (_, animation, _) => FadeTransition(
+          opacity: animation,
+          child: _MessageContextMenu(
+            bubbleRect: bubbleRect,
+            bubbleImage: bubbleImage,
+            actions: [
+              _ContextMenuAction(icon: Icons.reply_outlined, label: 'Reply', onTap: () => _startReply(message)),
+              _ContextMenuAction(icon: Icons.copy_outlined, label: 'Copy text', onTap: () => _copyMessageText(message)),
+              if (isMine)
+                _ContextMenuAction(
+                  icon: Icons.delete_outline,
+                  label: 'Delete',
+                  isDestructive: true,
+                  onTap: () => _confirmDeleteMessage(message),
+                )
+              else
+                _ContextMenuAction(icon: Icons.flag_outlined, label: 'Report', onTap: () => _showReportSheet(message)),
+            ],
+          ),
         ),
       ),
     );
@@ -463,7 +455,9 @@ class _ChatViewState extends State<ChatView>
                           repliedToSenderName: repliedToSenderName,
                           onTapSender: () => _openProfile(message.userId),
                           onTapReplyPreview: repliedTo == null ? null : () => _scrollToMessage(repliedTo.id),
-                          onLongPress: isDeleted ? null : () => _showMessageActionsSheet(message),
+                          onLongPress: isDeleted
+                              ? null
+                              : (rect, image) => _showMessageActionsSheet(message, rect, image),
                           onReply: isDeleted ? null : () => _startReply(message),
                         );
                       },
@@ -1095,8 +1089,10 @@ class _MessageRow extends StatefulWidget {
   final Profile? profile;
   final VoidCallback onTapSender;
 
-  /// Null only for an already-deleted message — nothing left to act on.
-  final VoidCallback? onLongPress;
+  /// Fired once the bubble's on-screen Rect + a snapshot image are captured (see
+  /// _MessageRowState._handleLongPress) — the caller uses both to render the iOS-style
+  /// dimmed-background context menu in place. Null only for an already-deleted message.
+  final void Function(Rect bubbleRect, ui.Image bubbleImage)? onLongPress;
 
   /// Fired by the swipe-to-reply gesture — same effect as the long-press menu's own Reply
   /// action. Null only for an already-deleted message.
@@ -1127,6 +1123,11 @@ class _MessageRowState extends State<_MessageRow> {
   static const _maxDrag = 60.0;
   static const _triggerThreshold = 40.0;
 
+  // Wraps the bubble so onLongPress can snapshot exactly what's on screen (see
+  // _handleLongPress) — the context menu renders this snapshot in place rather than
+  // rebuilding the bubble's widget tree a second time in a completely different part of it.
+  final _repaintKey = GlobalKey();
+
   void _onHorizontalDragUpdate(DragUpdateDetails details) {
     final next = (_dragDx + details.delta.dx).clamp(0.0, _maxDrag);
     if (next != _dragDx) setState(() => _dragDx = next);
@@ -1136,6 +1137,18 @@ class _MessageRowState extends State<_MessageRow> {
     final triggered = _dragDx > _triggerThreshold;
     setState(() => _dragDx = 0);
     if (triggered) widget.onReply?.call();
+  }
+
+  Future<void> _handleLongPress() async {
+    final onLongPress = widget.onLongPress;
+    if (onLongPress == null) return;
+    final renderObject = _repaintKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderRepaintBoundary) return;
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final image = await renderObject.toImage(pixelRatio: devicePixelRatio);
+    if (!mounted) return;
+    final rect = renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    onLongPress(rect, image);
   }
 
   @override
@@ -1269,10 +1282,13 @@ class _MessageRowState extends State<_MessageRow> {
                   child: Icon(Icons.reply, color: theme.colorScheme.onSurfaceVariant),
                 ),
               GestureDetector(
-                onLongPress: widget.onLongPress,
+                onLongPress: widget.onLongPress == null ? null : _handleLongPress,
                 onHorizontalDragUpdate: widget.onReply == null ? null : _onHorizontalDragUpdate,
                 onHorizontalDragEnd: widget.onReply == null ? null : _onHorizontalDragEnd,
-                child: Transform.translate(offset: Offset(_dragDx, 0), child: highlighted),
+                child: Transform.translate(
+                  offset: Offset(_dragDx, 0),
+                  child: RepaintBoundary(key: _repaintKey, child: highlighted),
+                ),
               ),
             ],
           );
@@ -1360,6 +1376,131 @@ class _ReplyQuoteStrip extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ContextMenuAction {
+  const _ContextMenuAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isDestructive;
+}
+
+/// iOS/Telegram-style long-press menu: dims+blurs everything, keeps the pressed bubble visible
+/// in place (rendered from the snapshot _MessageRow captured, not rebuilt), and anchors the
+/// action list directly below it — flipping above when there isn't room underneath. Tapping
+/// the backdrop dismisses with no action; tapping an item pops first, then runs it, so each
+/// [_ContextMenuAction.onTap] can stay a plain "do the thing" callback.
+class _MessageContextMenu extends StatelessWidget {
+  const _MessageContextMenu({
+    required this.bubbleRect,
+    required this.bubbleImage,
+    required this.actions,
+  });
+
+  final Rect bubbleRect;
+  final ui.Image bubbleImage;
+  final List<_ContextMenuAction> actions;
+
+  static const _menuWidth = 230.0;
+  static const _gap = 8.0;
+  static const _rowHeight = 48.0;
+  static const _screenMargin = 16.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenSize = MediaQuery.sizeOf(context);
+    final safePadding = MediaQuery.paddingOf(context);
+    final menuHeight = actions.length * _rowHeight + 16;
+
+    final spaceBelow = screenSize.height - safePadding.bottom - bubbleRect.bottom;
+    final showBelow = spaceBelow >= menuHeight + _gap + _screenMargin;
+    final menuTop = showBelow ? bubbleRect.bottom + _gap : bubbleRect.top - menuHeight - _gap;
+
+    var menuLeft = bubbleRect.left;
+    if (menuLeft + _menuWidth > screenSize.width - _screenMargin) {
+      menuLeft = screenSize.width - _screenMargin - _menuWidth;
+    }
+    if (menuLeft < _screenMargin) menuLeft = _screenMargin;
+
+    return Material(
+      color: Colors.transparent,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: BackdropFilter(
+                filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                child: Container(color: Colors.black.withValues(alpha: 0.35)),
+              ),
+            ),
+          ),
+          Positioned(
+            left: bubbleRect.left,
+            top: bubbleRect.top,
+            width: bubbleRect.width,
+            height: bubbleRect.height,
+            child: IgnorePointer(
+              child: RawImage(image: bubbleImage, width: bubbleRect.width, height: bubbleRect.height),
+            ),
+          ),
+          Positioned(
+            left: menuLeft,
+            top: menuTop,
+            width: _menuWidth,
+            child: Material(
+              color: theme.colorScheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(14),
+              elevation: 8,
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < actions.length; i++) ...[
+                    if (i > 0) Divider(height: 1, color: theme.colorScheme.outlineVariant),
+                    InkWell(
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        actions[i].onTap();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                actions[i].label,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: actions[i].isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              actions[i].icon,
+                              size: 18,
+                              color: actions[i].isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
