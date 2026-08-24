@@ -157,8 +157,11 @@ class AuthRepository extends ChangeNotifier {
   }
 
   /// Returns a currently-valid access token, transparently refreshing it if it's expired (or
-  /// close to it). Returns null if there's no session at all, or refreshing failed (revoked/expired
-  /// refresh token) — either way, any stored tokens are cleared so the caller can prompt login.
+  /// close to it). Returns null if there's no session at all, the refresh token was genuinely
+  /// rejected (revoked/expired/reused — stored tokens are cleared so the caller can prompt
+  /// login), or the refresh request merely failed to go through (network error, timeout, 5xx —
+  /// stored tokens are left alone, since `accessTokenExpiresAt` is still in the past the very
+  /// next call will simply try refreshing again; nothing here was actually invalidated).
   Future<String?> getValidAccessToken() async {
     final stored = await _tokens.read();
     if (stored == null) return null;
@@ -177,9 +180,11 @@ class AuthRepository extends ChangeNotifier {
         userId: stored.userId,
       );
       return result.accessToken;
-    } catch (_) {
+    } on RefreshRejectedException {
       await _tokens.clear();
       notifyListeners();
+      return null;
+    } catch (_) {
       return null;
     }
   }

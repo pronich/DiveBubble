@@ -10,11 +10,12 @@ import (
 	"github.com/google/uuid"
 )
 
-// tripRecipientIDs is everyone with access to a trip — participants always, plus a business
+// TripRecipientIDs is everyone with access to a trip — participants always, plus a business
 // trip's dive center staff. Shared by every trip-level push notification (cancelled, details
-// changed, participant joined); message pushes have their own narrower rule (see
-// notifyNewMessage's mention gate in routes_message.go) so they don't use this directly.
-func tripRecipientIDs(ctx context.Context, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, t trip.Trip) []uuid.UUID {
+// changed, participant joined, feedback prompt); message pushes have their own narrower rule
+// (see notifyNewMessage's mention gate in routes_message.go) so they don't use this directly.
+// Exported so the feedback-prompt scan job in main.go (package main) can reuse it too.
+func TripRecipientIDs(ctx context.Context, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, t trip.Trip) []uuid.UUID {
 	recipients, err := tripSvc.ListParticipantUserIDs(ctx, t.ID.String())
 	if err != nil {
 		log.Printf("push: could not list participants for trip:%s: %v", t.ID, err)

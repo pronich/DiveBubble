@@ -18,6 +18,17 @@ class ProviderSignInResult {
   final bool isNewUser;
 }
 
+/// Thrown by [AuthApiService.refresh] specifically when the backend rejects the refresh token
+/// itself (401 — invalid/expired/revoked/reused). Distinct from the generic [Exception] thrown
+/// for any other failure (network error, timeout, 5xx) so callers can tell "this session is
+/// genuinely dead" apart from "this request just didn't go through" — see AuthRepository.
+class RefreshRejectedException implements Exception {
+  const RefreshRejectedException(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}
+
 class RefreshResult {
   const RefreshResult({
     required this.accessToken,
@@ -128,6 +139,9 @@ class AuthApiService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'refreshToken': refreshToken}),
     );
+    if (res.statusCode == 401) {
+      throw RefreshRejectedException(_extractError(res.body) ?? 'Refresh token is no longer valid');
+    }
     if (res.statusCode != 200) {
       throw Exception(_extractError(res.body) ?? 'Could not refresh session');
     }
