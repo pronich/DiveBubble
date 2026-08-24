@@ -32,7 +32,9 @@ import '../../chats/views/chat_content_tabs.dart';
 import '../../chats/views/trip_conversation_page.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../../transport/view_models/transport_view_model.dart';
+import '../view_models/create_trip_view_model.dart';
 import '../view_models/trip_view_model.dart';
+import 'create_trip_page.dart';
 import 'dive_center_card.dart';
 import 'join_by_code_dialog.dart';
 
@@ -139,6 +141,22 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
         builder: (_) => _ManagePhotosPage(viewModel: widget.viewModel),
       ),
     );
+  }
+
+  // Unlike _openManagePhotos, this pushes a separate CreateTripViewModel (not
+  // widget.viewModel itself), so the trip shown here needs an explicit reload once it pops
+  // back rather than relying on a shared, already-notifying ViewModel instance.
+  Future<void> _openEditTrip(BuildContext context, Trip trip) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CreateTripPage(
+          viewModel: CreateTripViewModel(repository: widget.tripRepository, existingTripId: trip.id),
+          existingTrip: trip,
+          onCreated: (_) => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+    if (mounted) widget.viewModel.load();
   }
 
   /// Everything below Bubble Info's collapsing header — location/date/meeting point/level/
@@ -400,6 +418,43 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
                                         ),
                                       ),
                                     ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        // Edit trip — top-right, same translucent-pill treatment as "Manage
+                        // photos" below so it reads on any photo, but pinned under the status
+                        // bar/back button row rather than at the bottom (per Nikolai: this used
+                        // to live in the Bubble chat's own AppBar, moved here instead).
+                        if (isOrganizer && trip.bookingStatus != 'cancelled')
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: SafeArea(
+                              bottom: false,
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 8, right: 16),
+                                child: Material(
+                                  color: Colors.black.withValues(alpha: 0.45),
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(20),
+                                    onTap: () => _openEditTrip(context, trip),
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.edit_outlined, color: Colors.white, size: 18),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Edit',
+                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),

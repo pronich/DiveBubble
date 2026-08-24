@@ -39,6 +39,7 @@ func registerMessageRoutes(
 ) {
 	mux.HandleFunc("GET /trips/{id}/messages", withAuth(authIssuer, handleListMessages(svc, tripSvc, diveCenterSvc, moderationSvc)))
 	mux.HandleFunc("POST /trips/{id}/messages", withAuth(authIssuer, handleSendMessage(svc, tripSvc, diveCenterSvc, profileSvc, publisher, pushSvc)))
+	mux.HandleFunc("DELETE /trips/{id}/messages/{messageId}", withAuth(authIssuer, handleDeleteMessage(svc, publisher)))
 	mux.HandleFunc("GET /trips/{id}/messages/attachments", withAuth(authIssuer, handleListMessageAttachments(svc, tripSvc)))
 	mux.HandleFunc("GET /trips/{id}/messages/links", withAuth(authIssuer, handleListMessageLinks(svc, tripSvc)))
 }
@@ -54,28 +55,50 @@ type messageResponse struct {
 	Kind               string    `json:"kind"`
 	// FeedbackProvided is per-viewer (has the requesting user submitted trip feedback yet) —
 	// only meaningful when Kind is message.KindFeedbackPrompt, false/ignored otherwise.
-	FeedbackProvided    bool    `json:"feedbackProvided"`
-	AttachmentURL       *string `json:"attachmentUrl,omitempty"`
-	AttachmentType      *string `json:"attachmentType,omitempty"`
-	AttachmentFilename  *string `json:"attachmentFilename,omitempty"`
-	AttachmentSizeBytes *int64  `json:"attachmentSizeBytes,omitempty"`
+	FeedbackProvided    bool       `json:"feedbackProvided"`
+	AttachmentURL       *string    `json:"attachmentUrl,omitempty"`
+	AttachmentType      *string    `json:"attachmentType,omitempty"`
+	AttachmentFilename  *string    `json:"attachmentFilename,omitempty"`
+	AttachmentSizeBytes *int64     `json:"attachmentSizeBytes,omitempty"`
+	ReplyToID           *string    `json:"replyToId,omitempty"`
+	DeletedAt           *time.Time `json:"deletedAt,omitempty"`
 }
 
+// toMessageResponse blanks Body/Attachment* whenever the message is soft-deleted — the DB row
+// still holds the real content (see message.Repository.SoftDelete's own comment), but nothing
+// downstream of this function should ever see it, so every response path (list, send, delete's
+// own realtime republish) is guaranteed redacted rather than relying on each caller to remember.
 func toMessageResponse(m message.Message, isDiveCenterStaff, feedbackProvided bool) messageResponse {
+	body := m.Body
+	attURL, attType, attFilename, attSize := m.AttachmentURL, m.AttachmentType, m.AttachmentFilename, m.AttachmentSizeBytes
+	var deletedAt *time.Time
+	if m.DeletedAt.Valid {
+		body = ""
+		attURL, attType, attFilename = sql.NullString{}, sql.NullString{}, sql.NullString{}
+		attSize = sql.NullInt64{}
+		deletedAt = &m.DeletedAt.Time
+	}
+	var replyToID *string
+	if m.ReplyToID.Valid {
+		s := m.ReplyToID.UUID.String()
+		replyToID = &s
+	}
 	return messageResponse{
 		ID:                  m.ID,
 		TripID:              m.TripID,
 		UserID:              m.UserID,
-		Body:                m.Body,
+		Body:                body,
 		CreatedAt:           m.CreatedAt,
 		IsDiveCenterStaff:   isDiveCenterStaff,
 		MentionsDiveCenter:  m.MentionsDiveCenter,
 		Kind:                m.Kind,
 		FeedbackProvided:    feedbackProvided,
-		AttachmentURL:       nullStringPtr(m.AttachmentURL),
-		AttachmentType:      nullStringPtr(m.AttachmentType),
-		AttachmentFilename:  nullStringPtr(m.AttachmentFilename),
-		AttachmentSizeBytes: nullInt64Ptr(m.AttachmentSizeBytes),
+		AttachmentURL:       nullStringPtr(attURL),
+		AttachmentType:      nullStringPtr(attType),
+		AttachmentFilename:  nullStringPtr(attFilename),
+		AttachmentSizeBytes: nullInt64Ptr(attSize),
+		ReplyToID:           replyToID,
+		DeletedAt:           deletedAt,
 	}
 }
 
@@ -220,9 +243,24 @@ func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterS
 }
 
 type sendMessageRequest struct {
-	Body               string `json:"body"`
-	MentionsDiveCenter bool   `json:"mentionsDiveCenter"`
+	Body               string  `json:"body"`
+	MentionsDiveCenter bool    `json:"mentionsDiveCenter"`
+	ReplyToID          *string `json:"replyToId,omitempty"`
 	attachmentRequest
+}
+
+// replyToID parses the optional ReplyToID string into a uuid.NullUUID — an unparsable value
+// is treated the same as "not a reply" here; Service.Send does the actual existence/same-trip
+// validation and rejects a genuinely bad id with ErrInvalidArgument.
+func (req sendMessageRequest) replyToID() uuid.NullUUID {
+	if req.ReplyToID == nil {
+		return uuid.NullUUID{}
+	}
+	id, err := uuid.Parse(*req.ReplyToID)
+	if err != nil {
+		return uuid.NullUUID{}
+	}
+	return uuid.NullUUID{UUID: id, Valid: true}
 }
 
 func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, publisher *realtime.Publisher, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -258,10 +296,10 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 		// A mention only means something on a business trip — there's no dive center to
 		// notify on an individual one, so the flag is silently dropped rather than erroring.
 		mentionsDiveCenter := req.MentionsDiveCenter && t.DiveCenterID.Valid
-		m, err := svc.Send(r.Context(), tripID, userID, message.Scope{}, req.Body, mentionsDiveCenter, req.toAttachment())
+		m, err := svc.Send(r.Context(), tripID, userID, message.Scope{}, req.Body, mentionsDiveCenter, req.toAttachment(), req.replyToID())
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "body or attachment is required")
+				writeError(w, http.StatusBadRequest, "body or attachment is required, or replyToId is invalid")
 				return
 			}
 			writeError(w, http.StatusInternalServerError, "could not send message")
@@ -287,6 +325,39 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 		notifyNewMessage(r.Context(), pushSvc, profileSvc, tripSvc, diveCenterSvc, t, m, userID)
 
 		writeJSON(w, http.StatusCreated, resp)
+	}
+}
+
+// handleDeleteMessage soft-deletes a message — author-only (Service.Delete's own ownership
+// check covers that; no separate requireParticipant needed, since being the author already
+// implies past trip access, and the trip id for the realtime republish comes off the returned
+// row itself rather than needing to be parsed from the URL too).
+func handleDeleteMessage(svc *message.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		messageID, err := uuid.Parse(r.PathValue("messageId"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid message id")
+			return
+		}
+
+		m, err := svc.Delete(r.Context(), messageID, userID)
+		if err != nil {
+			if errors.Is(err, message.ErrNotFound) {
+				writeError(w, http.StatusNotFound, "message not found, already deleted, or not yours to delete")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not delete message")
+			return
+		}
+
+		resp := toMessageResponse(m, false, false)
+		// Best-effort — the delete itself already succeeded above; a failed publish just means
+		// other participants see the redacted message on their next list refresh instead of live.
+		if pubErr := publisher.Publish(r.Context(), "trip:"+m.TripID.String(), resp); pubErr != nil {
+			log.Printf("realtime publish failed for trip:%s: %v", m.TripID, pubErr)
+		}
+
+		writeJSON(w, http.StatusOK, resp)
 	}
 }
 

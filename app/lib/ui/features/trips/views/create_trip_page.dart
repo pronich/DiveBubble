@@ -16,10 +16,15 @@ import '../view_models/create_trip_view_model.dart';
 const _maxTripPhotos = 10;
 
 class CreateTripPage extends StatefulWidget {
-  const CreateTripPage({super.key, required this.viewModel, required this.onCreated});
+  const CreateTripPage({super.key, required this.viewModel, required this.onCreated, this.existingTrip});
 
   final CreateTripViewModel viewModel;
   final ValueChanged<Trip> onCreated;
+
+  // Non-null means this page is editing an existing trip — the form is seeded from it and
+  // photos are left out entirely (managed from Trip Page's own gallery instead, same split
+  // admin/'s edit form already uses).
+  final Trip? existingTrip;
 
   @override
   State<CreateTripPage> createState() => _CreateTripPageState();
@@ -49,6 +54,34 @@ class _CreateTripPageState extends State<CreateTripPage> {
   bool _showTimeError = false;
 
   @override
+  void initState() {
+    super.initState();
+    final trip = widget.existingTrip;
+    if (trip == null) return;
+    _titleController.text = trip.title;
+    _locationController.text = trip.location;
+    _descriptionController.text = trip.description ?? '';
+    _meetingPointController.text = trip.meetingPoint ?? '';
+    _depthMinController.text = trip.depthMinM?.toString() ?? '';
+    _depthMaxController.text = trip.depthMaxM?.toString() ?? '';
+    _diveCountMinController.text = trip.diveCountMin?.toString() ?? '';
+    _diveCountMaxController.text = trip.diveCountMax?.toString() ?? '';
+    _maxParticipantsController.text = trip.maxParticipants?.toString() ?? '';
+    // startTime: .toLocal() first — it's a precise instant, and the pickers below operate in
+    // (and _submit rebuilds from) local wall-clock time, same convention as everywhere else
+    // this gets displayed (see date_format.dart, trip_page.dart).
+    final localStart = trip.startTime.toLocal();
+    _startDate = DateTime(localStart.year, localStart.month, localStart.day);
+    _startTimeOfDay = TimeOfDay.fromDateTime(localStart);
+    // endDate: a pure calendar date, always UTC-midnight from the API (see
+    // trip_api_service.dart's own comment on why) — take its Y/M/D as-is, not .toLocal()'d
+    // (which could shift the calendar day for negative-offset timezones), matching how
+    // _submit rebuilds a UTC-midnight from local Y/M/D in the other direction.
+    _endDate = trip.endDate == null ? null : DateTime(trip.endDate!.year, trip.endDate!.month, trip.endDate!.day);
+    _minCertification = trip.minCertification;
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _locationController.dispose();
@@ -64,31 +97,34 @@ class _CreateTripPageState extends State<CreateTripPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.existingTrip != null;
     return Scaffold(
-      appBar: AppBar(title: const Text('Create trip')),
+      appBar: AppBar(title: Text(isEditing ? 'Edit trip' : 'Create trip')),
       body: ListenableBuilder(
         listenable: widget.viewModel,
         builder: (context, _) {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  'Upload up to $_maxTripPhotos photos.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              if (!isEditing) ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    'Upload up to $_maxTripPhotos photos.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
                 ),
-              ),
-              PhotoManagerGrid(
-                items: [
-                  for (final path in _photoPaths) PhotoManagerItem(id: path, imageProvider: FileImage(File(path))),
-                ],
-                maxItems: _maxTripPhotos,
-                isAdding: _isPickingPhotos,
-                onAdd: _addPhotos,
-                onRemove: (path) => setState(() => _photoPaths = _photoPaths.where((p) => p != path).toList()),
-              ),
-              const SizedBox(height: 20),
+                PhotoManagerGrid(
+                  items: [
+                    for (final path in _photoPaths) PhotoManagerItem(id: path, imageProvider: FileImage(File(path))),
+                  ],
+                  maxItems: _maxTripPhotos,
+                  isAdding: _isPickingPhotos,
+                  onAdd: _addPhotos,
+                  onRemove: (path) => setState(() => _photoPaths = _photoPaths.where((p) => p != path).toList()),
+                ),
+                const SizedBox(height: 20),
+              ],
               TextField(
                 controller: _titleController,
                 textCapitalization: TextCapitalization.sentences,
@@ -224,7 +260,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
                 onPressed: widget.viewModel.isSubmitting ? null : _submit,
                 child: widget.viewModel.isSubmitting
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Create trip'),
+                    : Text(isEditing ? 'Save changes' : 'Create trip'),
               ),
             ],
           );

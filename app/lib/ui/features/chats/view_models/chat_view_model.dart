@@ -118,9 +118,20 @@ class ChatViewModel extends ChangeNotifier {
         attachmentType: json['attachmentType'] as String?,
         attachmentFilename: json['attachmentFilename'] as String?,
         attachmentSizeBytes: json['attachmentSizeBytes'] as int?,
+        replyToId: json['replyToId'] as String?,
+        deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
       );
       if (blockedUserIds.contains(message.userId)) return;
-      if (_messages.any((m) => m.id == message.id)) return;
+      // An id already present means this is a re-publish of an existing message (currently
+      // only happens on delete — see ChatApiService.deleteMessage's own realtime republish) —
+      // patch it in place rather than the old "already have this id, ignore" no-op, which would
+      // silently drop the redaction for anyone not looking at the screen at the exact moment
+      // their own deleteMessage() REST response happened to land first.
+      if (_messages.any((m) => m.id == message.id)) {
+        _messages = [for (final m in _messages) if (m.id == message.id) message else m];
+        notifyListeners();
+        return;
+      }
       _reconcilePending(message);
       notifyListeners();
     });
@@ -182,6 +193,7 @@ class ChatViewModel extends ChangeNotifier {
     String? attachmentType,
     String? attachmentFilename,
     int? attachmentSizeBytes,
+    String? replyToId,
   }) => ChatMessage(
     id: tempId,
     tripId: tripId,
@@ -193,6 +205,7 @@ class ChatViewModel extends ChangeNotifier {
     attachmentType: attachmentType,
     attachmentFilename: attachmentFilename,
     attachmentSizeBytes: attachmentSizeBytes,
+    replyToId: replyToId,
   );
 
   // Swaps the oldest still-pending bubble from the same sender for a server-confirmed
@@ -214,12 +227,12 @@ class ChatViewModel extends ChangeNotifier {
     ];
   }
 
-  Future<void> send(String body, {bool mentionsDiveCenter = false}) async {
+  Future<void> send(String body, {bool mentionsDiveCenter = false, String? replyToId}) async {
     final trimmed = body.trim();
     if (trimmed.isEmpty) return;
 
     final tempId = 'pending-${_pendingCounter++}';
-    _messages = [..._messages, _buildPendingMessage(tempId: tempId, body: trimmed)];
+    _messages = [..._messages, _buildPendingMessage(tempId: tempId, body: trimmed, replyToId: replyToId)];
     _isSending = true;
     notifyListeners();
 
@@ -230,6 +243,7 @@ class ChatViewModel extends ChangeNotifier {
         offerId: offerId,
         buddyRequestId: buddyRequestId,
         mentionsDiveCenter: mentionsDiveCenter,
+        replyToId: replyToId,
       );
       _reconcilePending(sent);
     } catch (e) {
@@ -252,6 +266,7 @@ class ChatViewModel extends ChangeNotifier {
     required String attachmentFilename,
     String caption = '',
     bool mentionsDiveCenter = false,
+    String? replyToId,
   }) async {
     final tempId = 'pending-${_pendingCounter++}';
     final trimmedCaption = caption.trim();
@@ -263,6 +278,7 @@ class ChatViewModel extends ChangeNotifier {
         localAttachmentPath: filePath,
         attachmentType: attachmentType,
         attachmentFilename: attachmentFilename,
+        replyToId: replyToId,
       ),
     ];
     _isUploadingAttachment = true;
@@ -282,6 +298,7 @@ class ChatViewModel extends ChangeNotifier {
         attachmentType: result.type,
         attachmentFilename: result.filename,
         attachmentSizeBytes: result.sizeBytes,
+        replyToId: replyToId,
       );
       _reconcilePending(sent);
     } catch (e) {
@@ -291,6 +308,21 @@ class ChatViewModel extends ChangeNotifier {
       _isUploadingAttachment = false;
       _isSending = false;
       notifyListeners();
+    }
+  }
+
+  /// Soft-deletes one of the current user's own messages — author-only, enforced server-side
+  /// regardless of what the UI gates on. Splices the server's redacted response straight into
+  /// the local list; the realtime republish will land moments later and just re-confirm the
+  /// same state (see _subscribeToRealtime's upsert-by-id handling).
+  Future<String?> deleteMessage(String messageId) async {
+    try {
+      final deleted = await _repository.deleteMessage(tripId, messageId);
+      _messages = [for (final m in _messages) if (m.id == messageId) deleted else m];
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return e.toString();
     }
   }
 

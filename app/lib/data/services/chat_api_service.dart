@@ -62,6 +62,7 @@ class ChatApiService {
     String? attachmentType,
     String? attachmentFilename,
     int? attachmentSizeBytes,
+    String? replyToId,
   }) async {
     final res = await _client.post(
       Uri.parse('$baseUrl${_messagesPath(tripId, offerId, buddyRequestId)}'),
@@ -73,10 +74,27 @@ class ChatApiService {
         if (attachmentType != null) 'attachmentType': attachmentType,
         if (attachmentFilename != null) 'attachmentFilename': attachmentFilename,
         if (attachmentSizeBytes != null) 'attachmentSizeBytes': attachmentSizeBytes,
+        if (replyToId != null) 'replyToId': replyToId,
       }),
     );
     if (res.statusCode != 201) {
       throw Exception('sendMessage failed: ${res.statusCode} ${res.body}');
+    }
+    return ChatMessageApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  // Soft-delete — author-only, enforced server-side. Scope-agnostic path (works for main chat,
+  // offer chat, or buddy chat messages alike; the backend resolves the trip off the message
+  // row itself), so no offerId/buddyRequestId param needed here, unlike sendMessage/fetchMessages.
+  // Returns the now-redacted message (body/attachment blanked, deletedAt set) — the caller
+  // splices this straight into its local list rather than hand-building the "deleted" shape.
+  Future<ChatMessageApiModel> deleteMessage(String tripId, String messageId) async {
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/trips/$tripId/messages/$messageId'),
+      headers: await _authHeaders(),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('deleteMessage failed: ${res.statusCode} ${res.body}');
     }
     return ChatMessageApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }

@@ -25,6 +25,15 @@ type Message struct {
 	AttachmentType      sql.NullString // "image" | "pdf"
 	AttachmentFilename  sql.NullString
 	AttachmentSizeBytes sql.NullInt64
+	// ReplyToID — the message this one replies to, if any (see migration 000052). Nulled out
+	// (not cascade-deleted) if the original is later soft-deleted, since DeletedAt is a flag
+	// on the row, not a row removal.
+	ReplyToID uuid.NullUUID
+	// DeletedAt — soft-delete timestamp (migration 000053). When set, Body/Attachment* are
+	// blanked server-side before the row ever leaves the repository layer bound for a
+	// response (see routes_message.go's toMessageResponse) — never rely on a client to hide
+	// deleted content.
+	DeletedAt sql.NullTime
 }
 
 // Attachment is the caller-facing shape for sending a message with a file — Message uses

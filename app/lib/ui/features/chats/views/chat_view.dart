@@ -1,8 +1,14 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../../../../data/services/attachment_cache_service.dart';
 import '../../../../domain/entities/chat_message.dart';
@@ -58,7 +64,9 @@ class ChatView extends StatefulWidget {
 class _ChatViewState extends State<ChatView>
     with AutomaticKeepAliveClientMixin {
   final _textController = TextEditingController();
-  final _scrollController = ScrollController();
+  final _composerFocusNode = FocusNode();
+  final _itemScrollController = ItemScrollController();
+  final _itemPositionsListener = ItemPositionsListener.create();
   final Map<String, Profile> _profiles = {};
   final Set<String> _fetchingProfileIds = {};
   int _lastMessageCount = 0;
@@ -69,6 +77,15 @@ class _ChatViewState extends State<ChatView>
   bool _mentionArmed = false;
 
   PickedAttachment? _pendingAttachment;
+
+  // Set by the long-press actions sheet's Reply action or a bubble's swipe-to-reply gesture;
+  // cleared on send or explicit dismiss (_ReplyPreviewChip's X).
+  ChatMessage? _replyingTo;
+
+  // Briefly flashed on the bubble _scrollToMessage lands on, then cleared — see
+  // _scrollToMessage's own comment.
+  String? _highlightedMessageId;
+  Timer? _highlightTimer;
 
   // TabBarView disposes offscreen tabs by default — without this, switching to Transport
   // and back tore down ChatView (and, since dispose() below tears down the ChatViewModel
@@ -83,49 +100,67 @@ class _ChatViewState extends State<ChatView>
     // Same deferral as TransportView's initState — TabBarView builds both tabs eagerly,
     // and load()'s synchronous first-line notifyListeners() can otherwise fire mid-build.
     Future.microtask(widget.viewModel.load);
-    _scrollController.addListener(_onScroll);
+    _itemPositionsListener.itemPositions.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _textController.dispose();
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
+    _composerFocusNode.dispose();
+    _itemPositionsListener.itemPositions.removeListener(_onScroll);
+    _highlightTimer?.cancel();
     widget.viewModel.dispose();
     super.dispose();
   }
 
   // Tracks whether the diver is close enough to the bottom that a new message should
   // just land in front of them — also what dismisses the "new messages" pill once they
-  // scroll back down manually, without waiting for a tap on it.
+  // scroll back down manually, without waiting for a tap on it. The list renders reverse:
+  // true (see build) so "bottom"/newest is item index 0 — near-bottom means that item is
+  // currently among the visible ones, not a precise pixel threshold (scrollable_positioned_list
+  // doesn't expose raw scroll-offset pixels the way a plain ScrollController did).
   void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    // The list renders reverse: true (see build) so "bottom"/newest is offset 0, not
-    // maxScrollExtent — pixels near 0 is what "near the bottom" means here.
-    final nearBottom = _scrollController.position.pixels <= 80;
-    if (nearBottom == _isNearBottom && !(nearBottom && _showNewMessagesPill))
-      return;
+    final nearBottom = _itemPositionsListener.itemPositions.value.any((p) => p.index == 0);
+    if (nearBottom == _isNearBottom && !(nearBottom && _showNewMessagesPill)) return;
     setState(() {
       _isNearBottom = nearBottom;
       if (nearBottom) _showNewMessagesPill = false;
     });
   }
 
-  // Reversed list means the bottom/newest message sits at offset 0 exactly, not an
-  // estimated maxScrollExtent — jumpTo(0)/animateTo(0) always lands precisely, unlike a
-  // forward list where ListView.builder only has estimated extents for offscreen items
-  // until they're actually realized.
+  // Reversed list means the bottom/newest message is item index 0 — jumpTo/scrollTo(index: 0)
+  // always lands exactly there, same guarantee the old pixel-offset-0 approach relied on.
   void _scrollToBottom({required bool animate}) {
-    if (!_scrollController.hasClients) return;
+    if (!_itemScrollController.isAttached) return;
     if (animate) {
-      _scrollController.animateTo(
-        0,
+      _itemScrollController.scrollTo(
+        index: 0,
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
       );
     } else {
-      _scrollController.jumpTo(0);
+      _itemScrollController.jumpTo(index: 0);
     }
+  }
+
+  // Jumps to and briefly highlights an arbitrary earlier message — tapping a reply's quoted
+  // strip (see _MessageRow). Recomputes reversedItems fresh rather than caching it, since the
+  // display-item list only otherwise exists inside build()'s scope.
+  void _scrollToMessage(String messageId) {
+    final reversedItems = _buildDisplayItems(widget.viewModel.messages).reversed.toList();
+    final index = reversedItems.indexWhere((item) => item.message?.id == messageId);
+    if (index == -1 || !_itemScrollController.isAttached) return;
+    _itemScrollController.scrollTo(
+      index: index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      alignment: 0.4,
+    );
+    _highlightTimer?.cancel();
+    setState(() => _highlightedMessageId = messageId);
+    _highlightTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) setState(() => _highlightedMessageId = null);
+    });
   }
 
   // Best-effort, one-at-a-time per sender — a profile fetch failing just leaves that
@@ -155,12 +190,105 @@ class _ChatViewState extends State<ChatView>
   }
 
   void _showReportSheet(ChatMessage message) {
+    _settleFocus(focusComposer: false);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (_) => _ReportMessageSheet(
         viewModel: widget.viewModel,
         messageId: message.id,
+      ),
+    );
+  }
+
+  // Deferred a frame past whatever triggered it (menu-item tap, backdrop dismiss, swipe) —
+  // popping the context-menu route has its own focus-restoration behavior that runs on the
+  // same frame, so calling requestFocus/unfocus synchronously right after Navigator.pop()
+  // routinely got clobbered by it (or vice versa). Scheduling via addPostFrameCallback lets
+  // ours run last and win, regardless of exactly what the route pop itself does.
+  void _settleFocus({required bool focusComposer}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (focusComposer) {
+        _composerFocusNode.requestFocus();
+      } else {
+        FocusScope.of(context).unfocus();
+      }
+    });
+  }
+
+  // Entry point for both the long-press menu and swipe-to-reply — same effect either way.
+  void _startReply(ChatMessage message) {
+    setState(() => _replyingTo = message);
+    _settleFocus(focusComposer: true);
+  }
+
+  void _cancelReply() => setState(() => _replyingTo = null);
+
+  void _copyMessageText(ChatMessage message) {
+    Clipboard.setData(ClipboardData(text: message.body));
+    _settleFocus(focusComposer: false);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied')));
+  }
+
+  Future<void> _confirmDeleteMessage(ChatMessage message) async {
+    _settleFocus(focusComposer: false);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete this message?'),
+        content: const Text('This cannot be undone — it will be removed for everyone in this Bubble.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final error = await widget.viewModel.deleteMessage(message.id);
+    if (!mounted || error == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not delete message: $error')));
+  }
+
+  // Long-press menu — iOS/Telegram-style: background dims+blurs, the pressed bubble stays put
+  // (rendered from a snapshot taken at press time — see _MessageRow's onLongPress, which hands
+  // over the bubble's on-screen Rect + a captured image), and the action list sits right below
+  // it. Reply/Copy are universal, Report (not-mine) vs Delete (mine) is the only branch.
+  // Deleted messages never reach here (see build's onLongPress gate). The dimmed backdrop is
+  // deliberately its own overlay (not showModalBottomSheet) so it can leave room for a future
+  // emoji-reaction row above the bubble without restructuring this again.
+  void _showMessageActionsSheet(ChatMessage message, Rect bubbleRect, ui.Image bubbleImage) {
+    final isMine = message.userId == widget.viewModel.currentUserId;
+    Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        transitionDuration: const Duration(milliseconds: 180),
+        reverseTransitionDuration: const Duration(milliseconds: 120),
+        pageBuilder: (_, animation, _) => FadeTransition(
+          opacity: animation,
+          child: _MessageContextMenu(
+            bubbleRect: bubbleRect,
+            bubbleImage: bubbleImage,
+            onDismiss: () => _settleFocus(focusComposer: false),
+            actions: [
+              _ContextMenuAction(icon: Icons.reply_outlined, label: 'Reply', onTap: () => _startReply(message)),
+              _ContextMenuAction(icon: Icons.copy_outlined, label: 'Copy text', onTap: () => _copyMessageText(message)),
+              if (isMine)
+                _ContextMenuAction(
+                  icon: Icons.delete_outline,
+                  label: 'Delete',
+                  isDestructive: true,
+                  onTap: () => _confirmDeleteMessage(message),
+                )
+              else
+                _ContextMenuAction(icon: Icons.flag_outlined, label: 'Report', onTap: () => _showReportSheet(message)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -184,12 +312,16 @@ class _ChatViewState extends State<ChatView>
     final text = _textController.text;
     final mentionsDiveCenter = _mentionArmed;
     final attachment = _pendingAttachment;
+    final replyToId = _replyingTo?.id;
 
     if (attachment == null) {
       if (text.trim().isEmpty) return;
       _textController.clear();
-      setState(() => _mentionArmed = false);
-      widget.viewModel.send(text, mentionsDiveCenter: mentionsDiveCenter);
+      setState(() {
+        _mentionArmed = false;
+        _replyingTo = null;
+      });
+      widget.viewModel.send(text, mentionsDiveCenter: mentionsDiveCenter, replyToId: replyToId);
       return;
     }
 
@@ -200,6 +332,7 @@ class _ChatViewState extends State<ChatView>
     setState(() {
       _mentionArmed = false;
       _pendingAttachment = null;
+      _replyingTo = null;
     });
     try {
       await widget.viewModel.uploadAndSend(
@@ -208,6 +341,7 @@ class _ChatViewState extends State<ChatView>
         attachmentFilename: attachment.filename,
         caption: text,
         mentionsDiveCenter: mentionsDiveCenter,
+        replyToId: replyToId,
       );
     } catch (e) {
       if (!mounted) return;
@@ -291,8 +425,9 @@ class _ChatViewState extends State<ChatView>
 
                 return Stack(
                   children: [
-                    ListView.builder(
-                      controller: _scrollController,
+                    ScrollablePositionedList.builder(
+                      itemScrollController: _itemScrollController,
+                      itemPositionsListener: _itemPositionsListener,
                       reverse: true,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -317,6 +452,17 @@ class _ChatViewState extends State<ChatView>
                         }
                         final isMine =
                             message.userId == widget.viewModel.currentUserId;
+                        final isDeleted = message.deletedAt != null;
+                        final repliedTo = message.replyToId == null
+                            ? null
+                            : _findMessageById(messages, message.replyToId!);
+                        final repliedToSenderName = repliedTo == null
+                            ? null
+                            : repliedTo.userId == widget.viewModel.currentUserId
+                                ? 'You'
+                                : (_profiles[repliedTo.userId]?.displayName?.isNotEmpty ?? false)
+                                    ? _profiles[repliedTo.userId]!.displayName!
+                                    : 'Diver';
                         return _MessageRow(
                           key: ValueKey(message.id),
                           message: message,
@@ -325,10 +471,15 @@ class _ChatViewState extends State<ChatView>
                           isLastInCluster: item.isLastInCluster,
                           profile: _profiles[message.userId],
                           businessName: widget.businessName,
+                          isHighlighted: _highlightedMessageId == message.id,
+                          repliedToMessage: repliedTo,
+                          repliedToSenderName: repliedToSenderName,
                           onTapSender: () => _openProfile(message.userId),
-                          onLongPress: isMine
+                          onTapReplyPreview: repliedTo == null ? null : () => _scrollToMessage(repliedTo.id),
+                          onLongPress: isDeleted
                               ? null
-                              : () => _showReportSheet(message),
+                              : (rect, image) => _showMessageActionsSheet(message, rect, image),
+                          onReply: isDeleted ? null : () => _startReply(message),
                         );
                       },
                     ),
@@ -391,8 +542,23 @@ class _ChatViewState extends State<ChatView>
                           ),
                         ),
                       ),
+                    if (_replyingTo != null)
+                      Padding(
+                        key: const ValueKey('replyPreviewChip'),
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                        child: _ReplyPreviewChip(
+                          senderName: _replyingTo!.userId == widget.viewModel.currentUserId
+                              ? 'You'
+                              : ((_profiles[_replyingTo!.userId]?.displayName?.isNotEmpty ?? false)
+                                  ? _profiles[_replyingTo!.userId]!.displayName!
+                                  : 'Diver'),
+                          previewText: _replyPreviewText(_replyingTo!),
+                          onCancel: _cancelReply,
+                        ),
+                      ),
                     if (_pendingAttachment != null)
                       Padding(
+                        key: const ValueKey('pendingAttachmentChip'),
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                         child: _PendingAttachmentChip(
                           attachment: _pendingAttachment!,
@@ -400,6 +566,7 @@ class _ChatViewState extends State<ChatView>
                         ),
                       ),
                     Padding(
+                      key: const ValueKey('composerRow'),
                       padding: const EdgeInsets.all(8),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -411,6 +578,7 @@ class _ChatViewState extends State<ChatView>
                           Expanded(
                             child: TextField(
                               controller: _textController,
+                              focusNode: _composerFocusNode,
                               minLines: 1,
                               maxLines: 5,
                               keyboardType: TextInputType.multiline,
@@ -431,6 +599,53 @@ class _ChatViewState extends State<ChatView>
                 ),
         ),
       ],
+    );
+  }
+}
+
+/// Shown above the composer while replying to an earlier message — same shape/slot as
+/// _PendingAttachmentChip below (a left accent bar instead of a thumbnail, same dismiss-X).
+class _ReplyPreviewChip extends StatelessWidget {
+  const _ReplyPreviewChip({required this.senderName, required this.previewText, required this.onCancel});
+
+  final String senderName;
+  final String previewText;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(width: 3, height: 34, color: theme.colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Replying to $senderName',
+                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  previewText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          IconButton(icon: const Icon(Icons.close, size: 18), onPressed: onCancel),
+        ],
+      ),
     );
   }
 }
@@ -717,6 +932,26 @@ class _ChatDisplayItem {
   final bool isLastInCluster;
 }
 
+ChatMessage? _findMessageById(List<ChatMessage> messages, String id) {
+  for (final m in messages) {
+    if (m.id == id) return m;
+  }
+  return null;
+}
+
+// Shown in both the reply-quote strip inside a bubble and the composer's _ReplyPreviewChip —
+// same fallback a deleted push notification body needs, mirrored from the backend's own
+// pushBodyFor (routes_message.go), since text-vs-attachment-only is the same ambiguity here.
+String _replyPreviewText(ChatMessage m) {
+  if (m.deletedAt != null) return 'Message deleted';
+  if (m.body.isNotEmpty) return m.body;
+  return switch (m.attachmentType) {
+    'image' => '📷 Photo',
+    'pdf' => '📄 PDF',
+    _ => '',
+  };
+}
+
 List<_ChatDisplayItem> _buildDisplayItems(List<ChatMessage> messages) {
   final clusters = _buildClusters(messages);
   final items = <_ChatDisplayItem>[];
@@ -853,7 +1088,7 @@ class _FeedbackButton extends StatelessWidget {
 /// Own messages never carry a name/avatar (isMine short-circuits straight to a
 /// right-aligned bubble); everyone else's messages reserve a fixed-width avatar gutter
 /// so bubbles line up whether or not this particular row is the one showing the avatar.
-class _MessageRow extends StatelessWidget {
+class _MessageRow extends StatefulWidget {
   const _MessageRow({
     super.key,
     required this.message,
@@ -863,7 +1098,12 @@ class _MessageRow extends StatelessWidget {
     required this.profile,
     required this.onTapSender,
     this.onLongPress,
+    this.onReply,
     this.businessName,
+    this.repliedToMessage,
+    this.repliedToSenderName,
+    this.onTapReplyPreview,
+    this.isHighlighted = false,
   });
 
   final ChatMessage message;
@@ -873,18 +1113,79 @@ class _MessageRow extends StatelessWidget {
   final Profile? profile;
   final VoidCallback onTapSender;
 
-  /// Null for the diver's own messages — reporting your own message isn't a thing.
-  final VoidCallback? onLongPress;
+  /// Fired once the bubble's on-screen Rect + a snapshot image are captured (see
+  /// _MessageRowState._handleLongPress) — the caller uses both to render the iOS-style
+  /// dimmed-background context menu in place. Null only for an already-deleted message.
+  final void Function(Rect bubbleRect, ui.Image bubbleImage)? onLongPress;
+
+  /// Fired by the swipe-to-reply gesture — same effect as the long-press menu's own Reply
+  /// action. Null only for an already-deleted message.
+  final VoidCallback? onReply;
 
   /// Never applied to the diver's own messages (see isMine below), and only ever combined
   /// with message.isDiveCenterStaff — a regular diver's message in a business trip's chat
   /// must never look like it came from the organization.
   final String? businessName;
 
+  /// Resolved by ChatView (looked up in the already-loaded message list) when
+  /// message.replyToId is set — null means either not a reply, or the original has since
+  /// scrolled out of the loaded history (rare, v1 loads full history — see ChatViewModel).
+  final ChatMessage? repliedToMessage;
+  final String? repliedToSenderName;
+  final VoidCallback? onTapReplyPreview;
+
+  /// Briefly true right after onTapReplyPreview's own scroll-to lands here — see
+  /// ChatView._scrollToMessage.
+  final bool isHighlighted;
+
+  @override
+  State<_MessageRow> createState() => _MessageRowState();
+}
+
+class _MessageRowState extends State<_MessageRow> {
+  double _dragDx = 0;
+  static const _maxDrag = 60.0;
+  static const _triggerThreshold = 40.0;
+
+  // Wraps the bubble so onLongPress can snapshot exactly what's on screen (see
+  // _handleLongPress) — the context menu renders this snapshot in place rather than
+  // rebuilding the bubble's widget tree a second time in a completely different part of it.
+  final _repaintKey = GlobalKey();
+
+  void _onHorizontalDragUpdate(DragUpdateDetails details) {
+    final next = (_dragDx + details.delta.dx).clamp(0.0, _maxDrag);
+    if (next != _dragDx) setState(() => _dragDx = next);
+  }
+
+  void _onHorizontalDragEnd(DragEndDetails details) {
+    final triggered = _dragDx > _triggerThreshold;
+    setState(() => _dragDx = 0);
+    if (triggered) widget.onReply?.call();
+  }
+
+  Future<void> _handleLongPress() async {
+    final onLongPress = widget.onLongPress;
+    if (onLongPress == null) return;
+    final renderObject = _repaintKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderRepaintBoundary) return;
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final image = await renderObject.toImage(pixelRatio: devicePixelRatio);
+    if (!mounted) return;
+    final rect = renderObject.localToGlobal(Offset.zero) & renderObject.size;
+    onLongPress(rect, image);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final message = widget.message;
+    final isMine = widget.isMine;
+    final isFirstInCluster = widget.isFirstInCluster;
+    final isLastInCluster = widget.isLastInCluster;
+    final profile = widget.profile;
+    final businessName = widget.businessName;
+    final isDeleted = message.deletedAt != null;
     final bubbleColor = isMine
         ? colorScheme.primary
         : colorScheme.secondaryContainer;
@@ -914,58 +1215,107 @@ class _MessageRow extends StatelessWidget {
         !isMine &&
         (isFirstInCluster || message.isDiveCenterStaff || isObserver);
 
-    final bubble = GestureDetector(
-      onLongPress: onLongPress,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.72,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: bubbleColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (message.mentionsDiveCenter &&
-                (businessName?.isNotEmpty ?? false))
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(
-                  '@$businessName',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: onBubbleColor,
-                  ),
-                ),
+    final bubbleContent = Container(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.72,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: bubbleColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: isDeleted
+          ? Text(
+              'Message deleted',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: onBubbleColor.withValues(alpha: 0.7),
+                fontStyle: FontStyle.italic,
               ),
-            if (showName)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: GestureDetector(
-                  onTap: onTapSender,
-                  child: Text(
-                    name,
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: onBubbleColor,
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (message.mentionsDiveCenter &&
+                    (businessName?.isNotEmpty ?? false))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Text(
+                      '@$businessName',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: onBubbleColor,
+                      ),
                     ),
                   ),
+                if (showName)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: GestureDetector(
+                      onTap: widget.onTapSender,
+                      child: Text(
+                        name,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: onBubbleColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                if (widget.repliedToMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: _ReplyQuoteStrip(
+                      senderName: widget.repliedToSenderName ?? 'Diver',
+                      previewText: _replyPreviewText(widget.repliedToMessage!),
+                      color: onBubbleColor,
+                      onTap: widget.onTapReplyPreview,
+                    ),
+                  ),
+                if (message.attachmentUrl != null || message.localAttachmentPath != null)
+                  _AttachmentPreview(message: message, color: onBubbleColor),
+                _MessageBody(
+                  body: message.body,
+                  time: formatTime(message.createdAt),
+                  color: onBubbleColor,
+                ),
+              ],
+            ),
+    );
+
+    // AnimatedContainer color-flash for _scrollToMessage's landing highlight — transparent
+    // to isHighlighted's own bubbleColor-tinted overlay otherwise.
+    final highlighted = AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      decoration: BoxDecoration(
+        color: widget.isHighlighted ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.6) : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: widget.isHighlighted ? const EdgeInsets.all(2) : EdgeInsets.zero,
+      child: bubbleContent,
+    );
+
+    final bubble = isDeleted
+        ? highlighted
+        : Stack(
+            alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+            children: [
+              if (_dragDx > 0)
+                Opacity(
+                  opacity: (_dragDx / _maxDrag).clamp(0.0, 1.0),
+                  child: Icon(Icons.reply, color: theme.colorScheme.onSurfaceVariant),
+                ),
+              GestureDetector(
+                onLongPress: widget.onLongPress == null ? null : _handleLongPress,
+                onHorizontalDragUpdate: widget.onReply == null ? null : _onHorizontalDragUpdate,
+                onHorizontalDragEnd: widget.onReply == null ? null : _onHorizontalDragEnd,
+                child: Transform.translate(
+                  offset: Offset(_dragDx, 0),
+                  child: RepaintBoundary(key: _repaintKey, child: highlighted),
                 ),
               ),
-            if (message.attachmentUrl != null || message.localAttachmentPath != null)
-              _AttachmentPreview(message: message, color: onBubbleColor),
-            _MessageBody(
-              body: message.body,
-              time: formatTime(message.createdAt),
-              color: onBubbleColor,
-            ),
-          ],
-        ),
-      ),
-    );
+            ],
+          );
 
     if (isMine) {
       return Padding(
@@ -983,7 +1333,7 @@ class _MessageRow extends StatelessWidget {
             width: 32,
             child: isLastInCluster
                 ? GestureDetector(
-                    onTap: onTapSender,
+                    onTap: widget.onTapSender,
                     child: CircleAvatar(
                       radius: 16,
                       backgroundColor: colorScheme.secondaryContainer,
@@ -1003,6 +1353,196 @@ class _MessageRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Flexible(child: bubble),
+        ],
+      ),
+    );
+  }
+}
+
+/// The quoted strip inside a bubble that's replying to another message — tap scrolls to and
+/// highlights the original (see ChatView._scrollToMessage).
+class _ReplyQuoteStrip extends StatelessWidget {
+  const _ReplyQuoteStrip({
+    required this.senderName,
+    required this.previewText,
+    required this.color,
+    this.onTap,
+  });
+
+  final String senderName;
+  final String previewText;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          border: Border(left: BorderSide(color: color.withValues(alpha: 0.6), width: 3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              senderName,
+              style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: color),
+            ),
+            Text(
+              previewText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.85)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ContextMenuAction {
+  const _ContextMenuAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isDestructive;
+}
+
+/// iOS/Telegram-style long-press menu: dims+blurs everything, keeps the pressed bubble visible
+/// in place (rendered from the snapshot _MessageRow captured, not rebuilt), and anchors the
+/// action list directly below it — flipping above when there isn't room underneath. Tapping
+/// the backdrop dismisses with no action; tapping an item pops first, then runs it, so each
+/// [_ContextMenuAction.onTap] can stay a plain "do the thing" callback.
+class _MessageContextMenu extends StatelessWidget {
+  const _MessageContextMenu({
+    required this.bubbleRect,
+    required this.bubbleImage,
+    required this.actions,
+    required this.onDismiss,
+  });
+
+  final Rect bubbleRect;
+  final ui.Image bubbleImage;
+  final List<_ContextMenuAction> actions;
+
+  /// Fired on backdrop-tap-to-cancel only — action taps handle their own focus outcome (see
+  /// ChatView._settleFocus), so this must not also fire there or it'd fight Reply's intent.
+  final VoidCallback onDismiss;
+
+  static const _menuWidth = 230.0;
+  static const _gap = 8.0;
+  static const _rowHeight = 48.0;
+  static const _screenMargin = 16.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenSize = MediaQuery.sizeOf(context);
+    final safePadding = MediaQuery.paddingOf(context);
+    final menuHeight = actions.length * _rowHeight + 16;
+
+    // Menu always renders below the bubble — never flipped above it — so a future emoji-reaction
+    // row (always above the bubble) and this menu (always below) stay in a consistent, fixed
+    // arrangement. When there isn't room below, the whole bubble+menu group shifts up together
+    // instead (Telegram/Messenger do the same for a bubble near the bottom of the screen).
+    final spaceBelow = screenSize.height - safePadding.bottom - bubbleRect.bottom;
+    final shortfall = (menuHeight + _gap + _screenMargin) - spaceBelow;
+    final verticalShift = shortfall > 0 ? shortfall : 0.0;
+    // max/min rather than .clamp() — a bubble already hard against the top of the screen can
+    // make the "don't go above the safe area" floor exceed bubbleRect.top itself, which
+    // .clamp(lower, upper) would throw on (lower > upper); this degrades to "no shift" instead.
+    final minTop = safePadding.top + _screenMargin;
+    final shiftedBubbleTop = math.max(minTop, math.min(bubbleRect.top, bubbleRect.top - verticalShift));
+    final menuTop = shiftedBubbleTop + bubbleRect.height + _gap;
+
+    var menuLeft = bubbleRect.left;
+    if (menuLeft + _menuWidth > screenSize.width - _screenMargin) {
+      menuLeft = screenSize.width - _screenMargin - _menuWidth;
+    }
+    if (menuLeft < _screenMargin) menuLeft = _screenMargin;
+
+    return Material(
+      color: Colors.transparent,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () {
+                onDismiss();
+                Navigator.of(context).pop();
+              },
+              // Solid, near-opaque scrim — not a real-time blur (BackdropFilter's first-frame
+              // cost was visibly lagging a beat behind the menu appearing, see the bug this
+              // fixed) — and matches Telegram/Messenger's own look: other messages aren't just
+              // dimmed, they're not really visible at all.
+              child: Container(color: Colors.black.withValues(alpha: 0.92)),
+            ),
+          ),
+          Positioned(
+            left: bubbleRect.left,
+            top: shiftedBubbleTop,
+            width: bubbleRect.width,
+            height: bubbleRect.height,
+            child: IgnorePointer(
+              child: RawImage(image: bubbleImage, width: bubbleRect.width, height: bubbleRect.height),
+            ),
+          ),
+          Positioned(
+            left: menuLeft,
+            top: menuTop,
+            width: _menuWidth,
+            child: Material(
+              color: theme.colorScheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(14),
+              elevation: 8,
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < actions.length; i++) ...[
+                    if (i > 0) Divider(height: 1, color: theme.colorScheme.outlineVariant),
+                    InkWell(
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        actions[i].onTap();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                actions[i].label,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: actions[i].isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              actions[i].icon,
+                              size: 18,
+                              color: actions[i].isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

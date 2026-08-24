@@ -21,6 +21,10 @@ _ChatMessageApiModel _$ChatMessageApiModelFromJson(Map<String, dynamic> json) =>
       attachmentType: json['attachmentType'] as String?,
       attachmentFilename: json['attachmentFilename'] as String?,
       attachmentSizeBytes: (json['attachmentSizeBytes'] as num?)?.toInt(),
+      replyToId: json['replyToId'] as String?,
+      deletedAt: json['deletedAt'] == null
+          ? null
+          : DateTime.parse(json['deletedAt'] as String),
     );
 
 Map<String, dynamic> _$ChatMessageApiModelToJson(
@@ -39,4 +43,6 @@ Map<String, dynamic> _$ChatMessageApiModelToJson(
   'attachmentType': instance.attachmentType,
   'attachmentFilename': instance.attachmentFilename,
   'attachmentSizeBytes': instance.attachmentSizeBytes,
+  'replyToId': instance.replyToId,
+  'deletedAt': instance.deletedAt?.toIso8601String(),
 };
