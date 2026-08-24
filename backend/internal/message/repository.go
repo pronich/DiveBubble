@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,17 +20,18 @@ func NewRepository(db *sql.DB) *Repository {
 // messageColumns is the fixed SELECT/RETURNING column list shared by every read/write query
 // below, kept in one place so scanMessage/scanMessages always match it.
 const messageColumns = `id, trip_id, user_id, body, created_at, mentions_dive_center, kind, offer_id, buddy_request_id,
-	attachment_url, attachment_type, attachment_filename, attachment_size_bytes`
+	attachment_url, attachment_type, attachment_filename, attachment_size_bytes, reply_to_id, deleted_at`
 
 func scanMessage(row interface{ Scan(...any) error }, m *Message) error {
 	return row.Scan(&m.ID, &m.TripID, &m.UserID, &m.Body, &m.CreatedAt, &m.MentionsDiveCenter, &m.Kind, &m.OfferID, &m.BuddyRequestID,
-		&m.AttachmentURL, &m.AttachmentType, &m.AttachmentFilename, &m.AttachmentSizeBytes)
+		&m.AttachmentURL, &m.AttachmentType, &m.AttachmentFilename, &m.AttachmentSizeBytes, &m.ReplyToID, &m.DeletedAt)
 }
 
 // Create inserts a user-authored message. scope is the zero value for the trip's main chat,
 // or set for a car offer's or buddy group's own chat — trip_id is always populated either way
-// (see migrations 000046/000048). attachment may be nil (text-only message).
-func (r *Repository) Create(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool, attachment *Attachment) (Message, error) {
+// (see migrations 000046/000048). attachment may be nil (text-only message). replyToID may be
+// the zero uuid.NullUUID (not a reply).
+func (r *Repository) Create(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool, attachment *Attachment, replyToID uuid.NullUUID) (Message, error) {
 	var attURL, attType, attFilename sql.NullString
 	var attSize sql.NullInt64
 	if attachment != nil {
@@ -41,11 +43,28 @@ func (r *Repository) Create(ctx context.Context, tripID, userID uuid.UUID, scope
 	var m Message
 	err := scanMessage(r.DB.QueryRowContext(ctx, `
 		INSERT INTO chat_messages (trip_id, user_id, offer_id, buddy_request_id, body, mentions_dive_center,
-			attachment_url, attachment_type, attachment_filename, attachment_size_bytes)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			attachment_url, attachment_type, attachment_filename, attachment_size_bytes, reply_to_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING `+messageColumns+`
 	`, tripID, userID, scope.OfferID, scope.BuddyRequestID, body, mentionsDiveCenter,
-		attURL, attType, attFilename, attSize), &m)
+		attURL, attType, attFilename, attSize, replyToID), &m)
+	return m, err
+}
+
+// SoftDelete marks a message deleted — author-only, idempotent-safe (deleting an
+// already-deleted message just reports ErrNotFound rather than double-processing). The row
+// itself is kept (not removed) so any reply pointing at it via reply_to_id still resolves;
+// callers are responsible for blanking Body/Attachment* before this reaches a response (see
+// routes_message.go's toMessageResponse) — the row in the DB still holds the real content.
+func (r *Repository) SoftDelete(ctx context.Context, messageID, callerUserID uuid.UUID) (Message, error) {
+	var m Message
+	err := scanMessage(r.DB.QueryRowContext(ctx, `
+		UPDATE chat_messages SET deleted_at = now()
+		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL
+		RETURNING `+messageColumns, messageID, callerUserID), &m)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Message{}, ErrNotFound
+	}
 	return m, err
 }
 

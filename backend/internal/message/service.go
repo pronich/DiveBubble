@@ -23,13 +23,31 @@ func NewService(repo *Repository) *Service {
 
 // Send persists a user-authored message. scope is the zero value for the trip's main chat,
 // or set for a car offer's or buddy group's own chat. attachment may be nil (text-only
-// message); body may be empty only when attachment is set (an attachment's caption).
-func (s *Service) Send(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool, attachment *Attachment) (Message, error) {
+// message); body may be empty only when attachment is set (an attachment's caption). replyToID
+// is the zero uuid.NullUUID for "not a reply" — when set, the target must exist and belong to
+// the same trip (a client could otherwise reference a message from an unrelated trip's chat;
+// the reply_to_id foreign key alone doesn't catch that, since it only checks the row exists).
+func (s *Service) Send(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool, attachment *Attachment, replyToID uuid.NullUUID) (Message, error) {
 	body = strings.TrimSpace(body)
 	if body == "" && attachment == nil {
 		return Message{}, ErrInvalidArgument
 	}
-	return s.Repo.Create(ctx, tripID, userID, scope, body, mentionsDiveCenter, attachment)
+	if replyToID.Valid {
+		target, err := s.GetByID(ctx, replyToID.UUID)
+		if err != nil {
+			return Message{}, ErrInvalidArgument
+		}
+		if target.TripID != tripID {
+			return Message{}, ErrInvalidArgument
+		}
+	}
+	return s.Repo.Create(ctx, tripID, userID, scope, body, mentionsDiveCenter, attachment, replyToID)
+}
+
+// Delete soft-deletes a message — author-only (ErrNotFound covers both "not the author" and
+// "already deleted", see Repository.SoftDelete).
+func (s *Service) Delete(ctx context.Context, messageID, callerUserID uuid.UUID) (Message, error) {
+	return s.Repo.SoftDelete(ctx, messageID, callerUserID)
 }
 
 // SendSystem creates a system message of the given kind for the trip's main chat, unless one

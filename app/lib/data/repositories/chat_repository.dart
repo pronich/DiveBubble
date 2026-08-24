@@ -24,6 +24,7 @@ class ChatRepository {
     String? attachmentType,
     String? attachmentFilename,
     int? attachmentSizeBytes,
+    String? replyToId,
   }) async {
     final apiModel = await _service.sendMessage(
       tripId,
@@ -35,7 +36,13 @@ class ChatRepository {
       attachmentType: attachmentType,
       attachmentFilename: attachmentFilename,
       attachmentSizeBytes: attachmentSizeBytes,
+      replyToId: replyToId,
     );
+    return apiModel.toDomain();
+  }
+
+  Future<ChatMessage> deleteMessage(String tripId, String messageId) async {
+    final apiModel = await _service.deleteMessage(tripId, messageId);
     return apiModel.toDomain();
   }
 

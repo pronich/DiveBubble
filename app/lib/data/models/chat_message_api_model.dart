@@ -19,6 +19,8 @@ abstract class ChatMessageApiModel with _$ChatMessageApiModel {
     String? attachmentType,
     String? attachmentFilename,
     int? attachmentSizeBytes,
+    String? replyToId,
+    DateTime? deletedAt,
   }) = _ChatMessageApiModel;
 
   factory ChatMessageApiModel.fromJson(Map<String, dynamic> json) =>

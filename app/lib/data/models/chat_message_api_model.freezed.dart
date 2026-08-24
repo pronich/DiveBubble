@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ChatMessageApiModel {
 
- String get id; String get tripId; String get userId; String get body; DateTime get createdAt; bool get isDiveCenterStaff; bool get mentionsDiveCenter; String get kind; bool get feedbackProvided; String? get attachmentUrl; String? get attachmentType; String? get attachmentFilename; int? get attachmentSizeBytes;
+ String get id; String get tripId; String get userId; String get body; DateTime get createdAt; bool get isDiveCenterStaff; bool get mentionsDiveCenter; String get kind; bool get feedbackProvided; String? get attachmentUrl; String? get attachmentType; String? get attachmentFilename; int? get attachmentSizeBytes; String? get replyToId; DateTime? get deletedAt;
 /// Create a copy of ChatMessageApiModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $ChatMessageApiModelCopyWith<ChatMessageApiModel> get copyWith => _$ChatMessageA
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatMessageApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff)&&(identical(other.mentionsDiveCenter, mentionsDiveCenter) || other.mentionsDiveCenter == mentionsDiveCenter)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.feedbackProvided, feedbackProvided) || other.feedbackProvided == feedbackProvided)&&(identical(other.attachmentUrl, attachmentUrl) || other.attachmentUrl == attachmentUrl)&&(identical(other.attachmentType, attachmentType) || other.attachmentType == attachmentType)&&(identical(other.attachmentFilename, attachmentFilename) || other.attachmentFilename == attachmentFilename)&&(identical(other.attachmentSizeBytes, attachmentSizeBytes) || other.attachmentSizeBytes == attachmentSizeBytes));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatMessageApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff)&&(identical(other.mentionsDiveCenter, mentionsDiveCenter) || other.mentionsDiveCenter == mentionsDiveCenter)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.feedbackProvided, feedbackProvided) || other.feedbackProvided == feedbackProvided)&&(identical(other.attachmentUrl, attachmentUrl) || other.attachmentUrl == attachmentUrl)&&(identical(other.attachmentType, attachmentType) || other.attachmentType == attachmentType)&&(identical(other.attachmentFilename, attachmentFilename) || other.attachmentFilename == attachmentFilename)&&(identical(other.attachmentSizeBytes, attachmentSizeBytes) || other.attachmentSizeBytes == attachmentSizeBytes)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt,isDiveCenterStaff,mentionsDiveCenter,kind,feedbackProvided,attachmentUrl,attachmentType,attachmentFilename,attachmentSizeBytes);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt,isDiveCenterStaff,mentionsDiveCenter,kind,feedbackProvided,attachmentUrl,attachmentType,attachmentFilename,attachmentSizeBytes,replyToId,deletedAt);
 
 @override
 String toString() {
-  return 'ChatMessageApiModel(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt, isDiveCenterStaff: $isDiveCenterStaff, mentionsDiveCenter: $mentionsDiveCenter, kind: $kind, feedbackProvided: $feedbackProvided, attachmentUrl: $attachmentUrl, attachmentType: $attachmentType, attachmentFilename: $attachmentFilename, attachmentSizeBytes: $attachmentSizeBytes)';
+  return 'ChatMessageApiModel(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt, isDiveCenterStaff: $isDiveCenterStaff, mentionsDiveCenter: $mentionsDiveCenter, kind: $kind, feedbackProvided: $feedbackProvided, attachmentUrl: $attachmentUrl, attachmentType: $attachmentType, attachmentFilename: $attachmentFilename, attachmentSizeBytes: $attachmentSizeBytes, replyToId: $replyToId, deletedAt: $deletedAt)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $ChatMessageApiModelCopyWith<$Res>  {
   factory $ChatMessageApiModelCopyWith(ChatMessageApiModel value, $Res Function(ChatMessageApiModel) _then) = _$ChatMessageApiModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String tripId, String userId, String body, DateTime createdAt, bool isDiveCenterStaff, bool mentionsDiveCenter, String kind, bool feedbackProvided, String? attachmentUrl, String? attachmentType, String? attachmentFilename, int? attachmentSizeBytes
+ String id, String tripId, String userId, String body, DateTime createdAt, bool isDiveCenterStaff, bool mentionsDiveCenter, String kind, bool feedbackProvided, String? attachmentUrl, String? attachmentType, String? attachmentFilename, int? attachmentSizeBytes, String? replyToId, DateTime? deletedAt
 });
 
 
@@ -65,7 +65,7 @@ class _$ChatMessageApiModelCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessageApiModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,Object? isDiveCenterStaff = null,Object? mentionsDiveCenter = null,Object? kind = null,Object? feedbackProvided = null,Object? attachmentUrl = freezed,Object? attachmentType = freezed,Object? attachmentFilename = freezed,Object? attachmentSizeBytes = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,Object? isDiveCenterStaff = null,Object? mentionsDiveCenter = null,Object? kind = null,Object? feedbackProvided = null,Object? attachmentUrl = freezed,Object? attachmentType = freezed,Object? attachmentFilename = freezed,Object? attachmentSizeBytes = freezed,Object? replyToId = freezed,Object? deletedAt = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
@@ -80,7 +80,9 @@ as bool,attachmentUrl: freezed == attachmentUrl ? _self.attachmentUrl : attachme
 as String?,attachmentType: freezed == attachmentType ? _self.attachmentType : attachmentType // ignore: cast_nullable_to_non_nullable
 as String?,attachmentFilename: freezed == attachmentFilename ? _self.attachmentFilename : attachmentFilename // ignore: cast_nullable_to_non_nullable
 as String?,attachmentSizeBytes: freezed == attachmentSizeBytes ? _self.attachmentSizeBytes : attachmentSizeBytes // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore: cast_nullable_to_non_nullable
+as String?,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 
@@ -165,10 +167,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  String? attachmentUrl,  String? attachmentType,  String? attachmentFilename,  int? attachmentSizeBytes)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  String? attachmentUrl,  String? attachmentType,  String? attachmentFilename,  int? attachmentSizeBytes,  String? replyToId,  DateTime? deletedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ChatMessageApiModel() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachmentUrl,_that.attachmentType,_that.attachmentFilename,_that.attachmentSizeBytes);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachmentUrl,_that.attachmentType,_that.attachmentFilename,_that.attachmentSizeBytes,_that.replyToId,_that.deletedAt);case _:
   return orElse();
 
 }
@@ -186,10 +188,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  String? attachmentUrl,  String? attachmentType,  String? attachmentFilename,  int? attachmentSizeBytes)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  String? attachmentUrl,  String? attachmentType,  String? attachmentFilename,  int? attachmentSizeBytes,  String? replyToId,  DateTime? deletedAt)  $default,) {final _that = this;
 switch (_that) {
 case _ChatMessageApiModel():
-return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachmentUrl,_that.attachmentType,_that.attachmentFilename,_that.attachmentSizeBytes);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachmentUrl,_that.attachmentType,_that.attachmentFilename,_that.attachmentSizeBytes,_that.replyToId,_that.deletedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -206,10 +208,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  String? attachmentUrl,  String? attachmentType,  String? attachmentFilename,  int? attachmentSizeBytes)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  String? attachmentUrl,  String? attachmentType,  String? attachmentFilename,  int? attachmentSizeBytes,  String? replyToId,  DateTime? deletedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _ChatMessageApiModel() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachmentUrl,_that.attachmentType,_that.attachmentFilename,_that.attachmentSizeBytes);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachmentUrl,_that.attachmentType,_that.attachmentFilename,_that.attachmentSizeBytes,_that.replyToId,_that.deletedAt);case _:
   return null;
 
 }
@@ -221,7 +223,7 @@ return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_t
 @JsonSerializable()
 
 class _ChatMessageApiModel implements ChatMessageApiModel {
-  const _ChatMessageApiModel({required this.id, required this.tripId, required this.userId, required this.body, required this.createdAt, this.isDiveCenterStaff = false, this.mentionsDiveCenter = false, this.kind = 'user', this.feedbackProvided = false, this.attachmentUrl, this.attachmentType, this.attachmentFilename, this.attachmentSizeBytes});
+  const _ChatMessageApiModel({required this.id, required this.tripId, required this.userId, required this.body, required this.createdAt, this.isDiveCenterStaff = false, this.mentionsDiveCenter = false, this.kind = 'user', this.feedbackProvided = false, this.attachmentUrl, this.attachmentType, this.attachmentFilename, this.attachmentSizeBytes, this.replyToId, this.deletedAt});
   factory _ChatMessageApiModel.fromJson(Map<String, dynamic> json) => _$ChatMessageApiModelFromJson(json);
 
 @override final  String id;
@@ -237,6 +239,8 @@ class _ChatMessageApiModel implements ChatMessageApiModel {
 @override final  String? attachmentType;
 @override final  String? attachmentFilename;
 @override final  int? attachmentSizeBytes;
+@override final  String? replyToId;
+@override final  DateTime? deletedAt;
 
 /// Create a copy of ChatMessageApiModel
 /// with the given fields replaced by the non-null parameter values.
@@ -251,16 +255,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatMessageApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff)&&(identical(other.mentionsDiveCenter, mentionsDiveCenter) || other.mentionsDiveCenter == mentionsDiveCenter)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.feedbackProvided, feedbackProvided) || other.feedbackProvided == feedbackProvided)&&(identical(other.attachmentUrl, attachmentUrl) || other.attachmentUrl == attachmentUrl)&&(identical(other.attachmentType, attachmentType) || other.attachmentType == attachmentType)&&(identical(other.attachmentFilename, attachmentFilename) || other.attachmentFilename == attachmentFilename)&&(identical(other.attachmentSizeBytes, attachmentSizeBytes) || other.attachmentSizeBytes == attachmentSizeBytes));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatMessageApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff)&&(identical(other.mentionsDiveCenter, mentionsDiveCenter) || other.mentionsDiveCenter == mentionsDiveCenter)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.feedbackProvided, feedbackProvided) || other.feedbackProvided == feedbackProvided)&&(identical(other.attachmentUrl, attachmentUrl) || other.attachmentUrl == attachmentUrl)&&(identical(other.attachmentType, attachmentType) || other.attachmentType == attachmentType)&&(identical(other.attachmentFilename, attachmentFilename) || other.attachmentFilename == attachmentFilename)&&(identical(other.attachmentSizeBytes, attachmentSizeBytes) || other.attachmentSizeBytes == attachmentSizeBytes)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt,isDiveCenterStaff,mentionsDiveCenter,kind,feedbackProvided,attachmentUrl,attachmentType,attachmentFilename,attachmentSizeBytes);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt,isDiveCenterStaff,mentionsDiveCenter,kind,feedbackProvided,attachmentUrl,attachmentType,attachmentFilename,attachmentSizeBytes,replyToId,deletedAt);
 
 @override
 String toString() {
-  return 'ChatMessageApiModel(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt, isDiveCenterStaff: $isDiveCenterStaff, mentionsDiveCenter: $mentionsDiveCenter, kind: $kind, feedbackProvided: $feedbackProvided, attachmentUrl: $attachmentUrl, attachmentType: $attachmentType, attachmentFilename: $attachmentFilename, attachmentSizeBytes: $attachmentSizeBytes)';
+  return 'ChatMessageApiModel(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt, isDiveCenterStaff: $isDiveCenterStaff, mentionsDiveCenter: $mentionsDiveCenter, kind: $kind, feedbackProvided: $feedbackProvided, attachmentUrl: $attachmentUrl, attachmentType: $attachmentType, attachmentFilename: $attachmentFilename, attachmentSizeBytes: $attachmentSizeBytes, replyToId: $replyToId, deletedAt: $deletedAt)';
 }
 
 
@@ -271,7 +275,7 @@ abstract mixin class _$ChatMessageApiModelCopyWith<$Res> implements $ChatMessage
   factory _$ChatMessageApiModelCopyWith(_ChatMessageApiModel value, $Res Function(_ChatMessageApiModel) _then) = __$ChatMessageApiModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String tripId, String userId, String body, DateTime createdAt, bool isDiveCenterStaff, bool mentionsDiveCenter, String kind, bool feedbackProvided, String? attachmentUrl, String? attachmentType, String? attachmentFilename, int? attachmentSizeBytes
+ String id, String tripId, String userId, String body, DateTime createdAt, bool isDiveCenterStaff, bool mentionsDiveCenter, String kind, bool feedbackProvided, String? attachmentUrl, String? attachmentType, String? attachmentFilename, int? attachmentSizeBytes, String? replyToId, DateTime? deletedAt
 });
 
 
@@ -288,7 +292,7 @@ class __$ChatMessageApiModelCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessageApiModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,Object? isDiveCenterStaff = null,Object? mentionsDiveCenter = null,Object? kind = null,Object? feedbackProvided = null,Object? attachmentUrl = freezed,Object? attachmentType = freezed,Object? attachmentFilename = freezed,Object? attachmentSizeBytes = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,Object? isDiveCenterStaff = null,Object? mentionsDiveCenter = null,Object? kind = null,Object? feedbackProvided = null,Object? attachmentUrl = freezed,Object? attachmentType = freezed,Object? attachmentFilename = freezed,Object? attachmentSizeBytes = freezed,Object? replyToId = freezed,Object? deletedAt = freezed,}) {
   return _then(_ChatMessageApiModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
@@ -303,7 +307,9 @@ as bool,attachmentUrl: freezed == attachmentUrl ? _self.attachmentUrl : attachme
 as String?,attachmentType: freezed == attachmentType ? _self.attachmentType : attachmentType // ignore: cast_nullable_to_non_nullable
 as String?,attachmentFilename: freezed == attachmentFilename ? _self.attachmentFilename : attachmentFilename // ignore: cast_nullable_to_non_nullable
 as String?,attachmentSizeBytes: freezed == attachmentSizeBytes ? _self.attachmentSizeBytes : attachmentSizeBytes // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore: cast_nullable_to_non_nullable
+as String?,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
   ));
 }
 

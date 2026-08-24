@@ -37,5 +37,13 @@ abstract class ChatMessage with _$ChatMessage {
     // Set only on a pending attachment message, before attachmentUrl exists — lets the bubble
     // render the picked file immediately (thumbnail/filename) while the upload is in flight.
     String? localAttachmentPath,
+    // Id of the message this one replies to, if any — the client resolves it against the
+    // already-loaded message list rather than the server denormalizing sender/body onto every
+    // reply (see ChatViewModel).
+    String? replyToId,
+    // Non-null means this message was deleted — body/attachment are already blanked by the
+    // server by the time this is set (see backend's toMessageResponse), so the bubble just
+    // renders a placeholder instead of trying to hide real content client-side.
+    DateTime? deletedAt,
   }) = _ChatMessage;
 }

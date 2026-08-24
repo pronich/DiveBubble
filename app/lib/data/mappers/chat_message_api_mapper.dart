@@ -16,5 +16,7 @@ extension ChatMessageApiMapper on ChatMessageApiModel {
         attachmentType: attachmentType,
         attachmentFilename: attachmentFilename,
         attachmentSizeBytes: attachmentSizeBytes,
+        replyToId: replyToId,
+        deletedAt: deletedAt,
       );
 }
