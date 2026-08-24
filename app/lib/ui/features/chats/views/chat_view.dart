@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
@@ -189,6 +190,7 @@ class _ChatViewState extends State<ChatView>
   }
 
   void _showReportSheet(ChatMessage message) {
+    _settleFocus(focusComposer: false);
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -199,20 +201,38 @@ class _ChatViewState extends State<ChatView>
     );
   }
 
+  // Deferred a frame past whatever triggered it (menu-item tap, backdrop dismiss, swipe) —
+  // popping the context-menu route has its own focus-restoration behavior that runs on the
+  // same frame, so calling requestFocus/unfocus synchronously right after Navigator.pop()
+  // routinely got clobbered by it (or vice versa). Scheduling via addPostFrameCallback lets
+  // ours run last and win, regardless of exactly what the route pop itself does.
+  void _settleFocus({required bool focusComposer}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (focusComposer) {
+        _composerFocusNode.requestFocus();
+      } else {
+        FocusScope.of(context).unfocus();
+      }
+    });
+  }
+
   // Entry point for both the long-press menu and swipe-to-reply — same effect either way.
   void _startReply(ChatMessage message) {
     setState(() => _replyingTo = message);
-    _composerFocusNode.requestFocus();
+    _settleFocus(focusComposer: true);
   }
 
   void _cancelReply() => setState(() => _replyingTo = null);
 
   void _copyMessageText(ChatMessage message) {
     Clipboard.setData(ClipboardData(text: message.body));
+    _settleFocus(focusComposer: false);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied')));
   }
 
   Future<void> _confirmDeleteMessage(ChatMessage message) async {
+    _settleFocus(focusComposer: false);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -253,6 +273,7 @@ class _ChatViewState extends State<ChatView>
           child: _MessageContextMenu(
             bubbleRect: bubbleRect,
             bubbleImage: bubbleImage,
+            onDismiss: () => _settleFocus(focusComposer: false),
             actions: [
               _ContextMenuAction(icon: Icons.reply_outlined, label: 'Reply', onTap: () => _startReply(message)),
               _ContextMenuAction(icon: Icons.copy_outlined, label: 'Copy text', onTap: () => _copyMessageText(message)),
@@ -523,6 +544,7 @@ class _ChatViewState extends State<ChatView>
                       ),
                     if (_replyingTo != null)
                       Padding(
+                        key: const ValueKey('replyPreviewChip'),
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                         child: _ReplyPreviewChip(
                           senderName: _replyingTo!.userId == widget.viewModel.currentUserId
@@ -536,6 +558,7 @@ class _ChatViewState extends State<ChatView>
                       ),
                     if (_pendingAttachment != null)
                       Padding(
+                        key: const ValueKey('pendingAttachmentChip'),
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                         child: _PendingAttachmentChip(
                           attachment: _pendingAttachment!,
@@ -543,6 +566,7 @@ class _ChatViewState extends State<ChatView>
                         ),
                       ),
                     Padding(
+                      key: const ValueKey('composerRow'),
                       padding: const EdgeInsets.all(8),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -1405,11 +1429,16 @@ class _MessageContextMenu extends StatelessWidget {
     required this.bubbleRect,
     required this.bubbleImage,
     required this.actions,
+    required this.onDismiss,
   });
 
   final Rect bubbleRect;
   final ui.Image bubbleImage;
   final List<_ContextMenuAction> actions;
+
+  /// Fired on backdrop-tap-to-cancel only — action taps handle their own focus outcome (see
+  /// ChatView._settleFocus), so this must not also fire there or it'd fight Reply's intent.
+  final VoidCallback onDismiss;
 
   static const _menuWidth = 230.0;
   static const _gap = 8.0;
@@ -1423,9 +1452,19 @@ class _MessageContextMenu extends StatelessWidget {
     final safePadding = MediaQuery.paddingOf(context);
     final menuHeight = actions.length * _rowHeight + 16;
 
+    // Menu always renders below the bubble — never flipped above it — so a future emoji-reaction
+    // row (always above the bubble) and this menu (always below) stay in a consistent, fixed
+    // arrangement. When there isn't room below, the whole bubble+menu group shifts up together
+    // instead (Telegram/Messenger do the same for a bubble near the bottom of the screen).
     final spaceBelow = screenSize.height - safePadding.bottom - bubbleRect.bottom;
-    final showBelow = spaceBelow >= menuHeight + _gap + _screenMargin;
-    final menuTop = showBelow ? bubbleRect.bottom + _gap : bubbleRect.top - menuHeight - _gap;
+    final shortfall = (menuHeight + _gap + _screenMargin) - spaceBelow;
+    final verticalShift = shortfall > 0 ? shortfall : 0.0;
+    // max/min rather than .clamp() — a bubble already hard against the top of the screen can
+    // make the "don't go above the safe area" floor exceed bubbleRect.top itself, which
+    // .clamp(lower, upper) would throw on (lower > upper); this degrades to "no shift" instead.
+    final minTop = safePadding.top + _screenMargin;
+    final shiftedBubbleTop = math.max(minTop, math.min(bubbleRect.top, bubbleRect.top - verticalShift));
+    final menuTop = shiftedBubbleTop + bubbleRect.height + _gap;
 
     var menuLeft = bubbleRect.left;
     if (menuLeft + _menuWidth > screenSize.width - _screenMargin) {
@@ -1439,16 +1478,20 @@ class _MessageContextMenu extends StatelessWidget {
         children: [
           Positioned.fill(
             child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: BackdropFilter(
-                filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-                child: Container(color: Colors.black.withValues(alpha: 0.35)),
-              ),
+              onTap: () {
+                onDismiss();
+                Navigator.of(context).pop();
+              },
+              // Solid, near-opaque scrim — not a real-time blur (BackdropFilter's first-frame
+              // cost was visibly lagging a beat behind the menu appearing, see the bug this
+              // fixed) — and matches Telegram/Messenger's own look: other messages aren't just
+              // dimmed, they're not really visible at all.
+              child: Container(color: Colors.black.withValues(alpha: 0.92)),
             ),
           ),
           Positioned(
             left: bubbleRect.left,
-            top: bubbleRect.top,
+            top: shiftedBubbleTop,
             width: bubbleRect.width,
             height: bubbleRect.height,
             child: IgnorePointer(
