@@ -160,6 +160,11 @@ type UpdateParams struct {
 	MaxParticipants  *int
 	PriceMinor       *int
 	BookingURL       *string
+
+	// Latitude/Longitude — see CreateParams' own doc comment. Nil means "location text didn't
+	// change" (left as-is); when the app resends an edited location, it resends both together.
+	Latitude  *float64
+	Longitude *float64
 }
 
 func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (Trip, error) {
@@ -178,12 +183,15 @@ func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (
 			min_certification = COALESCE($12, min_certification),
 			max_participants = COALESCE($13, max_participants),
 			price_minor = COALESCE($14, price_minor),
-			booking_url = COALESCE($15, booking_url)
+			booking_url = COALESCE($15, booking_url),
+			latitude = COALESCE($16, latitude),
+			longitude = COALESCE($17, longitude)
 		WHERE id = $1
 		RETURNING `+tripColumns,
 		id, p.Title, p.Location, p.StartTime, p.EndDate, p.Description, p.MeetingPoint,
 		p.DiveCountMin, p.DiveCountMax, p.DepthMinM, p.DepthMaxM,
 		p.MinCertification, p.MaxParticipants, p.PriceMinor, p.BookingURL,
+		p.Latitude, p.Longitude,
 	))
 }
 

@@ -228,4 +228,50 @@ class TripApiService {
     }
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
+
+  // Individual-organizer trips only — no priceMinor/bookingUrl (those are business-trip-only
+  // fields, admin's edit form handles those). PATCH semantics: only non-null fields change.
+  Future<TripApiModel> updateTrip({
+    required String id,
+    String? title,
+    String? location,
+    DateTime? startTime,
+    DateTime? endDate,
+    String? description,
+    String? meetingPoint,
+    int? diveCountMin,
+    int? diveCountMax,
+    int? depthMinM,
+    int? depthMaxM,
+    String? minCertification,
+    int? maxParticipants,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final body = <String, dynamic>{
+      if (title != null) 'title': title,
+      if (location != null) 'location': location,
+      if (startTime != null) 'startTime': startTime.toUtc().toIso8601String(),
+      if (endDate != null) 'endDate': DateTime.utc(endDate.year, endDate.month, endDate.day).toIso8601String(),
+      if (description != null) 'description': description,
+      if (meetingPoint != null) 'meetingPoint': meetingPoint,
+      if (diveCountMin != null) 'diveCountMin': diveCountMin,
+      if (diveCountMax != null) 'diveCountMax': diveCountMax,
+      if (depthMinM != null) 'depthMinM': depthMinM,
+      if (depthMaxM != null) 'depthMaxM': depthMaxM,
+      if (minCertification != null) 'minCertification': minCertification,
+      if (maxParticipants != null) 'maxParticipants': maxParticipants,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+    };
+    final res = await _client.patch(
+      Uri.parse('$baseUrl/trips/$id'),
+      headers: {...await _requiredAuthHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (res.statusCode != 200) {
+      throw Exception(_extractError(res.body) ?? 'updateTrip failed: ${res.statusCode}');
+    }
+    return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
 }

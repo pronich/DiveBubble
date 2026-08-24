@@ -91,4 +91,41 @@ class TripRepository {
     );
     return apiModel.toDomain();
   }
+
+  Future<Trip> updateTrip({
+    required String id,
+    String? title,
+    String? location,
+    DateTime? startTime,
+    DateTime? endDate,
+    String? description,
+    String? meetingPoint,
+    int? diveCountMin,
+    int? diveCountMax,
+    int? depthMinM,
+    int? depthMaxM,
+    String? minCertification,
+    int? maxParticipants,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final apiModel = await _service.updateTrip(
+      id: id,
+      title: title,
+      location: location,
+      startTime: startTime,
+      endDate: endDate,
+      description: description,
+      meetingPoint: meetingPoint,
+      diveCountMin: diveCountMin,
+      diveCountMax: diveCountMax,
+      depthMinM: depthMinM,
+      depthMaxM: depthMaxM,
+      minCertification: minCertification,
+      maxParticipants: maxParticipants,
+      latitude: latitude,
+      longitude: longitude,
+    );
+    return apiModel.toDomain();
+  }
 }

@@ -516,6 +516,8 @@ type updateTripRequest struct {
 	MaxParticipants  *int       `json:"maxParticipants"`
 	PriceMinor       *int       `json:"priceMinor"`
 	BookingURL       *string    `json:"bookingUrl"`
+	Latitude         *float64   `json:"latitude"`
+	Longitude        *float64   `json:"longitude"`
 }
 
 // handleUpdateTrip is organizer-only (enforced inside svc.Update, same isOrganizer check as
@@ -551,6 +553,8 @@ func handleUpdateTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 			MaxParticipants:  req.MaxParticipants,
 			PriceMinor:       req.PriceMinor,
 			BookingURL:       req.BookingURL,
+			Latitude:         req.Latitude,
+			Longitude:        req.Longitude,
 		})
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
