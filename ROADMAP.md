@@ -12,22 +12,22 @@ checks the app with `flutter analyze`) → commit → merge to `develop`.
 
 ## Track 1 — App: bugs & features
 
-### Priority 1 — Bugs (in progress)
+### Priority 1 — Bugs (done, 2026-08-24)
 
-- [ ] **Auth: mass logout (Aug 21→22)** — `getValidAccessToken()` in
+- [x] **Auth: mass logout (Aug 21→22)** — `getValidAccessToken()` in
       `app/lib/data/repositories/auth_repository.dart:162-185` treats *any* exception during
       token refresh (network blip, timeout, 5xx, connection reset) the same as "refresh token
       is invalid" and wipes the local session. TTLs themselves are fine (access 8h, refresh
       180d with rotation). Fix: only clear tokens on an actual 401/403 from the refresh
       endpoint; on network/5xx errors, keep the stored token and let the next call retry.
-- [ ] **Trip Past-status / feedback notification fires too early on multi-day trips** — both
+- [x] **Trip Past-status / feedback notification fires too early on multi-day trips** — both
       the client "Past" pill (`app/lib/ui/features/chats/views/my_trips_view.dart:232`) and the
       server feedback-prompt scan (`backend/internal/trip/repository.go:501`) key off
       `start_time` only, ignoring the existing nullable `end_date`. **Confirmed semantics**
       (Nikolai, 2026-08-24): no end_date → Past at end of start_date's calendar day; has
       end_date → Past at end of end_date's calendar day; feedback notification sent the
       following morning either way.
-- [ ] **Feedback prompt never sends a push notification** — confirmed gap. The scan job
+- [x] **Feedback prompt never sends a push notification** — confirmed gap. The scan job
       (`main.go:66-119`, `runFeedbackPromptScan`) inserts the system chat message and publishes
       it over Centrifugo (realtime, in-app only) but never calls `pushSvc.SendToUsers`, unlike
       regular messages (`routes_message.go:287`, `notifyNewMessage`). A tester who isn't
