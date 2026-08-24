@@ -17,6 +17,7 @@ import '../../../../domain/entities/profile.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/cached_attachment_image.dart';
 import '../../../core/widgets/open_attachment.dart';
+import '../../../../domain/entities/picked_attachment.dart';
 import '../../../core/widgets/pick_attachment.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../view_models/chat_view_model.dart';
@@ -31,6 +32,10 @@ const _groupingWindow = Duration(minutes: 5);
 // Mirrors the backend's upload.MaxAttachmentSize — checked client-side before ever hitting the
 // network as a cheap UX win; the backend still enforces this authoritatively.
 const _maxAttachmentSizeBytes = 10 * 1024 * 1024;
+
+// Mirrors message.maxAttachmentsPerMessage backend-side — same "cheap client-side check, real
+// enforcement is server-side" split as the size cap above.
+const _maxAttachmentsPerMessage = 9;
 
 class ChatView extends StatefulWidget {
   const ChatView({
@@ -77,7 +82,7 @@ class _ChatViewState extends State<ChatView>
   // below), reset once the armed message is actually sent.
   bool _mentionArmed = false;
 
-  PickedAttachment? _pendingAttachment;
+  List<PickedAttachment> _pendingAttachments = [];
 
   // Set by the long-press actions sheet's Reply action or a bubble's swipe-to-reply gesture;
   // cleared on send or explicit dismiss (_ReplyPreviewChip's X).
@@ -294,28 +299,57 @@ class _ChatViewState extends State<ChatView>
     );
   }
 
+  // A document stays a message on its own — the grid below is built for photo/video cells,
+  // and a PDF mixed into it would just render broken. Mutually exclusive in both directions.
   Future<void> _pickAttachment() async {
-    final picked = await pickAttachment(context);
-    if (picked == null) return;
-    if (picked.sizeBytes > _maxAttachmentSizeBytes) {
-      if (!mounted) return;
+    if (_pendingAttachments.any((a) => a.type == 'pdf')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('File is too large — max 10MB.')),
+        const SnackBar(content: Text('Remove the document first to add photos.')),
       );
       return;
     }
-    setState(() => _pendingAttachment = picked);
+    final room = _maxAttachmentsPerMessage - _pendingAttachments.length;
+    if (room <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Only $_maxAttachmentsPerMessage attachments allowed per message')),
+      );
+      return;
+    }
+    final picked = await pickAttachment(context);
+    if (picked.isEmpty) return;
+    if (!mounted) return;
+    if (picked.any((p) => p.type == 'pdf') && _pendingAttachments.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A document can only be sent on its own.')),
+      );
+      return;
+    }
+    final tooLarge = picked.where((p) => p.sizeBytes > _maxAttachmentSizeBytes).isNotEmpty;
+    final accepted = picked.where((p) => p.sizeBytes <= _maxAttachmentSizeBytes).take(room).toList();
+    if (accepted.isNotEmpty) setState(() => _pendingAttachments = [..._pendingAttachments, ...accepted]);
+    if (tooLarge || picked.length > room) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            tooLarge
+                ? 'Some files are too large — max 10MB each.'
+                : 'Only $_maxAttachmentsPerMessage attachments allowed per message.',
+          ),
+        ),
+      );
+    }
   }
 
-  void _removePendingAttachment() => setState(() => _pendingAttachment = null);
+  void _removePendingAttachment(PickedAttachment attachment) =>
+      setState(() => _pendingAttachments = _pendingAttachments.where((a) => a != attachment).toList());
 
   Future<void> _handleSend() async {
     final text = _textController.text;
     final mentionsDiveCenter = _mentionArmed;
-    final attachment = _pendingAttachment;
+    final attachments = _pendingAttachments;
     final replyToId = _replyingTo?.id;
 
-    if (attachment == null) {
+    if (attachments.isEmpty) {
       if (text.trim().isEmpty) return;
       _textController.clear();
       setState(() {
@@ -326,20 +360,18 @@ class _ChatViewState extends State<ChatView>
       return;
     }
 
-    // Clear the composer immediately — a pending bubble (with its own loader over the
-    // attachment) takes over from here, see ChatViewModel.uploadAndSend, so there's no window
-    // where both the composer chip's spinner and the sent bubble are visible at once.
+    // Clear the composer immediately — a pending bubble (with its own per-item loaders, see
+    // _AttachmentGrid) takes over from here, see ChatViewModel.uploadMultipleAndSend, so
+    // there's no window where both the composer chips and the sent bubble are visible at once.
     _textController.clear();
     setState(() {
       _mentionArmed = false;
-      _pendingAttachment = null;
+      _pendingAttachments = [];
       _replyingTo = null;
     });
     try {
-      await widget.viewModel.uploadAndSend(
-        attachment.path,
-        attachmentType: attachment.type,
-        attachmentFilename: attachment.filename,
+      await widget.viewModel.uploadMultipleAndSend(
+        attachments,
         caption: text,
         mentionsDiveCenter: mentionsDiveCenter,
         replyToId: replyToId,
@@ -557,14 +589,32 @@ class _ChatViewState extends State<ChatView>
                           onCancel: _cancelReply,
                         ),
                       ),
-                    if (_pendingAttachment != null)
+                    if (_pendingAttachments.isNotEmpty)
                       Padding(
-                        key: const ValueKey('pendingAttachmentChip'),
+                        key: const ValueKey('pendingAttachmentsRow'),
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                        child: _PendingAttachmentChip(
-                          attachment: _pendingAttachment!,
-                          onRemove: _removePendingAttachment,
-                        ),
+                        // A lone PDF keeps the named chip; photos get a compact thumbnail
+                        // strip instead (a filename-per-item row doesn't fit several across).
+                        child: _pendingAttachments.length == 1 && _pendingAttachments.first.type == 'pdf'
+                            ? _PendingAttachmentChip(
+                                attachment: _pendingAttachments.first,
+                                onRemove: () => _removePendingAttachment(_pendingAttachments.first),
+                              )
+                            : SizedBox(
+                                height: 72,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: _pendingAttachments.length,
+                                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                                  itemBuilder: (context, index) {
+                                    final attachment = _pendingAttachments[index];
+                                    return _PendingPhotoThumb(
+                                      attachment: attachment,
+                                      onRemove: () => _removePendingAttachment(attachment),
+                                    );
+                                  },
+                                ),
+                              ),
                       ),
                     Padding(
                       key: const ValueKey('composerRow'),
@@ -585,7 +635,7 @@ class _ChatViewState extends State<ChatView>
                               keyboardType: TextInputType.multiline,
                               textCapitalization: TextCapitalization.sentences,
                               decoration: InputDecoration(
-                                hintText: _pendingAttachment != null ? 'Caption (optional)' : 'Message',
+                                hintText: _pendingAttachments.isNotEmpty ? 'Caption (optional)' : 'Message',
                               ),
                             ),
                           ),
@@ -702,22 +752,145 @@ class _PendingAttachmentChip extends StatelessWidget {
   }
 }
 
-/// Renders a message's photo or PDF attachment above its caption (`_MessageBody`) — the caption
-/// still renders unconditionally below, even when empty, since it's what shows the timestamp.
-/// Single-attachment only for now (Stage 2 adds the multi-item grid) — the caller passes
-/// message.attachments.first.
-class _AttachmentPreview extends StatelessWidget {
-  const _AttachmentPreview({required this.attachment, required this.color});
+/// One square thumbnail in the multi-photo composer strip — a small remove-X badge overlaid
+/// top-right, same idea as _PendingAttachmentChip's dismiss but compact enough to sit several
+/// across in a horizontal scroll.
+class _PendingPhotoThumb extends StatelessWidget {
+  const _PendingPhotoThumb({required this.attachment, required this.onRemove});
 
-  final ChatAttachment attachment;
+  final PickedAttachment attachment;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 64,
+      height: 64,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Image.file(File(attachment.path), width: 64, height: 64, fit: BoxFit.cover),
+          ),
+          Positioned(
+            top: -6,
+            right: -6,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
+                child: const Icon(Icons.close, size: 14, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Renders a message's attachment(s) above its caption (`_MessageBody`) — the caption still
+/// renders unconditionally below, even when empty, since it's what shows the timestamp. A
+/// single non-PDF attachment gets the plain thumbnail treatment; several get the grid.
+class _AttachmentPreview extends StatelessWidget {
+  const _AttachmentPreview({required this.attachments, required this.color});
+
+  final List<ChatAttachment> attachments;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
+    if (attachments.length > 1) {
+      return _AttachmentGrid(attachments: attachments, color: color);
+    }
+    final attachment = attachments.first;
     if (attachment.type == 'pdf') {
       return _PdfAttachmentRow(attachment: attachment, color: color);
     }
     return _ImageAttachmentThumbnail(attachment: attachment, color: color);
+  }
+}
+
+// 1 -> full-width single image (handled by _ImageAttachmentThumbnail instead, never calls
+// this); 2-3 -> that many columns, 1 row; 4 -> 2x2; 5-6 -> 3 columns, 2 rows; 7-9 -> 3x3. A
+// trailing incomplete row's empty cells just stay empty, same as Telegram/WhatsApp.
+int _gridColumns(int count) {
+  if (count <= 3) return count;
+  if (count == 4) return 2;
+  return 3;
+}
+
+/// The 2+ attachment case — photos only for now (Stage 3 adds video thumbnails/play-icon
+/// overlay into the same cells). Tapping a cell opens the full-screen preview on that item,
+/// swipeable across every attachment on this message (see AttachmentImagePreviewPage's
+/// siblingUrls). Each cell shows its own upload spinner independently (Nikolai's ask) rather
+/// than one shared spinner for the whole grid.
+class _AttachmentGrid extends StatelessWidget {
+  const _AttachmentGrid({required this.attachments, required this.color});
+
+  final List<ChatAttachment> attachments;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final urls = [for (final a in attachments) if (a.url != null) a.url!];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: _gridColumns(attachments.length),
+            crossAxisSpacing: 2,
+            mainAxisSpacing: 2,
+            childAspectRatio: 1,
+          ),
+          itemCount: attachments.length,
+          itemBuilder: (context, index) {
+            final attachment = attachments[index];
+            final url = attachment.url;
+            return GestureDetector(
+              onTap: url == null
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => AttachmentImagePreviewPage(
+                          url: url,
+                          siblingUrls: urls,
+                          initialIndex: urls.indexOf(url),
+                        ),
+                      ),
+                    ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (url != null)
+                    CachedAttachmentImage(url: url, fit: BoxFit.cover)
+                  else if (attachment.localPath != null)
+                    Image.file(File(attachment.localPath!), fit: BoxFit.cover),
+                  if (!attachment.isUploaded)
+                    Container(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 }
 
@@ -1277,9 +1450,8 @@ class _MessageRowState extends State<_MessageRow> {
                       onTap: widget.onTapReplyPreview,
                     ),
                   ),
-                // Single-attachment only for now (Stage 2 adds the multi-item grid).
                 if (message.attachments.isNotEmpty)
-                  _AttachmentPreview(attachment: message.attachments.first, color: onBubbleColor),
+                  _AttachmentPreview(attachments: message.attachments, color: onBubbleColor),
                 _MessageBody(
                   body: message.body,
                   time: formatTime(message.createdAt),

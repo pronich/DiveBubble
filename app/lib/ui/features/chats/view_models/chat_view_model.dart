@@ -10,6 +10,7 @@ import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/attachment_upload_result.dart';
 import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
+import '../../../../domain/entities/picked_attachment.dart';
 
 class ChatViewModel extends ChangeNotifier {
   ChatViewModel({
@@ -199,10 +200,7 @@ class ChatViewModel extends ChangeNotifier {
   ChatMessage _buildPendingMessage({
     required String tempId,
     required String body,
-    String? localAttachmentPath,
-    String? attachmentType,
-    String? attachmentFilename,
-    int? attachmentSizeBytes,
+    List<PickedAttachment> attachments = const [],
     String? replyToId,
   }) => ChatMessage(
     id: tempId,
@@ -211,17 +209,10 @@ class ChatViewModel extends ChangeNotifier {
     body: body,
     createdAt: DateTime.now(),
     isPending: true,
-    attachments: localAttachmentPath == null
-        ? const []
-        : [
-            ChatAttachment(
-              type: attachmentType ?? 'image',
-              filename: attachmentFilename,
-              sizeBytes: attachmentSizeBytes,
-              localPath: localAttachmentPath,
-              isUploaded: false,
-            ),
-          ],
+    attachments: [
+      for (final a in attachments)
+        ChatAttachment(type: a.type, filename: a.filename, sizeBytes: a.sizeBytes, localPath: a.path, isUploaded: false),
+    ],
     replyToId: replyToId,
   );
 
@@ -272,15 +263,16 @@ class ChatViewModel extends ChangeNotifier {
     }
   }
 
-  /// Uploads a picked attachment, then sends it (with an optional caption) — the composer's
-  /// entry point once a file is picked. The pending bubble (with a loader over the attachment,
-  /// see ChatView's _AttachmentPreview) appears immediately; errors remove it and propagate so
-  /// the composer's own try/catch can keep the picked file staged and show a SnackBar, instead
-  /// of the attachment silently vanishing on failure.
-  Future<void> uploadAndSend(
-    String filePath, {
-    required String attachmentType,
-    required String attachmentFilename,
+  /// Uploads every picked attachment in parallel, then sends one message carrying all of them
+  /// (with an optional caption) — the composer's entry point once files are picked. The
+  /// pending bubble (with a per-item loader — see ChatView's _AttachmentGrid) appears
+  /// immediately; each attachment's own upload completing patches just that one entry
+  /// (see _patchPendingAttachment) so its cell's spinner clears independently of any siblings
+  /// still in flight. Any single upload failing aborts the whole send (fail-fast, same as the
+  /// old single-attachment behavior) — errors remove the pending bubble and propagate so the
+  /// composer's own try/catch can keep the picked files staged and show a SnackBar.
+  Future<void> uploadMultipleAndSend(
+    List<PickedAttachment> attachments, {
     String caption = '',
     bool mentionsDiveCenter = false,
     String? replyToId,
@@ -289,19 +281,14 @@ class ChatViewModel extends ChangeNotifier {
     final trimmedCaption = caption.trim();
     _messages = [
       ..._messages,
-      _buildPendingMessage(
-        tempId: tempId,
-        body: trimmedCaption,
-        localAttachmentPath: filePath,
-        attachmentType: attachmentType,
-        attachmentFilename: attachmentFilename,
-        replyToId: replyToId,
-      ),
+      _buildPendingMessage(tempId: tempId, body: trimmedCaption, attachments: attachments, replyToId: replyToId),
     ];
     _isUploadingAttachment = true;
     notifyListeners();
     try {
-      final result = await _repository.uploadAttachment(tripId, filePath);
+      final results = await Future.wait(
+        attachments.map((a) => _uploadAndPatch(tempId: tempId, picked: a)),
+      );
       _isUploadingAttachment = false;
       _isSending = true;
       notifyListeners();
@@ -311,7 +298,7 @@ class ChatViewModel extends ChangeNotifier {
         offerId: offerId,
         buddyRequestId: buddyRequestId,
         mentionsDiveCenter: mentionsDiveCenter,
-        attachments: [result],
+        attachments: results,
         replyToId: replyToId,
       );
       _reconcilePending(sent);
@@ -323,6 +310,26 @@ class ChatViewModel extends ChangeNotifier {
       _isSending = false;
       notifyListeners();
     }
+  }
+
+  Future<AttachmentUploadResult> _uploadAndPatch({required String tempId, required PickedAttachment picked}) async {
+    final result = await _repository.uploadAttachment(tripId, picked.path);
+    // Patch just this one attachment (matched by local path — unique per picked item) within
+    // the still-pending message, independent of any siblings still uploading.
+    _messages = [
+      for (final m in _messages)
+        if (m.id == tempId)
+          m.copyWith(
+            attachments: [
+              for (final a in m.attachments)
+                if (a.localPath == picked.path) a.copyWith(url: result.url, isUploaded: true) else a,
+            ],
+          )
+        else
+          m,
+    ];
+    notifyListeners();
+    return result;
   }
 
   /// Soft-deletes one of the current user's own messages — author-only, enforced server-side
