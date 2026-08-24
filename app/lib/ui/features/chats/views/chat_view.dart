@@ -42,6 +42,16 @@ const _maxVideoAttachmentSizeBytes = 50 * 1024 * 1024;
 // enforcement is server-side" split as the size cap above.
 const _maxAttachmentsPerMessage = 9;
 
+// One row in the @-mention autocomplete list — either the dive center (synthetic, not a real
+// participant) or a trip participant, both rendered/selected identically (see
+// _ChatViewState._mentionEntries and the mention list's ListTile builder).
+class _MentionEntry {
+  const _MentionEntry({required this.displayName, this.isDiveCenter = false});
+
+  final String displayName;
+  final bool isDiveCenter;
+}
+
 class ChatView extends StatefulWidget {
   const ChatView({
     super.key,
@@ -83,9 +93,11 @@ class _ChatViewState extends State<ChatView>
   int _lastMessageCount = 0;
   bool _isNearBottom = true;
   bool _showNewMessagesPill = false;
-  // Armed via the "@DiveCenter" chip (business trips only — see the chip's own comment
-  // below), reset once the armed message is actually sent.
-  bool _mentionArmed = false;
+
+  // Index of the '@' that opened the currently-active mention token in _textController.text,
+  // or -1 when no mention is being typed right now (see _onComposerTextChanged).
+  int _mentionTokenStart = -1;
+  List<_MentionEntry> _mentionMatches = [];
 
   List<PickedAttachment> _pendingAttachments = [];
 
@@ -112,10 +124,12 @@ class _ChatViewState extends State<ChatView>
     // and load()'s synchronous first-line notifyListeners() can otherwise fire mid-build.
     Future.microtask(widget.viewModel.load);
     _itemPositionsListener.itemPositions.addListener(_onScroll);
+    _textController.addListener(_onComposerTextChanged);
   }
 
   @override
   void dispose() {
+    _textController.removeListener(_onComposerTextChanged);
     _textController.dispose();
     _composerFocusNode.dispose();
     _itemPositionsListener.itemPositions.removeListener(_onScroll);
@@ -189,6 +203,73 @@ class _ChatViewState extends State<ChatView>
           // ignore — stays on the fallback
         })
         .whenComplete(() => _fetchingProfileIds.remove(userId));
+  }
+
+  // Telegram-style: typing '@' always opens the people list (dive center included, per
+  // Nikolai's review comment — no more separate fixed chip) right above the composer, live-
+  // filtered as more characters follow. Fires on every keystroke via _textController's
+  // listener; cheap enough (participants list tops out at a trip's roster) not to debounce.
+  void _onComposerTextChanged() {
+    final text = _textController.text;
+    final cursor = _textController.selection.baseOffset;
+    if (cursor < 0) {
+      if (_mentionTokenStart != -1) setState(() => _mentionTokenStart = -1);
+      return;
+    }
+    final atIndex = _activeMentionStart(text, cursor);
+    if (atIndex == -1) {
+      if (_mentionTokenStart != -1) setState(() => _mentionTokenStart = -1);
+      return;
+    }
+    final query = text.substring(atIndex + 1, cursor).toLowerCase();
+    final all = _mentionEntries();
+    final matches = query.isEmpty
+        ? all
+        : all.where((e) => e.displayName.toLowerCase().contains(query)).toList();
+    setState(() {
+      _mentionTokenStart = atIndex;
+      _mentionMatches = matches;
+    });
+  }
+
+  // Scans backward from the cursor for an '@' that starts the current word (at the very
+  // start of the text, or preceded by whitespace) — hitting whitespace first, or no '@' at
+  // all, means no mention is currently being typed.
+  int _activeMentionStart(String text, int cursor) {
+    for (var i = cursor - 1; i >= 0; i--) {
+      final char = text[i];
+      if (char == '@') {
+        final prev = i == 0 ? null : text[i - 1];
+        return (prev == null || prev == ' ' || prev == '\n') ? i : -1;
+      }
+      if (char == ' ' || char == '\n') return -1;
+    }
+    return -1;
+  }
+
+  // Dive center first (when this is a business trip and the current user isn't its own
+  // staff — same gate the old chip used), then every trip participant.
+  List<_MentionEntry> _mentionEntries() {
+    final businessName = widget.businessName;
+    return [
+      if (businessName != null && widget.canMentionDiveCenter)
+        _MentionEntry(displayName: businessName, isDiveCenter: true),
+      for (final p in widget.viewModel.participants)
+        if ((p.displayName ?? '').isNotEmpty) _MentionEntry(displayName: p.displayName!),
+    ];
+  }
+
+  void _selectMention(_MentionEntry entry) {
+    final text = _textController.text;
+    final cursor = _textController.selection.baseOffset;
+    final start = _mentionTokenStart;
+    if (start == -1 || cursor < 0 || cursor > text.length) return;
+    final replacement = '@${entry.displayName} ';
+    _textController.value = TextEditingValue(
+      text: text.replaceRange(start, cursor, replacement),
+      selection: TextSelection.collapsed(offset: start + replacement.length),
+    );
+    setState(() => _mentionTokenStart = -1);
   }
 
   void _openProfile(String userId) {
@@ -352,7 +433,11 @@ class _ChatViewState extends State<ChatView>
 
   Future<void> _handleSend() async {
     final text = _textController.text;
-    final mentionsDiveCenter = _mentionArmed;
+    // No structured mention storage (see the chat-richness plan's Stage 4) — the composer
+    // just checks whether the literal "@BusinessName" text made it into the message, same as
+    // the old chip's boolean but driven by what was actually typed instead of a manual toggle.
+    final businessName = widget.businessName;
+    final mentionsDiveCenter = businessName != null && text.contains('@$businessName');
     final attachments = _pendingAttachments;
     final replyToId = _replyingTo?.id;
 
@@ -360,7 +445,7 @@ class _ChatViewState extends State<ChatView>
       if (text.trim().isEmpty) return;
       _textController.clear();
       setState(() {
-        _mentionArmed = false;
+        _mentionTokenStart = -1;
         _replyingTo = null;
       });
       widget.viewModel.send(text, mentionsDiveCenter: mentionsDiveCenter, replyToId: replyToId);
@@ -372,7 +457,7 @@ class _ChatViewState extends State<ChatView>
     // there's no window where both the composer chips and the sent bubble are visible at once.
     _textController.clear();
     setState(() {
-      _mentionArmed = false;
+      _mentionTokenStart = -1;
       _pendingAttachments = [];
       _replyingTo = null;
     });
@@ -560,26 +645,36 @@ class _ChatViewState extends State<ChatView>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Business trips only — mentioning the dive center is how a diver flags
-                    // a message as actually needing staff attention (Stage 2 push will only
-                    // notify staff on a mention, not every message, to avoid spamming
-                    // several staff members over one trip's chat).
-                    if (widget.businessName != null &&
-                        widget.canMentionDiveCenter)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: FilterChip(
-                            avatar: const Icon(
-                              Icons.campaign_outlined,
-                              size: 16,
-                            ),
-                            label: Text('@${widget.businessName}'),
-                            selected: _mentionArmed,
-                            onSelected: (value) =>
-                                setState(() => _mentionArmed = value),
-                          ),
+                    // Typing '@' opens this list (dive center included as a normal entry when
+                    // it's a business trip — see _mentionEntries); tapping a row inserts
+                    // "@Display Name " and closes it. Mentioning the dive center is how a
+                    // diver flags a message as actually needing staff attention (push only
+                    // notifies staff on a mention, not every message).
+                    if (_mentionTokenStart != -1 && _mentionMatches.isNotEmpty)
+                      Container(
+                        key: const ValueKey('mentionList'),
+                        margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                        constraints: const BoxConstraints(maxHeight: 180),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          itemCount: _mentionMatches.length,
+                          itemBuilder: (context, index) {
+                            final entry = _mentionMatches[index];
+                            return ListTile(
+                              dense: true,
+                              leading: Icon(
+                                entry.isDiveCenter ? Icons.campaign_outlined : Icons.person_outline,
+                                size: 20,
+                              ),
+                              title: Text(entry.displayName),
+                              onTap: () => _selectMention(entry),
+                            );
+                          },
                         ),
                       ),
                     if (_replyingTo != null)

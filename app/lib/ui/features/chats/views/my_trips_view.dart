@@ -177,6 +177,7 @@ class _MyTripsViewState extends State<MyTripsView> {
             repository: widget.chatRepository,
             realtimeService: widget.realtimeService,
             profileRepository: widget.profileRepository,
+            tripRepository: widget.tripRepository,
             tripId: trip.id,
             currentUserId: widget.currentUserId,
           ),

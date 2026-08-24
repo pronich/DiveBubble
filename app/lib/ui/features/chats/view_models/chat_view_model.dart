@@ -6,17 +6,20 @@ import 'package:flutter/foundation.dart';
 
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
+import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/attachment_upload_result.dart';
 import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
 import '../../../../domain/entities/picked_attachment.dart';
+import '../../../../domain/entities/profile.dart';
 
 class ChatViewModel extends ChangeNotifier {
   ChatViewModel({
     required ChatRepository repository,
     required RealtimeService realtimeService,
     required this.profileRepository,
+    required this.tripRepository,
     required this.tripId,
     required this.currentUserId,
     this.offerId,
@@ -28,6 +31,7 @@ class ChatViewModel extends ChangeNotifier {
   final ChatRepository _repository;
   final RealtimeService _realtimeService;
   final ProfileRepository profileRepository;
+  final TripRepository tripRepository;
   final String tripId;
   final String currentUserId;
 
@@ -64,6 +68,13 @@ class ChatViewModel extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  // Full trip roster, loaded once — feeds the @-mention autocomplete list (see ChatView's
+  // composer). Deliberately not the same as _profiles (populated lazily, per-sender, only for
+  // names already seen in the message list) since the mention list needs to offer *every*
+  // participant, including ones who haven't posted yet.
+  List<Profile> _participants = [];
+  List<Profile> get participants => _participants;
+
   Future<void> load() async {
     _isLoading = true;
     _error = null;
@@ -83,6 +94,28 @@ class ChatViewModel extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+    // Fire-and-forget, off the critical path for the chat itself appearing — the mention list
+    // just stays empty until this resolves.
+    _loadParticipants();
+  }
+
+  Future<void> _loadParticipants() async {
+    try {
+      final ids = await tripRepository.getParticipantUserIds(tripId);
+      final profiles = await Future.wait(ids.map(_fetchProfileOrNull));
+      _participants = profiles.whereType<Profile>().toList();
+      notifyListeners();
+    } catch (_) {
+      // Best-effort — worst case the mention list just stays empty (or partial).
+    }
+  }
+
+  Future<Profile?> _fetchProfileOrNull(String userId) async {
+    try {
+      return await profileRepository.getPublicProfile(userId);
+    } catch (_) {
+      return null;
     }
   }
 
