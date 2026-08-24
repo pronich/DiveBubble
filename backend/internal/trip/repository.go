@@ -493,12 +493,13 @@ func (r *Repository) HasFeedback(ctx context.Context, tripID, userID uuid.UUID) 
 	return exists, err
 }
 
-// ListTripIDsAwaitingFeedbackPrompt backs the periodic scan job — trips whose dive date has
-// passed, weren't cancelled, and haven't had a feedback-prompt system message sent yet.
+// ListTripIDsAwaitingFeedbackPrompt backs the periodic scan job — trips whose last day (end_date
+// if set, else start_time's calendar day) has fully ended, weren't cancelled, and haven't had a
+// feedback-prompt system message sent yet.
 func (r *Repository) ListTripIDsAwaitingFeedbackPrompt(ctx context.Context) ([]uuid.UUID, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT t.id FROM trips t
-		WHERE t.start_time <= now()
+		WHERE COALESCE(t.end_date::date, t.start_time::date) < CURRENT_DATE
 		  AND t.booking_status != 'cancelled'
 		  AND NOT EXISTS (
 		      SELECT 1 FROM chat_messages cm WHERE cm.trip_id = t.id AND cm.kind = 'feedback_prompt'

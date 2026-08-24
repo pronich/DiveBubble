@@ -487,7 +487,7 @@ func handleCancelTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 		// Best-effort — the cancellation itself already succeeded above; a failed re-fetch
 		// here just means this notification is skipped, not that cancellation failed.
 		if t, err := svc.GetTrip(r.Context(), id); err == nil {
-			recipients := excludeUser(tripRecipientIDs(r.Context(), svc, diveCenterSvc, t), userID)
+			recipients := excludeUser(TripRecipientIDs(r.Context(), svc, diveCenterSvc, t), userID)
 			if len(recipients) > 0 {
 				pushSvc.SendToUsers(r.Context(), recipients, push.Notification{
 					Title: t.Title,
@@ -576,7 +576,7 @@ func handleUpdateTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 		if beforeErr == nil {
 			detailsChanged := !before.StartTime.Equal(t.StartTime) || before.MeetingPoint != t.MeetingPoint
 			if detailsChanged {
-				recipients := excludeUser(tripRecipientIDs(r.Context(), svc, diveCenterSvc, t), userID)
+				recipients := excludeUser(TripRecipientIDs(r.Context(), svc, diveCenterSvc, t), userID)
 				if len(recipients) > 0 {
 					pushSvc.SendToUsers(r.Context(), recipients, push.Notification{
 						Title: t.Title,

@@ -229,7 +229,14 @@ class _TripRow extends StatelessWidget {
   final Trip trip;
   final VoidCallback onTap;
 
-  bool get _isPast => trip.startTime.isBefore(DateTime.now());
+  // Past once the trip's last calendar day (endDate if set, else startTime's day) has fully
+  // ended — not the moment startTime itself passes, which would flip a multi-day trip to Past
+  // on its first morning.
+  bool get _isPast {
+    final lastDay = (trip.endDate ?? trip.startTime).toUtc();
+    final cutoff = DateTime.utc(lastDay.year, lastDay.month, lastDay.day + 1);
+    return !DateTime.now().toUtc().isBefore(cutoff);
+  }
 
   @override
   Widget build(BuildContext context) {
