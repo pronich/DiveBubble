@@ -21,15 +21,23 @@ func NewService(repo *Repository) *Service {
 	return &Service{Repo: repo}
 }
 
+// maxAttachmentsPerMessage mirrors the app's own composer cap (see chat_view.dart's
+// _pendingAttachments) — enforced here too since the server must never trust the client alone.
+const maxAttachmentsPerMessage = 9
+
 // Send persists a user-authored message. scope is the zero value for the trip's main chat,
-// or set for a car offer's or buddy group's own chat. attachment may be nil (text-only
-// message); body may be empty only when attachment is set (an attachment's caption). replyToID
-// is the zero uuid.NullUUID for "not a reply" — when set, the target must exist and belong to
-// the same trip (a client could otherwise reference a message from an unrelated trip's chat;
-// the reply_to_id foreign key alone doesn't catch that, since it only checks the row exists).
-func (s *Service) Send(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool, attachment *Attachment, replyToID uuid.NullUUID) (Message, error) {
+// or set for a car offer's or buddy group's own chat. attachments may be empty (text-only
+// message); body may be empty only when at least one attachment is set (an attachment's
+// caption). replyToID is the zero uuid.NullUUID for "not a reply" — when set, the target must
+// exist and belong to the same trip (a client could otherwise reference a message from an
+// unrelated trip's chat; the reply_to_id foreign key alone doesn't catch that, since it only
+// checks the row exists).
+func (s *Service) Send(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool, attachments []Attachment, replyToID uuid.NullUUID) (Message, error) {
 	body = strings.TrimSpace(body)
-	if body == "" && attachment == nil {
+	if body == "" && len(attachments) == 0 {
+		return Message{}, ErrInvalidArgument
+	}
+	if len(attachments) > maxAttachmentsPerMessage {
 		return Message{}, ErrInvalidArgument
 	}
 	if replyToID.Valid {
@@ -41,7 +49,7 @@ func (s *Service) Send(ctx context.Context, tripID, userID uuid.UUID, scope Scop
 			return Message{}, ErrInvalidArgument
 		}
 	}
-	return s.Repo.Create(ctx, tripID, userID, scope, body, mentionsDiveCenter, attachment, replyToID)
+	return s.Repo.Create(ctx, tripID, userID, scope, body, mentionsDiveCenter, attachments, replyToID)
 }
 
 // Delete soft-deletes a message — author-only (ErrNotFound covers both "not the author" and
@@ -77,21 +85,52 @@ func (s *Service) PostSystemEvent(ctx context.Context, tripID uuid.UUID, scope S
 }
 
 func (s *Service) List(ctx context.Context, tripID uuid.UUID) ([]Message, error) {
-	return s.Repo.ListByTrip(ctx, tripID)
+	messages, err := s.Repo.ListByTrip(ctx, tripID)
+	if err != nil {
+		return nil, err
+	}
+	return s.withAttachments(ctx, messages)
 }
 
 func (s *Service) ListByOffer(ctx context.Context, offerID uuid.UUID) ([]Message, error) {
-	return s.Repo.ListByOffer(ctx, offerID)
+	messages, err := s.Repo.ListByOffer(ctx, offerID)
+	if err != nil {
+		return nil, err
+	}
+	return s.withAttachments(ctx, messages)
 }
 
 func (s *Service) ListByBuddyRequest(ctx context.Context, requestID uuid.UUID) ([]Message, error) {
-	return s.Repo.ListByBuddyRequest(ctx, requestID)
+	messages, err := s.Repo.ListByBuddyRequest(ctx, requestID)
+	if err != nil {
+		return nil, err
+	}
+	return s.withAttachments(ctx, messages)
 }
 
-// ListAttachments backs the Media/Files tabs — attachmentType must be AttachmentTypeImage or
-// AttachmentTypePDF. before nil starts from the most recent page.
-func (s *Service) ListAttachments(ctx context.Context, tripID uuid.UUID, attachmentType string, before *time.Time, limit int) ([]Message, error) {
-	return s.Repo.ListAttachmentsByTrip(ctx, tripID, attachmentType, before, limit)
+// withAttachments batch-fetches and merges in chat_message_attachments rows (see
+// Repository.ListAttachmentsByMessageIDs) — messages that only ever used the legacy scalar
+// attachment columns, or have none at all, are untouched (empty Attachments slice); the legacy
+// columns stay readable straight off each Message as returned by the repo.
+func (s *Service) withAttachments(ctx context.Context, messages []Message) ([]Message, error) {
+	ids := make([]uuid.UUID, len(messages))
+	for i, m := range messages {
+		ids[i] = m.ID
+	}
+	byMessage, err := s.Repo.ListAttachmentsByMessageIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range messages {
+		messages[i].Attachments = byMessage[messages[i].ID]
+	}
+	return messages, nil
+}
+
+// ListAttachments backs the Media ("image"+"video", see AttachmentTypeImage/AttachmentTypeVideo)
+// and Files ("pdf") tabs. before nil starts from the most recent page.
+func (s *Service) ListAttachments(ctx context.Context, tripID uuid.UUID, attachmentTypes []string, before *time.Time, limit int) ([]MediaItem, error) {
+	return s.Repo.ListAttachmentsByTrip(ctx, tripID, attachmentTypes, before, limit)
 }
 
 // ListLinks backs the Links tab. before nil starts from the most recent page.
@@ -104,5 +143,13 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (Message, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return Message{}, ErrNotFound
 	}
-	return m, err
+	if err != nil {
+		return Message{}, err
+	}
+	attachments, err := s.Repo.ListAttachmentsByMessageIDs(ctx, []uuid.UUID{m.ID})
+	if err != nil {
+		return Message{}, err
+	}
+	m.Attachments = attachments[m.ID]
+	return m, nil
 }

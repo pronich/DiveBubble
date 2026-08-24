@@ -17,10 +17,14 @@ _ChatMessageApiModel _$ChatMessageApiModelFromJson(Map<String, dynamic> json) =>
       mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
       kind: json['kind'] as String? ?? 'user',
       feedbackProvided: json['feedbackProvided'] as bool? ?? false,
-      attachmentUrl: json['attachmentUrl'] as String?,
-      attachmentType: json['attachmentType'] as String?,
-      attachmentFilename: json['attachmentFilename'] as String?,
-      attachmentSizeBytes: (json['attachmentSizeBytes'] as num?)?.toInt(),
+      attachments:
+          (json['attachments'] as List<dynamic>?)
+              ?.map(
+                (e) =>
+                    ChatAttachmentApiModel.fromJson(e as Map<String, dynamic>),
+              )
+              .toList() ??
+          const [],
       replyToId: json['replyToId'] as String?,
       deletedAt: json['deletedAt'] == null
           ? null
@@ -39,10 +43,7 @@ Map<String, dynamic> _$ChatMessageApiModelToJson(
   'mentionsDiveCenter': instance.mentionsDiveCenter,
   'kind': instance.kind,
   'feedbackProvided': instance.feedbackProvided,
-  'attachmentUrl': instance.attachmentUrl,
-  'attachmentType': instance.attachmentType,
-  'attachmentFilename': instance.attachmentFilename,
-  'attachmentSizeBytes': instance.attachmentSizeBytes,
+  'attachments': instance.attachments,
   'replyToId': instance.replyToId,
   'deletedAt': instance.deletedAt?.toIso8601String(),
 };

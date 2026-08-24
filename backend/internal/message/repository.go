@@ -29,26 +29,93 @@ func scanMessage(row interface{ Scan(...any) error }, m *Message) error {
 
 // Create inserts a user-authored message. scope is the zero value for the trip's main chat,
 // or set for a car offer's or buddy group's own chat — trip_id is always populated either way
-// (see migrations 000046/000048). attachment may be nil (text-only message). replyToID may be
-// the zero uuid.NullUUID (not a reply).
-func (r *Repository) Create(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool, attachment *Attachment, replyToID uuid.NullUUID) (Message, error) {
-	var attURL, attType, attFilename sql.NullString
-	var attSize sql.NullInt64
-	if attachment != nil {
-		attURL = sql.NullString{String: attachment.URL, Valid: true}
-		attType = sql.NullString{String: attachment.Type, Valid: true}
-		attFilename = sql.NullString{String: attachment.Filename, Valid: attachment.Filename != ""}
-		attSize = sql.NullInt64{Int64: attachment.SizeBytes, Valid: attachment.SizeBytes > 0}
+// (see migrations 000046/000048). attachments may be empty (text-only message); every send
+// with attachments goes through chat_message_attachments now, never the legacy scalar columns
+// (those stay write-only-in-the-past, read for old rows — see toMessageResponse). replyToID may
+// be the zero uuid.NullUUID (not a reply).
+func (r *Repository) Create(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool, attachments []Attachment, replyToID uuid.NullUUID) (Message, error) {
+	tx, err := r.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return Message{}, err
 	}
+	defer func() { _ = tx.Rollback() }()
+
 	var m Message
-	err := scanMessage(r.DB.QueryRowContext(ctx, `
-		INSERT INTO chat_messages (trip_id, user_id, offer_id, buddy_request_id, body, mentions_dive_center,
-			attachment_url, attachment_type, attachment_filename, attachment_size_bytes, reply_to_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	if err := scanMessage(tx.QueryRowContext(ctx, `
+		INSERT INTO chat_messages (trip_id, user_id, offer_id, buddy_request_id, body, mentions_dive_center, reply_to_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING `+messageColumns+`
-	`, tripID, userID, scope.OfferID, scope.BuddyRequestID, body, mentionsDiveCenter,
-		attURL, attType, attFilename, attSize, replyToID), &m)
-	return m, err
+	`, tripID, userID, scope.OfferID, scope.BuddyRequestID, body, mentionsDiveCenter, replyToID), &m); err != nil {
+		return Message{}, err
+	}
+
+	for i, a := range attachments {
+		var filename sql.NullString
+		if a.Filename != "" {
+			filename = sql.NullString{String: a.Filename, Valid: true}
+		}
+		var size sql.NullInt64
+		if a.SizeBytes > 0 {
+			size = sql.NullInt64{Int64: a.SizeBytes, Valid: true}
+		}
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO chat_message_attachments (message_id, position, url, type, filename, size_bytes, duration_seconds)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)
+		`, m.ID, i, a.URL, a.Type, filename, size, a.DurationSeconds); err != nil {
+			return Message{}, err
+		}
+	}
+	m.Attachments = attachments
+
+	if err := tx.Commit(); err != nil {
+		return Message{}, err
+	}
+	return m, nil
+}
+
+// attachmentColumns/scanAttachmentRow back the batched per-message attachment fetch below —
+// kept separate from messageColumns/scanMessage since chat_message_attachments is its own table.
+const attachmentColumns = `message_id, url, type, filename, size_bytes, duration_seconds`
+
+func scanAttachmentRow(rows *sql.Rows) (uuid.UUID, Attachment, error) {
+	var messageID uuid.UUID
+	var a Attachment
+	var filename sql.NullString
+	var size sql.NullInt64
+	err := rows.Scan(&messageID, &a.URL, &a.Type, &filename, &size, &a.DurationSeconds)
+	a.Filename = filename.String
+	a.SizeBytes = size.Int64
+	return messageID, a, err
+}
+
+// ListAttachmentsByMessageIDs batch-fetches chat_message_attachments rows for a set of
+// messages, grouped by message and ordered by position — used to populate Message.Attachments
+// after ListByTrip/ListByOffer/ListByBuddyRequest/GetByID, same batch-not-N+1 shape as
+// routes_message.go's diveCenterStaffChecker. Messages with no rows here (text-only, or an old
+// message still on the legacy scalar columns) simply have no entry in the returned map.
+func (r *Repository) ListAttachmentsByMessageIDs(ctx context.Context, messageIDs []uuid.UUID) (map[uuid.UUID][]Attachment, error) {
+	out := map[uuid.UUID][]Attachment{}
+	if len(messageIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.DB.QueryContext(ctx, `
+		SELECT `+attachmentColumns+`
+		FROM chat_message_attachments
+		WHERE message_id = ANY($1)
+		ORDER BY message_id, position
+	`, messageIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		messageID, a, err := scanAttachmentRow(rows)
+		if err != nil {
+			return nil, err
+		}
+		out[messageID] = append(out[messageID], a)
+	}
+	return out, rows.Err()
 }
 
 // SoftDelete marks a message deleted — author-only, idempotent-safe (deleting an
@@ -146,23 +213,63 @@ func (r *Repository) ListByBuddyRequest(ctx context.Context, requestID uuid.UUID
 	return scanMessages(rows)
 }
 
-// ListAttachmentsByTrip backs the Media ("image") and Files ("pdf") tabs — main trip chat
-// only (v1 scope), newest first, cursor-paginated on created_at. before nil means "from the
-// start" (most recent page). Served by idx_chat_messages_trip_attachment (migration 000051).
-func (r *Repository) ListAttachmentsByTrip(ctx context.Context, tripID uuid.UUID, attachmentType string, before *time.Time, limit int) ([]Message, error) {
+// MediaItem is one row for the Media/Files tab — one per *attachment*, not per message, so a
+// message with several attachments (see migration 000054) contributes several grid entries
+// rather than one. UNIONs the new chat_message_attachments rows with the legacy single-
+// attachment scalar columns on chat_messages, so nothing sent before that migration disappears
+// from the tab.
+type MediaItem struct {
+	MessageID uuid.UUID
+	UserID    uuid.UUID
+	CreatedAt time.Time
+	Attachment
+}
+
+// ListAttachmentsByTrip backs the Media ("image"+"video") and Files ("pdf") tabs — main trip
+// chat only (v1 scope), newest first (ties broken by position within a message), cursor-
+// paginated on created_at, excludes soft-deleted messages. before nil means "from the start".
+func (r *Repository) ListAttachmentsByTrip(ctx context.Context, tripID uuid.UUID, attachmentTypes []string, before *time.Time, limit int) ([]MediaItem, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-		SELECT `+messageColumns+`
-		FROM chat_messages
-		WHERE trip_id = $1 AND offer_id IS NULL AND buddy_request_id IS NULL AND attachment_type = $2
-			AND ($3::timestamptz IS NULL OR created_at < $3)
-		ORDER BY created_at DESC
+		SELECT message_id, user_id, created_at, url, type, filename, size_bytes, duration_seconds FROM (
+			SELECT cm.id AS message_id, cm.user_id, cm.created_at,
+			       cma.url, cma.type, cma.filename, cma.size_bytes, cma.duration_seconds, cma.position::int AS position
+			FROM chat_message_attachments cma
+			JOIN chat_messages cm ON cm.id = cma.message_id
+			WHERE cm.trip_id = $1 AND cm.offer_id IS NULL AND cm.buddy_request_id IS NULL
+			  AND cm.deleted_at IS NULL AND cma.type = ANY($2)
+
+			UNION ALL
+
+			SELECT cm.id, cm.user_id, cm.created_at,
+			       cm.attachment_url, cm.attachment_type, cm.attachment_filename, cm.attachment_size_bytes,
+			       NULL::int, 0::int
+			FROM chat_messages cm
+			WHERE cm.trip_id = $1 AND cm.offer_id IS NULL AND cm.buddy_request_id IS NULL
+			  AND cm.deleted_at IS NULL AND cm.attachment_type = ANY($2)
+		) combined
+		WHERE ($3::timestamptz IS NULL OR created_at < $3)
+		ORDER BY created_at DESC, position DESC
 		LIMIT $4
-	`, tripID, attachmentType, before, limit)
+	`, tripID, attachmentTypes, before, limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	return scanMessages(rows)
+
+	items := []MediaItem{}
+	for rows.Next() {
+		var item MediaItem
+		var filename sql.NullString
+		var size sql.NullInt64
+		if err := rows.Scan(&item.MessageID, &item.UserID, &item.CreatedAt,
+			&item.Attachment.URL, &item.Attachment.Type, &filename, &size, &item.Attachment.DurationSeconds); err != nil {
+			return nil, err
+		}
+		item.Attachment.Filename = filename.String
+		item.Attachment.SizeBytes = size.Int64
+		items = append(items, item)
+	}
+	return items, rows.Err()
 }
 
 // LinkSourceMessage is the minimal shape ListLinksByTrip reads — the handler regex-extracts

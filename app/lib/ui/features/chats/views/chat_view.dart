@@ -11,6 +11,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../../../../data/services/attachment_cache_service.dart';
+import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../core/formatting/date_format.dart';
@@ -703,31 +704,33 @@ class _PendingAttachmentChip extends StatelessWidget {
 
 /// Renders a message's photo or PDF attachment above its caption (`_MessageBody`) — the caption
 /// still renders unconditionally below, even when empty, since it's what shows the timestamp.
+/// Single-attachment only for now (Stage 2 adds the multi-item grid) — the caller passes
+/// message.attachments.first.
 class _AttachmentPreview extends StatelessWidget {
-  const _AttachmentPreview({required this.message, required this.color});
+  const _AttachmentPreview({required this.attachment, required this.color});
 
-  final ChatMessage message;
+  final ChatAttachment attachment;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    if (message.attachmentType == 'pdf') {
-      return _PdfAttachmentRow(message: message, color: color);
+    if (attachment.type == 'pdf') {
+      return _PdfAttachmentRow(attachment: attachment, color: color);
     }
-    return _ImageAttachmentThumbnail(message: message, color: color);
+    return _ImageAttachmentThumbnail(attachment: attachment, color: color);
   }
 }
 
 class _ImageAttachmentThumbnail extends StatelessWidget {
-  const _ImageAttachmentThumbnail({required this.message, required this.color});
+  const _ImageAttachmentThumbnail({required this.attachment, required this.color});
 
-  final ChatMessage message;
+  final ChatAttachment attachment;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final url = message.attachmentUrl;
-    final localPath = message.localAttachmentPath;
+    final url = attachment.url;
+    final localPath = attachment.localPath;
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: GestureDetector(
@@ -753,7 +756,7 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
                 CachedAttachmentImage(url: url, width: 220, height: 160)
               else if (localPath != null)
                 Image.file(File(localPath), width: 220, height: 160, fit: BoxFit.cover),
-              if (message.isPending)
+              if (!attachment.isUploaded)
                 Container(
                   width: 220,
                   height: 160,
@@ -775,16 +778,16 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
 }
 
 class _PdfAttachmentRow extends StatelessWidget {
-  const _PdfAttachmentRow({required this.message, required this.color});
+  const _PdfAttachmentRow({required this.attachment, required this.color});
 
-  final ChatMessage message;
+  final ChatAttachment attachment;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final url = message.attachmentUrl;
-    final filename = message.attachmentFilename ?? 'Document.pdf';
-    final sizeLabel = formatAttachmentFileSize(message.attachmentSizeBytes);
+    final url = attachment.url;
+    final filename = attachment.filename ?? 'Document.pdf';
+    final sizeLabel = formatAttachmentFileSize(attachment.sizeBytes);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: GestureDetector(
@@ -818,7 +821,7 @@ class _PdfAttachmentRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              if (message.isPending || url == null)
+              if (!attachment.isUploaded || url == null)
                 SizedBox(
                   width: 16,
                   height: 16,
@@ -945,8 +948,10 @@ ChatMessage? _findMessageById(List<ChatMessage> messages, String id) {
 String _replyPreviewText(ChatMessage m) {
   if (m.deletedAt != null) return 'Message deleted';
   if (m.body.isNotEmpty) return m.body;
-  return switch (m.attachmentType) {
+  if (m.attachments.length > 1) return '📎 ${m.attachments.length} attachments';
+  return switch (m.attachments.isEmpty ? null : m.attachments.first.type) {
     'image' => '📷 Photo',
+    'video' => '🎬 Video',
     'pdf' => '📄 PDF',
     _ => '',
   };
@@ -1272,8 +1277,9 @@ class _MessageRowState extends State<_MessageRow> {
                       onTap: widget.onTapReplyPreview,
                     ),
                   ),
-                if (message.attachmentUrl != null || message.localAttachmentPath != null)
-                  _AttachmentPreview(message: message, color: onBubbleColor),
+                // Single-attachment only for now (Stage 2 adds the multi-item grid).
+                if (message.attachments.isNotEmpty)
+                  _AttachmentPreview(attachment: message.attachments.first, color: onBubbleColor),
                 _MessageBody(
                   body: message.body,
                   time: formatTime(message.createdAt),

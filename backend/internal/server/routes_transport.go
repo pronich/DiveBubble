@@ -399,7 +399,7 @@ func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Servi
 			return
 		}
 
-		m, err := messageSvc.Send(r.Context(), offer.TripID, userID, message.Scope{OfferID: uuid.NullUUID{UUID: offer.ID, Valid: true}}, req.Body, false, req.toAttachment(), uuid.NullUUID{})
+		m, err := messageSvc.Send(r.Context(), offer.TripID, userID, message.Scope{OfferID: uuid.NullUUID{UUID: offer.ID, Valid: true}}, req.Body, false, req.toAttachments(), uuid.NullUUID{})
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, "body or attachment is required")

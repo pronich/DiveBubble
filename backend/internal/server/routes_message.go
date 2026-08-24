@@ -2,8 +2,8 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
+	"fmt"
 
 	"errors"
 	"io"
@@ -55,27 +55,34 @@ type messageResponse struct {
 	Kind               string    `json:"kind"`
 	// FeedbackProvided is per-viewer (has the requesting user submitted trip feedback yet) —
 	// only meaningful when Kind is message.KindFeedbackPrompt, false/ignored otherwise.
-	FeedbackProvided    bool       `json:"feedbackProvided"`
-	AttachmentURL       *string    `json:"attachmentUrl,omitempty"`
-	AttachmentType      *string    `json:"attachmentType,omitempty"`
-	AttachmentFilename  *string    `json:"attachmentFilename,omitempty"`
-	AttachmentSizeBytes *int64     `json:"attachmentSizeBytes,omitempty"`
-	ReplyToID           *string    `json:"replyToId,omitempty"`
-	DeletedAt           *time.Time `json:"deletedAt,omitempty"`
+	FeedbackProvided bool                 `json:"feedbackProvided"`
+	Attachments      []attachmentResponse `json:"attachments"`
+	ReplyToID        *string              `json:"replyToId,omitempty"`
+	DeletedAt        *time.Time           `json:"deletedAt,omitempty"`
 }
 
-// toMessageResponse blanks Body/Attachment* whenever the message is soft-deleted — the DB row
+type attachmentResponse struct {
+	URL             string `json:"url"`
+	Type            string `json:"type"`
+	Filename        string `json:"filename,omitempty"`
+	SizeBytes       int64  `json:"sizeBytes,omitempty"`
+	DurationSeconds *int   `json:"durationSeconds,omitempty"`
+}
+
+// toMessageResponse blanks Body/Attachments whenever the message is soft-deleted — the DB row
 // still holds the real content (see message.Repository.SoftDelete's own comment), but nothing
 // downstream of this function should ever see it, so every response path (list, send, delete's
 // own realtime republish) is guaranteed redacted rather than relying on each caller to remember.
+// Normalizes both attachment eras into one list: m.Attachments (chat_message_attachments, see
+// migration 000054) if populated, else a single-item list synthesized from the legacy
+// AttachmentURL/Type/Filename/SizeBytes scalar columns for a message sent before that migration.
 func toMessageResponse(m message.Message, isDiveCenterStaff, feedbackProvided bool) messageResponse {
 	body := m.Body
-	attURL, attType, attFilename, attSize := m.AttachmentURL, m.AttachmentType, m.AttachmentFilename, m.AttachmentSizeBytes
+	attachments := toAttachmentResponses(m)
 	var deletedAt *time.Time
 	if m.DeletedAt.Valid {
 		body = ""
-		attURL, attType, attFilename = sql.NullString{}, sql.NullString{}, sql.NullString{}
-		attSize = sql.NullInt64{}
+		attachments = nil
 		deletedAt = &m.DeletedAt.Time
 	}
 	var replyToID *string
@@ -84,57 +91,72 @@ func toMessageResponse(m message.Message, isDiveCenterStaff, feedbackProvided bo
 		replyToID = &s
 	}
 	return messageResponse{
-		ID:                  m.ID,
-		TripID:              m.TripID,
-		UserID:              m.UserID,
-		Body:                body,
-		CreatedAt:           m.CreatedAt,
-		IsDiveCenterStaff:   isDiveCenterStaff,
-		MentionsDiveCenter:  m.MentionsDiveCenter,
-		Kind:                m.Kind,
-		FeedbackProvided:    feedbackProvided,
-		AttachmentURL:       nullStringPtr(attURL),
-		AttachmentType:      nullStringPtr(attType),
-		AttachmentFilename:  nullStringPtr(attFilename),
-		AttachmentSizeBytes: nullInt64Ptr(attSize),
-		ReplyToID:           replyToID,
-		DeletedAt:           deletedAt,
+		ID:                 m.ID,
+		TripID:             m.TripID,
+		UserID:             m.UserID,
+		Body:               body,
+		CreatedAt:          m.CreatedAt,
+		IsDiveCenterStaff:  isDiveCenterStaff,
+		MentionsDiveCenter: m.MentionsDiveCenter,
+		Kind:               m.Kind,
+		FeedbackProvided:   feedbackProvided,
+		Attachments:        attachments,
+		ReplyToID:          replyToID,
+		DeletedAt:          deletedAt,
 	}
 }
 
-func nullInt64Ptr(v sql.NullInt64) *int64 {
-	if !v.Valid {
-		return nil
+func toAttachmentResponses(m message.Message) []attachmentResponse {
+	if len(m.Attachments) > 0 {
+		out := make([]attachmentResponse, len(m.Attachments))
+		for i, a := range m.Attachments {
+			out[i] = attachmentResponse{
+				URL: a.URL, Type: a.Type, Filename: a.Filename, SizeBytes: a.SizeBytes, DurationSeconds: a.DurationSeconds,
+			}
+		}
+		return out
 	}
-	return &v.Int64
+	if m.AttachmentURL.Valid {
+		return []attachmentResponse{{
+			URL:       m.AttachmentURL.String,
+			Type:      m.AttachmentType.String,
+			Filename:  m.AttachmentFilename.String,
+			SizeBytes: m.AttachmentSizeBytes.Int64,
+		}}
+	}
+	return []attachmentResponse{}
 }
 
-// attachmentRequest is embedded in sendMessageRequest/sendOfferMessageRequest/
-// sendBuddyMessageRequest — the client uploads via POST .../messages/attachment first (see
+// attachmentRequest is one item in sendMessageRequest.Attachments (and the offer/buddy chat
+// send requests) — the client uploads each file via POST .../messages/attachment first (see
 // handleUploadMessageAttachment), then passes the returned fields back here unchanged.
 type attachmentRequest struct {
-	AttachmentURL       *string `json:"attachmentUrl,omitempty"`
-	AttachmentType      *string `json:"attachmentType,omitempty"`
-	AttachmentFilename  *string `json:"attachmentFilename,omitempty"`
-	AttachmentSizeBytes *int64  `json:"attachmentSizeBytes,omitempty"`
+	URL             string `json:"url"`
+	Type            string `json:"type"`
+	Filename        string `json:"filename,omitempty"`
+	SizeBytes       int64  `json:"sizeBytes,omitempty"`
+	DurationSeconds *int   `json:"durationSeconds,omitempty"`
 }
 
-// toAttachment returns nil when no attachment URL was sent (a plain text message).
-func (a attachmentRequest) toAttachment() *message.Attachment {
-	if a.AttachmentURL == nil || *a.AttachmentURL == "" {
+func toAttachments(reqs []attachmentRequest) []message.Attachment {
+	if len(reqs) == 0 {
 		return nil
 	}
-	att := &message.Attachment{URL: *a.AttachmentURL}
-	if a.AttachmentType != nil {
-		att.Type = *a.AttachmentType
+	out := make([]message.Attachment, len(reqs))
+	for i, a := range reqs {
+		out[i] = message.Attachment{URL: a.URL, Type: a.Type, Filename: a.Filename, SizeBytes: a.SizeBytes, DurationSeconds: a.DurationSeconds}
 	}
-	if a.AttachmentFilename != nil {
-		att.Filename = *a.AttachmentFilename
+	return out
+}
+
+// toAttachments (method form) returns nil when no URL was sent (a plain text message) — used
+// by the offer/buddy chat send paths, which only ever accept the one attachment embedded
+// directly in their request type (unlike main chat's Attachments list on sendMessageRequest).
+func (a attachmentRequest) toAttachments() []message.Attachment {
+	if a.URL == "" {
+		return nil
 	}
-	if a.AttachmentSizeBytes != nil {
-		att.SizeBytes = *a.AttachmentSizeBytes
-	}
-	return att
+	return []message.Attachment{{URL: a.URL, Type: a.Type, Filename: a.Filename, SizeBytes: a.SizeBytes, DurationSeconds: a.DurationSeconds}}
 }
 
 // requireParticipant is shared by message/transport/participants handlers — access means
@@ -243,10 +265,10 @@ func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterS
 }
 
 type sendMessageRequest struct {
-	Body               string  `json:"body"`
-	MentionsDiveCenter bool    `json:"mentionsDiveCenter"`
-	ReplyToID          *string `json:"replyToId,omitempty"`
-	attachmentRequest
+	Body               string              `json:"body"`
+	MentionsDiveCenter bool                `json:"mentionsDiveCenter"`
+	ReplyToID          *string             `json:"replyToId,omitempty"`
+	Attachments        []attachmentRequest `json:"attachments,omitempty"`
 }
 
 // replyToID parses the optional ReplyToID string into a uuid.NullUUID — an unparsable value
@@ -296,10 +318,10 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 		// A mention only means something on a business trip — there's no dive center to
 		// notify on an individual one, so the flag is silently dropped rather than erroring.
 		mentionsDiveCenter := req.MentionsDiveCenter && t.DiveCenterID.Valid
-		m, err := svc.Send(r.Context(), tripID, userID, message.Scope{}, req.Body, mentionsDiveCenter, req.toAttachment(), req.replyToID())
+		m, err := svc.Send(r.Context(), tripID, userID, message.Scope{}, req.Body, mentionsDiveCenter, toAttachments(req.Attachments), req.replyToID())
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "body or attachment is required, or replyToId is invalid")
+				writeError(w, http.StatusBadRequest, "body or at least one attachment is required (max 9), or replyToId is invalid")
 				return
 			}
 			writeError(w, http.StatusInternalServerError, "could not send message")
@@ -403,15 +425,25 @@ func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *pr
 }
 
 // pushBodyFor falls back to a label when the message is attachment-only (empty body) — an
-// empty push notification body would otherwise look broken.
+// empty push notification body would otherwise look broken. Checks the new multi-attachment
+// list first, falling back to the legacy scalar column for a pre-migration-000054 message.
 func pushBodyFor(m message.Message) string {
 	body := truncateForPush(m.Body)
 	if body != "" {
 		return body
 	}
-	switch m.AttachmentType.String {
+	if len(m.Attachments) > 1 {
+		return fmt.Sprintf("📎 %d attachments", len(m.Attachments))
+	}
+	attType := m.AttachmentType.String
+	if len(m.Attachments) == 1 {
+		attType = m.Attachments[0].Type
+	}
+	switch attType {
 	case message.AttachmentTypeImage:
 		return "📷 Photo"
+	case message.AttachmentTypeVideo:
+		return "🎬 Video"
 	case message.AttachmentTypePDF:
 		return "📄 PDF"
 	default:
@@ -448,7 +480,43 @@ func parseLimitParam(r *http.Request, def, max int) int {
 	return n
 }
 
-// handleListMessageAttachments backs the Media ("type=image") and Files ("type=pdf") tabs —
+// mediaItemResponse is one grid entry for the Media/Files tab — a slimmer shape than
+// messageResponse (no reply/reactions/staff context, none of which the grid needs), one per
+// attachment rather than per message. attachments is always exactly one item.
+type mediaItemResponse struct {
+	MessageID  uuid.UUID          `json:"messageId"`
+	UserID     uuid.UUID          `json:"userId"`
+	CreatedAt  time.Time          `json:"createdAt"`
+	Attachment attachmentResponse `json:"attachment"`
+}
+
+func toMediaItemResponse(item message.MediaItem) mediaItemResponse {
+	return mediaItemResponse{
+		MessageID: item.MessageID,
+		UserID:    item.UserID,
+		CreatedAt: item.CreatedAt,
+		Attachment: attachmentResponse{
+			URL: item.URL, Type: item.Type, Filename: item.Filename, SizeBytes: item.SizeBytes, DurationSeconds: item.DurationSeconds,
+		},
+	}
+}
+
+// attachmentTypesForQuery maps the tab's ?type= query param to the set of attachment types it
+// should return — "media" (image+video, the Media tab) and "pdf" (the Files tab) are the only
+// two the app ever requests; the bare "image"/"video" values from before this stage still work
+// too, in case an older client build is still in the wild for a bit.
+func attachmentTypesForQuery(raw string) ([]string, bool) {
+	switch raw {
+	case "media":
+		return []string{message.AttachmentTypeImage, message.AttachmentTypeVideo}, true
+	case message.AttachmentTypeImage, message.AttachmentTypeVideo, message.AttachmentTypePDF:
+		return []string{raw}, true
+	default:
+		return nil, false
+	}
+}
+
+// handleListMessageAttachments backs the Media ("type=media") and Files ("type=pdf") tabs —
 // main trip chat only (v1 scope), newest first, cursor-paginated via ?before=<RFC3339>.
 func handleListMessageAttachments(svc *message.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
@@ -457,9 +525,9 @@ func handleListMessageAttachments(svc *message.Service, tripSvc *trip.Service) f
 			return
 		}
 
-		attachmentType := r.URL.Query().Get("type")
-		if attachmentType != message.AttachmentTypeImage && attachmentType != message.AttachmentTypePDF {
-			writeError(w, http.StatusBadRequest, "type must be 'image' or 'pdf'")
+		attachmentTypes, ok := attachmentTypesForQuery(r.URL.Query().Get("type"))
+		if !ok {
+			writeError(w, http.StatusBadRequest, "type must be 'media' or 'pdf'")
 			return
 		}
 		before, err := parseBeforeParam(r)
@@ -469,15 +537,15 @@ func handleListMessageAttachments(svc *message.Service, tripSvc *trip.Service) f
 		}
 		limit := parseLimitParam(r, 50, 100)
 
-		messages, err := svc.ListAttachments(r.Context(), tripID, attachmentType, before, limit)
+		items, err := svc.ListAttachments(r.Context(), tripID, attachmentTypes, before, limit)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not list attachments")
 			return
 		}
 
-		out := make([]messageResponse, 0, len(messages))
-		for _, m := range messages {
-			out = append(out, toMessageResponse(m, false, false))
+		out := make([]mediaItemResponse, 0, len(items))
+		for _, item := range items {
+			out = append(out, toMediaItemResponse(item))
 		}
 		writeJSON(w, http.StatusOK, out)
 	}

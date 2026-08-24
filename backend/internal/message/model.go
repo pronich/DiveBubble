@@ -29,24 +29,32 @@ type Message struct {
 	// (not cascade-deleted) if the original is later soft-deleted, since DeletedAt is a flag
 	// on the row, not a row removal.
 	ReplyToID uuid.NullUUID
-	// DeletedAt — soft-delete timestamp (migration 000053). When set, Body/Attachment* are
-	// blanked server-side before the row ever leaves the repository layer bound for a
-	// response (see routes_message.go's toMessageResponse) — never rely on a client to hide
-	// deleted content.
+	// DeletedAt — soft-delete timestamp (migration 000053). When set, Body/Attachment*/
+	// Attachments are blanked server-side before the row ever leaves the repository layer
+	// bound for a response (see routes_message.go's toMessageResponse) — never rely on a
+	// client to hide deleted content.
 	DeletedAt sql.NullTime
+	// Attachments — the multi-attachment path (migration 000054, chat_message_attachments),
+	// populated separately from the single-attachment scalar fields above (which stay in place
+	// so old rows keep rendering). Not scanned by scanMessage itself — see Repository's
+	// batched attachment fetch, joined in by ListByTrip/GetByID/etc. Ordered by Position.
+	Attachments []Attachment
 }
 
-// Attachment is the caller-facing shape for sending a message with a file — Message uses
-// sql.Null* directly since it also represents rows read back from the DB.
+// Attachment is the caller-facing shape for one file on a message — used both for sending
+// (Repository.Create takes []Attachment) and for rows read back from chat_message_attachments.
 type Attachment struct {
 	URL       string
-	Type      string // "image" | "pdf"
+	Type      string // "image" | "video" | "pdf"
 	Filename  string
 	SizeBytes int64
+	// DurationSeconds — video only, nil otherwise.
+	DurationSeconds *int
 }
 
 const (
 	AttachmentTypeImage = "image"
+	AttachmentTypeVideo = "video"
 	AttachmentTypePDF   = "pdf"
 )
 

@@ -12,7 +12,7 @@ import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/chat_link.dart';
-import '../../../../domain/entities/chat_message.dart';
+import '../../../../domain/entities/media_item.dart';
 import '../../../../domain/entities/dive_center.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/trip.dart';
@@ -84,8 +84,8 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
   // Lazily created once trip.id is known (unavailable until TripViewModel.load() resolves) —
   // guarded by the null check in _ensureBubbleContentLoaded so a rebuild never refires these.
   ChatInfoViewModel? _chatInfoViewModel;
-  Future<List<ChatMessage>>? _mediaFuture;
-  Future<List<ChatMessage>>? _filesFuture;
+  Future<List<MediaItem>>? _mediaFuture;
+  Future<List<MediaItem>>? _filesFuture;
   Future<List<ChatLink>>? _linksFuture;
 
   void _ensureBubbleContentLoaded(String tripId) {

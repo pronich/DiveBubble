@@ -24,15 +24,12 @@ mixin _$ChatMessage {
 // centered row instead of a bubble — see ChatView's _SystemMessageRow.
  String get kind;// Per-viewer: has the current user already submitted feedback for this trip? Only
 // meaningful when kind is 'feedback_prompt'.
- bool get feedbackProvided;// Set together or not at all — a message carries at most one attachment (photo or PDF),
-// with `body` doubling as its caption when both are present.
- String? get attachmentUrl; String? get attachmentType;// 'image' | 'pdf'
- String? get attachmentFilename; int? get attachmentSizeBytes;// Optimistic local echo, shown the instant "send" is tapped and replaced once the server
+ bool get feedbackProvided;// Up to 9 (server-enforced too), mixed image/video/pdf — `body` doubles as a shared
+// caption when both are present. See ChatAttachment for the pending/upload-in-flight shape.
+ List<ChatAttachment> get attachments;// Optimistic local echo, shown the instant "send" is tapped and replaced once the server
 // confirms it (see ChatViewModel.send/uploadAndSend) — never true for a message that came
 // from the REST list or realtime.
- bool get isPending;// Set only on a pending attachment message, before attachmentUrl exists — lets the bubble
-// render the picked file immediately (thumbnail/filename) while the upload is in flight.
- String? get localAttachmentPath;// Id of the message this one replies to, if any — the client resolves it against the
+ bool get isPending;// Id of the message this one replies to, if any — the client resolves it against the
 // already-loaded message list rather than the server denormalizing sender/body onto every
 // reply (see ChatViewModel).
  String? get replyToId;// Non-null means this message was deleted — body/attachment are already blanked by the
@@ -49,16 +46,16 @@ $ChatMessageCopyWith<ChatMessage> get copyWith => _$ChatMessageCopyWithImpl<Chat
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff)&&(identical(other.mentionsDiveCenter, mentionsDiveCenter) || other.mentionsDiveCenter == mentionsDiveCenter)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.feedbackProvided, feedbackProvided) || other.feedbackProvided == feedbackProvided)&&(identical(other.attachmentUrl, attachmentUrl) || other.attachmentUrl == attachmentUrl)&&(identical(other.attachmentType, attachmentType) || other.attachmentType == attachmentType)&&(identical(other.attachmentFilename, attachmentFilename) || other.attachmentFilename == attachmentFilename)&&(identical(other.attachmentSizeBytes, attachmentSizeBytes) || other.attachmentSizeBytes == attachmentSizeBytes)&&(identical(other.isPending, isPending) || other.isPending == isPending)&&(identical(other.localAttachmentPath, localAttachmentPath) || other.localAttachmentPath == localAttachmentPath)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff)&&(identical(other.mentionsDiveCenter, mentionsDiveCenter) || other.mentionsDiveCenter == mentionsDiveCenter)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.feedbackProvided, feedbackProvided) || other.feedbackProvided == feedbackProvided)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.isPending, isPending) || other.isPending == isPending)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt,isDiveCenterStaff,mentionsDiveCenter,kind,feedbackProvided,attachmentUrl,attachmentType,attachmentFilename,attachmentSizeBytes,isPending,localAttachmentPath,replyToId,deletedAt);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt,isDiveCenterStaff,mentionsDiveCenter,kind,feedbackProvided,const DeepCollectionEquality().hash(attachments),isPending,replyToId,deletedAt);
 
 @override
 String toString() {
-  return 'ChatMessage(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt, isDiveCenterStaff: $isDiveCenterStaff, mentionsDiveCenter: $mentionsDiveCenter, kind: $kind, feedbackProvided: $feedbackProvided, attachmentUrl: $attachmentUrl, attachmentType: $attachmentType, attachmentFilename: $attachmentFilename, attachmentSizeBytes: $attachmentSizeBytes, isPending: $isPending, localAttachmentPath: $localAttachmentPath, replyToId: $replyToId, deletedAt: $deletedAt)';
+  return 'ChatMessage(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt, isDiveCenterStaff: $isDiveCenterStaff, mentionsDiveCenter: $mentionsDiveCenter, kind: $kind, feedbackProvided: $feedbackProvided, attachments: $attachments, isPending: $isPending, replyToId: $replyToId, deletedAt: $deletedAt)';
 }
 
 
@@ -69,7 +66,7 @@ abstract mixin class $ChatMessageCopyWith<$Res>  {
   factory $ChatMessageCopyWith(ChatMessage value, $Res Function(ChatMessage) _then) = _$ChatMessageCopyWithImpl;
 @useResult
 $Res call({
- String id, String tripId, String userId, String body, DateTime createdAt, bool isDiveCenterStaff, bool mentionsDiveCenter, String kind, bool feedbackProvided, String? attachmentUrl, String? attachmentType, String? attachmentFilename, int? attachmentSizeBytes, bool isPending, String? localAttachmentPath, String? replyToId, DateTime? deletedAt
+ String id, String tripId, String userId, String body, DateTime createdAt, bool isDiveCenterStaff, bool mentionsDiveCenter, String kind, bool feedbackProvided, List<ChatAttachment> attachments, bool isPending, String? replyToId, DateTime? deletedAt
 });
 
 
@@ -86,7 +83,7 @@ class _$ChatMessageCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,Object? isDiveCenterStaff = null,Object? mentionsDiveCenter = null,Object? kind = null,Object? feedbackProvided = null,Object? attachmentUrl = freezed,Object? attachmentType = freezed,Object? attachmentFilename = freezed,Object? attachmentSizeBytes = freezed,Object? isPending = null,Object? localAttachmentPath = freezed,Object? replyToId = freezed,Object? deletedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,Object? isDiveCenterStaff = null,Object? mentionsDiveCenter = null,Object? kind = null,Object? feedbackProvided = null,Object? attachments = null,Object? isPending = null,Object? replyToId = freezed,Object? deletedAt = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
@@ -97,13 +94,9 @@ as DateTime,isDiveCenterStaff: null == isDiveCenterStaff ? _self.isDiveCenterSta
 as bool,mentionsDiveCenter: null == mentionsDiveCenter ? _self.mentionsDiveCenter : mentionsDiveCenter // ignore: cast_nullable_to_non_nullable
 as bool,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as String,feedbackProvided: null == feedbackProvided ? _self.feedbackProvided : feedbackProvided // ignore: cast_nullable_to_non_nullable
-as bool,attachmentUrl: freezed == attachmentUrl ? _self.attachmentUrl : attachmentUrl // ignore: cast_nullable_to_non_nullable
-as String?,attachmentType: freezed == attachmentType ? _self.attachmentType : attachmentType // ignore: cast_nullable_to_non_nullable
-as String?,attachmentFilename: freezed == attachmentFilename ? _self.attachmentFilename : attachmentFilename // ignore: cast_nullable_to_non_nullable
-as String?,attachmentSizeBytes: freezed == attachmentSizeBytes ? _self.attachmentSizeBytes : attachmentSizeBytes // ignore: cast_nullable_to_non_nullable
-as int?,isPending: null == isPending ? _self.isPending : isPending // ignore: cast_nullable_to_non_nullable
-as bool,localAttachmentPath: freezed == localAttachmentPath ? _self.localAttachmentPath : localAttachmentPath // ignore: cast_nullable_to_non_nullable
-as String?,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore: cast_nullable_to_non_nullable
+as bool,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<ChatAttachment>,isPending: null == isPending ? _self.isPending : isPending // ignore: cast_nullable_to_non_nullable
+as bool,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore: cast_nullable_to_non_nullable
 as String?,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
@@ -190,10 +183,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  String? attachmentUrl,  String? attachmentType,  String? attachmentFilename,  int? attachmentSizeBytes,  bool isPending,  String? localAttachmentPath,  String? replyToId,  DateTime? deletedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  List<ChatAttachment> attachments,  bool isPending,  String? replyToId,  DateTime? deletedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ChatMessage() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachmentUrl,_that.attachmentType,_that.attachmentFilename,_that.attachmentSizeBytes,_that.isPending,_that.localAttachmentPath,_that.replyToId,_that.deletedAt);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachments,_that.isPending,_that.replyToId,_that.deletedAt);case _:
   return orElse();
 
 }
@@ -211,10 +204,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  String? attachmentUrl,  String? attachmentType,  String? attachmentFilename,  int? attachmentSizeBytes,  bool isPending,  String? localAttachmentPath,  String? replyToId,  DateTime? deletedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  List<ChatAttachment> attachments,  bool isPending,  String? replyToId,  DateTime? deletedAt)  $default,) {final _that = this;
 switch (_that) {
 case _ChatMessage():
-return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachmentUrl,_that.attachmentType,_that.attachmentFilename,_that.attachmentSizeBytes,_that.isPending,_that.localAttachmentPath,_that.replyToId,_that.deletedAt);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachments,_that.isPending,_that.replyToId,_that.deletedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -231,10 +224,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  String? attachmentUrl,  String? attachmentType,  String? attachmentFilename,  int? attachmentSizeBytes,  bool isPending,  String? localAttachmentPath,  String? replyToId,  DateTime? deletedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  String body,  DateTime createdAt,  bool isDiveCenterStaff,  bool mentionsDiveCenter,  String kind,  bool feedbackProvided,  List<ChatAttachment> attachments,  bool isPending,  String? replyToId,  DateTime? deletedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _ChatMessage() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachmentUrl,_that.attachmentType,_that.attachmentFilename,_that.attachmentSizeBytes,_that.isPending,_that.localAttachmentPath,_that.replyToId,_that.deletedAt);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_that.isDiveCenterStaff,_that.mentionsDiveCenter,_that.kind,_that.feedbackProvided,_that.attachments,_that.isPending,_that.replyToId,_that.deletedAt);case _:
   return null;
 
 }
@@ -246,7 +239,7 @@ return $default(_that.id,_that.tripId,_that.userId,_that.body,_that.createdAt,_t
 
 
 class _ChatMessage implements ChatMessage {
-  const _ChatMessage({required this.id, required this.tripId, required this.userId, required this.body, required this.createdAt, this.isDiveCenterStaff = false, this.mentionsDiveCenter = false, this.kind = 'user', this.feedbackProvided = false, this.attachmentUrl, this.attachmentType, this.attachmentFilename, this.attachmentSizeBytes, this.isPending = false, this.localAttachmentPath, this.replyToId, this.deletedAt});
+  const _ChatMessage({required this.id, required this.tripId, required this.userId, required this.body, required this.createdAt, this.isDiveCenterStaff = false, this.mentionsDiveCenter = false, this.kind = 'user', this.feedbackProvided = false, final  List<ChatAttachment> attachments = const [], this.isPending = false, this.replyToId, this.deletedAt}): _attachments = attachments;
   
 
 @override final  String id;
@@ -268,20 +261,21 @@ class _ChatMessage implements ChatMessage {
 // Per-viewer: has the current user already submitted feedback for this trip? Only
 // meaningful when kind is 'feedback_prompt'.
 @override@JsonKey() final  bool feedbackProvided;
-// Set together or not at all — a message carries at most one attachment (photo or PDF),
-// with `body` doubling as its caption when both are present.
-@override final  String? attachmentUrl;
-@override final  String? attachmentType;
-// 'image' | 'pdf'
-@override final  String? attachmentFilename;
-@override final  int? attachmentSizeBytes;
+// Up to 9 (server-enforced too), mixed image/video/pdf — `body` doubles as a shared
+// caption when both are present. See ChatAttachment for the pending/upload-in-flight shape.
+ final  List<ChatAttachment> _attachments;
+// Up to 9 (server-enforced too), mixed image/video/pdf — `body` doubles as a shared
+// caption when both are present. See ChatAttachment for the pending/upload-in-flight shape.
+@override@JsonKey() List<ChatAttachment> get attachments {
+  if (_attachments is EqualUnmodifiableListView) return _attachments;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_attachments);
+}
+
 // Optimistic local echo, shown the instant "send" is tapped and replaced once the server
 // confirms it (see ChatViewModel.send/uploadAndSend) — never true for a message that came
 // from the REST list or realtime.
 @override@JsonKey() final  bool isPending;
-// Set only on a pending attachment message, before attachmentUrl exists — lets the bubble
-// render the picked file immediately (thumbnail/filename) while the upload is in flight.
-@override final  String? localAttachmentPath;
 // Id of the message this one replies to, if any — the client resolves it against the
 // already-loaded message list rather than the server denormalizing sender/body onto every
 // reply (see ChatViewModel).
@@ -301,16 +295,16 @@ _$ChatMessageCopyWith<_ChatMessage> get copyWith => __$ChatMessageCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff)&&(identical(other.mentionsDiveCenter, mentionsDiveCenter) || other.mentionsDiveCenter == mentionsDiveCenter)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.feedbackProvided, feedbackProvided) || other.feedbackProvided == feedbackProvided)&&(identical(other.attachmentUrl, attachmentUrl) || other.attachmentUrl == attachmentUrl)&&(identical(other.attachmentType, attachmentType) || other.attachmentType == attachmentType)&&(identical(other.attachmentFilename, attachmentFilename) || other.attachmentFilename == attachmentFilename)&&(identical(other.attachmentSizeBytes, attachmentSizeBytes) || other.attachmentSizeBytes == attachmentSizeBytes)&&(identical(other.isPending, isPending) || other.isPending == isPending)&&(identical(other.localAttachmentPath, localAttachmentPath) || other.localAttachmentPath == localAttachmentPath)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.body, body) || other.body == body)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff)&&(identical(other.mentionsDiveCenter, mentionsDiveCenter) || other.mentionsDiveCenter == mentionsDiveCenter)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.feedbackProvided, feedbackProvided) || other.feedbackProvided == feedbackProvided)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.isPending, isPending) || other.isPending == isPending)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt,isDiveCenterStaff,mentionsDiveCenter,kind,feedbackProvided,attachmentUrl,attachmentType,attachmentFilename,attachmentSizeBytes,isPending,localAttachmentPath,replyToId,deletedAt);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,body,createdAt,isDiveCenterStaff,mentionsDiveCenter,kind,feedbackProvided,const DeepCollectionEquality().hash(_attachments),isPending,replyToId,deletedAt);
 
 @override
 String toString() {
-  return 'ChatMessage(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt, isDiveCenterStaff: $isDiveCenterStaff, mentionsDiveCenter: $mentionsDiveCenter, kind: $kind, feedbackProvided: $feedbackProvided, attachmentUrl: $attachmentUrl, attachmentType: $attachmentType, attachmentFilename: $attachmentFilename, attachmentSizeBytes: $attachmentSizeBytes, isPending: $isPending, localAttachmentPath: $localAttachmentPath, replyToId: $replyToId, deletedAt: $deletedAt)';
+  return 'ChatMessage(id: $id, tripId: $tripId, userId: $userId, body: $body, createdAt: $createdAt, isDiveCenterStaff: $isDiveCenterStaff, mentionsDiveCenter: $mentionsDiveCenter, kind: $kind, feedbackProvided: $feedbackProvided, attachments: $attachments, isPending: $isPending, replyToId: $replyToId, deletedAt: $deletedAt)';
 }
 
 
@@ -321,7 +315,7 @@ abstract mixin class _$ChatMessageCopyWith<$Res> implements $ChatMessageCopyWith
   factory _$ChatMessageCopyWith(_ChatMessage value, $Res Function(_ChatMessage) _then) = __$ChatMessageCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String tripId, String userId, String body, DateTime createdAt, bool isDiveCenterStaff, bool mentionsDiveCenter, String kind, bool feedbackProvided, String? attachmentUrl, String? attachmentType, String? attachmentFilename, int? attachmentSizeBytes, bool isPending, String? localAttachmentPath, String? replyToId, DateTime? deletedAt
+ String id, String tripId, String userId, String body, DateTime createdAt, bool isDiveCenterStaff, bool mentionsDiveCenter, String kind, bool feedbackProvided, List<ChatAttachment> attachments, bool isPending, String? replyToId, DateTime? deletedAt
 });
 
 
@@ -338,7 +332,7 @@ class __$ChatMessageCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,Object? isDiveCenterStaff = null,Object? mentionsDiveCenter = null,Object? kind = null,Object? feedbackProvided = null,Object? attachmentUrl = freezed,Object? attachmentType = freezed,Object? attachmentFilename = freezed,Object? attachmentSizeBytes = freezed,Object? isPending = null,Object? localAttachmentPath = freezed,Object? replyToId = freezed,Object? deletedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? body = null,Object? createdAt = null,Object? isDiveCenterStaff = null,Object? mentionsDiveCenter = null,Object? kind = null,Object? feedbackProvided = null,Object? attachments = null,Object? isPending = null,Object? replyToId = freezed,Object? deletedAt = freezed,}) {
   return _then(_ChatMessage(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
@@ -349,13 +343,9 @@ as DateTime,isDiveCenterStaff: null == isDiveCenterStaff ? _self.isDiveCenterSta
 as bool,mentionsDiveCenter: null == mentionsDiveCenter ? _self.mentionsDiveCenter : mentionsDiveCenter // ignore: cast_nullable_to_non_nullable
 as bool,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as String,feedbackProvided: null == feedbackProvided ? _self.feedbackProvided : feedbackProvided // ignore: cast_nullable_to_non_nullable
-as bool,attachmentUrl: freezed == attachmentUrl ? _self.attachmentUrl : attachmentUrl // ignore: cast_nullable_to_non_nullable
-as String?,attachmentType: freezed == attachmentType ? _self.attachmentType : attachmentType // ignore: cast_nullable_to_non_nullable
-as String?,attachmentFilename: freezed == attachmentFilename ? _self.attachmentFilename : attachmentFilename // ignore: cast_nullable_to_non_nullable
-as String?,attachmentSizeBytes: freezed == attachmentSizeBytes ? _self.attachmentSizeBytes : attachmentSizeBytes // ignore: cast_nullable_to_non_nullable
-as int?,isPending: null == isPending ? _self.isPending : isPending // ignore: cast_nullable_to_non_nullable
-as bool,localAttachmentPath: freezed == localAttachmentPath ? _self.localAttachmentPath : localAttachmentPath // ignore: cast_nullable_to_non_nullable
-as String?,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore: cast_nullable_to_non_nullable
+as bool,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<ChatAttachment>,isPending: null == isPending ? _self.isPending : isPending // ignore: cast_nullable_to_non_nullable
+as bool,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore: cast_nullable_to_non_nullable
 as String?,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));

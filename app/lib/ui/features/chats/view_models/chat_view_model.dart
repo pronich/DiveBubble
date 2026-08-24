@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/services/realtime_service.dart';
+import '../../../../domain/entities/attachment_upload_result.dart';
+import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
 
 class ChatViewModel extends ChangeNotifier {
@@ -114,10 +116,18 @@ class ChatViewModel extends ChangeNotifier {
         feedbackProvided: json['feedbackProvided'] as bool? ?? false,
         // Hand-decoded like every other field above, not via ChatMessageApiModel.fromJson —
         // easy to forget when adding a new message field, so don't skip these on the next one.
-        attachmentUrl: json['attachmentUrl'] as String?,
-        attachmentType: json['attachmentType'] as String?,
-        attachmentFilename: json['attachmentFilename'] as String?,
-        attachmentSizeBytes: json['attachmentSizeBytes'] as int?,
+        attachments: ((json['attachments'] as List<dynamic>?) ?? [])
+            .map((raw) {
+              final a = raw as Map<String, dynamic>;
+              return ChatAttachment(
+                url: a['url'] as String?,
+                type: a['type'] as String,
+                filename: a['filename'] as String?,
+                sizeBytes: a['sizeBytes'] as int?,
+                durationSeconds: a['durationSeconds'] as int?,
+              );
+            })
+            .toList(),
         replyToId: json['replyToId'] as String?,
         deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
       );
@@ -201,10 +211,17 @@ class ChatViewModel extends ChangeNotifier {
     body: body,
     createdAt: DateTime.now(),
     isPending: true,
-    localAttachmentPath: localAttachmentPath,
-    attachmentType: attachmentType,
-    attachmentFilename: attachmentFilename,
-    attachmentSizeBytes: attachmentSizeBytes,
+    attachments: localAttachmentPath == null
+        ? const []
+        : [
+            ChatAttachment(
+              type: attachmentType ?? 'image',
+              filename: attachmentFilename,
+              sizeBytes: attachmentSizeBytes,
+              localPath: localAttachmentPath,
+              isUploaded: false,
+            ),
+          ],
     replyToId: replyToId,
   );
 
@@ -294,10 +311,7 @@ class ChatViewModel extends ChangeNotifier {
         offerId: offerId,
         buddyRequestId: buddyRequestId,
         mentionsDiveCenter: mentionsDiveCenter,
-        attachmentUrl: result.url,
-        attachmentType: result.type,
-        attachmentFilename: result.filename,
-        attachmentSizeBytes: result.sizeBytes,
+        attachments: [result],
         replyToId: replyToId,
       );
       _reconcilePending(sent);

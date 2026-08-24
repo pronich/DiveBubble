@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/chat_link.dart';
-import '../../../../domain/entities/chat_message.dart';
+import '../../../../domain/entities/media_item.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/cached_attachment_image.dart';
 import '../../../core/widgets/open_attachment.dart';
@@ -9,15 +9,17 @@ import 'attachment_image_preview_page.dart';
 
 /// Media/Files/Links tab bodies for Bubble Info — shared by TripPage's People/Media/Files/Links
 /// tab bar (reached from either the Bubble title or avatar; see trip_conversation_page.dart).
+/// Media/Files are keyed per-attachment now (MediaItem), not per-message — a message can carry
+/// several attachments (see ChatMessage.attachments).
 
 class MediaTab extends StatelessWidget {
   const MediaTab({super.key, required this.future});
 
-  final Future<List<ChatMessage>> future;
+  final Future<List<MediaItem>> future;
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<ChatMessage>>(
+    return FutureBuilder<List<MediaItem>>(
       future: future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -39,9 +41,11 @@ class MediaTab extends StatelessWidget {
           ),
           itemCount: items.length,
           itemBuilder: (context, index) {
-            final url = items[index].attachmentUrl!;
+            // .attachment.url is always non-null here — every server-sent attachment has one,
+            // only a not-yet-uploaded pending item (never true for anything from this tab) doesn't.
+            final url = items[index].attachment.url!;
             return GestureDetector(
-              key: ValueKey(items[index].id),
+              key: ValueKey('${items[index].messageId}-$index'),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => AttachmentImagePreviewPage(url: url)),
               ),
@@ -57,11 +61,11 @@ class MediaTab extends StatelessWidget {
 class FilesTab extends StatelessWidget {
   const FilesTab({super.key, required this.future});
 
-  final Future<List<ChatMessage>> future;
+  final Future<List<MediaItem>> future;
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<ChatMessage>>(
+    return FutureBuilder<List<MediaItem>>(
       future: future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -84,13 +88,13 @@ class FilesTab extends StatelessWidget {
           itemCount: items.length,
           separatorBuilder: (context, _) => const Divider(height: 1),
           itemBuilder: (context, index) {
-            final m = items[index];
-            final sizeLabel = formatAttachmentFileSize(m.attachmentSizeBytes);
+            final item = items[index];
+            final sizeLabel = formatAttachmentFileSize(item.attachment.sizeBytes);
             return ListTile(
               leading: const Icon(Icons.picture_as_pdf_outlined),
-              title: Text(m.attachmentFilename ?? 'Document.pdf', maxLines: 1, overflow: TextOverflow.ellipsis),
-              subtitle: Text([?sizeLabel, formatChatDateSeparator(m.createdAt.toLocal())].join(' · ')),
-              onTap: () => openAttachmentInApp(context, m.attachmentUrl!),
+              title: Text(item.attachment.filename ?? 'Document.pdf', maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text([?sizeLabel, formatChatDateSeparator(item.createdAt.toLocal())].join(' · ')),
+              onTap: () => openAttachmentInApp(context, item.attachment.url!),
             );
           },
         );
