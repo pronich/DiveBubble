@@ -88,7 +88,7 @@ func runFeedbackPromptScan(sqlDB *sql.DB, cfg config.Config) {
 		}
 		sent := 0
 		for _, tripID := range tripIDs {
-			msg, ok, err := messageSvc.SendSystem(ctx, tripID, message.KindFeedbackPrompt, "How was your trip? We'd love your feedback.")
+			msg, ok, err := messageSvc.SendSystem(ctx, tripID, message.KindFeedbackPrompt, "How was your trip? We'd love to hear your feedback.")
 			if err != nil {
 				log.Printf("feedback prompt scan: could not send prompt for trip:%s: %v", tripID, err)
 				continue
@@ -118,7 +118,7 @@ func runFeedbackPromptScan(sqlDB *sql.DB, cfg config.Config) {
 			} else if recipients := server.TripRecipientIDs(ctx, tripSvc, diveCenterSvc, t); len(recipients) > 0 {
 				pushSvc.SendToUsers(ctx, recipients, push.Notification{
 					Title: t.Title,
-					Body:  "How was your trip? We'd love your feedback.",
+					Body:  "How was your trip? We'd love to hear your feedback.",
 					Data:  map[string]string{"tripId": tripID.String(), "type": "feedback_prompt"},
 				})
 			}
