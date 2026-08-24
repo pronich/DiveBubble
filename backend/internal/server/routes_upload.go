@@ -228,9 +228,10 @@ func handleUploadTripPhoto(uploadSvc *upload.Service, tripSvc *trip.Service) fun
 }
 
 // parseUploadAttachmentFile mirrors parseUploadFile but sized for the larger chat-attachment
-// cap (upload.MaxAttachmentSize, not upload.MaxFileSize).
+// cap — upload.MaxVideoAttachmentSize, the largest of the two attachment caps, since video is
+// accepted through this same endpoint and SaveAttachment does the actual per-type enforcement.
 func parseUploadAttachmentFile(r *http.Request) (multipart.File, *multipart.FileHeader, error) {
-	if err := r.ParseMultipartForm(upload.MaxAttachmentSize + 1<<20); err != nil {
+	if err := r.ParseMultipartForm(upload.MaxVideoAttachmentSize + 1<<20); err != nil {
 		return nil, nil, err
 	}
 	return r.FormFile("file")
@@ -287,8 +288,11 @@ func handleUploadMessageAttachment(uploadSvc *upload.Service, tripSvc *trip.Serv
 		}
 
 		attachmentType := message.AttachmentTypeImage
-		if contentType == "application/pdf" {
+		switch contentType {
+		case "application/pdf":
 			attachmentType = message.AttachmentTypePDF
+		case "video/mp4":
+			attachmentType = message.AttachmentTypeVideo
 		}
 
 		writeJSON(w, http.StatusOK, attachmentUploadResponse{

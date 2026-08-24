@@ -211,7 +211,14 @@ class ChatViewModel extends ChangeNotifier {
     isPending: true,
     attachments: [
       for (final a in attachments)
-        ChatAttachment(type: a.type, filename: a.filename, sizeBytes: a.sizeBytes, localPath: a.path, isUploaded: false),
+        ChatAttachment(
+          type: a.type,
+          filename: a.filename,
+          sizeBytes: a.sizeBytes,
+          durationSeconds: a.durationSeconds,
+          localPath: a.path,
+          isUploaded: false,
+        ),
     ],
     replyToId: replyToId,
   );
@@ -313,7 +320,20 @@ class ChatViewModel extends ChangeNotifier {
   }
 
   Future<AttachmentUploadResult> _uploadAndPatch({required String tempId, required PickedAttachment picked}) async {
-    final result = await _repository.uploadAttachment(tripId, picked.path);
+    final uploaded = await _repository.uploadAttachment(tripId, picked.path);
+    // The upload endpoint sniffs content-type/size/filename server-side but has no way to know
+    // a video's duration — that was only ever knowable client-side, at pick time (see
+    // pick_attachment.dart's getMediaInfo call) — so it's threaded through here rather than
+    // trusted from the upload response.
+    final result = picked.durationSeconds == null
+        ? uploaded
+        : AttachmentUploadResult(
+            url: uploaded.url,
+            type: uploaded.type,
+            filename: uploaded.filename,
+            sizeBytes: uploaded.sizeBytes,
+            durationSeconds: picked.durationSeconds,
+          );
     // Patch just this one attachment (matched by local path — unique per picked item) within
     // the still-pending message, independent of any siblings still uploading.
     _messages = [

@@ -3,16 +3,21 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_compress/video_compress.dart';
 
 import '../../../domain/entities/picked_attachment.dart';
-import 'pick_image.dart';
 
-enum _AttachmentChoice { photos, camera, document }
+enum _AttachmentChoice { media, camera, document }
 
-/// Sibling to [pickImage]'s bottom sheet, but multi-capable: Photos (multi-select from the
-/// library, up to however many the caller still has room for — see ChatView's cap) vs a single
-/// camera shot vs a single PDF document. Always returns a list — empty if the diver backed out
-/// at any step, one item for camera/document, however many for a library multi-select.
+const _maxVideoDurationSeconds = 60;
+
+const _videoExtensions = {'.mp4', '.mov', '.m4v', '.avi', '.3gp'};
+
+/// Sibling to `pickImage`'s bottom sheet, but multi-capable: Photos & video (multi-select from
+/// the library, mixed media in one pick, up to however many the caller still has room for — see
+/// ChatView's cap) vs a single camera shot vs a single PDF document. Always returns a list —
+/// empty if the diver backed out at any step, one item for camera/document, however many for a
+/// library multi-select (fewer than picked if a video was rejected for being too long).
 Future<List<PickedAttachment>> pickAttachment(BuildContext context) async {
   final choice = await showModalBottomSheet<_AttachmentChoice>(
     context: context,
@@ -22,8 +27,8 @@ Future<List<PickedAttachment>> pickAttachment(BuildContext context) async {
         children: [
           ListTile(
             leading: const Icon(Icons.photo_library_outlined),
-            title: const Text('Photos'),
-            onTap: () => Navigator.of(context).pop(_AttachmentChoice.photos),
+            title: const Text('Photos & video'),
+            onTap: () => Navigator.of(context).pop(_AttachmentChoice.media),
           ),
           ListTile(
             leading: const Icon(Icons.camera_alt_outlined),
@@ -42,9 +47,19 @@ Future<List<PickedAttachment>> pickAttachment(BuildContext context) async {
   if (choice == null || !context.mounted) return const [];
 
   switch (choice) {
-    case _AttachmentChoice.photos:
-      final paths = await pickMultipleImages();
-      return Future.wait(paths.map(_toImagePickedAttachment));
+    case _AttachmentChoice.media:
+      final picked = await ImagePicker().pickMultipleMedia(imageQuality: 85);
+      final result = <PickedAttachment>[];
+      for (final file in picked) {
+        if (!context.mounted) break;
+        if (_videoExtensions.contains(_extensionOf(file.path))) {
+          final video = await _toVideoPickedAttachment(context, file.path);
+          if (video != null) result.add(video);
+        } else {
+          result.add(await _toImagePickedAttachment(file.path));
+        }
+      }
+      return result;
 
     case _AttachmentChoice.camera:
       final shot = await ImagePicker().pickImage(source: ImageSource.camera, maxWidth: 1600, imageQuality: 85);
@@ -65,6 +80,11 @@ Future<List<PickedAttachment>> pickAttachment(BuildContext context) async {
   }
 }
 
+String _extensionOf(String path) {
+  final dot = path.lastIndexOf('.');
+  return dot == -1 ? '' : path.substring(dot).toLowerCase();
+}
+
 Future<PickedAttachment> _toImagePickedAttachment(String path) async {
   final file = File(path);
   return PickedAttachment(
@@ -73,4 +93,51 @@ Future<PickedAttachment> _toImagePickedAttachment(String path) async {
     filename: path.split(Platform.pathSeparator).last,
     sizeBytes: await file.length(),
   );
+}
+
+// Rejects clips over the duration cap, then compresses to ~720p — this is both a file-size
+// measure and what normalizes every source phone's video format down to one MP4/H.264 shape
+// before it ever reaches the backend. Falls back to the picked (uncompressed) file if
+// compression itself throws, rather than blocking the send outright — video_compress is a
+// thinly-maintained plugin, see the chat-richness plan's note on smoke-testing it.
+Future<PickedAttachment?> _toVideoPickedAttachment(BuildContext context, String path) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final info = await VideoCompress.getMediaInfo(path);
+    final durationMs = info.duration ?? 0;
+    if (durationMs > _maxVideoDurationSeconds * 1000) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Videos must be $_maxVideoDurationSeconds seconds or shorter')),
+      );
+      return null;
+    }
+
+    var resultPath = path;
+    var durationSeconds = (durationMs / 1000).round();
+    try {
+      final compressed = await VideoCompress.compressVideo(
+        path,
+        quality: VideoQuality.Res1280x720Quality,
+        deleteOrigin: false,
+      );
+      if (compressed?.path != null) {
+        resultPath = compressed!.path!;
+        if (compressed.duration != null) durationSeconds = (compressed.duration! / 1000).round();
+      }
+    } catch (_) {
+      // Keeps resultPath/durationSeconds as the uncompressed original computed above.
+    }
+
+    final file = File(resultPath);
+    return PickedAttachment(
+      path: resultPath,
+      type: 'video',
+      filename: path.split(Platform.pathSeparator).last,
+      sizeBytes: await file.length(),
+      durationSeconds: durationSeconds,
+    );
+  } catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text('Could not process video: $e')));
+    return null;
+  }
 }

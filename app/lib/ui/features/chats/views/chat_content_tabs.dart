@@ -5,7 +5,9 @@ import '../../../../domain/entities/media_item.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/cached_attachment_image.dart';
 import '../../../core/widgets/open_attachment.dart';
+import '../../../core/widgets/video_thumbnail_placeholder.dart';
 import 'attachment_image_preview_page.dart';
+import 'attachment_video_preview_page.dart';
 
 /// Media/Files/Links tab bodies for Bubble Info — shared by TripPage's People/Media/Files/Links
 /// tab bar (reached from either the Bubble title or avatar; see trip_conversation_page.dart).
@@ -30,7 +32,7 @@ class MediaTab extends StatelessWidget {
         }
         final items = snapshot.data ?? const [];
         if (items.isEmpty) {
-          return const Center(child: Text('No photos shared yet'));
+          return const Center(child: Text('No photos or videos shared yet'));
         }
         return GridView.builder(
           padding: const EdgeInsets.all(4),
@@ -41,15 +43,26 @@ class MediaTab extends StatelessWidget {
           ),
           itemCount: items.length,
           itemBuilder: (context, index) {
-            // .attachment.url is always non-null here — every server-sent attachment has one,
-            // only a not-yet-uploaded pending item (never true for anything from this tab) doesn't.
-            final url = items[index].attachment.url!;
+            final attachment = items[index].attachment;
+            // .url is always non-null here — every server-sent attachment has one, only a
+            // not-yet-uploaded pending item (never true for anything from this tab) doesn't.
+            final url = attachment.url!;
+            final isVideo = attachment.type == 'video';
             return GestureDetector(
               key: ValueKey('${items[index].messageId}-$index'),
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => AttachmentImagePreviewPage(url: url)),
+                MaterialPageRoute(
+                  builder: (_) =>
+                      isVideo ? AttachmentVideoPreviewPage(url: url) : AttachmentImagePreviewPage(url: url),
+                ),
               ),
-              child: CachedAttachmentImage(url: url),
+              child: isVideo
+                  ? VideoThumbnailPlaceholder(
+                      width: double.infinity,
+                      height: double.infinity,
+                      durationSeconds: attachment.durationSeconds,
+                    )
+                  : CachedAttachmentImage(url: url),
             );
           },
         );

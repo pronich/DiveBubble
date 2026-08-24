@@ -8,10 +8,12 @@ class PickedAttachment {
     required this.type,
     required this.filename,
     required this.sizeBytes,
+    this.durationSeconds,
   });
 
   final String path;
-  final String type; // 'image' | 'pdf' — 'video' joins in the video stage
+  final String type; // 'image' | 'pdf' | 'video'
   final String filename;
   final int sizeBytes;
+  final int? durationSeconds; // video only
 }

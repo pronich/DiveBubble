@@ -19,9 +19,11 @@ import '../../../core/widgets/cached_attachment_image.dart';
 import '../../../core/widgets/open_attachment.dart';
 import '../../../../domain/entities/picked_attachment.dart';
 import '../../../core/widgets/pick_attachment.dart';
+import '../../../core/widgets/video_thumbnail_placeholder.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../view_models/chat_view_model.dart';
 import 'attachment_image_preview_page.dart';
+import 'attachment_video_preview_page.dart';
 
 // Consecutive messages from the same sender on the same day collapse into one visual
 // cluster (name shown once, avatar anchored to the last bubble) as long as the gap
@@ -29,9 +31,12 @@ import 'attachment_image_preview_page.dart';
 // gets its own name + avatar again, Telegram-style.
 const _groupingWindow = Duration(minutes: 5);
 
-// Mirrors the backend's upload.MaxAttachmentSize — checked client-side before ever hitting the
-// network as a cheap UX win; the backend still enforces this authoritatively.
+// Mirrors the backend's upload.MaxAttachmentSize/MaxVideoAttachmentSize — checked client-side
+// before ever hitting the network as a cheap UX win; the backend still enforces these
+// authoritatively. Video gets the larger cap since it's compressed but still much bigger than a
+// photo or PDF.
 const _maxAttachmentSizeBytes = 10 * 1024 * 1024;
+const _maxVideoAttachmentSizeBytes = 50 * 1024 * 1024;
 
 // Mirrors message.maxAttachmentsPerMessage backend-side — same "cheap client-side check, real
 // enforcement is server-side" split as the size cap above.
@@ -324,15 +329,17 @@ class _ChatViewState extends State<ChatView>
       );
       return;
     }
-    final tooLarge = picked.where((p) => p.sizeBytes > _maxAttachmentSizeBytes).isNotEmpty;
-    final accepted = picked.where((p) => p.sizeBytes <= _maxAttachmentSizeBytes).take(room).toList();
+    bool fitsSizeCap(PickedAttachment p) =>
+        p.sizeBytes <= (p.type == 'video' ? _maxVideoAttachmentSizeBytes : _maxAttachmentSizeBytes);
+    final tooLarge = picked.where((p) => !fitsSizeCap(p)).isNotEmpty;
+    final accepted = picked.where(fitsSizeCap).take(room).toList();
     if (accepted.isNotEmpty) setState(() => _pendingAttachments = [..._pendingAttachments, ...accepted]);
     if (tooLarge || picked.length > room) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             tooLarge
-                ? 'Some files are too large — max 10MB each.'
+                ? 'Some files are too large.'
                 : 'Only $_maxAttachmentsPerMessage attachments allowed per message.',
           ),
         ),
@@ -771,7 +778,9 @@ class _PendingPhotoThumb extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.file(File(attachment.path), width: 64, height: 64, fit: BoxFit.cover),
+            child: attachment.type == 'video'
+                ? const VideoThumbnailPlaceholder(width: 64, height: 64)
+                : Image.file(File(attachment.path), width: 64, height: 64, fit: BoxFit.cover),
           ),
           Positioned(
             top: -6,
@@ -807,10 +816,14 @@ class _AttachmentPreview extends StatelessWidget {
       return _AttachmentGrid(attachments: attachments, color: color);
     }
     final attachment = attachments.first;
-    if (attachment.type == 'pdf') {
-      return _PdfAttachmentRow(attachment: attachment, color: color);
+    switch (attachment.type) {
+      case 'pdf':
+        return _PdfAttachmentRow(attachment: attachment, color: color);
+      case 'video':
+        return _VideoAttachmentThumbnail(attachment: attachment, color: color);
+      default:
+        return _ImageAttachmentThumbnail(attachment: attachment, color: color);
     }
-    return _ImageAttachmentThumbnail(attachment: attachment, color: color);
   }
 }
 
@@ -823,10 +836,10 @@ int _gridColumns(int count) {
   return 3;
 }
 
-/// The 2+ attachment case — photos only for now (Stage 3 adds video thumbnails/play-icon
-/// overlay into the same cells). Tapping a cell opens the full-screen preview on that item,
-/// swipeable across every attachment on this message (see AttachmentImagePreviewPage's
-/// siblingUrls). Each cell shows its own upload spinner independently (Nikolai's ask) rather
+/// The 2+ attachment case — mixed photo/video. Tapping a photo cell opens the full-screen photo
+/// preview, swipeable across every *photo* on this message (see AttachmentImagePreviewPage's
+/// siblingUrls — video items are excluded from that swipe set, each video opens its own single
+/// player instead). Each cell shows its own upload spinner independently (Nikolai's ask) rather
 /// than one shared spinner for the whole grid.
 class _AttachmentGrid extends StatelessWidget {
   const _AttachmentGrid({required this.attachments, required this.color});
@@ -836,7 +849,7 @@ class _AttachmentGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final urls = [for (final a in attachments) if (a.url != null) a.url!];
+    final imageUrls = [for (final a in attachments) if (a.type != 'video' && a.url != null) a.url!];
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: ClipRRect(
@@ -854,22 +867,31 @@ class _AttachmentGrid extends StatelessWidget {
           itemBuilder: (context, index) {
             final attachment = attachments[index];
             final url = attachment.url;
+            final isVideo = attachment.type == 'video';
             return GestureDetector(
               onTap: url == null
                   ? null
                   : () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => AttachmentImagePreviewPage(
-                          url: url,
-                          siblingUrls: urls,
-                          initialIndex: urls.indexOf(url),
-                        ),
+                        builder: (_) => isVideo
+                            ? AttachmentVideoPreviewPage(url: url)
+                            : AttachmentImagePreviewPage(
+                                url: url,
+                                siblingUrls: imageUrls,
+                                initialIndex: imageUrls.indexOf(url),
+                              ),
                       ),
                     ),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (url != null)
+                  if (isVideo)
+                    VideoThumbnailPlaceholder(
+                      width: double.infinity,
+                      height: double.infinity,
+                      durationSeconds: attachment.durationSeconds,
+                    )
+                  else if (url != null)
                     CachedAttachmentImage(url: url, fit: BoxFit.cover)
                   else if (attachment.localPath != null)
                     Image.file(File(attachment.localPath!), fit: BoxFit.cover),
@@ -941,6 +963,46 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                     ),
                   ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Single-video bubble, sized to match _ImageAttachmentThumbnail so a solo video and a solo
+/// photo bubble read the same width/height — the difference is the play-icon placeholder body
+/// (see VideoThumbnailPlaceholder) instead of a decoded frame.
+class _VideoAttachmentThumbnail extends StatelessWidget {
+  const _VideoAttachmentThumbnail({required this.attachment, required this.color});
+
+  final ChatAttachment attachment;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = attachment.url;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: GestureDetector(
+        onTap: url == null
+            ? null
+            : () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => AttachmentVideoPreviewPage(url: url)),
+              ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              VideoThumbnailPlaceholder(width: 220, height: 160, durationSeconds: attachment.durationSeconds),
+              if (!attachment.isUploaded)
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                 ),
             ],
           ),
