@@ -13,9 +13,7 @@ import '../../buddy/view_models/buddy_view_model.dart';
 import '../../buddy/views/buddy_view.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../../transport/views/transport_view.dart';
-import '../../trips/view_models/create_trip_view_model.dart';
 import '../../trips/view_models/trip_view_model.dart';
-import '../../trips/views/create_trip_page.dart';
 import '../../trips/views/trip_page.dart';
 import '../../../core/theme/app_colors.dart';
 import '../view_models/chat_view_model.dart';
@@ -85,7 +83,6 @@ class _TripConversationPageState extends State<TripConversationPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   bool _isCancelled = false;
-  bool _isOrganizer = false;
   String? _businessName;
   // Gates the "@mention" composer chip off for the caller's own dive center — a staff
   // member mentioning their own business is meaningless (see ChatView.businessName's own
@@ -136,7 +133,6 @@ class _TripConversationPageState extends State<TripConversationPage>
       if (mounted) {
         setState(() {
           _isCancelled = trip.bookingStatus == 'cancelled';
-          _isOrganizer = trip.creatorUserId == widget.chatViewModel.currentUserId;
           _businessName = businessName;
           _isDiveCenterStaff = isDiveCenterStaff;
         });
@@ -182,15 +178,6 @@ class _TripConversationPageState extends State<TripConversationPage>
           ),
         ),
         actions: [
-          // Filled (not a bare icon) so it reads as an available action at a glance rather
-          // than blending into an otherwise minimal AppBar — organizer-only, hidden once the
-          // trip is cancelled (editing a cancelled trip's details doesn't make sense).
-          if (_isOrganizer && !_isCancelled)
-            IconButton.filled(
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              tooltip: 'Edit trip',
-              onPressed: () => _openEditTrip(context),
-            ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: InkWell(
@@ -278,25 +265,6 @@ class _TripConversationPageState extends State<TripConversationPage>
     );
     // Trip Page is the only place bookingStatus can change (Cancel Trip) — refresh once
     // back, since ChatView/TransportView otherwise have no reason to know it changed.
-    if (mounted) _refreshTripDerivedState();
-  }
-
-  Future<void> _openEditTrip(BuildContext context) async {
-    final trip = await widget.tripRepository.getTrip(widget.chatViewModel.tripId);
-    if (!context.mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CreateTripPage(
-          viewModel: CreateTripViewModel(repository: widget.tripRepository, existingTripId: trip.id),
-          existingTrip: trip,
-          onCreated: (_) => Navigator.of(context).pop(),
-        ),
-      ),
-    );
-    // Title/photo shown in this AppBar come from widget.tripTitle/tripPhotoUrl (fixed at
-    // construction, not derived state) so an edited title won't update here until the caller
-    // re-navigates — same pre-existing limitation _openTripPage's own refresh doesn't solve
-    // either. Still worth refreshing everything this screen *can* reflect live.
     if (mounted) _refreshTripDerivedState();
   }
 }
