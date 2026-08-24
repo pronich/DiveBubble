@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/buddy_request.dart';
 import '../../../../domain/entities/profile.dart';
@@ -18,6 +19,7 @@ class BuddyView extends StatefulWidget {
     required this.viewModel,
     required this.chatRepository,
     required this.realtimeService,
+    required this.tripRepository,
     this.isCancelled = false,
   });
 
@@ -27,6 +29,7 @@ class BuddyView extends StatefulWidget {
   /// ChatView, reusing the exact same repository/service the main Bubble chat uses.
   final ChatRepository chatRepository;
   final RealtimeService realtimeService;
+  final TripRepository tripRepository;
 
   /// See ChatView.isCancelled — same source of truth (TripConversationPage), same idea:
   /// existing requests/joins stay visible, but nothing new can be created or joined.
@@ -72,6 +75,7 @@ class _BuddyViewState extends State<BuddyView>
         repository: widget.chatRepository,
         realtimeService: widget.realtimeService,
         profileRepository: widget.viewModel.profileRepository,
+        tripRepository: widget.tripRepository,
         tripId: request.tripId,
         currentUserId: widget.viewModel.currentUserId,
         buddyRequestId: request.id,

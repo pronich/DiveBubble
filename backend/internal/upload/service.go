@@ -20,19 +20,24 @@ var allowedExtensions = map[string]string{
 	"image/webp": ".webp",
 }
 
-// Chat attachments allow a wider (image + PDF) type list and a larger size cap than the
+// Chat attachments allow a wider (image + PDF + video) type list and a larger size cap than the
 // avatar/trip-photo/etc. uploads above — kept as a separate constant/map/error set rather than
 // parameterizing Save, so the 5 existing image-only call sites are untouched by this feature.
-var ErrInvalidAttachment = errors.New("file must be a JPEG, PNG, WebP image or PDF")
-var ErrAttachmentTooLarge = errors.New("file exceeds the 10MB size limit")
+var ErrInvalidAttachment = errors.New("file must be a JPEG, PNG, WebP image, PDF, or MP4 video")
+var ErrAttachmentTooLarge = errors.New("file exceeds the size limit")
 
-const MaxAttachmentSize = 10 << 20 // 10MB
+const MaxAttachmentSize = 10 << 20 // 10MB — images, PDFs
+// MaxVideoAttachmentSize is headroom, not a target — the app compresses to ~720p client-side
+// before ever uploading (see CLAUDE.md's chat video section), so a real upload should land well
+// under this; it exists to reject something pathological, not to encourage large uploads.
+const MaxVideoAttachmentSize = 50 << 20 // 50MB
 
 var allowedAttachmentExtensions = map[string]string{
 	"image/jpeg":      ".jpg",
 	"image/png":       ".png",
 	"image/webp":      ".webp",
 	"application/pdf": ".pdf",
+	"video/mp4":       ".mp4",
 }
 
 // Backend is where validated file bytes actually get stored — one subfolder ("category")
@@ -79,10 +84,14 @@ func (s *Service) Save(category string, file multipart.File, header *multipart.F
 }
 
 // SaveAttachment is Save's chat-attachment counterpart: same real-content-type sniffing, wider
-// allow-list (image + PDF), larger size cap. Returns the sniffed content-type alongside the URL
-// so callers can derive "image"/"pdf" without re-sniffing the file themselves.
+// allow-list (image + PDF + video), a size cap that depends on the sniffed type (video gets the
+// larger MaxVideoAttachmentSize, everything else the smaller MaxAttachmentSize). Returns the
+// sniffed content-type alongside the URL so callers can derive "image"/"video"/"pdf" without
+// re-sniffing the file themselves.
 func (s *Service) SaveAttachment(category string, file multipart.File, header *multipart.FileHeader) (url, contentType string, err error) {
-	if header.Size > MaxAttachmentSize {
+	// Cheapest reject first, before reading anything — the exact cap depends on content type
+	// (checked again below, once sniffed), so this is only the upper bound of the two caps.
+	if header.Size > MaxVideoAttachmentSize {
 		return "", "", ErrAttachmentTooLarge
 	}
 
@@ -95,6 +104,13 @@ func (s *Service) SaveAttachment(category string, file multipart.File, header *m
 	ext, ok := allowedAttachmentExtensions[contentType]
 	if !ok {
 		return "", "", ErrInvalidAttachment
+	}
+	maxSize := int64(MaxAttachmentSize)
+	if contentType == "video/mp4" {
+		maxSize = MaxVideoAttachmentSize
+	}
+	if header.Size > maxSize {
+		return "", "", ErrAttachmentTooLarge
 	}
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
 		return "", "", err

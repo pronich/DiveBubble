@@ -1,7 +1,10 @@
 import '../../domain/entities/attachment_upload_result.dart';
 import '../../domain/entities/chat_link.dart';
 import '../../domain/entities/chat_message.dart';
+import '../../domain/entities/chat_reaction.dart';
+import '../../domain/entities/media_item.dart';
 import '../mappers/chat_message_api_mapper.dart';
+import '../mappers/media_item_api_mapper.dart';
 import '../services/chat_api_service.dart';
 
 class ChatRepository {
@@ -20,10 +23,7 @@ class ChatRepository {
     String? offerId,
     String? buddyRequestId,
     bool mentionsDiveCenter = false,
-    String? attachmentUrl,
-    String? attachmentType,
-    String? attachmentFilename,
-    int? attachmentSizeBytes,
+    List<AttachmentUploadResult> attachments = const [],
     String? replyToId,
   }) async {
     final apiModel = await _service.sendMessage(
@@ -32,10 +32,7 @@ class ChatRepository {
       offerId: offerId,
       buddyRequestId: buddyRequestId,
       mentionsDiveCenter: mentionsDiveCenter,
-      attachmentUrl: attachmentUrl,
-      attachmentType: attachmentType,
-      attachmentFilename: attachmentFilename,
-      attachmentSizeBytes: attachmentSizeBytes,
+      attachments: attachments,
       replyToId: replyToId,
     );
     return apiModel.toDomain();
@@ -55,7 +52,18 @@ class ChatRepository {
       type: json['type'] as String,
       filename: json['filename'] as String,
       sizeBytes: json['sizeBytes'] as int,
+      durationSeconds: json['durationSeconds'] as int?,
     );
+  }
+
+  Future<Map<String, ChatReaction>> setReaction(String tripId, String messageId, String emoji) async {
+    final apiModels = await _service.setReaction(tripId, messageId, emoji);
+    return apiModels.map((emoji, r) => MapEntry(emoji, r.toDomain()));
+  }
+
+  Future<Map<String, ChatReaction>> removeReaction(String tripId, String messageId) async {
+    final apiModels = await _service.removeReaction(tripId, messageId);
+    return apiModels.map((emoji, r) => MapEntry(emoji, r.toDomain()));
   }
 
   Future<void> reportMessage(String tripId, String messageId, String reason, {String? details}) =>
@@ -67,12 +75,13 @@ class ChatRepository {
   Future<String> getRealtimeToken() => _service.fetchRealtimeToken();
 
   // Chat Info's Media/Files/Links tabs — main trip chat only (v1 scope, see the backend plan).
-  Future<List<ChatMessage>> getMediaAttachments(String tripId, {DateTime? before, int limit = 50}) async {
-    final apiModels = await _service.fetchAttachments(tripId, type: 'image', before: before, limit: limit);
+  // "media" = image+video, backend-side (see routes_message.go's attachmentTypesForQuery).
+  Future<List<MediaItem>> getMediaAttachments(String tripId, {DateTime? before, int limit = 50}) async {
+    final apiModels = await _service.fetchAttachments(tripId, type: 'media', before: before, limit: limit);
     return apiModels.map((m) => m.toDomain()).toList();
   }
 
-  Future<List<ChatMessage>> getFileAttachments(String tripId, {DateTime? before, int limit = 50}) async {
+  Future<List<MediaItem>> getFileAttachments(String tripId, {DateTime? before, int limit = 50}) async {
     final apiModels = await _service.fetchAttachments(tripId, type: 'pdf', before: before, limit: limit);
     return apiModels.map((m) => m.toDomain()).toList();
   }

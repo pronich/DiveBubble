@@ -259,7 +259,7 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service, pro
 				msg, sysErr := messageSvc.PostSystemEvent(r.Context(), tripID, message.Scope{OfferID: uuid.NullUUID{UUID: offerID, Valid: true}}, message.KindCarJoined, joinerName+" joined your car")
 				if sysErr != nil {
 					log.Printf("car chat: could not post join system message for offer:%s: %v", offerID, sysErr)
-				} else if pubErr := publisher.Publish(r.Context(), "transport_offer:"+offerID.String(), toMessageResponse(msg, false, false)); pubErr != nil {
+				} else if pubErr := publisher.Publish(r.Context(), "transport_offer:"+offerID.String(), toMessageResponse(msg, false, false, nil)); pubErr != nil {
 					log.Printf("realtime publish failed for transport_offer:%s: %v", offerID, pubErr)
 				}
 			}
@@ -361,12 +361,22 @@ func handleListOfferMessages(transportSvc *transport.Service, tripSvc *trip.Serv
 			messages = filtered
 		}
 
+		ids := make([]uuid.UUID, len(messages))
+		for i, m := range messages {
+			ids[i] = m.ID
+		}
+		reactionsByMessage, err := messageSvc.ListReactionsForMessages(r.Context(), ids, userID)
+		if err != nil {
+			log.Printf("list offer messages: could not load reactions for offer:%s: %v", offer.ID, err)
+			reactionsByMessage = nil
+		}
+
 		checker := newDiveCenterStaffChecker(diveCenterSvc, t.DiveCenterID)
 		out := make([]messageResponse, 0, len(messages))
 		for _, m := range messages {
 			// feedbackProvided is always false here — an offer chat never carries a
 			// feedback_prompt message, that kind only ever appears in the main trip chat.
-			out = append(out, toMessageResponse(m, checker.isStaff(r.Context(), m.UserID), false))
+			out = append(out, toMessageResponse(m, checker.isStaff(r.Context(), m.UserID), false, reactionsByMessage[m.ID]))
 		}
 		writeJSON(w, http.StatusOK, out)
 	}
@@ -399,7 +409,7 @@ func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Servi
 			return
 		}
 
-		m, err := messageSvc.Send(r.Context(), offer.TripID, userID, message.Scope{OfferID: uuid.NullUUID{UUID: offer.ID, Valid: true}}, req.Body, false, req.toAttachment(), uuid.NullUUID{})
+		m, err := messageSvc.Send(r.Context(), offer.TripID, userID, message.Scope{OfferID: uuid.NullUUID{UUID: offer.ID, Valid: true}}, req.Body, false, req.toAttachments(), uuid.NullUUID{})
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, "body or attachment is required")
@@ -414,7 +424,7 @@ func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Servi
 			isDiveCenterStaff, _ = diveCenterSvc.IsMember(r.Context(), t.DiveCenterID.UUID, userID)
 		}
 
-		resp := toMessageResponse(m, isDiveCenterStaff, false)
+		resp := toMessageResponse(m, isDiveCenterStaff, false, nil)
 		// Best-effort — REST already persisted the message, realtime push is not required for correctness.
 		if pubErr := publisher.Publish(r.Context(), "transport_offer:"+offer.ID.String(), resp); pubErr != nil {
 			log.Printf("realtime publish failed for transport_offer:%s: %v", offer.ID, pubErr)

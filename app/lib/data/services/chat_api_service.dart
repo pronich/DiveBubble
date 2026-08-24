@@ -2,8 +2,11 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../domain/entities/attachment_upload_result.dart';
 import '../../domain/entities/chat_link.dart';
 import '../models/chat_message_api_model.dart';
+import '../models/chat_reaction_api_model.dart';
+import '../models/media_item_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
 import 'multipart_upload.dart';
@@ -58,10 +61,7 @@ class ChatApiService {
     String? offerId,
     String? buddyRequestId,
     bool mentionsDiveCenter = false,
-    String? attachmentUrl,
-    String? attachmentType,
-    String? attachmentFilename,
-    int? attachmentSizeBytes,
+    List<AttachmentUploadResult> attachments = const [],
     String? replyToId,
   }) async {
     final res = await _client.post(
@@ -70,10 +70,17 @@ class ChatApiService {
       body: jsonEncode({
         'body': body,
         'mentionsDiveCenter': mentionsDiveCenter,
-        if (attachmentUrl != null) 'attachmentUrl': attachmentUrl,
-        if (attachmentType != null) 'attachmentType': attachmentType,
-        if (attachmentFilename != null) 'attachmentFilename': attachmentFilename,
-        if (attachmentSizeBytes != null) 'attachmentSizeBytes': attachmentSizeBytes,
+        if (attachments.isNotEmpty)
+          'attachments': [
+            for (final a in attachments)
+              {
+                'url': a.url,
+                'type': a.type,
+                'filename': a.filename,
+                'sizeBytes': a.sizeBytes,
+                if (a.durationSeconds != null) 'durationSeconds': a.durationSeconds,
+              },
+          ],
         if (replyToId != null) 'replyToId': replyToId,
       }),
     );
@@ -99,16 +106,48 @@ class ChatApiService {
     return ChatMessageApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
+  // Both scope-agnostic (no offerId/buddyRequestId — the backend resolves the target message's
+  // own chat off the message row itself, same as deleteMessage above) and idempotent: setting
+  // the same emoji again is still just an upsert; removing a reaction that was never set is a
+  // no-op. Both return the message's fresh per-emoji summary from the caller's own point of view.
+  Future<Map<String, ChatReactionApiModel>> setReaction(String tripId, String messageId, String emoji) async {
+    final res = await _client.put(
+      Uri.parse('$baseUrl/trips/$tripId/messages/$messageId/reaction'),
+      headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode({'emoji': emoji}),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('setReaction failed: ${res.statusCode} ${res.body}');
+    }
+    return _decodeReactions(res.body);
+  }
+
+  Future<Map<String, ChatReactionApiModel>> removeReaction(String tripId, String messageId) async {
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/trips/$tripId/messages/$messageId/reaction'),
+      headers: await _authHeaders(),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('removeReaction failed: ${res.statusCode} ${res.body}');
+    }
+    return _decodeReactions(res.body);
+  }
+
+  Map<String, ChatReactionApiModel> _decodeReactions(String body) {
+    final reactions = (jsonDecode(body) as Map<String, dynamic>)['reactions'] as Map<String, dynamic>? ?? {};
+    return reactions.map((emoji, raw) => MapEntry(emoji, ChatReactionApiModel.fromJson(raw as Map<String, dynamic>)));
+  }
+
   // Scope-agnostic by design (no offerId/buddyRequestId) — the backend only needs the caller to
   // be a trip participant, not which chat the resulting message will land in. Upload first, then
   // pass the returned fields into sendMessage above.
   Future<Map<String, dynamic>> uploadAttachment(String tripId, String filePath) async =>
       uploadFile(Uri.parse('$baseUrl/trips/$tripId/messages/attachment'), filePath: filePath, headers: await _authHeaders());
 
-  // Backs the Media ("image") / Files ("pdf") tabs in Chat Info — main trip chat only,
-  // newest-first, cursor-paginated. Reuses ChatMessageApiModel since the response is a normal
-  // message list, just filtered/scoped server-side.
-  Future<List<ChatMessageApiModel>> fetchAttachments(
+  // Backs the Media ("type=media", image+video) / Files ("type=pdf") tabs in Chat Info — main
+  // trip chat only, newest-first, cursor-paginated. One row per attachment (see MediaItemApiModel),
+  // not per message — a message can carry several attachments now.
+  Future<List<MediaItemApiModel>> fetchAttachments(
     String tripId, {
     required String type,
     DateTime? before,
@@ -125,7 +164,7 @@ class ChatApiService {
       throw Exception('fetchAttachments failed: ${res.statusCode} ${res.body}');
     }
     final decoded = jsonDecode(res.body) as List<dynamic>;
-    return decoded.map((e) => ChatMessageApiModel.fromJson(e as Map<String, dynamic>)).toList();
+    return decoded.map((e) => MediaItemApiModel.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   // Backs the Links tab in Chat Info — every URL mentioned in main-chat message text.

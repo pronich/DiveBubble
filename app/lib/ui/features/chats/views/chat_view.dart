@@ -11,15 +11,20 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../../../../data/services/attachment_cache_service.dart';
+import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
+import '../../../../domain/entities/chat_reaction.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/cached_attachment_image.dart';
 import '../../../core/widgets/open_attachment.dart';
+import '../../../../domain/entities/picked_attachment.dart';
 import '../../../core/widgets/pick_attachment.dart';
+import '../../../core/widgets/video_thumbnail_placeholder.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../view_models/chat_view_model.dart';
 import 'attachment_image_preview_page.dart';
+import 'attachment_video_preview_page.dart';
 
 // Consecutive messages from the same sender on the same day collapse into one visual
 // cluster (name shown once, avatar anchored to the last bubble) as long as the gap
@@ -28,8 +33,28 @@ import 'attachment_image_preview_page.dart';
 const _groupingWindow = Duration(minutes: 5);
 
 // Mirrors the backend's upload.MaxAttachmentSize — checked client-side before ever hitting the
-// network as a cheap UX win; the backend still enforces this authoritatively.
+// network as a cheap UX win; the backend still enforces this authoritatively. Video has no
+// client-side size cap (see _pickAttachment's fitsSizeCap) since picked.sizeBytes is the raw,
+// not-yet-compressed file.
 const _maxAttachmentSizeBytes = 10 * 1024 * 1024;
+
+// Mirrors message.maxAttachmentsPerMessage backend-side — same "cheap client-side check, real
+// enforcement is server-side" split as the size cap above.
+const _maxAttachmentsPerMessage = 9;
+
+// Fixed set, Messenger-style — mirrors message.AllowedReactionEmojis / migration 000055's CHECK
+// constraint. No custom-emoji picker in v1.
+const _reactionEmojis = ['❤️', '😅', '😁', '🙃', '😢', '😮', '😡', '👌'];
+
+// One row in the @-mention autocomplete list — either the dive center (synthetic, not a real
+// participant) or a trip participant, both rendered/selected identically (see
+// _ChatViewState._mentionEntries and the mention list's ListTile builder).
+class _MentionEntry {
+  const _MentionEntry({required this.displayName, this.isDiveCenter = false});
+
+  final String displayName;
+  final bool isDiveCenter;
+}
 
 class ChatView extends StatefulWidget {
   const ChatView({
@@ -72,11 +97,13 @@ class _ChatViewState extends State<ChatView>
   int _lastMessageCount = 0;
   bool _isNearBottom = true;
   bool _showNewMessagesPill = false;
-  // Armed via the "@DiveCenter" chip (business trips only — see the chip's own comment
-  // below), reset once the armed message is actually sent.
-  bool _mentionArmed = false;
 
-  PickedAttachment? _pendingAttachment;
+  // Index of the '@' that opened the currently-active mention token in _textController.text,
+  // or -1 when no mention is being typed right now (see _onComposerTextChanged).
+  int _mentionTokenStart = -1;
+  List<_MentionEntry> _mentionMatches = [];
+
+  List<PickedAttachment> _pendingAttachments = [];
 
   // Set by the long-press actions sheet's Reply action or a bubble's swipe-to-reply gesture;
   // cleared on send or explicit dismiss (_ReplyPreviewChip's X).
@@ -101,10 +128,12 @@ class _ChatViewState extends State<ChatView>
     // and load()'s synchronous first-line notifyListeners() can otherwise fire mid-build.
     Future.microtask(widget.viewModel.load);
     _itemPositionsListener.itemPositions.addListener(_onScroll);
+    _textController.addListener(_onComposerTextChanged);
   }
 
   @override
   void dispose() {
+    _textController.removeListener(_onComposerTextChanged);
     _textController.dispose();
     _composerFocusNode.dispose();
     _itemPositionsListener.itemPositions.removeListener(_onScroll);
@@ -180,6 +209,76 @@ class _ChatViewState extends State<ChatView>
         .whenComplete(() => _fetchingProfileIds.remove(userId));
   }
 
+  // Telegram-style: typing '@' always opens the people list (dive center included, per
+  // Nikolai's review comment — no more separate fixed chip) right above the composer, live-
+  // filtered as more characters follow. Fires on every keystroke via _textController's
+  // listener; cheap enough (participants list tops out at a trip's roster) not to debounce.
+  void _onComposerTextChanged() {
+    final text = _textController.text;
+    final cursor = _textController.selection.baseOffset;
+    if (cursor < 0) {
+      if (_mentionTokenStart != -1) setState(() => _mentionTokenStart = -1);
+      return;
+    }
+    final atIndex = _activeMentionStart(text, cursor);
+    if (atIndex == -1) {
+      if (_mentionTokenStart != -1) setState(() => _mentionTokenStart = -1);
+      return;
+    }
+    final query = text.substring(atIndex + 1, cursor).toLowerCase();
+    final all = _mentionEntries();
+    final matches = query.isEmpty
+        ? all
+        : all.where((e) => e.displayName.toLowerCase().contains(query)).toList();
+    setState(() {
+      _mentionTokenStart = atIndex;
+      _mentionMatches = matches;
+    });
+  }
+
+  // Scans backward from the cursor for an '@' that starts the current word (at the very
+  // start of the text, or preceded by whitespace) — hitting whitespace first, or no '@' at
+  // all, means no mention is currently being typed.
+  int _activeMentionStart(String text, int cursor) {
+    for (var i = cursor - 1; i >= 0; i--) {
+      final char = text[i];
+      if (char == '@') {
+        final prev = i == 0 ? null : text[i - 1];
+        return (prev == null || prev == ' ' || prev == '\n') ? i : -1;
+      }
+      if (char == ' ' || char == '\n') return -1;
+    }
+    return -1;
+  }
+
+  // Dive center first (when this is a business trip and the current user isn't its own
+  // staff — same gate the old chip used), then every trip participant except the viewer
+  // themselves (mentioning your own name isn't a real use case here).
+  List<_MentionEntry> _mentionEntries() {
+    final businessName = widget.businessName;
+    final currentUserId = widget.viewModel.currentUserId;
+    return [
+      if (businessName != null && widget.canMentionDiveCenter)
+        _MentionEntry(displayName: businessName, isDiveCenter: true),
+      for (final p in widget.viewModel.participants)
+        if (p.id != currentUserId && (p.displayName ?? '').isNotEmpty)
+          _MentionEntry(displayName: p.displayName!),
+    ];
+  }
+
+  void _selectMention(_MentionEntry entry) {
+    final text = _textController.text;
+    final cursor = _textController.selection.baseOffset;
+    final start = _mentionTokenStart;
+    if (start == -1 || cursor < 0 || cursor > text.length) return;
+    final replacement = '@${entry.displayName} ';
+    _textController.value = TextEditingValue(
+      text: text.replaceRange(start, cursor, replacement),
+      selection: TextSelection.collapsed(offset: start + replacement.length),
+    );
+    setState(() => _mentionTokenStart = -1);
+  }
+
   void _openProfile(String userId) {
     showDiverIdCard(
       context,
@@ -253,6 +352,13 @@ class _ChatViewState extends State<ChatView>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not delete message: $error')));
   }
 
+  Future<void> _reactToMessage(String messageId, String emoji) async {
+    _settleFocus(focusComposer: false);
+    final error = await widget.viewModel.reactToMessage(messageId, emoji);
+    if (!mounted || error == null) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not react: $error')));
+  }
+
   // Long-press menu — iOS/Telegram-style: background dims+blurs, the pressed bubble stays put
   // (rendered from a snapshot taken at press time — see _MessageRow's onLongPress, which hands
   // over the bubble's on-screen Rect + a captured image), and the action list sits right below
@@ -274,6 +380,11 @@ class _ChatViewState extends State<ChatView>
             bubbleRect: bubbleRect,
             bubbleImage: bubbleImage,
             onDismiss: () => _settleFocus(focusComposer: false),
+            reactions: message.reactions,
+            onReact: (emoji) {
+              Navigator.of(context).pop();
+              _reactToMessage(message.id, emoji);
+            },
             actions: [
               _ContextMenuAction(icon: Icons.reply_outlined, label: 'Reply', onTap: () => _startReply(message)),
               _ContextMenuAction(icon: Icons.copy_outlined, label: 'Copy text', onTap: () => _copyMessageText(message)),
@@ -293,52 +404,90 @@ class _ChatViewState extends State<ChatView>
     );
   }
 
+  // A document stays a message on its own — the grid below is built for photo/video cells,
+  // and a PDF mixed into it would just render broken. Mutually exclusive in both directions.
   Future<void> _pickAttachment() async {
-    final picked = await pickAttachment(context);
-    if (picked == null) return;
-    if (picked.sizeBytes > _maxAttachmentSizeBytes) {
-      if (!mounted) return;
+    if (_pendingAttachments.any((a) => a.type == 'pdf')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('File is too large — max 10MB.')),
+        const SnackBar(content: Text('Remove the document first to add photos.')),
       );
       return;
     }
-    setState(() => _pendingAttachment = picked);
+    final room = _maxAttachmentsPerMessage - _pendingAttachments.length;
+    if (room <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Only $_maxAttachmentsPerMessage attachments allowed per message')),
+      );
+      return;
+    }
+    final picked = await pickAttachment(context);
+    if (picked.isEmpty) return;
+    if (!mounted) return;
+    if (picked.any((p) => p.type == 'pdf') && _pendingAttachments.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A document can only be sent on its own.')),
+      );
+      return;
+    }
+    // Video is exempt here — picked.sizeBytes is the raw, not-yet-compressed file (compression
+    // now happens at Send time, see ChatViewModel._compressedVideoPathOrFallback), which can
+    // easily be well over the cap for a source phone's own recording even though the
+    // compressed upload will land comfortably under it. The 60s duration check in
+    // pick_attachment.dart is what actually bounds this; the backend's post-compression size
+    // cap is the real, authoritative enforcement.
+    bool fitsSizeCap(PickedAttachment p) => p.type == 'video' || p.sizeBytes <= _maxAttachmentSizeBytes;
+    final tooLarge = picked.where((p) => !fitsSizeCap(p)).isNotEmpty;
+    final accepted = picked.where(fitsSizeCap).take(room).toList();
+    if (accepted.isNotEmpty) setState(() => _pendingAttachments = [..._pendingAttachments, ...accepted]);
+    if (tooLarge || picked.length > room) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            tooLarge
+                ? 'Some files are too large.'
+                : 'Only $_maxAttachmentsPerMessage attachments allowed per message.',
+          ),
+        ),
+      );
+    }
   }
 
-  void _removePendingAttachment() => setState(() => _pendingAttachment = null);
+  void _removePendingAttachment(PickedAttachment attachment) =>
+      setState(() => _pendingAttachments = _pendingAttachments.where((a) => a != attachment).toList());
 
   Future<void> _handleSend() async {
     final text = _textController.text;
-    final mentionsDiveCenter = _mentionArmed;
-    final attachment = _pendingAttachment;
+    // No structured mention storage (see the chat-richness plan's Stage 4) — the composer
+    // just checks whether the literal "@BusinessName" text made it into the message, same as
+    // the old chip's boolean but driven by what was actually typed instead of a manual toggle.
+    final businessName = widget.businessName;
+    final mentionsDiveCenter = businessName != null && text.contains('@$businessName');
+    final attachments = _pendingAttachments;
     final replyToId = _replyingTo?.id;
 
-    if (attachment == null) {
+    if (attachments.isEmpty) {
       if (text.trim().isEmpty) return;
       _textController.clear();
       setState(() {
-        _mentionArmed = false;
+        _mentionTokenStart = -1;
         _replyingTo = null;
       });
       widget.viewModel.send(text, mentionsDiveCenter: mentionsDiveCenter, replyToId: replyToId);
       return;
     }
 
-    // Clear the composer immediately — a pending bubble (with its own loader over the
-    // attachment) takes over from here, see ChatViewModel.uploadAndSend, so there's no window
-    // where both the composer chip's spinner and the sent bubble are visible at once.
+    // Clear the composer immediately — a pending bubble (with its own per-item loaders, see
+    // _AttachmentGrid) takes over from here, see ChatViewModel.uploadMultipleAndSend, so
+    // there's no window where both the composer chips and the sent bubble are visible at once.
     _textController.clear();
     setState(() {
-      _mentionArmed = false;
-      _pendingAttachment = null;
+      _mentionTokenStart = -1;
+      _pendingAttachments = [];
       _replyingTo = null;
     });
     try {
-      await widget.viewModel.uploadAndSend(
-        attachment.path,
-        attachmentType: attachment.type,
-        attachmentFilename: attachment.filename,
+      await widget.viewModel.uploadMultipleAndSend(
+        attachments,
         caption: text,
         mentionsDiveCenter: mentionsDiveCenter,
         replyToId: replyToId,
@@ -480,6 +629,7 @@ class _ChatViewState extends State<ChatView>
                               ? null
                               : (rect, image) => _showMessageActionsSheet(message, rect, image),
                           onReply: isDeleted ? null : () => _startReply(message),
+                          onReact: isDeleted ? null : (emoji) => _reactToMessage(message.id, emoji),
                         );
                       },
                     ),
@@ -520,26 +670,36 @@ class _ChatViewState extends State<ChatView>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Business trips only — mentioning the dive center is how a diver flags
-                    // a message as actually needing staff attention (Stage 2 push will only
-                    // notify staff on a mention, not every message, to avoid spamming
-                    // several staff members over one trip's chat).
-                    if (widget.businessName != null &&
-                        widget.canMentionDiveCenter)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: FilterChip(
-                            avatar: const Icon(
-                              Icons.campaign_outlined,
-                              size: 16,
-                            ),
-                            label: Text('@${widget.businessName}'),
-                            selected: _mentionArmed,
-                            onSelected: (value) =>
-                                setState(() => _mentionArmed = value),
-                          ),
+                    // Typing '@' opens this list (dive center included as a normal entry when
+                    // it's a business trip — see _mentionEntries); tapping a row inserts
+                    // "@Display Name " and closes it. Mentioning the dive center is how a
+                    // diver flags a message as actually needing staff attention (push only
+                    // notifies staff on a mention, not every message).
+                    if (_mentionTokenStart != -1 && _mentionMatches.isNotEmpty)
+                      Container(
+                        key: const ValueKey('mentionList'),
+                        margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                        constraints: const BoxConstraints(maxHeight: 180),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          itemCount: _mentionMatches.length,
+                          itemBuilder: (context, index) {
+                            final entry = _mentionMatches[index];
+                            return ListTile(
+                              dense: true,
+                              leading: Icon(
+                                entry.isDiveCenter ? Icons.campaign_outlined : Icons.person_outline,
+                                size: 20,
+                              ),
+                              title: Text(entry.displayName),
+                              onTap: () => _selectMention(entry),
+                            );
+                          },
                         ),
                       ),
                     if (_replyingTo != null)
@@ -556,14 +716,32 @@ class _ChatViewState extends State<ChatView>
                           onCancel: _cancelReply,
                         ),
                       ),
-                    if (_pendingAttachment != null)
+                    if (_pendingAttachments.isNotEmpty)
                       Padding(
-                        key: const ValueKey('pendingAttachmentChip'),
+                        key: const ValueKey('pendingAttachmentsRow'),
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                        child: _PendingAttachmentChip(
-                          attachment: _pendingAttachment!,
-                          onRemove: _removePendingAttachment,
-                        ),
+                        // A lone PDF keeps the named chip; photos get a compact thumbnail
+                        // strip instead (a filename-per-item row doesn't fit several across).
+                        child: _pendingAttachments.length == 1 && _pendingAttachments.first.type == 'pdf'
+                            ? _PendingAttachmentChip(
+                                attachment: _pendingAttachments.first,
+                                onRemove: () => _removePendingAttachment(_pendingAttachments.first),
+                              )
+                            : SizedBox(
+                                height: 72,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: _pendingAttachments.length,
+                                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                                  itemBuilder: (context, index) {
+                                    final attachment = _pendingAttachments[index];
+                                    return _PendingPhotoThumb(
+                                      attachment: attachment,
+                                      onRemove: () => _removePendingAttachment(attachment),
+                                    );
+                                  },
+                                ),
+                              ),
                       ),
                     Padding(
                       key: const ValueKey('composerRow'),
@@ -584,7 +762,7 @@ class _ChatViewState extends State<ChatView>
                               keyboardType: TextInputType.multiline,
                               textCapitalization: TextCapitalization.sentences,
                               decoration: InputDecoration(
-                                hintText: _pendingAttachment != null ? 'Caption (optional)' : 'Message',
+                                hintText: _pendingAttachments.isNotEmpty ? 'Caption (optional)' : 'Message',
                               ),
                             ),
                           ),
@@ -701,33 +879,211 @@ class _PendingAttachmentChip extends StatelessWidget {
   }
 }
 
-/// Renders a message's photo or PDF attachment above its caption (`_MessageBody`) — the caption
-/// still renders unconditionally below, even when empty, since it's what shows the timestamp.
-class _AttachmentPreview extends StatelessWidget {
-  const _AttachmentPreview({required this.message, required this.color});
+/// One square thumbnail in the multi-photo composer strip — a small remove-X badge overlaid
+/// top-right, same idea as _PendingAttachmentChip's dismiss but compact enough to sit several
+/// across in a horizontal scroll.
+class _PendingPhotoThumb extends StatelessWidget {
+  const _PendingPhotoThumb({required this.attachment, required this.onRemove});
 
-  final ChatMessage message;
+  final PickedAttachment attachment;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 64,
+      height: 64,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: attachment.type == 'video'
+                ? const VideoThumbnailPlaceholder(width: 64, height: 64)
+                : Image.file(File(attachment.path), width: 64, height: 64, fit: BoxFit.cover),
+          ),
+          Positioned(
+            top: -6,
+            right: -6,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                width: 22,
+                height: 22,
+                decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
+                child: const Icon(Icons.close, size: 14, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Renders a message's attachment(s) above its caption (`_MessageBody`) — the caption still
+/// renders unconditionally below, even when empty, since it's what shows the timestamp. A
+/// single non-PDF attachment gets the plain thumbnail treatment; several get the grid.
+class _AttachmentPreview extends StatelessWidget {
+  const _AttachmentPreview({required this.attachments, required this.color});
+
+  final List<ChatAttachment> attachments;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    if (message.attachmentType == 'pdf') {
-      return _PdfAttachmentRow(message: message, color: color);
+    if (attachments.length > 1) {
+      return _AttachmentGrid(attachments: attachments, color: color);
     }
-    return _ImageAttachmentThumbnail(message: message, color: color);
+    final attachment = attachments.first;
+    switch (attachment.type) {
+      case 'pdf':
+        return _PdfAttachmentRow(attachment: attachment, color: color);
+      case 'video':
+        return _VideoAttachmentThumbnail(attachment: attachment, color: color);
+      default:
+        return _ImageAttachmentThumbnail(attachment: attachment, color: color);
+    }
+  }
+}
+
+// 1 -> full-width single image (handled by _ImageAttachmentThumbnail instead, never calls
+// this); 2-3 -> that many columns, 1 row; 4 -> 2x2; 5-6 -> 3 columns, 2 rows; 7-9 -> 3x3. A
+// trailing incomplete row's empty cells just stay empty, same as Telegram/WhatsApp.
+int _gridColumns(int count) {
+  if (count <= 3) return count;
+  if (count == 4) return 2;
+  return 3;
+}
+
+/// The 2+ attachment case — mixed photo/video. Tapping a photo cell opens the full-screen photo
+/// preview, swipeable across every *photo* on this message (see AttachmentImagePreviewPage's
+/// siblingUrls — video items are excluded from that swipe set, each video opens its own single
+/// player instead). Each cell shows its own upload spinner independently (Nikolai's ask) rather
+/// than one shared spinner for the whole grid.
+///
+/// Built as plain nested Row/Column, not GridView(shrinkWrap: true) — a shrink-wrapped sliver
+/// grid nested inside this screen's ScrollablePositionedList (not a plain ListView) measured an
+/// incomplete last row wrong, leaving a block of blank bubble-colored space below the images
+/// and before the timestamp. Row/Column sizing is fully intrinsic (AspectRatio per cell), so
+/// there's no sliver viewport measurement involved at all to get wrong.
+class _AttachmentGrid extends StatelessWidget {
+  const _AttachmentGrid({required this.attachments, required this.color});
+
+  final List<ChatAttachment> attachments;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrls = [for (final a in attachments) if (a.type != 'video' && a.url != null) a.url!];
+    final columns = _gridColumns(attachments.length);
+    final rows = <List<ChatAttachment>>[
+      for (var i = 0; i < attachments.length; i += columns)
+        attachments.sublist(i, math.min(i + columns, attachments.length)),
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var r = 0; r < rows.length; r++) ...[
+              if (r > 0) const SizedBox(height: 2),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var c = 0; c < columns; c++) ...[
+                    if (c > 0) const SizedBox(width: 2),
+                    Expanded(
+                      child: c < rows[r].length
+                          ? AspectRatio(
+                              aspectRatio: 1,
+                              child: _AttachmentGridCell(
+                                attachment: rows[r][c],
+                                imageUrls: imageUrls,
+                              ),
+                            )
+                          // Trailing incomplete row's empty cells just stay empty (no
+                          // AspectRatio, so they don't force phantom row height), same as
+                          // Telegram/WhatsApp.
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttachmentGridCell extends StatelessWidget {
+  const _AttachmentGridCell({required this.attachment, required this.imageUrls});
+
+  final ChatAttachment attachment;
+  final List<String> imageUrls;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = attachment.url;
+    final isVideo = attachment.type == 'video';
+    return GestureDetector(
+      onTap: url == null
+          ? null
+          : () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => isVideo
+                    ? AttachmentVideoPreviewPage(url: url)
+                    : AttachmentImagePreviewPage(
+                        url: url,
+                        siblingUrls: imageUrls,
+                        initialIndex: imageUrls.indexOf(url),
+                      ),
+              ),
+            ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (isVideo)
+            VideoThumbnailPlaceholder(
+              width: double.infinity,
+              height: double.infinity,
+              durationSeconds: attachment.durationSeconds,
+            )
+          else if (url != null)
+            CachedAttachmentImage(url: url, fit: BoxFit.cover)
+          else if (attachment.localPath != null)
+            Image.file(File(attachment.localPath!), fit: BoxFit.cover),
+          if (!attachment.isUploaded)
+            Container(
+              color: Colors.black.withValues(alpha: 0.35),
+              child: const Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 
 class _ImageAttachmentThumbnail extends StatelessWidget {
-  const _ImageAttachmentThumbnail({required this.message, required this.color});
+  const _ImageAttachmentThumbnail({required this.attachment, required this.color});
 
-  final ChatMessage message;
+  final ChatAttachment attachment;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final url = message.attachmentUrl;
-    final localPath = message.localAttachmentPath;
+    final url = attachment.url;
+    final localPath = attachment.localPath;
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: GestureDetector(
@@ -753,7 +1109,7 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
                 CachedAttachmentImage(url: url, width: 220, height: 160)
               else if (localPath != null)
                 Image.file(File(localPath), width: 220, height: 160, fit: BoxFit.cover),
-              if (message.isPending)
+              if (!attachment.isUploaded)
                 Container(
                   width: 220,
                   height: 160,
@@ -774,17 +1130,57 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
   }
 }
 
-class _PdfAttachmentRow extends StatelessWidget {
-  const _PdfAttachmentRow({required this.message, required this.color});
+/// Single-video bubble, sized to match _ImageAttachmentThumbnail so a solo video and a solo
+/// photo bubble read the same width/height — the difference is the play-icon placeholder body
+/// (see VideoThumbnailPlaceholder) instead of a decoded frame.
+class _VideoAttachmentThumbnail extends StatelessWidget {
+  const _VideoAttachmentThumbnail({required this.attachment, required this.color});
 
-  final ChatMessage message;
+  final ChatAttachment attachment;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final url = message.attachmentUrl;
-    final filename = message.attachmentFilename ?? 'Document.pdf';
-    final sizeLabel = formatAttachmentFileSize(message.attachmentSizeBytes);
+    final url = attachment.url;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: GestureDetector(
+        onTap: url == null
+            ? null
+            : () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => AttachmentVideoPreviewPage(url: url)),
+              ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              VideoThumbnailPlaceholder(width: 220, height: 160, durationSeconds: attachment.durationSeconds),
+              if (!attachment.isUploaded)
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PdfAttachmentRow extends StatelessWidget {
+  const _PdfAttachmentRow({required this.attachment, required this.color});
+
+  final ChatAttachment attachment;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = attachment.url;
+    final filename = attachment.filename ?? 'Document.pdf';
+    final sizeLabel = formatAttachmentFileSize(attachment.sizeBytes);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: GestureDetector(
@@ -818,7 +1214,7 @@ class _PdfAttachmentRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              if (message.isPending || url == null)
+              if (!attachment.isUploaded || url == null)
                 SizedBox(
                   width: 16,
                   height: 16,
@@ -945,8 +1341,10 @@ ChatMessage? _findMessageById(List<ChatMessage> messages, String id) {
 String _replyPreviewText(ChatMessage m) {
   if (m.deletedAt != null) return 'Message deleted';
   if (m.body.isNotEmpty) return m.body;
-  return switch (m.attachmentType) {
+  if (m.attachments.length > 1) return '📎 ${m.attachments.length} attachments';
+  return switch (m.attachments.isEmpty ? null : m.attachments.first.type) {
     'image' => '📷 Photo',
+    'video' => '🎬 Video',
     'pdf' => '📄 PDF',
     _ => '',
   };
@@ -1104,6 +1502,7 @@ class _MessageRow extends StatefulWidget {
     this.repliedToSenderName,
     this.onTapReplyPreview,
     this.isHighlighted = false,
+    this.onReact,
   });
 
   final ChatMessage message;
@@ -1137,6 +1536,11 @@ class _MessageRow extends StatefulWidget {
   /// Briefly true right after onTapReplyPreview's own scroll-to lands here — see
   /// ChatView._scrollToMessage.
   final bool isHighlighted;
+
+  /// Fired by tapping an emoji in the reaction summary pill (_ReactionSummary) — a quick
+  /// "one tap, no long-press" way to add the same reaction someone else already left. Null
+  /// only for an already-deleted message.
+  final void Function(String emoji)? onReact;
 
   @override
   State<_MessageRow> createState() => _MessageRowState();
@@ -1272,13 +1676,22 @@ class _MessageRowState extends State<_MessageRow> {
                       onTap: widget.onTapReplyPreview,
                     ),
                   ),
-                if (message.attachmentUrl != null || message.localAttachmentPath != null)
-                  _AttachmentPreview(message: message, color: onBubbleColor),
+                if (message.attachments.isNotEmpty)
+                  _AttachmentPreview(attachments: message.attachments, color: onBubbleColor),
                 _MessageBody(
                   body: message.body,
                   time: formatTime(message.createdAt),
                   color: onBubbleColor,
                 ),
+                if (message.reactions.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: _ReactionSummary(
+                      reactions: message.reactions,
+                      color: onBubbleColor,
+                      onTap: widget.onReact,
+                    ),
+                  ),
               ],
             ),
     );
@@ -1361,6 +1774,49 @@ class _MessageRowState extends State<_MessageRow> {
 
 /// The quoted strip inside a bubble that's replying to another message — tap scrolls to and
 /// highlights the original (see ChatView._scrollToMessage).
+/// "❤️ 3 😂 1" under a bubble that has any reactions — tapping a pill is a one-tap shortcut
+/// to add that same reaction yourself (same toggle semantics as the long-press picker: tapping
+/// your own current reaction again removes it), no need to long-press just to join in on one
+/// that's already there. Sorted by _reactionEmojis' own fixed order so the row doesn't visually
+/// reshuffle as counts change.
+class _ReactionSummary extends StatelessWidget {
+  const _ReactionSummary({required this.reactions, required this.color, this.onTap});
+
+  final Map<String, ChatReaction> reactions;
+  final Color color;
+  final void Function(String emoji)? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final entries = [
+      for (final emoji in _reactionEmojis)
+        if (reactions[emoji] != null) MapEntry(emoji, reactions[emoji]!),
+    ];
+    if (entries.isEmpty) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 6,
+      children: [
+        for (final entry in entries)
+          GestureDetector(
+            onTap: onTap == null ? null : () => onTap!(entry.key),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: entry.value.reactedByMe ? color.withValues(alpha: 0.15) : null,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${entry.key} ${entry.value.count}',
+                style: theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.85)),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _ReplyQuoteStrip extends StatelessWidget {
   const _ReplyQuoteStrip({
     required this.senderName,
@@ -1430,6 +1886,8 @@ class _MessageContextMenu extends StatelessWidget {
     required this.bubbleImage,
     required this.actions,
     required this.onDismiss,
+    required this.reactions,
+    required this.onReact,
   });
 
   final Rect bubbleRect;
@@ -1440,10 +1898,21 @@ class _MessageContextMenu extends StatelessWidget {
   /// ChatView._settleFocus), so this must not also fire there or it'd fight Reply's intent.
   final VoidCallback onDismiss;
 
+  /// This viewer's current reactions on the message — used only to highlight whichever of the
+  /// fixed 8 emojis (if any) they've already picked; ChatViewModel.reactToMessage decides
+  /// set-vs-remove from this same data.
+  final Map<String, ChatReaction> reactions;
+  final void Function(String emoji) onReact;
+
   static const _menuWidth = 230.0;
   static const _gap = 8.0;
   static const _rowHeight = 48.0;
   static const _screenMargin = 16.0;
+  static const _reactionRowHeight = 52.0;
+  static const _reactionCellWidth = 36.0;
+  // 8 == _reactionEmojis.length — can't reference that in a const expression here, so kept in
+  // sync by hand; both live right next to each other at the top of this file.
+  static const _reactionRowWidth = _reactionCellWidth * 8 + 12;
 
   @override
   Widget build(BuildContext context) {
@@ -1452,25 +1921,34 @@ class _MessageContextMenu extends StatelessWidget {
     final safePadding = MediaQuery.paddingOf(context);
     final menuHeight = actions.length * _rowHeight + 16;
 
-    // Menu always renders below the bubble — never flipped above it — so a future emoji-reaction
-    // row (always above the bubble) and this menu (always below) stay in a consistent, fixed
-    // arrangement. When there isn't room below, the whole bubble+menu group shifts up together
-    // instead (Telegram/Messenger do the same for a bubble near the bottom of the screen).
+    // Menu always renders below the bubble, the reaction row always above it — a fixed,
+    // consistent arrangement. When there isn't room below for the menu, or above for the
+    // reaction row, the whole group shifts up together instead (Telegram/Messenger do the same
+    // for a bubble near the bottom of the screen); minTop reserves space above the bubble for
+    // the reaction row specifically, since that's a second thing (not just the menu) now
+    // competing for vertical space near the top of the screen.
     final spaceBelow = screenSize.height - safePadding.bottom - bubbleRect.bottom;
     final shortfall = (menuHeight + _gap + _screenMargin) - spaceBelow;
     final verticalShift = shortfall > 0 ? shortfall : 0.0;
     // max/min rather than .clamp() — a bubble already hard against the top of the screen can
     // make the "don't go above the safe area" floor exceed bubbleRect.top itself, which
     // .clamp(lower, upper) would throw on (lower > upper); this degrades to "no shift" instead.
-    final minTop = safePadding.top + _screenMargin;
+    final minTop = safePadding.top + _screenMargin + _reactionRowHeight + _gap;
     final shiftedBubbleTop = math.max(minTop, math.min(bubbleRect.top, bubbleRect.top - verticalShift));
     final menuTop = shiftedBubbleTop + bubbleRect.height + _gap;
+    final reactionRowTop = shiftedBubbleTop - _gap - _reactionRowHeight;
 
     var menuLeft = bubbleRect.left;
     if (menuLeft + _menuWidth > screenSize.width - _screenMargin) {
       menuLeft = screenSize.width - _screenMargin - _menuWidth;
     }
     if (menuLeft < _screenMargin) menuLeft = _screenMargin;
+
+    var reactionRowLeft = bubbleRect.left;
+    if (reactionRowLeft + _reactionRowWidth > screenSize.width - _screenMargin) {
+      reactionRowLeft = screenSize.width - _screenMargin - _reactionRowWidth;
+    }
+    if (reactionRowLeft < _screenMargin) reactionRowLeft = _screenMargin;
 
     return Material(
       color: Colors.transparent,
@@ -1496,6 +1974,46 @@ class _MessageContextMenu extends StatelessWidget {
             height: bubbleRect.height,
             child: IgnorePointer(
               child: RawImage(image: bubbleImage, width: bubbleRect.width, height: bubbleRect.height),
+            ),
+          ),
+          Positioned(
+            left: reactionRowLeft,
+            top: reactionRowTop,
+            width: _reactionRowWidth,
+            height: _reactionRowHeight,
+            child: Material(
+              color: theme.colorScheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(_reactionRowHeight / 2),
+              elevation: 8,
+              clipBehavior: Clip.antiAlias,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (final emoji in _reactionEmojis)
+                    InkWell(
+                      onTap: () => onReact(emoji),
+                      customBorder: const CircleBorder(),
+                      child: SizedBox(
+                        width: _reactionCellWidth,
+                        height: _reactionRowHeight,
+                        child: Center(
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            alignment: Alignment.center,
+                            decoration: (reactions[emoji]?.reactedByMe ?? false)
+                                ? BoxDecoration(
+                                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  )
+                                : null,
+                            child: Text(emoji, style: const TextStyle(fontSize: 20)),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           Positioned(

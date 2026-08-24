@@ -6,10 +6,13 @@ class AttachmentUploadResult {
     required this.type,
     required this.filename,
     required this.sizeBytes,
+    this.durationSeconds,
   });
 
   final String url;
-  final String type; // 'image' | 'pdf'
+  final String type; // 'image' | 'video' | 'pdf'
   final String filename;
   final int sizeBytes;
+  // Video only.
+  final int? durationSeconds;
 }

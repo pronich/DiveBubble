@@ -257,6 +257,7 @@ class _MyAppState extends State<MyApp> {
               repository: _chatRepository,
               realtimeService: _realtimeService,
               profileRepository: _profileRepository,
+              tripRepository: _tripRepository,
               tripId: trip.id,
               currentUserId: currentUserId,
             ),

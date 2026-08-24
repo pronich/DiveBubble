@@ -58,6 +58,8 @@ dependencies:
   open_filex: ^4.7.0
   share_plus: ^13.3.0
   scrollable_positioned_list: ^0.3.8
+  video_player: ^2.10.0
+  video_compress: ^3.1.4
 
 dev_dependencies:
   flutter_test:

@@ -236,7 +236,7 @@ func handleJoinBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, profileSv
 				msg, sysErr := messageSvc.PostSystemEvent(r.Context(), tripID, message.Scope{BuddyRequestID: uuid.NullUUID{UUID: requestID, Valid: true}}, message.KindBuddyJoined, joinerName+" joined your buddy group")
 				if sysErr != nil {
 					log.Printf("buddy chat: could not post join system message for request:%s: %v", requestID, sysErr)
-				} else if pubErr := publisher.Publish(r.Context(), "buddy_request:"+requestID.String(), toMessageResponse(msg, false, false)); pubErr != nil {
+				} else if pubErr := publisher.Publish(r.Context(), "buddy_request:"+requestID.String(), toMessageResponse(msg, false, false, nil)); pubErr != nil {
 					log.Printf("realtime publish failed for buddy_request:%s: %v", requestID, pubErr)
 				}
 			}
@@ -333,12 +333,22 @@ func handleListBuddyMessages(buddySvc *buddy.Service, tripSvc *trip.Service, div
 			messages = filtered
 		}
 
+		ids := make([]uuid.UUID, len(messages))
+		for i, m := range messages {
+			ids[i] = m.ID
+		}
+		reactionsByMessage, err := messageSvc.ListReactionsForMessages(r.Context(), ids, userID)
+		if err != nil {
+			log.Printf("list buddy messages: could not load reactions for buddy_request:%s: %v", req.ID, err)
+			reactionsByMessage = nil
+		}
+
 		checker := newDiveCenterStaffChecker(diveCenterSvc, t.DiveCenterID)
 		out := make([]messageResponse, 0, len(messages))
 		for _, m := range messages {
 			// feedbackProvided is always false here — a buddy chat never carries a
 			// feedback_prompt message, that kind only ever appears in the main trip chat.
-			out = append(out, toMessageResponse(m, checker.isStaff(r.Context(), m.UserID), false))
+			out = append(out, toMessageResponse(m, checker.isStaff(r.Context(), m.UserID), false, reactionsByMessage[m.ID]))
 		}
 		writeJSON(w, http.StatusOK, out)
 	}
@@ -371,7 +381,7 @@ func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, dive
 			return
 		}
 
-		m, err := messageSvc.Send(r.Context(), req.TripID, userID, message.Scope{BuddyRequestID: uuid.NullUUID{UUID: req.ID, Valid: true}}, body.Body, false, body.toAttachment(), uuid.NullUUID{})
+		m, err := messageSvc.Send(r.Context(), req.TripID, userID, message.Scope{BuddyRequestID: uuid.NullUUID{UUID: req.ID, Valid: true}}, body.Body, false, body.toAttachments(), uuid.NullUUID{})
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, "body or attachment is required")
@@ -386,7 +396,7 @@ func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, dive
 			isDiveCenterStaff, _ = diveCenterSvc.IsMember(r.Context(), t.DiveCenterID.UUID, userID)
 		}
 
-		resp := toMessageResponse(m, isDiveCenterStaff, false)
+		resp := toMessageResponse(m, isDiveCenterStaff, false, nil)
 		// Best-effort — REST already persisted the message, realtime push is not required for correctness.
 		if pubErr := publisher.Publish(r.Context(), "buddy_request:"+req.ID.String(), resp); pubErr != nil {
 			log.Printf("realtime publish failed for buddy_request:%s: %v", req.ID, pubErr)

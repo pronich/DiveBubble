@@ -1,6 +1,6 @@
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../domain/entities/chat_link.dart';
-import '../../../../domain/entities/chat_message.dart';
+import '../../../../domain/entities/media_item.dart';
 
 /// Backs Chat Info's Media/Files/Links tabs (main trip chat only — v1 scope, see the backend's
 /// own endpoints). Each tab loads its first page independently and lazily from ChatInfoPage;
@@ -11,7 +11,7 @@ class ChatInfoViewModel {
   final ChatRepository _repository;
   final String tripId;
 
-  Future<List<ChatMessage>> loadMedia() => _repository.getMediaAttachments(tripId);
-  Future<List<ChatMessage>> loadFiles() => _repository.getFileAttachments(tripId);
+  Future<List<MediaItem>> loadMedia() => _repository.getMediaAttachments(tripId);
+  Future<List<MediaItem>> loadFiles() => _repository.getFileAttachments(tripId);
   Future<List<ChatLink>> loadLinks() => _repository.getLinks(tripId);
 }

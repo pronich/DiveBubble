@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/transport_offer.dart';
@@ -28,6 +29,7 @@ class TransportView extends StatefulWidget {
     required this.viewModel,
     required this.chatRepository,
     required this.realtimeService,
+    required this.tripRepository,
     this.isCancelled = false,
     this.businessName,
   });
@@ -38,6 +40,7 @@ class TransportView extends StatefulWidget {
   /// reusing the exact same repository/service the main Bubble chat uses.
   final ChatRepository chatRepository;
   final RealtimeService realtimeService;
+  final TripRepository tripRepository;
 
   /// See ChatView.isCancelled — same source of truth (TripConversationPage), same idea:
   /// existing offers/joins stay visible, but nothing new can be created or joined.
@@ -86,6 +89,7 @@ class _TransportViewState extends State<TransportView>
         repository: widget.chatRepository,
         realtimeService: widget.realtimeService,
         profileRepository: widget.viewModel.profileRepository,
+        tripRepository: widget.tripRepository,
         tripId: offer.tripId,
         currentUserId: widget.viewModel.currentUserId,
         offerId: offer.id,

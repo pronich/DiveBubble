@@ -1,5 +1,8 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import 'chat_attachment_api_model.dart';
+import 'chat_reaction_api_model.dart';
+
 part 'chat_message_api_model.freezed.dart';
 part 'chat_message_api_model.g.dart';
 
@@ -15,12 +18,10 @@ abstract class ChatMessageApiModel with _$ChatMessageApiModel {
     @Default(false) bool mentionsDiveCenter,
     @Default('user') String kind,
     @Default(false) bool feedbackProvided,
-    String? attachmentUrl,
-    String? attachmentType,
-    String? attachmentFilename,
-    int? attachmentSizeBytes,
+    @Default([]) List<ChatAttachmentApiModel> attachments,
     String? replyToId,
     DateTime? deletedAt,
+    @Default({}) Map<String, ChatReactionApiModel> reactions,
   }) = _ChatMessageApiModel;
 
   factory ChatMessageApiModel.fromJson(Map<String, dynamic> json) =>
