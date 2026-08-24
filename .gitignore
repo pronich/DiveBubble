@@ -27,6 +27,9 @@ backend/uploads/
 backend/firebase-service-account.json
 backend/SECRETS_ROTATION.md
 
+# Local planning doc, not meant to live in repo history
+ROADMAP.md
+
 # OS
 .DS_Store
 
