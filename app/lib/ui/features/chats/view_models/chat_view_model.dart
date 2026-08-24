@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:centrifuge/centrifuge.dart' as centrifuge;
 import 'package:flutter/foundation.dart';
+import 'package:video_compress/video_compress.dart';
 
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
@@ -405,8 +406,32 @@ class ChatViewModel extends ChangeNotifier {
     }
   }
 
+  // Compression happens here — at upload time, once Send is actually tapped — not at pick
+  // time. Picking used to run compression immediately, which left the composer looking like
+  // nothing had happened for however many seconds a longer clip took to compress; the pending
+  // bubble's per-item spinner (isUploaded: false, set the instant this item's attachment entry
+  // is built — see _buildPendingMessage) already covers this whole window, compression
+  // included, since it doesn't flip to true until this function returns.
+  Future<String> _compressedVideoPathOrFallback(String originalPath) async {
+    try {
+      final compressed = await VideoCompress.compressVideo(
+        originalPath,
+        quality: VideoQuality.Res1280x720Quality,
+        deleteOrigin: false,
+      );
+      return compressed?.path ?? originalPath;
+    } catch (_) {
+      // Falls back to the uncompressed original — still capped by the backend's video size
+      // limit, just larger than ideal. video_compress is a thinly-maintained plugin (see the
+      // chat-richness plan's note on smoke-testing it), so this failure mode is expected to be
+      // hit occasionally rather than treated as fatal.
+      return originalPath;
+    }
+  }
+
   Future<AttachmentUploadResult> _uploadAndPatch({required String tempId, required PickedAttachment picked}) async {
-    final uploaded = await _repository.uploadAttachment(tripId, picked.path);
+    final uploadPath = picked.type == 'video' ? await _compressedVideoPathOrFallback(picked.path) : picked.path;
+    final uploaded = await _repository.uploadAttachment(tripId, uploadPath);
     // The upload endpoint sniffs content-type/size/filename server-side but has no way to know
     // a video's duration — that was only ever knowable client-side, at pick time (see
     // pick_attachment.dart's getMediaInfo call) — so it's threaded through here rather than

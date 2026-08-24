@@ -32,12 +32,11 @@ import 'attachment_video_preview_page.dart';
 // gets its own name + avatar again, Telegram-style.
 const _groupingWindow = Duration(minutes: 5);
 
-// Mirrors the backend's upload.MaxAttachmentSize/MaxVideoAttachmentSize — checked client-side
-// before ever hitting the network as a cheap UX win; the backend still enforces these
-// authoritatively. Video gets the larger cap since it's compressed but still much bigger than a
-// photo or PDF.
+// Mirrors the backend's upload.MaxAttachmentSize — checked client-side before ever hitting the
+// network as a cheap UX win; the backend still enforces this authoritatively. Video has no
+// client-side size cap (see _pickAttachment's fitsSizeCap) since picked.sizeBytes is the raw,
+// not-yet-compressed file.
 const _maxAttachmentSizeBytes = 10 * 1024 * 1024;
-const _maxVideoAttachmentSizeBytes = 50 * 1024 * 1024;
 
 // Mirrors message.maxAttachmentsPerMessage backend-side — same "cheap client-side check, real
 // enforcement is server-side" split as the size cap above.
@@ -253,14 +252,17 @@ class _ChatViewState extends State<ChatView>
   }
 
   // Dive center first (when this is a business trip and the current user isn't its own
-  // staff — same gate the old chip used), then every trip participant.
+  // staff — same gate the old chip used), then every trip participant except the viewer
+  // themselves (mentioning your own name isn't a real use case here).
   List<_MentionEntry> _mentionEntries() {
     final businessName = widget.businessName;
+    final currentUserId = widget.viewModel.currentUserId;
     return [
       if (businessName != null && widget.canMentionDiveCenter)
         _MentionEntry(displayName: businessName, isDiveCenter: true),
       for (final p in widget.viewModel.participants)
-        if ((p.displayName ?? '').isNotEmpty) _MentionEntry(displayName: p.displayName!),
+        if (p.id != currentUserId && (p.displayName ?? '').isNotEmpty)
+          _MentionEntry(displayName: p.displayName!),
     ];
   }
 
@@ -427,8 +429,13 @@ class _ChatViewState extends State<ChatView>
       );
       return;
     }
-    bool fitsSizeCap(PickedAttachment p) =>
-        p.sizeBytes <= (p.type == 'video' ? _maxVideoAttachmentSizeBytes : _maxAttachmentSizeBytes);
+    // Video is exempt here — picked.sizeBytes is the raw, not-yet-compressed file (compression
+    // now happens at Send time, see ChatViewModel._compressedVideoPathOrFallback), which can
+    // easily be well over the cap for a source phone's own recording even though the
+    // compressed upload will land comfortably under it. The 60s duration check in
+    // pick_attachment.dart is what actually bounds this; the backend's post-compression size
+    // cap is the real, authoritative enforcement.
+    bool fitsSizeCap(PickedAttachment p) => p.type == 'video' || p.sizeBytes <= _maxAttachmentSizeBytes;
     final tooLarge = picked.where((p) => !fitsSizeCap(p)).isNotEmpty;
     final accepted = picked.where(fitsSizeCap).take(room).toList();
     if (accepted.isNotEmpty) setState(() => _pendingAttachments = [..._pendingAttachments, ...accepted]);
@@ -622,6 +629,7 @@ class _ChatViewState extends State<ChatView>
                               ? null
                               : (rect, image) => _showMessageActionsSheet(message, rect, image),
                           onReply: isDeleted ? null : () => _startReply(message),
+                          onReact: isDeleted ? null : (emoji) => _reactToMessage(message.id, emoji),
                         );
                       },
                     ),
@@ -953,6 +961,12 @@ int _gridColumns(int count) {
 /// siblingUrls — video items are excluded from that swipe set, each video opens its own single
 /// player instead). Each cell shows its own upload spinner independently (Nikolai's ask) rather
 /// than one shared spinner for the whole grid.
+///
+/// Built as plain nested Row/Column, not GridView(shrinkWrap: true) — a shrink-wrapped sliver
+/// grid nested inside this screen's ScrollablePositionedList (not a plain ListView) measured an
+/// incomplete last row wrong, leaving a block of blank bubble-colored space below the images
+/// and before the timestamp. Row/Column sizing is fully intrinsic (AspectRatio per cell), so
+/// there's no sliver viewport measurement involved at all to get wrong.
 class _AttachmentGrid extends StatelessWidget {
   const _AttachmentGrid({required this.attachments, required this.color});
 
@@ -962,67 +976,99 @@ class _AttachmentGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrls = [for (final a in attachments) if (a.type != 'video' && a.url != null) a.url!];
+    final columns = _gridColumns(attachments.length);
+    final rows = <List<ChatAttachment>>[
+      for (var i = 0; i < attachments.length; i += columns)
+        attachments.sublist(i, math.min(i + columns, attachments.length)),
+    ];
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),
-        child: GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: _gridColumns(attachments.length),
-            crossAxisSpacing: 2,
-            mainAxisSpacing: 2,
-            childAspectRatio: 1,
-          ),
-          itemCount: attachments.length,
-          itemBuilder: (context, index) {
-            final attachment = attachments[index];
-            final url = attachment.url;
-            final isVideo = attachment.type == 'video';
-            return GestureDetector(
-              onTap: url == null
-                  ? null
-                  : () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => isVideo
-                            ? AttachmentVideoPreviewPage(url: url)
-                            : AttachmentImagePreviewPage(
-                                url: url,
-                                siblingUrls: imageUrls,
-                                initialIndex: imageUrls.indexOf(url),
-                              ),
-                      ),
-                    ),
-              child: Stack(
-                fit: StackFit.expand,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var r = 0; r < rows.length; r++) ...[
+              if (r > 0) const SizedBox(height: 2),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (isVideo)
-                    VideoThumbnailPlaceholder(
-                      width: double.infinity,
-                      height: double.infinity,
-                      durationSeconds: attachment.durationSeconds,
-                    )
-                  else if (url != null)
-                    CachedAttachmentImage(url: url, fit: BoxFit.cover)
-                  else if (attachment.localPath != null)
-                    Image.file(File(attachment.localPath!), fit: BoxFit.cover),
-                  if (!attachment.isUploaded)
-                    Container(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      child: const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        ),
-                      ),
+                  for (var c = 0; c < columns; c++) ...[
+                    if (c > 0) const SizedBox(width: 2),
+                    Expanded(
+                      child: c < rows[r].length
+                          ? AspectRatio(
+                              aspectRatio: 1,
+                              child: _AttachmentGridCell(
+                                attachment: rows[r][c],
+                                imageUrls: imageUrls,
+                              ),
+                            )
+                          // Trailing incomplete row's empty cells just stay empty (no
+                          // AspectRatio, so they don't force phantom row height), same as
+                          // Telegram/WhatsApp.
+                          : const SizedBox.shrink(),
                     ),
+                  ],
                 ],
               ),
-            );
-          },
+            ],
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _AttachmentGridCell extends StatelessWidget {
+  const _AttachmentGridCell({required this.attachment, required this.imageUrls});
+
+  final ChatAttachment attachment;
+  final List<String> imageUrls;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = attachment.url;
+    final isVideo = attachment.type == 'video';
+    return GestureDetector(
+      onTap: url == null
+          ? null
+          : () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => isVideo
+                    ? AttachmentVideoPreviewPage(url: url)
+                    : AttachmentImagePreviewPage(
+                        url: url,
+                        siblingUrls: imageUrls,
+                        initialIndex: imageUrls.indexOf(url),
+                      ),
+              ),
+            ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (isVideo)
+            VideoThumbnailPlaceholder(
+              width: double.infinity,
+              height: double.infinity,
+              durationSeconds: attachment.durationSeconds,
+            )
+          else if (url != null)
+            CachedAttachmentImage(url: url, fit: BoxFit.cover)
+          else if (attachment.localPath != null)
+            Image.file(File(attachment.localPath!), fit: BoxFit.cover),
+          if (!attachment.isUploaded)
+            Container(
+              color: Colors.black.withValues(alpha: 0.35),
+              child: const Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1456,6 +1502,7 @@ class _MessageRow extends StatefulWidget {
     this.repliedToSenderName,
     this.onTapReplyPreview,
     this.isHighlighted = false,
+    this.onReact,
   });
 
   final ChatMessage message;
@@ -1489,6 +1536,11 @@ class _MessageRow extends StatefulWidget {
   /// Briefly true right after onTapReplyPreview's own scroll-to lands here — see
   /// ChatView._scrollToMessage.
   final bool isHighlighted;
+
+  /// Fired by tapping an emoji in the reaction summary pill (_ReactionSummary) — a quick
+  /// "one tap, no long-press" way to add the same reaction someone else already left. Null
+  /// only for an already-deleted message.
+  final void Function(String emoji)? onReact;
 
   @override
   State<_MessageRow> createState() => _MessageRowState();
@@ -1634,7 +1686,11 @@ class _MessageRowState extends State<_MessageRow> {
                 if (message.reactions.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: _ReactionSummary(reactions: message.reactions, color: onBubbleColor),
+                    child: _ReactionSummary(
+                      reactions: message.reactions,
+                      color: onBubbleColor,
+                      onTap: widget.onReact,
+                    ),
                   ),
               ],
             ),
@@ -1718,14 +1774,17 @@ class _MessageRowState extends State<_MessageRow> {
 
 /// The quoted strip inside a bubble that's replying to another message — tap scrolls to and
 /// highlights the original (see ChatView._scrollToMessage).
-/// "❤️ 3 😂 1" under a bubble that has any reactions — informational only for v1, no "who
-/// reacted" detail, no tap-shortcut beyond the long-press menu itself (see plan). Sorted by
-/// _reactionEmojis' own fixed order so the row doesn't visually reshuffle as counts change.
+/// "❤️ 3 😂 1" under a bubble that has any reactions — tapping a pill is a one-tap shortcut
+/// to add that same reaction yourself (same toggle semantics as the long-press picker: tapping
+/// your own current reaction again removes it), no need to long-press just to join in on one
+/// that's already there. Sorted by _reactionEmojis' own fixed order so the row doesn't visually
+/// reshuffle as counts change.
 class _ReactionSummary extends StatelessWidget {
-  const _ReactionSummary({required this.reactions, required this.color});
+  const _ReactionSummary({required this.reactions, required this.color, this.onTap});
 
   final Map<String, ChatReaction> reactions;
   final Color color;
+  final void Function(String emoji)? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1739,9 +1798,19 @@ class _ReactionSummary extends StatelessWidget {
       spacing: 6,
       children: [
         for (final entry in entries)
-          Text(
-            '${entry.key} ${entry.value.count}',
-            style: theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.85)),
+          GestureDetector(
+            onTap: onTap == null ? null : () => onTap!(entry.key),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: entry.value.reactedByMe ? color.withValues(alpha: 0.15) : null,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${entry.key} ${entry.value.count}',
+                style: theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.85)),
+              ),
+            ),
           ),
       ],
     );

@@ -95,11 +95,11 @@ Future<PickedAttachment> _toImagePickedAttachment(String path) async {
   );
 }
 
-// Rejects clips over the duration cap, then compresses to ~720p — this is both a file-size
-// measure and what normalizes every source phone's video format down to one MP4/H.264 shape
-// before it ever reaches the backend. Falls back to the picked (uncompressed) file if
-// compression itself throws, rather than blocking the send outright — video_compress is a
-// thinly-maintained plugin, see the chat-richness plan's note on smoke-testing it.
+// Only a quick duration check here — a real read, not a guess, since getMediaInfo is fast
+// (no encoding involved). Compression is deliberately deferred to Send time (see
+// ChatViewModel._compressedVideoPathOrFallback) rather than run right here: doing it at pick
+// time made the composer look frozen/unresponsive for however many seconds a clip took to
+// compress, with no visible feedback that anything was happening at all.
 Future<PickedAttachment?> _toVideoPickedAttachment(BuildContext context, String path) async {
   final messenger = ScaffoldMessenger.of(context);
   try {
@@ -112,29 +112,13 @@ Future<PickedAttachment?> _toVideoPickedAttachment(BuildContext context, String 
       return null;
     }
 
-    var resultPath = path;
-    var durationSeconds = (durationMs / 1000).round();
-    try {
-      final compressed = await VideoCompress.compressVideo(
-        path,
-        quality: VideoQuality.Res1280x720Quality,
-        deleteOrigin: false,
-      );
-      if (compressed?.path != null) {
-        resultPath = compressed!.path!;
-        if (compressed.duration != null) durationSeconds = (compressed.duration! / 1000).round();
-      }
-    } catch (_) {
-      // Keeps resultPath/durationSeconds as the uncompressed original computed above.
-    }
-
-    final file = File(resultPath);
+    final file = File(path);
     return PickedAttachment(
-      path: resultPath,
+      path: path,
       type: 'video',
       filename: path.split(Platform.pathSeparator).last,
       sizeBytes: await file.length(),
-      durationSeconds: durationSeconds,
+      durationSeconds: (durationMs / 1000).round(),
     );
   } catch (e) {
     messenger.showSnackBar(SnackBar(content: Text('Could not process video: $e')));
