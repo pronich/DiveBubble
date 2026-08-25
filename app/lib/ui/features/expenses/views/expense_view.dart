@@ -226,7 +226,24 @@ class _ExpenseBalanceSheetState extends State<_ExpenseBalanceSheet> {
                 Text('Balance', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
                 if (settlements.isEmpty)
-                  const Padding(padding: EdgeInsets.only(bottom: 8), child: Text('All settled up.'))
+                  // A short, empty-looking sheet reads as a rendering glitch rather than a
+                  // deliberate "you're done here" state — this fills the same footprint a
+                  // settlement row would, so it never flashes as a squashed sliver on its
+                  // way to auto-closing (see _onViewModelChanged).
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.check_circle_outline,
+                          size: 40,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(height: 12),
+                        const Text('All settled up.'),
+                      ],
+                    ),
+                  )
                 else
                   ...settlements.map(
                     (s) => _SettlementRow(viewModel: widget.viewModel, settlement: s),
