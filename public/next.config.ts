@@ -24,6 +24,17 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // apple-app-site-association has no file extension, so Next's static file server would
+  // otherwise send a generic content type — Apple's own doc recommends application/json
+  // explicitly, and iOS's AASA fetcher is stricter about this than a browser would be.
+  async headers() {
+    return [
+      {
+        source: "/.well-known/apple-app-site-association",
+        headers: [{ key: "Content-Type", value: "application/json" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
