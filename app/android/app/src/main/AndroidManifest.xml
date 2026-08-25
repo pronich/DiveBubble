@@ -33,6 +33,12 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Same reasoning as iOS's FlutterDeepLinkingEnabled=false in Info.plist — we
+                 handle invite links ourselves via app_links, not Flutter's built-in
+                 route-name-based deep linking (we don't use named routes at all). -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

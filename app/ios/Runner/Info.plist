@@ -93,5 +93,13 @@
 	<array>
 		<string>googlegmail</string>
 	</array>
+	<!-- Without this, the Flutter engine's own built-in deep-linking ALSO tries to handle an
+	     incoming Universal Link as a named Navigator route (we don't use named routes — see
+	     main.dart's app_links-based handling instead), fails to find a match, and iOS treats
+	     that as the app not having handled the link — falling back to opening it in Safari
+	     right after the app already opened correctly. Disabling this defers Universal Link
+	     handling entirely to app_links. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 </dict>
 </plist>
