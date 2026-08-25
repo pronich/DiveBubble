@@ -122,7 +122,8 @@ until Figma defines one.
   gallery (add/remove, no reorder yet).
 - **Bubbles**: per-trip chat (Centrifugo realtime, clustering, unread badges, read state),
   transport offers (join, one-booking-per-trip, dissolve alerts), read-only mode on cancelled
-  trips.
+  trips, per-user Archive (long-press or swipe, Telegram-style pull-to-reveal folder, excluded
+  from list/push/red-dot).
 - **Profile**: overview, certifications (level + specialties), gear locker, photo uploads,
   public profile view / diver ID card.
 - **Notifications**: in-app unread/mention badges, @mention-the-dive-center (staff push
