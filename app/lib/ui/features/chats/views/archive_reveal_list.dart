@@ -22,6 +22,7 @@ class ArchiveRevealList extends StatefulWidget {
     required this.itemBuilder,
     required this.separatorBuilder,
     required this.archivedCount,
+    required this.archivedUnreadCount,
     required this.archivedPreviewText,
     required this.revealed,
     required this.onRevealed,
@@ -34,6 +35,7 @@ class ArchiveRevealList extends StatefulWidget {
   final IndexedWidgetBuilder itemBuilder;
   final IndexedWidgetBuilder separatorBuilder;
   final int archivedCount;
+  final int archivedUnreadCount;
   final String archivedPreviewText;
   final bool revealed;
   final VoidCallback onRevealed;
@@ -90,7 +92,7 @@ class _ArchiveRevealListState extends State<ArchiveRevealList> {
             if (_showPinnedRow) {
               if (index == 0) {
                 return _ArchivePinnedRow(
-                  count: widget.archivedCount,
+                  unreadCount: widget.archivedUnreadCount,
                   preview: widget.archivedPreviewText,
                   onTap: widget.onOpenArchive,
                 );
@@ -129,7 +131,7 @@ class _ArchiveRevealListState extends State<ArchiveRevealList> {
                   minHeight: _maxReveal,
                   alignment: Alignment.bottomCenter,
                   child: _ArchiveRevealCell(
-                    count: widget.archivedCount,
+                    unreadCount: widget.archivedUnreadCount,
                     preview: widget.archivedPreviewText,
                     progress: progress,
                     armed: armed,
@@ -151,9 +153,9 @@ class _ArchiveRevealListState extends State<ArchiveRevealList> {
 }
 
 class _ArchivePinnedRow extends StatelessWidget {
-  const _ArchivePinnedRow({required this.count, required this.preview, required this.onTap});
+  const _ArchivePinnedRow({required this.unreadCount, required this.preview, required this.onTap});
 
-  final int count;
+  final int unreadCount;
   final String preview;
   final VoidCallback onTap;
 
@@ -190,24 +192,26 @@ class _ArchivePinnedRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Container(
-              constraints: const BoxConstraints(minWidth: 22),
-              height: 22,
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '$count',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onPrimary,
-                  fontWeight: FontWeight.w700,
+            if (unreadCount > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                constraints: const BoxConstraints(minWidth: 22),
+                height: 22,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$unreadCount',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -217,13 +221,13 @@ class _ArchivePinnedRow extends StatelessWidget {
 
 class _ArchiveRevealCell extends StatelessWidget {
   const _ArchiveRevealCell({
-    required this.count,
+    required this.unreadCount,
     required this.preview,
     required this.progress,
     required this.armed,
   });
 
-  final int count;
+  final int unreadCount;
   final String preview;
   final double progress;
   final bool armed;
@@ -270,24 +274,26 @@ class _ArchiveRevealCell extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Container(
-              constraints: const BoxConstraints(minWidth: 22),
-              height: 22,
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                '$count',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onPrimary,
-                  fontWeight: FontWeight.w700,
+            if (unreadCount > 0) ...[
+              const SizedBox(width: 8),
+              Container(
+                constraints: const BoxConstraints(minWidth: 22),
+                height: 22,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$unreadCount',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),

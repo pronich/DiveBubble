@@ -179,6 +179,7 @@ class _MyTripsViewState extends State<MyTripsView> {
                         itemCount: trips.length,
                         separatorBuilder: (context, _) => const Divider(height: 1, indent: 76),
                         archivedCount: widget.viewModel.archivedCount,
+                        archivedUnreadCount: widget.viewModel.archivedUnreadCount,
                         archivedPreviewText: widget.viewModel.archivedPreviewText,
                         revealed: _archiveRevealed,
                         onRevealed: () => setState(() => _archiveRevealed = true),

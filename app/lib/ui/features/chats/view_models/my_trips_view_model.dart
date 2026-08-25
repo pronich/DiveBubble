@@ -43,6 +43,11 @@ class MyTripsViewModel extends ChangeNotifier {
   List<Trip> _archivedTrips = [];
   int get archivedCount => _archivedTrips.length;
 
+  // The badge shown on the Archive row itself — count of archived chats with unread
+  // messages, not archived chats in general (an archived chat you've already read
+  // shouldn't keep contributing to a number that reads as "needs attention").
+  int get archivedUnreadCount => _archivedTrips.where((t) => t.unreadCount > 0).length;
+
   // Matches the two-line preview Telegram's own Archived Chats cell shows — most recent
   // first, same ordering the backend already returns.
   String get archivedPreviewText => _archivedTrips.take(2).map((t) => t.title).join(', ');
