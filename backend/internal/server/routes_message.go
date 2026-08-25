@@ -548,6 +548,13 @@ func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *pr
 	} else {
 		recipients = excludeUsers(recipients, mutedIDs)
 	}
+	// Archived stays fully functional (unread count still climbs) but never pushes — same
+	// posture as muted, just a separate flag since archiving and muting are independent.
+	if archivedIDs, err := tripSvc.ListArchivedUserIDs(ctx, t.ID); err != nil {
+		log.Printf("push: could not list archived users for trip:%s: %v", t.ID, err)
+	} else {
+		recipients = excludeUsers(recipients, archivedIDs)
+	}
 	if len(recipients) == 0 {
 		return
 	}

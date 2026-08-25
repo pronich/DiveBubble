@@ -420,8 +420,32 @@ func (s *Service) IsJoined(ctx context.Context, id string, userID uuid.UUID) (bo
 	return s.Repo.IsJoined(ctx, tripID, userID)
 }
 
-func (s *Service) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]Trip, error) {
-	return s.Repo.ListJoinedByUser(ctx, userID)
+func (s *Service) ListJoinedByUser(ctx context.Context, userID uuid.UUID, archived bool) ([]Trip, error) {
+	return s.Repo.ListJoinedByUser(ctx, userID, archived)
+}
+
+func (s *Service) Archive(ctx context.Context, id string, userID uuid.UUID) error {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return ErrInvalidArgument
+	}
+	return s.Repo.Archive(ctx, tripID, userID)
+}
+
+func (s *Service) Unarchive(ctx context.Context, id string, userID uuid.UUID) error {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return ErrInvalidArgument
+	}
+	return s.Repo.Unarchive(ctx, tripID, userID)
+}
+
+func (s *Service) IsArchived(ctx context.Context, id string, userID uuid.UUID) (bool, error) {
+	tripID, err := uuid.Parse(id)
+	if err != nil {
+		return false, ErrInvalidArgument
+	}
+	return s.Repo.IsArchived(ctx, tripID, userID)
 }
 
 func (s *Service) CountParticipants(ctx context.Context, tripID uuid.UUID) (int, error) {
@@ -464,6 +488,11 @@ func (s *Service) IsMuted(ctx context.Context, id string, userID uuid.UUID) (boo
 // fan-out, not an HTTP-exposed listing (same pattern as divecenter.ListMemberUserIDs).
 func (s *Service) ListMutedUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
 	return s.Repo.ListMutedUserIDs(ctx, tripID)
+}
+
+// ListArchivedUserIDs — same un-gated, push-fan-out-only posture as ListMutedUserIDs.
+func (s *Service) ListArchivedUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
+	return s.Repo.ListArchivedUserIDs(ctx, tripID)
 }
 
 func (s *Service) SubmitFeedback(ctx context.Context, id string, userID uuid.UUID, rating int, helpedWith string, comment sql.NullString, contactOk bool) error {

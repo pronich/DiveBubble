@@ -58,6 +58,9 @@ func registerTripRoutes(
 	mux.HandleFunc("GET /trips/{id}/mute", withAuth(authIssuer, handleGetTripMute(svc)))
 	mux.HandleFunc("POST /trips/{id}/mute", withAuth(authIssuer, handleMuteTrip(svc)))
 	mux.HandleFunc("DELETE /trips/{id}/mute", withAuth(authIssuer, handleUnmuteTrip(svc)))
+	mux.HandleFunc("GET /trips/{id}/archive", withAuth(authIssuer, handleGetTripArchive(svc)))
+	mux.HandleFunc("POST /trips/{id}/archive", withAuth(authIssuer, handleArchiveTrip(svc)))
+	mux.HandleFunc("DELETE /trips/{id}/archive", withAuth(authIssuer, handleUnarchiveTrip(svc)))
 	mux.HandleFunc("POST /trips/{id}/feedback", withAuth(authIssuer, handleSubmitFeedback(svc)))
 	// Same "browsable without an account" posture as GET /trips/{id} — the gallery is part
 	// of the trip's own public detail, not gated behind participation. Adding a photo (POST)
@@ -802,6 +805,54 @@ func handleUnmuteTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 	}
 }
 
+func handleGetTripArchive(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+		archived, err := svc.IsArchived(r.Context(), id, userID)
+		if err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not get archive state")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"archived": archived})
+	}
+}
+
+// handleArchiveTrip/handleUnarchiveTrip — same un-gated posture as handleMuteTrip/
+// handleUnmuteTrip above (archiving a trip you've since left is harmless).
+func handleArchiveTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+		if err := svc.Archive(r.Context(), id, userID); err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not archive trip")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func handleUnarchiveTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		id := r.PathValue("id")
+		if err := svc.Unarchive(r.Context(), id, userID); err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid trip id")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not unarchive trip")
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 type submitFeedbackRequest struct {
 	Rating     int      `json:"rating"`
 	HelpedWith []string `json:"helpedWith"`
@@ -845,7 +896,8 @@ func handleSubmitFeedback(svc *trip.Service) func(http.ResponseWriter, *http.Req
 
 func handleListMyTrips(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
-		trips, err := svc.ListJoinedByUser(r.Context(), userID)
+		archived := r.URL.Query().Get("archived") == "true"
+		trips, err := svc.ListJoinedByUser(r.Context(), userID, archived)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not list trips")
 			return

@@ -373,7 +373,12 @@ func (r *Repository) IsJoined(ctx context.Context, tripID, userID uuid.UUID) (bo
 // MarkRead's UPDATE to touch, so trs is the only place their read marker actually lands.
 // HasUnreadMention reuses the exact same read-marker COALESCE — a mention is just an unread
 // message with mentions_dive_center set, not a separately tracked read state.
-func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]Trip, error) {
+// archived selects which side of the Bubbles/Archive split to return — false (the normal
+// Bubbles list) excludes anything the user archived, true (backing GET /trips/mine?archived=
+// true) returns only those. Same LEFT JOIN either way; the boolean param just flips which
+// side of the "is there an archive row" check matches, so there's one query to keep in sync
+// instead of two near-duplicates.
+func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID, archived bool) ([]Trip, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT `+tripColumnsPrefixed("t")+`,
 			(SELECT COUNT(*) FROM chat_messages cm
@@ -388,13 +393,15 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 		FROM trips t
 		LEFT JOIN trip_participants tp ON tp.trip_id = t.id AND tp.user_id = $1
 		LEFT JOIN trip_read_state trs ON trs.trip_id = t.id AND trs.user_id = $1
-		WHERE tp.user_id = $1
+		LEFT JOIN trip_archives ta2 ON ta2.trip_id = t.id AND ta2.user_id = $1
+		WHERE (tp.user_id = $1
 		   OR EXISTS (
 		       SELECT 1 FROM dive_center_members dcm
 		       WHERE dcm.dive_center_id = t.dive_center_id AND dcm.user_id = $1
-		   )
+		   ))
+		   AND (ta2.user_id IS NOT NULL) = $2
 		ORDER BY COALESCE((SELECT MAX(created_at) FROM chat_messages WHERE trip_id = t.id), tp.joined_at, t.created_at) DESC
-	`, userID)
+	`, userID, archived)
 	if err != nil {
 		return nil, err
 	}
@@ -464,6 +471,48 @@ func (r *Repository) IsMuted(ctx context.Context, tripID, userID uuid.UUID) (boo
 // regardless of how they have access to it (participant or dive-center staff).
 func (r *Repository) ListMutedUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := r.DB.QueryContext(ctx, `SELECT user_id FROM trip_mutes WHERE trip_id = $1`, tripID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+func (r *Repository) Archive(ctx context.Context, tripID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `
+		INSERT INTO trip_archives (trip_id, user_id) VALUES ($1, $2)
+		ON CONFLICT (trip_id, user_id) DO NOTHING
+	`, tripID, userID)
+	return err
+}
+
+func (r *Repository) Unarchive(ctx context.Context, tripID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `DELETE FROM trip_archives WHERE trip_id = $1 AND user_id = $2`, tripID, userID)
+	return err
+}
+
+func (r *Repository) IsArchived(ctx context.Context, tripID, userID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT EXISTS(SELECT 1 FROM trip_archives WHERE trip_id = $1 AND user_id = $2)
+	`, tripID, userID).Scan(&exists)
+	return exists, err
+}
+
+// ListArchivedUserIDs backs notifyNewMessage's archive filter — an archived trip still counts
+// unread messages (see ListJoinedByUser's archived param) but never pushes, same posture as a
+// muted trip.
+func (r *Repository) ListArchivedUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.DB.QueryContext(ctx, `SELECT user_id FROM trip_archives WHERE trip_id = $1`, tripID)
 	if err != nil {
 		return nil, err
 	}
