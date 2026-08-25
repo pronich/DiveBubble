@@ -140,11 +140,13 @@ until Figma defines one.
 - **Growth**: private trips (`is_private` + booking-code gate), invite links (Universal/App
   Links, `divebubble.io/join/{code}`, `GET /invite/{code}` preview), Share-to-DiveBubble (iOS
   Share Extension + Android intent-filters → Bubble picker → pre-staged composer).
+- **Share expenses**: 4th Bubble tab — equal/shares/exact splits, simplified net balances +
+  settle-up (mirrors Splitwise's own approach), transaction date picker, plain ¤ units (no
+  real-currency handling yet).
 
 ## Deferred
 
 - Logbook (personal dive log across trips), per-trip Dives sub-tab
-- Splitwise-style expense splitting
 - In-extension destination picker for Share-to-DiveBubble (Slack/Telegram-style, no app
   hand-off) — see ROADMAP.md's idea backlog
 - Drag-to-reorder trip photos
