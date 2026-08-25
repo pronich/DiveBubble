@@ -24,6 +24,7 @@ extension TripApiMapper on TripApiModel {
         bookingCode: bookingCode,
         maxParticipants: maxParticipants,
         bookingStatus: bookingStatus,
+        isPrivate: isPrivate,
         photoUrl: photoUrl,
         diveCenterId: diveCenterId,
         priceMinor: priceMinor,

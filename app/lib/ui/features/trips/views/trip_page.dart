@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
@@ -532,6 +533,10 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    if (isOrganizer && trip.bookingCode != null) ...[
+                      const SizedBox(height: 16),
+                      _BookingCodeRow(bookingCode: trip.bookingCode!),
+                    ],
                     const SizedBox(height: 16),
                     _InfoGrid(trip: trip),
                     if (trip.description != null) ...[
@@ -601,22 +606,34 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
                     else if (!trip.joined &&
                         !isOrganizer &&
                         trip.bookingStatus == 'open')
-                      trip.diveCenterId != null
-                          ? _BookNowSection(
-                              trip: trip,
-                              diveCenter: widget.viewModel.organizerDiveCenter,
-                              viewModel: widget.viewModel,
-                              tripRepository: widget.tripRepository,
-                              chatRepository: widget.chatRepository,
-                              transportRepository: widget.transportRepository,
-                              buddyRepository: widget.buddyRepository,
-                              realtimeService: widget.realtimeService,
-                              diveCenterRepository: widget.diveCenterRepository,
-                            )
-                          : _JoinButton(
-                              trip: trip,
-                              viewModel: widget.viewModel,
-                            ),
+                      if (trip.diveCenterId != null)
+                        _BookNowSection(
+                          trip: trip,
+                          diveCenter: widget.viewModel.organizerDiveCenter,
+                          viewModel: widget.viewModel,
+                          tripRepository: widget.tripRepository,
+                          chatRepository: widget.chatRepository,
+                          transportRepository: widget.transportRepository,
+                          buddyRepository: widget.buddyRepository,
+                          realtimeService: widget.realtimeService,
+                          diveCenterRepository: widget.diveCenterRepository,
+                        )
+                      else if (trip.isPrivate)
+                        _PrivateJoinSection(
+                          trip: trip,
+                          viewModel: widget.viewModel,
+                          tripRepository: widget.tripRepository,
+                          chatRepository: widget.chatRepository,
+                          transportRepository: widget.transportRepository,
+                          buddyRepository: widget.buddyRepository,
+                          realtimeService: widget.realtimeService,
+                          diveCenterRepository: widget.diveCenterRepository,
+                        )
+                      else
+                        _JoinButton(
+                          trip: trip,
+                          viewModel: widget.viewModel,
+                        ),
                     // Leave/Cancel now live in _ActionPillsRow up top, Telegram-Group-Info-style.
                   ],
                 ),
@@ -1329,56 +1346,201 @@ class _BookNowSection extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
-            onPressed: () => _handleEnterCode(context),
+            onPressed: () => _enterBookingCode(
+              context: context,
+              trip: trip,
+              viewModel: viewModel,
+              tripRepository: tripRepository,
+              chatRepository: chatRepository,
+              transportRepository: transportRepository,
+              buddyRepository: buddyRepository,
+              realtimeService: realtimeService,
+              diveCenterRepository: diveCenterRepository,
+            ),
             child: const Text('I have a booking code'),
           ),
         ),
       ],
     );
   }
+}
 
-  Future<void> _handleEnterCode(BuildContext context) async {
-    final userId = await ensureSignedIn(
-      context,
-      viewModel.authRepository,
-      viewModel.profileRepository,
-      viewModel.pushRepository,
-    );
-    if (userId == null || !context.mounted) return;
+/// Shared by _BookNowSection (business trips) and _PrivateJoinSection (private trips) —
+/// same "enter a code" recovery path either way, see CLAUDE.md's Booking Code flow section.
+Future<void> _enterBookingCode({
+  required BuildContext context,
+  required Trip trip,
+  required TripViewModel viewModel,
+  required TripRepository tripRepository,
+  required ChatRepository chatRepository,
+  required TransportRepository transportRepository,
+  required BuddyRepository buddyRepository,
+  required RealtimeService realtimeService,
+  required DiveCenterRepository diveCenterRepository,
+}) async {
+  final userId = await ensureSignedIn(
+    context,
+    viewModel.authRepository,
+    viewModel.profileRepository,
+    viewModel.pushRepository,
+  );
+  if (userId == null || !context.mounted) return;
 
-    final resolved = await showJoinByCodeDialog(context, tripRepository);
-    if (resolved == null) return;
+  final resolved = await showJoinByCodeDialog(context, tripRepository);
+  if (resolved == null) return;
 
-    // Same trip this page is already showing — just refresh in place. A code for a
-    // *different* trip (a mistaken paste, most likely) instead opens that trip directly,
-    // since there's nothing more useful to do with it from here.
-    if (resolved.id == trip.id) {
-      await viewModel.load();
-      return;
-    }
-    if (!context.mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => TripPage(
-          viewModel: TripViewModel(
-            repository: tripRepository,
-            authRepository: viewModel.authRepository,
-            profileRepository: viewModel.profileRepository,
-            pushRepository: viewModel.pushRepository,
-            diveCenterRepository: diveCenterRepository,
-            tripId: resolved.id,
-            currentUserId: userId,
-          ),
-          tripRepository: tripRepository,
-          chatRepository: chatRepository,
-          transportRepository: transportRepository,
-          buddyRepository: buddyRepository,
-          realtimeService: realtimeService,
+  // Same trip this page is already showing — just refresh in place. A code for a
+  // *different* trip (a mistaken paste, most likely) instead opens that trip directly,
+  // since there's nothing more useful to do with it from here.
+  if (resolved.id == trip.id) {
+    await viewModel.load();
+    return;
+  }
+  if (!context.mounted) return;
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => TripPage(
+        viewModel: TripViewModel(
+          repository: tripRepository,
+          authRepository: viewModel.authRepository,
+          profileRepository: viewModel.profileRepository,
+          pushRepository: viewModel.pushRepository,
           diveCenterRepository: diveCenterRepository,
+          tripId: resolved.id,
+          currentUserId: userId,
         ),
+        tripRepository: tripRepository,
+        chatRepository: chatRepository,
+        transportRepository: transportRepository,
+        buddyRepository: buddyRepository,
+        realtimeService: realtimeService,
+        diveCenterRepository: diveCenterRepository,
       ),
+    ),
+  );
+}
+
+/// Replaces _JoinButton for private trips — same rejection of direct Join server-side as a
+/// business trip (trip.Service.Join), same recovery path (a code, here shared by the
+/// organizer rather than handed out after an external payment).
+class _PrivateJoinSection extends StatelessWidget {
+  const _PrivateJoinSection({
+    required this.trip,
+    required this.viewModel,
+    required this.tripRepository,
+    required this.chatRepository,
+    required this.transportRepository,
+    required this.buddyRepository,
+    required this.realtimeService,
+    required this.diveCenterRepository,
+  });
+
+  final Trip trip;
+  final TripViewModel viewModel;
+  final TripRepository tripRepository;
+  final ChatRepository chatRepository;
+  final TransportRepository transportRepository;
+  final BuddyRepository buddyRepository;
+  final RealtimeService realtimeService;
+  final DiveCenterRepository diveCenterRepository;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'This is a private trip — ask the organizer for an invite code or link.',
+          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton(
+          onPressed: () => _enterBookingCode(
+            context: context,
+            trip: trip,
+            viewModel: viewModel,
+            tripRepository: tripRepository,
+            chatRepository: chatRepository,
+            transportRepository: transportRepository,
+            buddyRepository: buddyRepository,
+            realtimeService: realtimeService,
+            diveCenterRepository: diveCenterRepository,
+          ),
+          child: const Text('I have an invite code'),
+        ),
+      ],
     );
   }
+}
+
+const _joinLinkBaseUrl = 'https://divebubble.io/join/';
+
+/// Organizer-only view of a trip's booking code — the same code a private trip is gated on
+/// (see trip.Service.Join), or the code a business trip's dive-center staff would otherwise
+/// have to look up in admin/. Never shown to a non-organizer viewer.
+class _BookingCodeRow extends StatelessWidget {
+  const _BookingCodeRow({required this.bookingCode});
+
+  final String bookingCode;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'INVITE CODE',
+                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                bookingCode,
+                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 1),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.copy_outlined),
+          tooltip: 'Copy',
+          onPressed: () => _showCopyBookingCodeSheet(context, bookingCode),
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> _showCopyBookingCodeSheet(BuildContext context, String bookingCode) async {
+  final choice = await showModalBottomSheet<String>(
+    context: context,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.tag_outlined),
+            title: const Text('Copy booking code'),
+            onTap: () => Navigator.of(context).pop(bookingCode),
+          ),
+          ListTile(
+            leading: const Icon(Icons.link_outlined),
+            title: const Text('Copy invite link'),
+            onTap: () => Navigator.of(context).pop('$_joinLinkBaseUrl$bookingCode'),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (choice == null || !context.mounted) return;
+  await Clipboard.setData(ClipboardData(text: choice));
+  if (!context.mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied')));
 }
 
 /// Quick-actions row shown only on the Specific view (opened from inside a Bubble) —

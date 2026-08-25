@@ -72,6 +72,7 @@ class TripRepository {
     int? maxParticipants,
     double? latitude,
     double? longitude,
+    bool isPrivate = false,
   }) async {
     final apiModel = await _service.createTrip(
       title: title,
@@ -88,6 +89,7 @@ class TripRepository {
       maxParticipants: maxParticipants,
       latitude: latitude,
       longitude: longitude,
+      isPrivate: isPrivate,
     );
     return apiModel.toDomain();
   }

@@ -28,6 +28,7 @@ abstract class TripApiModel with _$TripApiModel {
     String? bookingCode,
     int? maxParticipants,
     @Default('open') String bookingStatus,
+    @Default(false) bool isPrivate,
     String? photoUrl,
     String? diveCenterId,
     int? priceMinor,

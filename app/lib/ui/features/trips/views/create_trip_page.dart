@@ -48,6 +48,9 @@ class _CreateTripPageState extends State<CreateTripPage> {
   List<String> _photoPaths = [];
   bool _isPickingPhotos = false;
 
+  // Create-only — fixed once the trip exists, no edit path (see CreateTripViewModel.submit).
+  bool _isPrivate = false;
+
   bool _showTitleError = false;
   bool _showLocationError = false;
   bool _showDateError = false;
@@ -148,6 +151,20 @@ class _CreateTripPageState extends State<CreateTripPage> {
                   if (_showLocationError && value.trim().isNotEmpty) setState(() => _showLocationError = false);
                 },
               ),
+              if (!isEditing) ...[
+                const SizedBox(height: 4),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Private trip'),
+                  subtitle: Text(
+                    _isPrivate
+                        ? "Won't show in Explore — people join with an invite code or link"
+                        : 'Visible to everyone in Explore',
+                  ),
+                  value: _isPrivate,
+                  onChanged: (value) => setState(() => _isPrivate = value),
+                ),
+              ],
               const SizedBox(height: 12),
               _DatePickerField(
                 label: 'Date',
@@ -336,6 +353,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
       maxParticipants: _intOrNull(_maxParticipantsController),
       latitude: latitude,
       longitude: longitude,
+      isPrivate: _isPrivate,
     );
 
     if (trip != null) {

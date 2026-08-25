@@ -34,6 +34,7 @@ class CreateTripViewModel extends ChangeNotifier {
     int? maxParticipants,
     double? latitude,
     double? longitude,
+    bool isPrivate = false,
   }) async {
     _isSubmitting = true;
     _error = null;
@@ -74,6 +75,7 @@ class CreateTripViewModel extends ChangeNotifier {
         maxParticipants: maxParticipants,
         latitude: latitude,
         longitude: longitude,
+        isPrivate: isPrivate,
       );
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');

@@ -30,6 +30,10 @@ abstract class Trip with _$Trip {
     String? bookingCode,
     int? maxParticipants,
     @Default('open') String bookingStatus,
+    // Fixed at creation, no edit path — see CreateTripPage's toggle and TripPage's
+    // _PrivateJoinSection. Excluded from Explore either way; join goes through the same
+    // booking-code gate as a business trip.
+    @Default(false) bool isPrivate,
     String? photoUrl,
     // Business fields — set when this trip was created from admin/, not the individual
     // organizer flow. See CLAUDE.md's Business/dive centers section.

@@ -197,10 +197,12 @@ class TripApiService {
     int? maxParticipants,
     double? latitude,
     double? longitude,
+    bool isPrivate = false,
   }) async {
     final body = <String, dynamic>{
       'title': title,
       'location': location,
+      'isPrivate': isPrivate,
       'startTime': startTime.toUtc().toIso8601String(),
       // endDate is a pure calendar date (picked date-only, always local midnight) — .toUtc()
       // on that shifts it into the *previous* UTC day for any positive-offset timezone,
