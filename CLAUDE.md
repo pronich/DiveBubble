@@ -136,12 +136,16 @@ until Figma defines one.
   (externally drafted, GDPR-aware), waitlist signup.
 - **Deploy**: backend on a DigitalOcean droplet (Docker Compose, shared nginx), admin + public
   on Vercel, migrations run automatically on deploy.
+- **Growth**: private trips (`is_private` + booking-code gate), invite links (Universal/App
+  Links, `divebubble.io/join/{code}`, `GET /invite/{code}` preview), Share-to-DiveBubble (iOS
+  Share Extension + Android intent-filters → Bubble picker → pre-staged composer).
 
 ## Deferred
 
 - Logbook (personal dive log across trips), per-trip Dives sub-tab
 - Splitwise-style expense splitting
-- Share trip (deep linking — no domain/routing infra for it yet beyond what exists)
+- In-extension destination picker for Share-to-DiveBubble (Slack/Telegram-style, no app
+  hand-off) — see ROADMAP.md's idea backlog
 - Drag-to-reorder trip photos
 - Per-Bubble mute, notification category toggles
 - Realtime for transport offers (currently reload-on-tab-switch)
