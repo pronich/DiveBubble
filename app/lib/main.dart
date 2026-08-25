@@ -171,16 +171,10 @@ class _MyAppState extends State<MyApp> {
   }
 
   // Invite links (divebubble.io/join/{code}) — Universal Links (iOS) / App Links (Android).
-  // Covers both cold start (app not running, tap launches it) and warm (app already running
-  // in the background) — app_links' getInitialLink/uriLinkStream split mirrors exactly the
-  // split Firebase's getInitialMessage/onMessageOpenedApp already needs for push, below.
+  // uriLinkStream alone covers both cold start (its first event is the launching link) and
+  // warm (app already running) — this is app_links' own documented pattern, not a getInitialLink
+  // + uriLinkStream split; calling both would double-handle the cold-start link.
   Future<void> _setUpDeepLinks() async {
-    try {
-      final initial = await _appLinks.getInitialLink();
-      if (initial != null) _handleIncomingLink(initial);
-    } catch (e) {
-      debugPrint('deep link: could not read initial link: $e');
-    }
     _linkSubscription = _appLinks.uriLinkStream.listen(
       _handleIncomingLink,
       onError: (e) => debugPrint('deep link: stream error: $e'),
