@@ -44,9 +44,10 @@ func registerTripRoutes(
 	// Detail stays browsable without an account — "joined" is just false for anonymous viewers.
 	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
 	// Same anonymous-browsable posture — resolves an invite link's code to a trip preview
-	// without joining. Registered before join-by-code's own path segment count differs
-	// (3 segments vs 2), so there's no ambiguity with GET /trips/{id}.
-	mux.HandleFunc("GET /trips/by-code/{code}", optionalAuth(authIssuer, handleResolveTripByCode(svc)))
+	// without joining. Deliberately outside the /trips/ namespace: Go's ServeMux treats any
+	// same-length /trips/{literal}/{wildcard} pattern as ambiguous with the several existing
+	// /trips/{id}/... routes (e.g. /trips/{id}/participants) and panics at startup.
+	mux.HandleFunc("GET /invite/{code}", optionalAuth(authIssuer, handleResolveTripByCode(svc)))
 	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc, diveCenterSvc, profileSvc, pushSvc, messageSvc, publisher)))
 	mux.HandleFunc("POST /trips/join-by-code", withAuth(authIssuer, handleJoinTripByCode(svc, diveCenterSvc, profileSvc, pushSvc, messageSvc, publisher)))
 	mux.HandleFunc("POST /trips/{id}/leave", withAuth(authIssuer, handleLeaveTrip(svc, transportSvc, buddySvc, pushSvc)))
@@ -309,9 +310,10 @@ func handleGetTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, u
 	}
 }
 
-// handleResolveTripByCode is the read-only half of an invite link (divebubble.io/join/{code})
-// — same optionalAuth, anonymous-browsable posture as handleGetTrip, so the app can show a
-// trip preview before the diver has signed in. Never joins; see handleJoinTripByCode for that.
+// handleResolveTripByCode backs GET /invite/{code} — the read-only half of an invite link
+// (divebubble.io/join/{code}), same optionalAuth/anonymous-browsable posture as handleGetTrip
+// so the app can show a trip preview before the diver has signed in. Never joins; see
+// handleJoinTripByCode for that.
 func handleResolveTripByCode(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		code := r.PathValue("code")
