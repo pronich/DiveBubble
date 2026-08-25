@@ -7,6 +7,7 @@ import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/buddy_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
+import '../../../../data/repositories/expense_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
@@ -47,6 +48,7 @@ class TripPage extends StatefulWidget {
     required this.buddyRepository,
     required this.realtimeService,
     required this.diveCenterRepository,
+    required this.expenseRepository,
     this.openedFromConversation = false,
     this.entryCode,
   });
@@ -58,6 +60,7 @@ class TripPage extends StatefulWidget {
   final BuddyRepository buddyRepository;
   final RealtimeService realtimeService;
   final DiveCenterRepository diveCenterRepository;
+  final ExpenseRepository expenseRepository;
 
   /// True when reached by tapping the header of an already-open Bubble (chat) —
   /// "Dive in to Bubble" would just navigate back into the conversation the diver is
@@ -619,6 +622,7 @@ class _TripPageState extends State<TripPage>
                           profileRepository: widget.viewModel.profileRepository,
                           pushRepository: widget.viewModel.pushRepository,
                           diveCenterRepository: widget.diveCenterRepository,
+                          expenseRepository: widget.expenseRepository,
                           currentUserId: widget.viewModel.currentUserId,
                         )
                       : !isOrganizer && trip.bookingStatus == 'open'
@@ -640,6 +644,7 @@ class _TripPageState extends State<TripPage>
                                 realtimeService: widget.realtimeService,
                                 diveCenterRepository:
                                     widget.diveCenterRepository,
+                                expenseRepository: widget.expenseRepository,
                               )
                             : trip.isPrivate
                             ? _PrivateJoinSection(
@@ -652,6 +657,7 @@ class _TripPageState extends State<TripPage>
                                 realtimeService: widget.realtimeService,
                                 diveCenterRepository:
                                     widget.diveCenterRepository,
+                                expenseRepository: widget.expenseRepository,
                               )
                             : _JoinButton(
                                 trip: trip,
@@ -1362,6 +1368,7 @@ class _BookNowSection extends StatelessWidget {
     required this.buddyRepository,
     required this.realtimeService,
     required this.diveCenterRepository,
+    required this.expenseRepository,
   });
 
   final Trip trip;
@@ -1373,6 +1380,7 @@ class _BookNowSection extends StatelessWidget {
   final BuddyRepository buddyRepository;
   final RealtimeService realtimeService;
   final DiveCenterRepository diveCenterRepository;
+  final ExpenseRepository expenseRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -1410,6 +1418,7 @@ class _BookNowSection extends StatelessWidget {
               buddyRepository: buddyRepository,
               realtimeService: realtimeService,
               diveCenterRepository: diveCenterRepository,
+              expenseRepository: expenseRepository,
             ),
             child: const Text('I have a booking code'),
           ),
@@ -1431,6 +1440,7 @@ Future<void> _enterBookingCode({
   required BuddyRepository buddyRepository,
   required RealtimeService realtimeService,
   required DiveCenterRepository diveCenterRepository,
+  required ExpenseRepository expenseRepository,
 }) async {
   final userId = await ensureSignedIn(
     context,
@@ -1469,6 +1479,7 @@ Future<void> _enterBookingCode({
         buddyRepository: buddyRepository,
         realtimeService: realtimeService,
         diveCenterRepository: diveCenterRepository,
+        expenseRepository: expenseRepository,
       ),
     ),
   );
@@ -1487,6 +1498,7 @@ class _PrivateJoinSection extends StatelessWidget {
     required this.buddyRepository,
     required this.realtimeService,
     required this.diveCenterRepository,
+    required this.expenseRepository,
   });
 
   final Trip trip;
@@ -1497,6 +1509,7 @@ class _PrivateJoinSection extends StatelessWidget {
   final BuddyRepository buddyRepository;
   final RealtimeService realtimeService;
   final DiveCenterRepository diveCenterRepository;
+  final ExpenseRepository expenseRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -1522,6 +1535,7 @@ class _PrivateJoinSection extends StatelessWidget {
             buddyRepository: buddyRepository,
             realtimeService: realtimeService,
             diveCenterRepository: diveCenterRepository,
+            expenseRepository: expenseRepository,
           ),
           child: const Text('I have an invite code'),
         ),
@@ -1918,6 +1932,7 @@ class _DiveInButton extends StatelessWidget {
     required this.profileRepository,
     required this.pushRepository,
     required this.diveCenterRepository,
+    required this.expenseRepository,
     required this.currentUserId,
   });
 
@@ -1931,6 +1946,7 @@ class _DiveInButton extends StatelessWidget {
   final ProfileRepository profileRepository;
   final PushRepository pushRepository;
   final DiveCenterRepository diveCenterRepository;
+  final ExpenseRepository expenseRepository;
   final String currentUserId;
 
   @override
@@ -1954,6 +1970,7 @@ class _DiveInButton extends StatelessWidget {
                 profileRepository: profileRepository,
                 pushRepository: pushRepository,
                 diveCenterRepository: diveCenterRepository,
+                expenseRepository: expenseRepository,
               ),
             ),
           );

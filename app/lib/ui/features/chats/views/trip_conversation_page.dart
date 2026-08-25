@@ -4,6 +4,7 @@ import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/buddy_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
+import '../../../../data/repositories/expense_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
@@ -13,6 +14,8 @@ import '../../../../domain/entities/picked_attachment.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../buddy/view_models/buddy_view_model.dart';
 import '../../buddy/views/buddy_view.dart';
+import '../../expenses/view_models/expense_view_model.dart';
+import '../../expenses/views/expense_view.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../../transport/views/transport_view.dart';
 import '../../trips/view_models/trip_view_model.dart';
@@ -31,6 +34,7 @@ class TripConversationPage extends StatefulWidget {
     required this.chatViewModel,
     required this.transportViewModel,
     required this.buddyViewModel,
+    required this.expenseViewModel,
     required this.tripTitle,
     this.tripPhotoUrl,
     required this.tripRepository,
@@ -42,6 +46,7 @@ class TripConversationPage extends StatefulWidget {
     required this.profileRepository,
     required this.pushRepository,
     required this.diveCenterRepository,
+    required this.expenseRepository,
     required this.initialHasTransportAlert,
     this.onTransportAlertCleared,
     required this.initialHasBuddyAlert,
@@ -67,6 +72,7 @@ class TripConversationPage extends StatefulWidget {
     required ProfileRepository profileRepository,
     required PushRepository pushRepository,
     required DiveCenterRepository diveCenterRepository,
+    required ExpenseRepository expenseRepository,
     VoidCallback? onTransportAlertCleared,
     VoidCallback? onBuddyAlertCleared,
     List<PickedAttachment> initialAttachments = const [],
@@ -96,6 +102,13 @@ class TripConversationPage extends StatefulWidget {
            tripId: trip.id,
            currentUserId: currentUserId,
          ),
+         expenseViewModel: ExpenseViewModel(
+           repository: expenseRepository,
+           tripRepository: tripRepository,
+           profileRepository: profileRepository,
+           tripId: trip.id,
+           currentUserId: currentUserId,
+         ),
          tripTitle: trip.title,
          tripPhotoUrl: trip.photoUrl,
          tripRepository: tripRepository,
@@ -107,6 +120,7 @@ class TripConversationPage extends StatefulWidget {
          profileRepository: profileRepository,
          pushRepository: pushRepository,
          diveCenterRepository: diveCenterRepository,
+         expenseRepository: expenseRepository,
          initialHasTransportAlert: trip.hasTransportAlert,
          onTransportAlertCleared: onTransportAlertCleared,
          initialHasBuddyAlert: trip.hasBuddyAlert,
@@ -117,6 +131,7 @@ class TripConversationPage extends StatefulWidget {
   final ChatViewModel chatViewModel;
   final TransportViewModel transportViewModel;
   final BuddyViewModel buddyViewModel;
+  final ExpenseViewModel expenseViewModel;
   final String tripTitle;
   // Rendered as a small tappable thumbnail on the right of the AppBar (see build) —
   // null shows a plain placeholder icon instead, same fallback every other trip photo spot
@@ -131,6 +146,7 @@ class TripConversationPage extends StatefulWidget {
   final ProfileRepository profileRepository;
   final PushRepository pushRepository;
   final DiveCenterRepository diveCenterRepository;
+  final ExpenseRepository expenseRepository;
   // Seeds TransportViewModel.hasAlert from the already-loaded Trip — the Bubble is only
   // ever reached by tapping a row from that loaded list, so this is always available and
   // skips a redundant GET /trips/{id}/transport/alert on every chat open.
@@ -164,7 +180,7 @@ class _TripConversationPageState extends State<TripConversationPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_onTabChanged);
     // Seeded from the Trip already in hand (see the field's own comment) — the dot itself
     // lives in the AppBar, always visible regardless of which tab is active, so this is
@@ -310,6 +326,7 @@ class _TripConversationPageState extends State<TripConversationPage>
             tripRepository: widget.tripRepository,
             isCancelled: _isCancelled,
           ),
+          ExpenseView(viewModel: widget.expenseViewModel, isCancelled: _isCancelled),
         ],
       ),
     );
@@ -334,6 +351,7 @@ class _TripConversationPageState extends State<TripConversationPage>
           buddyRepository: widget.buddyRepository,
           realtimeService: widget.realtimeService,
           diveCenterRepository: widget.diveCenterRepository,
+          expenseRepository: widget.expenseRepository,
           openedFromConversation: true,
         ),
       ),
@@ -345,8 +363,8 @@ class _TripConversationPageState extends State<TripConversationPage>
 }
 
 /// Airbnb/iOS-style segmented pill tab bar — the active segment expands to icon+label, the
-/// other two collapse to icon-only circles. Pure restyle of a plain TabBar: same controller,
-/// same 3 tabs, same tap-to-switch behavior, alert dot and ⓘ affordances carried over.
+/// other three collapse to icon-only circles. Pure restyle of a plain TabBar: same controller,
+/// same 4 tabs, same tap-to-switch behavior, alert dot and ⓘ affordances carried over.
 class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
   const _PillTabBar({
     required this.tabController,
@@ -392,7 +410,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final activeWidth =
-                  constraints.maxWidth - _gap * 2 - _compactWidth * 2;
+                  constraints.maxWidth - _gap * 3 - _compactWidth * 3;
               return SizedBox(
                 height: _pillHeight,
                 child: Row(
@@ -458,6 +476,20 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                               viewModel: buddyViewModel,
                               isCancelled: isCancelled,
                             ),
+                    ),
+                    const SizedBox(width: _gap),
+                    _PillSegment(
+                      isActive: activeIndex == 3,
+                      width: activeIndex == 3 ? activeWidth : _compactWidth,
+                      outlinedIcon: Icons.receipt_long_outlined,
+                      filledIcon: Icons.receipt_long,
+                      label: 'Expenses',
+                      hasAlert: false,
+                      onTap: () => tabController.animateTo(
+                        3,
+                        duration: _switchDuration,
+                        curve: _switchCurve,
+                      ),
                     ),
                   ],
                 ),

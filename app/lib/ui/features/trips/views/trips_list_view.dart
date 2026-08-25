@@ -4,6 +4,7 @@ import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/buddy_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
+import '../../../../data/repositories/expense_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
@@ -36,6 +37,7 @@ class TripsListView extends StatefulWidget {
     required this.profileRepository,
     required this.pushRepository,
     required this.diveCenterRepository,
+    required this.expenseRepository,
     required this.currentUserId,
   });
 
@@ -49,6 +51,7 @@ class TripsListView extends StatefulWidget {
   final ProfileRepository profileRepository;
   final PushRepository pushRepository;
   final DiveCenterRepository diveCenterRepository;
+  final ExpenseRepository expenseRepository;
   final String currentUserId;
 
   @override
@@ -201,6 +204,7 @@ class _TripsListViewState extends State<TripsListView> {
           buddyRepository: widget.buddyRepository,
           realtimeService: widget.realtimeService,
           diveCenterRepository: widget.diveCenterRepository,
+          expenseRepository: widget.expenseRepository,
         ),
       ),
     );
@@ -239,6 +243,7 @@ class _TripsListViewState extends State<TripsListView> {
                   buddyRepository: widget.buddyRepository,
                   realtimeService: widget.realtimeService,
                   diveCenterRepository: widget.diveCenterRepository,
+                  expenseRepository: widget.expenseRepository,
                 ),
               ),
             );
@@ -279,6 +284,7 @@ class _TripsListViewState extends State<TripsListView> {
           buddyRepository: widget.buddyRepository,
           realtimeService: widget.realtimeService,
           diveCenterRepository: widget.diveCenterRepository,
+          expenseRepository: widget.expenseRepository,
         ),
       ),
     );
