@@ -73,14 +73,17 @@ class TripPage extends StatefulWidget {
 // reached instead of letting the diver hit the 409 the hard way.
 const _maxTripPhotos = 10;
 
-
-class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin {
+class _TripPageState extends State<TripPage>
+    with SingleTickerProviderStateMixin {
   final _photoPageController = PageController();
   int _currentPhotoIndex = 0;
 
   // Only meaningful when widget.openedFromConversation (see build) — created unconditionally
   // anyway since TabController's own lifecycle needs to exist across the whole State either way.
-  late final TabController _tabController = TabController(length: 4, vsync: this);
+  late final TabController _tabController = TabController(
+    length: 4,
+    vsync: this,
+  );
 
   // Lazily created once trip.id is known (unavailable until TripViewModel.load() resolves) —
   // guarded by the null check in _ensureBubbleContentLoaded so a rebuild never refires these.
@@ -91,7 +94,10 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
 
   void _ensureBubbleContentLoaded(String tripId) {
     if (_chatInfoViewModel != null) return;
-    final vm = ChatInfoViewModel(repository: widget.chatRepository, tripId: tripId);
+    final vm = ChatInfoViewModel(
+      repository: widget.chatRepository,
+      tripId: tripId,
+    );
     _chatInfoViewModel = vm;
     _mediaFuture = vm.loadMedia();
     _filesFuture = vm.loadFiles();
@@ -151,7 +157,10 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => CreateTripPage(
-          viewModel: CreateTripViewModel(repository: widget.tripRepository, existingTripId: trip.id),
+          viewModel: CreateTripViewModel(
+            repository: widget.tripRepository,
+            existingTripId: trip.id,
+          ),
           existingTrip: trip,
           onCreated: (_) => Navigator.of(context).pop(),
         ),
@@ -164,7 +173,12 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
   /// duration/description. Mirrors the equivalent block inside detailContent (used by the
   /// Explore-preview ListView path instead), since openedFromConversation never renders the
   /// organizer/tail section that otherwise follows it there.
-  Widget _tripDetailBody(BuildContext context, ThemeData theme, Trip trip) {
+  Widget _tripDetailBody(
+    BuildContext context,
+    ThemeData theme,
+    Trip trip,
+    bool isOrganizer,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       child: Column(
@@ -172,35 +186,55 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
         children: [
           Row(
             children: [
-              Icon(Icons.location_on_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.location_on_outlined,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 4),
               Text(
                 trip.location,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.calendar_today_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
               const SizedBox(width: 4),
               Text(
                 formatDateRange(trip.startTime, trip.endDate),
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Text(
             'MEETING POINT',
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
             '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
-            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
+          if (isOrganizer && trip.bookingCode != null) ...[
+            const SizedBox(height: 16),
+            _BookingCodeRow(bookingCode: trip.bookingCode!),
+          ],
           const SizedBox(height: 16),
           _InfoGrid(trip: trip),
           if (trip.description != null) ...[
@@ -217,6 +251,13 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Captured here, above Scaffold — inside its body, extendBodyBehindAppBar makes a
+    // descendant SafeArea pad for the *whole* (transparent) AppBar's height rather than the
+    // real status-bar inset (Scaffold's own _BodyBuilder: extendBodyBehindAppBar computes
+    // padding.top as max(systemPadding, appBarHeight), and appBarHeight already includes the
+    // toolbar). photoHero's Edit pill uses this true value directly instead, so it lines up
+    // with the back button's row rather than sitting a full toolbar-height below it.
+    final systemTopPadding = MediaQuery.paddingOf(context).top;
     return Scaffold(
       // Explore preview floats a transparent app bar over its photo hero. Bubble Info does
       // the same thing but as a SliverAppBar *inside* the NestedScrollView instead of a
@@ -254,390 +295,384 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
           // Shared by both branches below — Bubble Info reuses the exact same photo carousel
           // Explore's own trip detail uses, rather than a separate circle-avatar treatment.
           final photoHero = Builder(
-                builder: (context) {
-                  final photos = widget.viewModel.photos;
-                  final hasPhotos = photos.isNotEmpty;
-                  if (hasPhotos && _currentPhotoIndex >= photos.length) {
-                    _currentPhotoIndex = photos.length - 1;
-                  }
+            builder: (context) {
+              final photos = widget.viewModel.photos;
+              final hasPhotos = photos.isNotEmpty;
+              if (hasPhotos && _currentPhotoIndex >= photos.length) {
+                _currentPhotoIndex = photos.length - 1;
+              }
 
-                  return AspectRatio(
-                    aspectRatio: 4 / 3,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        hasPhotos
-                            ? PageView.builder(
-                                controller: _photoPageController,
-                                itemCount: photos.length,
-                                onPageChanged: (i) =>
-                                    setState(() => _currentPhotoIndex = i),
-                                // Tap-left/tap-right zones live *inside* each page (descendants
-                                // of PageView), not stacked on top of it — a GestureDetector
-                                // overlaying PageView from outside competes with its own drag
-                                // recognizer for the same pointer and swallows real swipes;
-                                // nested inside a page, Flutter's normal ancestor-scrollable/
-                                // descendant-tap disambiguation lets a drag fall through to the
-                                // PageView while a stationary tap still resolves here.
-                                itemBuilder: (context, i) => Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    Image.network(
-                                      photos[i].url,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              Image.asset(
-                                                AppAssets.tripPlaceholder,
-                                                fit: BoxFit.cover,
-                                              ),
-                                    ),
-                                    if (photos.length > 1) ...[
-                                      Positioned(
-                                        left: 0,
-                                        top: 0,
-                                        bottom: 0,
-                                        width:
-                                            MediaQuery.sizeOf(context).width /
-                                            3,
-                                        child: GestureDetector(
-                                          behavior: HitTestBehavior.translucent,
-                                          onTap: _currentPhotoIndex > 0
-                                              ? () => _photoPageController
-                                                    .previousPage(
-                                                      duration: const Duration(
-                                                        milliseconds: 250,
-                                                      ),
-                                                      curve: Curves.easeOut,
-                                                    )
-                                              : null,
-                                        ),
-                                      ),
-                                      Positioned(
-                                        right: 0,
-                                        top: 0,
-                                        bottom: 0,
-                                        width:
-                                            MediaQuery.sizeOf(context).width /
-                                            3,
-                                        child: GestureDetector(
-                                          behavior: HitTestBehavior.translucent,
-                                          onTap:
-                                              _currentPhotoIndex <
-                                                  photos.length - 1
-                                              ? () => _photoPageController
-                                                    .nextPage(
-                                                      duration: const Duration(
-                                                        milliseconds: 250,
-                                                      ),
-                                                      curve: Curves.easeOut,
-                                                    )
-                                              : null,
-                                        ),
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              )
-                            : Image.asset(
-                                AppAssets.tripPlaceholder,
-                                fit: BoxFit.cover,
-                              ),
-                        // IgnorePointer is load-bearing: a bare DecoratedBox with no gesture
-                        // handling still claimed the hit test ahead of the PageView beneath it
-                        // in the Stack, silently swallowing every tap and swipe on the photo —
-                        // found by bisecting with temporary raw Listeners at each Stack layer.
-                        const IgnorePointer(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: AppGradients.imageScrim,
-                            ),
-                          ),
-                        ),
-                        // Dot page indicator — only worth showing once there's more than one
-                        // photo to swipe between.
-                        if (photos.length > 1)
-                          Positioned(
-                            bottom: 16,
-                            left: 0,
-                            right: 0,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+              return AspectRatio(
+                aspectRatio: 4 / 3,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    hasPhotos
+                        ? PageView.builder(
+                            controller: _photoPageController,
+                            itemCount: photos.length,
+                            onPageChanged: (i) =>
+                                setState(() => _currentPhotoIndex = i),
+                            // Tap-left/tap-right zones live *inside* each page (descendants
+                            // of PageView), not stacked on top of it — a GestureDetector
+                            // overlaying PageView from outside competes with its own drag
+                            // recognizer for the same pointer and swallows real swipes;
+                            // nested inside a page, Flutter's normal ancestor-scrollable/
+                            // descendant-tap disambiguation lets a drag fall through to the
+                            // PageView while a stationary tap still resolves here.
+                            itemBuilder: (context, i) => Stack(
+                              fit: StackFit.expand,
                               children: [
-                                for (var i = 0; i < photos.length; i++)
-                                  Container(
-                                    width: 6,
-                                    height: 6,
-                                    margin: const EdgeInsets.symmetric(
-                                      horizontal: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.white.withValues(
-                                        alpha: i == _currentPhotoIndex
-                                            ? 1
-                                            : 0.4,
+                                Image.network(
+                                  photos[i].url,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Image.asset(
+                                        AppAssets.tripPlaceholder,
+                                        fit: BoxFit.cover,
                                       ),
+                                ),
+                                if (photos.length > 1) ...[
+                                  Positioned(
+                                    left: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: MediaQuery.sizeOf(context).width / 3,
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.translucent,
+                                      onTap: _currentPhotoIndex > 0
+                                          ? () => _photoPageController
+                                                .previousPage(
+                                                  duration: const Duration(
+                                                    milliseconds: 250,
+                                                  ),
+                                                  curve: Curves.easeOut,
+                                                )
+                                          : null,
                                     ),
                                   ),
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: MediaQuery.sizeOf(context).width / 3,
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.translucent,
+                                      onTap:
+                                          _currentPhotoIndex < photos.length - 1
+                                          ? () => _photoPageController.nextPage(
+                                              duration: const Duration(
+                                                milliseconds: 250,
+                                              ),
+                                              curve: Curves.easeOut,
+                                            )
+                                          : null,
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
+                          )
+                        : Image.asset(
+                            AppAssets.tripPlaceholder,
+                            fit: BoxFit.cover,
                           ),
-                        // A single "Manage photos" entry point, not inline add/remove
-                        // controls on the slider itself — editing now happens in its own
-                        // grid (see _ManagePhotosPage), so this hero is a pure viewer for
-                        // every visitor, organizer included.
-                        if (isOrganizer)
-                          Positioned(
-                            right: 16,
-                            bottom: 16,
-                            child: Material(
-                              color: Colors.black.withValues(alpha: 0.45),
-                              borderRadius: BorderRadius.circular(20),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
-                                onTap: () => _openManagePhotos(context),
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.photo_library_outlined,
-                                        color: Colors.white,
-                                        size: 18,
-                                      ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        'Manage photos',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
+                    // IgnorePointer is load-bearing: a bare DecoratedBox with no gesture
+                    // handling still claimed the hit test ahead of the PageView beneath it
+                    // in the Stack, silently swallowing every tap and swipe on the photo —
+                    // found by bisecting with temporary raw Listeners at each Stack layer.
+                    const IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: AppGradients.imageScrim,
+                        ),
+                      ),
+                    ),
+                    // Dot page indicator — only worth showing once there's more than one
+                    // photo to swipe between.
+                    if (photos.length > 1)
+                      Positioned(
+                        bottom: 16,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            for (var i = 0; i < photos.length; i++)
+                              Container(
+                                width: 6,
+                                height: 6,
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withValues(
+                                    alpha: i == _currentPhotoIndex ? 1 : 0.4,
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-                        // Edit trip — top-right, same translucent-pill treatment as "Manage
-                        // photos" below so it reads on any photo, but pinned under the status
-                        // bar/back button row rather than at the bottom (per Nikolai: this used
-                        // to live in the Bubble chat's own AppBar, moved here instead).
-                        if (isOrganizer && trip.bookingStatus != 'cancelled')
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: SafeArea(
-                              bottom: false,
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 8, right: 16),
-                                child: Material(
-                                  color: Colors.black.withValues(alpha: 0.45),
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(20),
-                                    onTap: () => _openEditTrip(context, trip),
-                                    child: const Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.edit_outlined, color: Colors.white, size: 18),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            'Edit',
-                                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                                          ),
-                                        ],
-                                      ),
+                          ],
+                        ),
+                      ),
+                    // A single "Manage photos" entry point, not inline add/remove
+                    // controls on the slider itself — editing now happens in its own
+                    // grid (see _ManagePhotosPage), so this hero is a pure viewer for
+                    // every visitor, organizer included.
+                    if (isOrganizer)
+                      Positioned(
+                        right: 16,
+                        bottom: 16,
+                        child: Material(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(20),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () => _openManagePhotos(context),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.photo_library_outlined,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Manage photos',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    // Edit trip — top-right, same translucent-pill treatment as "Manage
+                    // photos" below so it reads on any photo, but pinned under the status
+                    // bar/back button row rather than at the bottom (per Nikolai: this used
+                    // to live in the Bubble chat's own AppBar, moved here instead). Uses the
+                    // pre-captured systemTopPadding, not a SafeArea here — see build()'s own
+                    // comment on why a descendant SafeArea overshoots in this Scaffold.
+                    if (isOrganizer && trip.bookingStatus != 'cancelled')
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            top: systemTopPadding + 8,
+                            right: 16,
+                          ),
+                          child: Material(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(20),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => _openEditTrip(context, trip),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.edit_outlined,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Edit',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                  );
-                },
-              );
-
-          final detailContent = Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            trip.title,
-                            style: theme.textTheme.headlineSmall,
-                          ),
                         ),
-                        const SizedBox(width: 8),
-                        _TripStatusPill(trip: trip, isOrganizer: isOrganizer),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          size: 16,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          trip.location,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today_outlined,
-                          size: 16,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          formatDateRange(trip.startTime, trip.endDate),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'MEETING POINT',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (isOrganizer && trip.bookingCode != null) ...[
-                      const SizedBox(height: 16),
-                      _BookingCodeRow(bookingCode: trip.bookingCode!),
-                    ],
-                    const SizedBox(height: 16),
-                    _InfoGrid(trip: trip),
-                    if (trip.description != null) ...[
-                      const SizedBox(height: 20),
-                      Text(
-                        'About this dive',
-                        style: theme.textTheme.labelLarge,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        trip.description!,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ],
-                    // Deliberately gated on *how this screen was reached*, not just
-                    // trip.joined: Explore's "general" trip detail never shows who's in
-                    // it, even for a trip the viewer has already joined — the People/Media/
-                    // Files/Links tabs (chat-derived, member-list-bearing) only appear on the
-                    // "specific" view reached from inside the Bubble itself. Two privacy
-                    // postures for the same data, not two widgets. When opened from the
-                    // conversation, this whole section is omitted here — it becomes the
-                    // People/Media/Files/Links tab bar pinned via the SliverAppBar's own
-                    // `bottom` instead (see build()).
-                    if (!widget.openedFromConversation) ...[
-                      const SizedBox(height: 20),
-                      _OrganizerCard(
-                        isOrganizer: isOrganizer,
-                        profile: widget.viewModel.organizerProfile,
-                        creatorUserId: trip.creatorUserId,
-                        currentUserId: widget.viewModel.currentUserId,
-                        profileRepository: widget.viewModel.profileRepository,
-                        diveCenter: widget.viewModel.organizerDiveCenter,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.groups_outlined,
-                            size: 16,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            _participantsText(trip),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    if (trip.joined && !widget.openedFromConversation)
-                      _DiveInButton(
-                        trip: trip,
-                        chatRepository: widget.chatRepository,
-                        transportRepository: widget.transportRepository,
-                        buddyRepository: widget.buddyRepository,
-                        realtimeService: widget.realtimeService,
-                        tripRepository: widget.tripRepository,
-                        authRepository: widget.viewModel.authRepository,
-                        profileRepository: widget.viewModel.profileRepository,
-                        pushRepository: widget.viewModel.pushRepository,
-                        diveCenterRepository: widget.diveCenterRepository,
-                        currentUserId: widget.viewModel.currentUserId,
-                      )
-                    else if (!trip.joined &&
-                        !isOrganizer &&
-                        trip.bookingStatus == 'open')
-                      if (trip.diveCenterId != null)
-                        _BookNowSection(
-                          trip: trip,
-                          diveCenter: widget.viewModel.organizerDiveCenter,
-                          viewModel: widget.viewModel,
-                          tripRepository: widget.tripRepository,
-                          chatRepository: widget.chatRepository,
-                          transportRepository: widget.transportRepository,
-                          buddyRepository: widget.buddyRepository,
-                          realtimeService: widget.realtimeService,
-                          diveCenterRepository: widget.diveCenterRepository,
-                        )
-                      else if (trip.isPrivate)
-                        _PrivateJoinSection(
-                          trip: trip,
-                          viewModel: widget.viewModel,
-                          tripRepository: widget.tripRepository,
-                          chatRepository: widget.chatRepository,
-                          transportRepository: widget.transportRepository,
-                          buddyRepository: widget.buddyRepository,
-                          realtimeService: widget.realtimeService,
-                          diveCenterRepository: widget.diveCenterRepository,
-                        )
-                      else
-                        _JoinButton(
-                          trip: trip,
-                          viewModel: widget.viewModel,
-                        ),
-                    // Leave/Cancel now live in _ActionPillsRow up top, Telegram-Group-Info-style.
                   ],
                 ),
               );
+            },
+          );
+
+          final detailContent = Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        trip.title,
+                        style: theme.textTheme.headlineSmall,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _TripStatusPill(trip: trip, isOrganizer: isOrganizer),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      trip.location,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 16,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      formatDateRange(trip.startTime, trip.endDate),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'MEETING POINT',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (isOrganizer && trip.bookingCode != null) ...[
+                  const SizedBox(height: 16),
+                  _BookingCodeRow(bookingCode: trip.bookingCode!),
+                ],
+                const SizedBox(height: 16),
+                _InfoGrid(trip: trip),
+                if (trip.description != null) ...[
+                  const SizedBox(height: 20),
+                  Text('About this dive', style: theme.textTheme.labelLarge),
+                  const SizedBox(height: 6),
+                  Text(trip.description!, style: theme.textTheme.bodyMedium),
+                ],
+                // Deliberately gated on *how this screen was reached*, not just
+                // trip.joined: Explore's "general" trip detail never shows who's in
+                // it, even for a trip the viewer has already joined — the People/Media/
+                // Files/Links tabs (chat-derived, member-list-bearing) only appear on the
+                // "specific" view reached from inside the Bubble itself. Two privacy
+                // postures for the same data, not two widgets. When opened from the
+                // conversation, this whole section is omitted here — it becomes the
+                // People/Media/Files/Links tab bar pinned via the SliverAppBar's own
+                // `bottom` instead (see build()).
+                if (!widget.openedFromConversation) ...[
+                  const SizedBox(height: 20),
+                  _OrganizerCard(
+                    isOrganizer: isOrganizer,
+                    profile: widget.viewModel.organizerProfile,
+                    creatorUserId: trip.creatorUserId,
+                    currentUserId: widget.viewModel.currentUserId,
+                    profileRepository: widget.viewModel.profileRepository,
+                    diveCenter: widget.viewModel.organizerDiveCenter,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.groups_outlined,
+                        size: 16,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _participantsText(trip),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 24),
+                if (trip.joined && !widget.openedFromConversation)
+                  _DiveInButton(
+                    trip: trip,
+                    chatRepository: widget.chatRepository,
+                    transportRepository: widget.transportRepository,
+                    buddyRepository: widget.buddyRepository,
+                    realtimeService: widget.realtimeService,
+                    tripRepository: widget.tripRepository,
+                    authRepository: widget.viewModel.authRepository,
+                    profileRepository: widget.viewModel.profileRepository,
+                    pushRepository: widget.viewModel.pushRepository,
+                    diveCenterRepository: widget.diveCenterRepository,
+                    currentUserId: widget.viewModel.currentUserId,
+                  )
+                else if (!trip.joined &&
+                    !isOrganizer &&
+                    trip.bookingStatus == 'open')
+                  if (trip.diveCenterId != null)
+                    _BookNowSection(
+                      trip: trip,
+                      diveCenter: widget.viewModel.organizerDiveCenter,
+                      viewModel: widget.viewModel,
+                      tripRepository: widget.tripRepository,
+                      chatRepository: widget.chatRepository,
+                      transportRepository: widget.transportRepository,
+                      buddyRepository: widget.buddyRepository,
+                      realtimeService: widget.realtimeService,
+                      diveCenterRepository: widget.diveCenterRepository,
+                    )
+                  else if (trip.isPrivate)
+                    _PrivateJoinSection(
+                      trip: trip,
+                      viewModel: widget.viewModel,
+                      tripRepository: widget.tripRepository,
+                      chatRepository: widget.chatRepository,
+                      transportRepository: widget.transportRepository,
+                      buddyRepository: widget.buddyRepository,
+                      realtimeService: widget.realtimeService,
+                      diveCenterRepository: widget.diveCenterRepository,
+                    )
+                  else
+                    _JoinButton(trip: trip, viewModel: widget.viewModel),
+                // Leave/Cancel now live in _ActionPillsRow up top, Telegram-Group-Info-style.
+              ],
+            ),
+          );
 
           // Opened from the Bubble: everything — the collapsing photo/toolbar, the in-flow
           // title+buttons+dive-info, and the pinned People/Media/Files/Links tab bar — lives in
@@ -670,11 +705,19 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
                   builder: (context, collapsed, child) => SliverAppBar(
                     pinned: true,
                     expandedHeight: photoHeight,
-                    backgroundColor: collapsed ? theme.colorScheme.surface : Colors.transparent,
-                    foregroundColor: collapsed ? theme.colorScheme.onSurface : Colors.white,
+                    backgroundColor: collapsed
+                        ? theme.colorScheme.surface
+                        : Colors.transparent,
+                    foregroundColor: collapsed
+                        ? theme.colorScheme.onSurface
+                        : Colors.white,
                     elevation: 0,
                     title: collapsed
-                        ? Text(trip.title, maxLines: 1, overflow: TextOverflow.ellipsis)
+                        ? Text(
+                            trip.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
                         : null,
                     flexibleSpace: FlexibleSpaceBar(background: child),
                   ),
@@ -691,15 +734,24 @@ class _TripPageState extends State<TripPage> with SingleTickerProviderStateMixin
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
-                        _ActionPillsRow(viewModel: widget.viewModel, trip: trip, isOrganizer: isOrganizer),
+                        _ActionPillsRow(
+                          viewModel: widget.viewModel,
+                          trip: trip,
+                          isOrganizer: isOrganizer,
+                        ),
                       ],
                     ),
                   ),
                 ),
-                SliverToBoxAdapter(child: _tripDetailBody(context, theme, trip)),
+                SliverToBoxAdapter(
+                  child: _tripDetailBody(context, theme, trip, isOrganizer),
+                ),
                 SliverPersistentHeader(
                   pinned: true,
-                  delegate: _PinnedTabBarDelegate(tabBar: tabBar, backgroundColor: theme.colorScheme.surface),
+                  delegate: _PinnedTabBarDelegate(
+                    tabBar: tabBar,
+                    backgroundColor: theme.colorScheme.surface,
+                  ),
                 ),
               ],
               body: TabBarView(
@@ -761,7 +813,11 @@ class _PinnedTabBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Material(
       color: backgroundColor,
       elevation: overlapsContent ? 2 : 0,
@@ -771,10 +827,10 @@ class _PinnedTabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _PinnedTabBarDelegate oldDelegate) {
-    return tabBar != oldDelegate.tabBar || backgroundColor != oldDelegate.backgroundColor;
+    return tabBar != oldDelegate.tabBar ||
+        backgroundColor != oldDelegate.backgroundColor;
   }
 }
-
 
 /// Flat participant list, Telegram-style — the organizer (individual diver or dive center)
 /// gets an "Organizer" pill next to their row instead of a separate card, so they never
@@ -955,10 +1011,7 @@ class _PersonRow extends StatelessWidget {
             if (isOrganizer) ...[
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(999),
@@ -1452,7 +1505,9 @@ class _PrivateJoinSection extends StatelessWidget {
       children: [
         Text(
           'This is a private trip — ask the organizer for an invite code or link.',
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 8),
         OutlinedButton(
@@ -1496,12 +1551,17 @@ class _BookingCodeRow extends StatelessWidget {
             children: [
               Text(
                 'INVITE CODE',
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 bookingCode,
-                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, letterSpacing: 1),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1,
+                ),
               ),
             ],
           ),
@@ -1516,7 +1576,10 @@ class _BookingCodeRow extends StatelessWidget {
   }
 }
 
-Future<void> _showCopyBookingCodeSheet(BuildContext context, String bookingCode) async {
+Future<void> _showCopyBookingCodeSheet(
+  BuildContext context,
+  String bookingCode,
+) async {
   final choice = await showModalBottomSheet<String>(
     context: context,
     builder: (context) => SafeArea(
@@ -1531,7 +1594,8 @@ Future<void> _showCopyBookingCodeSheet(BuildContext context, String bookingCode)
           ListTile(
             leading: const Icon(Icons.link_outlined),
             title: const Text('Copy invite link'),
-            onTap: () => Navigator.of(context).pop('$_joinLinkBaseUrl$bookingCode'),
+            onTap: () =>
+                Navigator.of(context).pop('$_joinLinkBaseUrl$bookingCode'),
           ),
         ],
       ),
@@ -1540,7 +1604,9 @@ Future<void> _showCopyBookingCodeSheet(BuildContext context, String bookingCode)
   if (choice == null || !context.mounted) return;
   await Clipboard.setData(ClipboardData(text: choice));
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied')));
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(const SnackBar(content: Text('Copied')));
 }
 
 /// Quick-actions row shown only on the Specific view (opened from inside a Bubble) —
