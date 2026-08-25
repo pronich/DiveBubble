@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import 'data/repositories/auth_repository.dart';
 import 'data/repositories/buddy_repository.dart';
@@ -29,10 +30,13 @@ import 'data/services/specialty_api_service.dart';
 import 'data/services/token_storage_service.dart';
 import 'data/services/transport_api_service.dart';
 import 'data/services/trip_api_service.dart';
+import 'ui/core/auth/ensure_signed_in.dart';
 import 'ui/core/navigation/root_shell.dart';
 import 'ui/core/theme/app_theme.dart';
+import 'ui/core/widgets/shared_media_classifier.dart';
 import 'ui/features/buddy/view_models/buddy_view_model.dart';
 import 'ui/features/chats/view_models/chat_view_model.dart';
+import 'ui/features/chats/views/choose_bubble_page.dart';
 import 'ui/features/chats/views/trip_conversation_page.dart';
 import 'ui/features/onboarding/views/app_entry_gate.dart';
 import 'ui/features/transport/view_models/transport_view_model.dart';
@@ -89,6 +93,7 @@ class _MyAppState extends State<MyApp> {
 
   final _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSubscription;
+  StreamSubscription<List<SharedMediaFile>>? _shareSubscription;
 
   late final _authRepository = AuthRepository(
     googleIosClientId: _googleIosClientId,
@@ -161,12 +166,14 @@ class _MyAppState extends State<MyApp> {
     _authRepository.addListener(_onAuthChanged);
     _setUpPushNotifications();
     _setUpDeepLinks();
+    _setUpShareToApp();
   }
 
   @override
   void dispose() {
     _authRepository.removeListener(_onAuthChanged);
     _linkSubscription?.cancel();
+    _shareSubscription?.cancel();
     super.dispose();
   }
 
@@ -218,6 +225,61 @@ class _MyAppState extends State<MyApp> {
       // Invalid/expired code, or offline — no trip to show, nothing useful to recover into.
       debugPrint('deep link: could not resolve invite code: $e');
     }
+  }
+
+  // Share-to-DiveBubble — photos/video/PDF shared from another app's OS share sheet. The
+  // package's own example (unlike app_links' single-stream pattern) uses getMediaStream for
+  // warm sharing plus a separate getInitialMedia for cold start, paired with reset() so the
+  // cold-start share isn't also redelivered through the stream afterward.
+  Future<void> _setUpShareToApp() async {
+    _shareSubscription = ReceiveSharingIntent.instance.getMediaStream().listen(
+      _handleSharedMedia,
+      onError: (e) => debugPrint('share: stream error: $e'),
+    );
+    try {
+      final initial = await ReceiveSharingIntent.instance.getInitialMedia();
+      if (initial.isNotEmpty) await _handleSharedMedia(initial);
+      ReceiveSharingIntent.instance.reset();
+    } catch (e) {
+      debugPrint('share: could not read initial media: $e');
+    }
+  }
+
+  Future<void> _handleSharedMedia(List<SharedMediaFile> files) async {
+    if (files.isEmpty) return;
+    final attachments = await classifySharedMedia(files);
+    if (attachments.isEmpty) return;
+
+    final context = _navigatorKey.currentContext;
+    if (context == null) return;
+    // Share-to-DiveBubble has no sensible "preview" state the way an invite link does —
+    // picking a Bubble to share into requires an account, so gate here rather than letting
+    // ChooseBubblePage's own trip fetch fail with an auth error.
+    final userId = await ensureSignedIn(
+      context,
+      _authRepository,
+      _profileRepository,
+      _pushRepository,
+    );
+    if (userId == null || !context.mounted) return;
+
+    await _navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (_) => ChooseBubblePage(
+          attachments: attachments,
+          tripRepository: _tripRepository,
+          chatRepository: _chatRepository,
+          transportRepository: _transportRepository,
+          buddyRepository: _buddyRepository,
+          realtimeService: _realtimeService,
+          authRepository: _authRepository,
+          profileRepository: _profileRepository,
+          pushRepository: _pushRepository,
+          diveCenterRepository: _diveCenterRepository,
+          currentUserId: userId,
+        ),
+      ),
+    );
   }
 
   void _onAuthChanged() => _syncPushTokenIfAuthorized();

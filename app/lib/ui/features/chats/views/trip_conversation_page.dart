@@ -9,6 +9,7 @@ import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
+import '../../../../domain/entities/picked_attachment.dart';
 import '../../buddy/view_models/buddy_view_model.dart';
 import '../../buddy/views/buddy_view.dart';
 import '../../transport/view_models/transport_view_model.dart';
@@ -44,6 +45,7 @@ class TripConversationPage extends StatefulWidget {
     this.onTransportAlertCleared,
     required this.initialHasBuddyAlert,
     this.onBuddyAlertCleared,
+    this.initialAttachments = const [],
   });
 
   final ChatViewModel chatViewModel;
@@ -74,6 +76,10 @@ class TripConversationPage extends StatefulWidget {
   // Same two as above, for BuddyViewModel.hasAlert.
   final bool initialHasBuddyAlert;
   final VoidCallback? onBuddyAlertCleared;
+
+  /// Set when this Bubble was opened straight from Share-to-DiveBubble's Bubble picker —
+  /// see ChatView.initialAttachments for what happens with it.
+  final List<PickedAttachment> initialAttachments;
 
   @override
   State<TripConversationPage> createState() => _TripConversationPageState();
@@ -221,6 +227,7 @@ class _TripConversationPageState extends State<TripConversationPage>
             isCancelled: _isCancelled,
             businessName: _businessName,
             canMentionDiveCenter: !_isDiveCenterStaff,
+            initialAttachments: widget.initialAttachments,
           ),
           TransportView(
             viewModel: widget.transportViewModel,

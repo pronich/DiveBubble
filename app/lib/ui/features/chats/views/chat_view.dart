@@ -63,9 +63,15 @@ class ChatView extends StatefulWidget {
     this.isCancelled = false,
     this.businessName,
     this.canMentionDiveCenter = true,
+    this.initialAttachments = const [],
   });
 
   final ChatViewModel viewModel;
+
+  /// Pre-staged into the composer on open — used when this Bubble was reached via
+  /// Share-to-DiveBubble (see ChooseBubblePage), so the diver lands straight in the compose
+  /// state instead of having to re-pick the same content they just shared.
+  final List<PickedAttachment> initialAttachments;
 
   /// Trip Page (see TripConversationPage._refreshTripDerivedState) is the source of truth —
   /// cancelling freezes the input, but history stays fully visible either way.
@@ -129,6 +135,16 @@ class _ChatViewState extends State<ChatView>
     Future.microtask(widget.viewModel.load);
     _itemPositionsListener.itemPositions.addListener(_onScroll);
     _textController.addListener(_onComposerTextChanged);
+    // Same room/size-cap/PDF-exclusivity enforcement as _pickAttachment's own merge —
+    // initialAttachments comes from an OS share, which has no idea about this composer's
+    // own limits.
+    bool fitsSizeCap(PickedAttachment p) =>
+        p.type == 'video' || p.sizeBytes <= _maxAttachmentSizeBytes;
+    final fitting = widget.initialAttachments.where(fitsSizeCap).toList();
+    final pdfs = fitting.where((a) => a.type == 'pdf').toList();
+    _pendingAttachments = pdfs.isNotEmpty
+        ? [pdfs.first]
+        : fitting.take(_maxAttachmentsPerMessage).toList();
   }
 
   @override
@@ -149,8 +165,11 @@ class _ChatViewState extends State<ChatView>
   // currently among the visible ones, not a precise pixel threshold (scrollable_positioned_list
   // doesn't expose raw scroll-offset pixels the way a plain ScrollController did).
   void _onScroll() {
-    final nearBottom = _itemPositionsListener.itemPositions.value.any((p) => p.index == 0);
-    if (nearBottom == _isNearBottom && !(nearBottom && _showNewMessagesPill)) return;
+    final nearBottom = _itemPositionsListener.itemPositions.value.any(
+      (p) => p.index == 0,
+    );
+    if (nearBottom == _isNearBottom && !(nearBottom && _showNewMessagesPill))
+      return;
     setState(() {
       _isNearBottom = nearBottom;
       if (nearBottom) _showNewMessagesPill = false;
@@ -176,8 +195,12 @@ class _ChatViewState extends State<ChatView>
   // strip (see _MessageRow). Recomputes reversedItems fresh rather than caching it, since the
   // display-item list only otherwise exists inside build()'s scope.
   void _scrollToMessage(String messageId) {
-    final reversedItems = _buildDisplayItems(widget.viewModel.messages).reversed.toList();
-    final index = reversedItems.indexWhere((item) => item.message?.id == messageId);
+    final reversedItems = _buildDisplayItems(
+      widget.viewModel.messages,
+    ).reversed.toList();
+    final index = reversedItems.indexWhere(
+      (item) => item.message?.id == messageId,
+    );
     if (index == -1 || !_itemScrollController.isAttached) return;
     _itemScrollController.scrollTo(
       index: index,
@@ -229,7 +252,9 @@ class _ChatViewState extends State<ChatView>
     final all = _mentionEntries();
     final matches = query.isEmpty
         ? all
-        : all.where((e) => e.displayName.toLowerCase().contains(query)).toList();
+        : all
+              .where((e) => e.displayName.toLowerCase().contains(query))
+              .toList();
     setState(() {
       _mentionTokenStart = atIndex;
       _mentionMatches = matches;
@@ -327,7 +352,9 @@ class _ChatViewState extends State<ChatView>
   void _copyMessageText(ChatMessage message) {
     Clipboard.setData(ClipboardData(text: message.body));
     _settleFocus(focusComposer: false);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Copied')));
   }
 
   Future<void> _confirmDeleteMessage(ChatMessage message) async {
@@ -336,12 +363,20 @@ class _ChatViewState extends State<ChatView>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete this message?'),
-        content: const Text('This cannot be undone — it will be removed for everyone in this Bubble.'),
+        content: const Text(
+          'This cannot be undone — it will be removed for everyone in this Bubble.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
         ],
       ),
@@ -349,14 +384,18 @@ class _ChatViewState extends State<ChatView>
     if (confirmed != true || !mounted) return;
     final error = await widget.viewModel.deleteMessage(message.id);
     if (!mounted || error == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not delete message: $error')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Could not delete message: $error')));
   }
 
   Future<void> _reactToMessage(String messageId, String emoji) async {
     _settleFocus(focusComposer: false);
     final error = await widget.viewModel.reactToMessage(messageId, emoji);
     if (!mounted || error == null) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not react: $error')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Could not react: $error')));
   }
 
   // Long-press menu — iOS/Telegram-style: background dims+blurs, the pressed bubble stays put
@@ -366,7 +405,11 @@ class _ChatViewState extends State<ChatView>
   // Deleted messages never reach here (see build's onLongPress gate). The dimmed backdrop is
   // deliberately its own overlay (not showModalBottomSheet) so it can leave room for a future
   // emoji-reaction row above the bubble without restructuring this again.
-  void _showMessageActionsSheet(ChatMessage message, Rect bubbleRect, ui.Image bubbleImage) {
+  void _showMessageActionsSheet(
+    ChatMessage message,
+    Rect bubbleRect,
+    ui.Image bubbleImage,
+  ) {
     final isMine = message.userId == widget.viewModel.currentUserId;
     Navigator.of(context).push(
       PageRouteBuilder<void>(
@@ -386,8 +429,16 @@ class _ChatViewState extends State<ChatView>
               _reactToMessage(message.id, emoji);
             },
             actions: [
-              _ContextMenuAction(icon: Icons.reply_outlined, label: 'Reply', onTap: () => _startReply(message)),
-              _ContextMenuAction(icon: Icons.copy_outlined, label: 'Copy text', onTap: () => _copyMessageText(message)),
+              _ContextMenuAction(
+                icon: Icons.reply_outlined,
+                label: 'Reply',
+                onTap: () => _startReply(message),
+              ),
+              _ContextMenuAction(
+                icon: Icons.copy_outlined,
+                label: 'Copy text',
+                onTap: () => _copyMessageText(message),
+              ),
               if (isMine)
                 _ContextMenuAction(
                   icon: Icons.delete_outline,
@@ -396,7 +447,11 @@ class _ChatViewState extends State<ChatView>
                   onTap: () => _confirmDeleteMessage(message),
                 )
               else
-                _ContextMenuAction(icon: Icons.flag_outlined, label: 'Report', onTap: () => _showReportSheet(message)),
+                _ContextMenuAction(
+                  icon: Icons.flag_outlined,
+                  label: 'Report',
+                  onTap: () => _showReportSheet(message),
+                ),
             ],
           ),
         ),
@@ -409,14 +464,20 @@ class _ChatViewState extends State<ChatView>
   Future<void> _pickAttachment() async {
     if (_pendingAttachments.any((a) => a.type == 'pdf')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Remove the document first to add photos.')),
+        const SnackBar(
+          content: Text('Remove the document first to add photos.'),
+        ),
       );
       return;
     }
     final room = _maxAttachmentsPerMessage - _pendingAttachments.length;
     if (room <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Only $_maxAttachmentsPerMessage attachments allowed per message')),
+        SnackBar(
+          content: Text(
+            'Only $_maxAttachmentsPerMessage attachments allowed per message',
+          ),
+        ),
       );
       return;
     }
@@ -425,7 +486,9 @@ class _ChatViewState extends State<ChatView>
     if (!mounted) return;
     if (picked.any((p) => p.type == 'pdf') && _pendingAttachments.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A document can only be sent on its own.')),
+        const SnackBar(
+          content: Text('A document can only be sent on its own.'),
+        ),
       );
       return;
     }
@@ -435,10 +498,14 @@ class _ChatViewState extends State<ChatView>
     // compressed upload will land comfortably under it. The 60s duration check in
     // pick_attachment.dart is what actually bounds this; the backend's post-compression size
     // cap is the real, authoritative enforcement.
-    bool fitsSizeCap(PickedAttachment p) => p.type == 'video' || p.sizeBytes <= _maxAttachmentSizeBytes;
+    bool fitsSizeCap(PickedAttachment p) =>
+        p.type == 'video' || p.sizeBytes <= _maxAttachmentSizeBytes;
     final tooLarge = picked.where((p) => !fitsSizeCap(p)).isNotEmpty;
     final accepted = picked.where(fitsSizeCap).take(room).toList();
-    if (accepted.isNotEmpty) setState(() => _pendingAttachments = [..._pendingAttachments, ...accepted]);
+    if (accepted.isNotEmpty)
+      setState(
+        () => _pendingAttachments = [..._pendingAttachments, ...accepted],
+      );
     if (tooLarge || picked.length > room) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -452,8 +519,11 @@ class _ChatViewState extends State<ChatView>
     }
   }
 
-  void _removePendingAttachment(PickedAttachment attachment) =>
-      setState(() => _pendingAttachments = _pendingAttachments.where((a) => a != attachment).toList());
+  void _removePendingAttachment(PickedAttachment attachment) => setState(
+    () => _pendingAttachments = _pendingAttachments
+        .where((a) => a != attachment)
+        .toList(),
+  );
 
   Future<void> _handleSend() async {
     final text = _textController.text;
@@ -461,7 +531,8 @@ class _ChatViewState extends State<ChatView>
     // just checks whether the literal "@BusinessName" text made it into the message, same as
     // the old chip's boolean but driven by what was actually typed instead of a manual toggle.
     final businessName = widget.businessName;
-    final mentionsDiveCenter = businessName != null && text.contains('@$businessName');
+    final mentionsDiveCenter =
+        businessName != null && text.contains('@$businessName');
     final attachments = _pendingAttachments;
     final replyToId = _replyingTo?.id;
 
@@ -472,7 +543,11 @@ class _ChatViewState extends State<ChatView>
         _mentionTokenStart = -1;
         _replyingTo = null;
       });
-      widget.viewModel.send(text, mentionsDiveCenter: mentionsDiveCenter, replyToId: replyToId);
+      widget.viewModel.send(
+        text,
+        mentionsDiveCenter: mentionsDiveCenter,
+        replyToId: replyToId,
+      );
       return;
     }
 
@@ -494,9 +569,9 @@ class _ChatViewState extends State<ChatView>
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not send attachment: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not send attachment: $e')));
     }
   }
 
@@ -608,10 +683,13 @@ class _ChatViewState extends State<ChatView>
                         final repliedToSenderName = repliedTo == null
                             ? null
                             : repliedTo.userId == widget.viewModel.currentUserId
-                                ? 'You'
-                                : (_profiles[repliedTo.userId]?.displayName?.isNotEmpty ?? false)
-                                    ? _profiles[repliedTo.userId]!.displayName!
-                                    : 'Diver';
+                            ? 'You'
+                            : (_profiles[repliedTo.userId]
+                                      ?.displayName
+                                      ?.isNotEmpty ??
+                                  false)
+                            ? _profiles[repliedTo.userId]!.displayName!
+                            : 'Diver';
                         return _MessageRow(
                           key: ValueKey(message.id),
                           message: message,
@@ -624,12 +702,22 @@ class _ChatViewState extends State<ChatView>
                           repliedToMessage: repliedTo,
                           repliedToSenderName: repliedToSenderName,
                           onTapSender: () => _openProfile(message.userId),
-                          onTapReplyPreview: repliedTo == null ? null : () => _scrollToMessage(repliedTo.id),
+                          onTapReplyPreview: repliedTo == null
+                              ? null
+                              : () => _scrollToMessage(repliedTo.id),
                           onLongPress: isDeleted
                               ? null
-                              : (rect, image) => _showMessageActionsSheet(message, rect, image),
-                          onReply: isDeleted ? null : () => _startReply(message),
-                          onReact: isDeleted ? null : (emoji) => _reactToMessage(message.id, emoji),
+                              : (rect, image) => _showMessageActionsSheet(
+                                  message,
+                                  rect,
+                                  image,
+                                ),
+                          onReply: isDeleted
+                              ? null
+                              : () => _startReply(message),
+                          onReact: isDeleted
+                              ? null
+                              : (emoji) => _reactToMessage(message.id, emoji),
                         );
                       },
                     ),
@@ -681,7 +769,9 @@ class _ChatViewState extends State<ChatView>
                         margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                         constraints: const BoxConstraints(maxHeight: 180),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: ListView.builder(
@@ -693,7 +783,9 @@ class _ChatViewState extends State<ChatView>
                             return ListTile(
                               dense: true,
                               leading: Icon(
-                                entry.isDiveCenter ? Icons.campaign_outlined : Icons.person_outline,
+                                entry.isDiveCenter
+                                    ? Icons.campaign_outlined
+                                    : Icons.person_outline,
                                 size: 20,
                               ),
                               title: Text(entry.displayName),
@@ -707,11 +799,17 @@ class _ChatViewState extends State<ChatView>
                         key: const ValueKey('replyPreviewChip'),
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                         child: _ReplyPreviewChip(
-                          senderName: _replyingTo!.userId == widget.viewModel.currentUserId
+                          senderName:
+                              _replyingTo!.userId ==
+                                  widget.viewModel.currentUserId
                               ? 'You'
-                              : ((_profiles[_replyingTo!.userId]?.displayName?.isNotEmpty ?? false)
-                                  ? _profiles[_replyingTo!.userId]!.displayName!
-                                  : 'Diver'),
+                              : ((_profiles[_replyingTo!.userId]
+                                            ?.displayName
+                                            ?.isNotEmpty ??
+                                        false)
+                                    ? _profiles[_replyingTo!.userId]!
+                                          .displayName!
+                                    : 'Diver'),
                           previewText: _replyPreviewText(_replyingTo!),
                           onCancel: _cancelReply,
                         ),
@@ -722,22 +820,29 @@ class _ChatViewState extends State<ChatView>
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
                         // A lone PDF keeps the named chip; photos get a compact thumbnail
                         // strip instead (a filename-per-item row doesn't fit several across).
-                        child: _pendingAttachments.length == 1 && _pendingAttachments.first.type == 'pdf'
+                        child:
+                            _pendingAttachments.length == 1 &&
+                                _pendingAttachments.first.type == 'pdf'
                             ? _PendingAttachmentChip(
                                 attachment: _pendingAttachments.first,
-                                onRemove: () => _removePendingAttachment(_pendingAttachments.first),
+                                onRemove: () => _removePendingAttachment(
+                                  _pendingAttachments.first,
+                                ),
                               )
                             : SizedBox(
                                 height: 72,
                                 child: ListView.separated(
                                   scrollDirection: Axis.horizontal,
                                   itemCount: _pendingAttachments.length,
-                                  separatorBuilder: (_, _) => const SizedBox(width: 8),
+                                  separatorBuilder: (_, _) =>
+                                      const SizedBox(width: 8),
                                   itemBuilder: (context, index) {
-                                    final attachment = _pendingAttachments[index];
+                                    final attachment =
+                                        _pendingAttachments[index];
                                     return _PendingPhotoThumb(
                                       attachment: attachment,
-                                      onRemove: () => _removePendingAttachment(attachment),
+                                      onRemove: () =>
+                                          _removePendingAttachment(attachment),
                                     );
                                   },
                                 ),
@@ -762,7 +867,9 @@ class _ChatViewState extends State<ChatView>
                               keyboardType: TextInputType.multiline,
                               textCapitalization: TextCapitalization.sentences,
                               decoration: InputDecoration(
-                                hintText: _pendingAttachments.isNotEmpty ? 'Caption (optional)' : 'Message',
+                                hintText: _pendingAttachments.isNotEmpty
+                                    ? 'Caption (optional)'
+                                    : 'Message',
                               ),
                             ),
                           ),
@@ -784,7 +891,11 @@ class _ChatViewState extends State<ChatView>
 /// Shown above the composer while replying to an earlier message — same shape/slot as
 /// _PendingAttachmentChip below (a left accent bar instead of a thumbnail, same dismiss-X).
 class _ReplyPreviewChip extends StatelessWidget {
-  const _ReplyPreviewChip({required this.senderName, required this.previewText, required this.onCancel});
+  const _ReplyPreviewChip({
+    required this.senderName,
+    required this.previewText,
+    required this.onCancel,
+  });
 
   final String senderName;
   final String previewText;
@@ -810,18 +921,25 @@ class _ReplyPreviewChip extends StatelessWidget {
               children: [
                 Text(
                   'Replying to $senderName',
-                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 Text(
                   previewText,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
-          IconButton(icon: const Icon(Icons.close, size: 18), onPressed: onCancel),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: onCancel,
+          ),
         ],
       ),
     );
@@ -854,13 +972,21 @@ class _PendingAttachmentChip extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: attachment.type == 'image'
-                ? Image.file(File(attachment.path), width: 44, height: 44, fit: BoxFit.cover)
+                ? Image.file(
+                    File(attachment.path),
+                    width: 44,
+                    height: 44,
+                    fit: BoxFit.cover,
+                  )
                 : Container(
                     width: 44,
                     height: 44,
                     color: theme.colorScheme.surface,
                     alignment: Alignment.center,
-                    child: Icon(Icons.picture_as_pdf_outlined, color: theme.colorScheme.onSurfaceVariant),
+                    child: Icon(
+                      Icons.picture_as_pdf_outlined,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
           ),
           const SizedBox(width: 10),
@@ -872,7 +998,10 @@ class _PendingAttachmentChip extends StatelessWidget {
               style: theme.textTheme.bodyMedium,
             ),
           ),
-          IconButton(icon: const Icon(Icons.close, size: 18), onPressed: onRemove),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: onRemove,
+          ),
         ],
       ),
     );
@@ -900,7 +1029,12 @@ class _PendingPhotoThumb extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             child: attachment.type == 'video'
                 ? const VideoThumbnailPlaceholder(width: 64, height: 64)
-                : Image.file(File(attachment.path), width: 64, height: 64, fit: BoxFit.cover),
+                : Image.file(
+                    File(attachment.path),
+                    width: 64,
+                    height: 64,
+                    fit: BoxFit.cover,
+                  ),
           ),
           Positioned(
             top: -6,
@@ -910,7 +1044,10 @@ class _PendingPhotoThumb extends StatelessWidget {
               child: Container(
                 width: 22,
                 height: 22,
-                decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                  color: Colors.black87,
+                  shape: BoxShape.circle,
+                ),
                 child: const Icon(Icons.close, size: 14, color: Colors.white),
               ),
             ),
@@ -975,7 +1112,10 @@ class _AttachmentGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrls = [for (final a in attachments) if (a.type != 'video' && a.url != null) a.url!];
+    final imageUrls = [
+      for (final a in attachments)
+        if (a.type != 'video' && a.url != null) a.url!,
+    ];
     final columns = _gridColumns(attachments.length);
     final rows = <List<ChatAttachment>>[
       for (var i = 0; i < attachments.length; i += columns)
@@ -1021,7 +1161,10 @@ class _AttachmentGrid extends StatelessWidget {
 }
 
 class _AttachmentGridCell extends StatelessWidget {
-  const _AttachmentGridCell({required this.attachment, required this.imageUrls});
+  const _AttachmentGridCell({
+    required this.attachment,
+    required this.imageUrls,
+  });
 
   final ChatAttachment attachment;
   final List<String> imageUrls;
@@ -1064,7 +1207,10 @@ class _AttachmentGridCell extends StatelessWidget {
                 child: SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -1075,7 +1221,10 @@ class _AttachmentGridCell extends StatelessWidget {
 }
 
 class _ImageAttachmentThumbnail extends StatelessWidget {
-  const _ImageAttachmentThumbnail({required this.attachment, required this.color});
+  const _ImageAttachmentThumbnail({
+    required this.attachment,
+    required this.color,
+  });
 
   final ChatAttachment attachment;
   final Color color;
@@ -1092,7 +1241,9 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
         onTap: url == null
             ? null
             : () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => AttachmentImagePreviewPage(url: url)),
+                MaterialPageRoute(
+                  builder: (_) => AttachmentImagePreviewPage(url: url),
+                ),
               ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
@@ -1108,7 +1259,12 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
               if (url != null)
                 CachedAttachmentImage(url: url, width: 220, height: 160)
               else if (localPath != null)
-                Image.file(File(localPath), width: 220, height: 160, fit: BoxFit.cover),
+                Image.file(
+                  File(localPath),
+                  width: 220,
+                  height: 160,
+                  fit: BoxFit.cover,
+                ),
               if (!attachment.isUploaded)
                 Container(
                   width: 220,
@@ -1118,7 +1274,10 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
                     child: SizedBox(
                       width: 24,
                       height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
@@ -1134,7 +1293,10 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
 /// photo bubble read the same width/height — the difference is the play-icon placeholder body
 /// (see VideoThumbnailPlaceholder) instead of a decoded frame.
 class _VideoAttachmentThumbnail extends StatelessWidget {
-  const _VideoAttachmentThumbnail({required this.attachment, required this.color});
+  const _VideoAttachmentThumbnail({
+    required this.attachment,
+    required this.color,
+  });
 
   final ChatAttachment attachment;
   final Color color;
@@ -1148,19 +1310,28 @@ class _VideoAttachmentThumbnail extends StatelessWidget {
         onTap: url == null
             ? null
             : () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => AttachmentVideoPreviewPage(url: url)),
+                MaterialPageRoute(
+                  builder: (_) => AttachmentVideoPreviewPage(url: url),
+                ),
               ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Stack(
             alignment: Alignment.center,
             children: [
-              VideoThumbnailPlaceholder(width: 220, height: 160, durationSeconds: attachment.durationSeconds),
+              VideoThumbnailPlaceholder(
+                width: 220,
+                height: 160,
+                durationSeconds: attachment.durationSeconds,
+              ),
               if (!attachment.isUploaded)
                 const SizedBox(
                   width: 24,
                   height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: Colors.white,
+                  ),
                 ),
             ],
           ),
@@ -1206,10 +1377,19 @@ class _PdfAttachmentRow extends StatelessWidget {
                       filename,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: color, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     if (sizeLabel != null)
-                      Text(sizeLabel, style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 12)),
+                      Text(
+                        sizeLabel,
+                        style: TextStyle(
+                          color: color.withValues(alpha: 0.7),
+                          fontSize: 12,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -1218,13 +1398,18 @@ class _PdfAttachmentRow extends StatelessWidget {
                 SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: color.withValues(alpha: 0.7)),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: color.withValues(alpha: 0.7),
+                  ),
                 )
               else
                 FutureBuilder<FileInfo?>(
                   future: AttachmentCacheService.getCachedFileInfo(url),
                   builder: (context, snapshot) => Icon(
-                    snapshot.data != null ? Icons.check_circle_outline : Icons.cloud_download_outlined,
+                    snapshot.data != null
+                        ? Icons.check_circle_outline
+                        : Icons.cloud_download_outlined,
                     size: 18,
                     color: color.withValues(alpha: 0.7),
                   ),
@@ -1677,7 +1862,10 @@ class _MessageRowState extends State<_MessageRow> {
                     ),
                   ),
                 if (message.attachments.isNotEmpty)
-                  _AttachmentPreview(attachments: message.attachments, color: onBubbleColor),
+                  _AttachmentPreview(
+                    attachments: message.attachments,
+                    color: onBubbleColor,
+                  ),
                 _MessageBody(
                   body: message.body,
                   time: formatTime(message.createdAt),
@@ -1701,7 +1889,9 @@ class _MessageRowState extends State<_MessageRow> {
     final highlighted = AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       decoration: BoxDecoration(
-        color: widget.isHighlighted ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.6) : Colors.transparent,
+        color: widget.isHighlighted
+            ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.6)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
       ),
       padding: widget.isHighlighted ? const EdgeInsets.all(2) : EdgeInsets.zero,
@@ -1716,12 +1906,21 @@ class _MessageRowState extends State<_MessageRow> {
               if (_dragDx > 0)
                 Opacity(
                   opacity: (_dragDx / _maxDrag).clamp(0.0, 1.0),
-                  child: Icon(Icons.reply, color: theme.colorScheme.onSurfaceVariant),
+                  child: Icon(
+                    Icons.reply,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               GestureDetector(
-                onLongPress: widget.onLongPress == null ? null : _handleLongPress,
-                onHorizontalDragUpdate: widget.onReply == null ? null : _onHorizontalDragUpdate,
-                onHorizontalDragEnd: widget.onReply == null ? null : _onHorizontalDragEnd,
+                onLongPress: widget.onLongPress == null
+                    ? null
+                    : _handleLongPress,
+                onHorizontalDragUpdate: widget.onReply == null
+                    ? null
+                    : _onHorizontalDragUpdate,
+                onHorizontalDragEnd: widget.onReply == null
+                    ? null
+                    : _onHorizontalDragEnd,
                 child: Transform.translate(
                   offset: Offset(_dragDx, 0),
                   child: RepaintBoundary(key: _repaintKey, child: highlighted),
@@ -1780,7 +1979,11 @@ class _MessageRowState extends State<_MessageRow> {
 /// that's already there. Sorted by _reactionEmojis' own fixed order so the row doesn't visually
 /// reshuffle as counts change.
 class _ReactionSummary extends StatelessWidget {
-  const _ReactionSummary({required this.reactions, required this.color, this.onTap});
+  const _ReactionSummary({
+    required this.reactions,
+    required this.color,
+    this.onTap,
+  });
 
   final Map<String, ChatReaction> reactions;
   final Color color;
@@ -1803,12 +2006,16 @@ class _ReactionSummary extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: entry.value.reactedByMe ? color.withValues(alpha: 0.15) : null,
+                color: entry.value.reactedByMe
+                    ? color.withValues(alpha: 0.15)
+                    : null,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 '${entry.key} ${entry.value.count}',
-                style: theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.85)),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: color.withValues(alpha: 0.85),
+                ),
               ),
             ),
           ),
@@ -1838,7 +2045,9 @@ class _ReplyQuoteStrip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          border: Border(left: BorderSide(color: color.withValues(alpha: 0.6), width: 3)),
+          border: Border(
+            left: BorderSide(color: color.withValues(alpha: 0.6), width: 3),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1846,13 +2055,18 @@ class _ReplyQuoteStrip extends StatelessWidget {
           children: [
             Text(
               senderName,
-              style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: color),
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
             ),
             Text(
               previewText,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.85)),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: color.withValues(alpha: 0.85),
+              ),
             ),
           ],
         ),
@@ -1927,14 +2141,18 @@ class _MessageContextMenu extends StatelessWidget {
     // for a bubble near the bottom of the screen); minTop reserves space above the bubble for
     // the reaction row specifically, since that's a second thing (not just the menu) now
     // competing for vertical space near the top of the screen.
-    final spaceBelow = screenSize.height - safePadding.bottom - bubbleRect.bottom;
+    final spaceBelow =
+        screenSize.height - safePadding.bottom - bubbleRect.bottom;
     final shortfall = (menuHeight + _gap + _screenMargin) - spaceBelow;
     final verticalShift = shortfall > 0 ? shortfall : 0.0;
     // max/min rather than .clamp() — a bubble already hard against the top of the screen can
     // make the "don't go above the safe area" floor exceed bubbleRect.top itself, which
     // .clamp(lower, upper) would throw on (lower > upper); this degrades to "no shift" instead.
     final minTop = safePadding.top + _screenMargin + _reactionRowHeight + _gap;
-    final shiftedBubbleTop = math.max(minTop, math.min(bubbleRect.top, bubbleRect.top - verticalShift));
+    final shiftedBubbleTop = math.max(
+      minTop,
+      math.min(bubbleRect.top, bubbleRect.top - verticalShift),
+    );
     final menuTop = shiftedBubbleTop + bubbleRect.height + _gap;
     final reactionRowTop = shiftedBubbleTop - _gap - _reactionRowHeight;
 
@@ -1945,7 +2163,8 @@ class _MessageContextMenu extends StatelessWidget {
     if (menuLeft < _screenMargin) menuLeft = _screenMargin;
 
     var reactionRowLeft = bubbleRect.left;
-    if (reactionRowLeft + _reactionRowWidth > screenSize.width - _screenMargin) {
+    if (reactionRowLeft + _reactionRowWidth >
+        screenSize.width - _screenMargin) {
       reactionRowLeft = screenSize.width - _screenMargin - _reactionRowWidth;
     }
     if (reactionRowLeft < _screenMargin) reactionRowLeft = _screenMargin;
@@ -1973,7 +2192,11 @@ class _MessageContextMenu extends StatelessWidget {
             width: bubbleRect.width,
             height: bubbleRect.height,
             child: IgnorePointer(
-              child: RawImage(image: bubbleImage, width: bubbleRect.width, height: bubbleRect.height),
+              child: RawImage(
+                image: bubbleImage,
+                width: bubbleRect.width,
+                height: bubbleRect.height,
+              ),
             ),
           ),
           Positioned(
@@ -2003,11 +2226,16 @@ class _MessageContextMenu extends StatelessWidget {
                             alignment: Alignment.center,
                             decoration: (reactions[emoji]?.reactedByMe ?? false)
                                 ? BoxDecoration(
-                                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                                    color: theme.colorScheme.primary.withValues(
+                                      alpha: 0.15,
+                                    ),
                                     shape: BoxShape.circle,
                                   )
                                 : null,
-                            child: Text(emoji, style: const TextStyle(fontSize: 20)),
+                            child: Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 20),
+                            ),
                           ),
                         ),
                       ),
@@ -2029,28 +2257,39 @@ class _MessageContextMenu extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   for (var i = 0; i < actions.length; i++) ...[
-                    if (i > 0) Divider(height: 1, color: theme.colorScheme.outlineVariant),
+                    if (i > 0)
+                      Divider(
+                        height: 1,
+                        color: theme.colorScheme.outlineVariant,
+                      ),
                     InkWell(
                       onTap: () {
                         Navigator.of(context).pop();
                         actions[i].onTap();
                       },
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 13,
+                        ),
                         child: Row(
                           children: [
                             Expanded(
                               child: Text(
                                 actions[i].label,
                                 style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: actions[i].isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurface,
+                                  color: actions[i].isDestructive
+                                      ? theme.colorScheme.error
+                                      : theme.colorScheme.onSurface,
                                 ),
                               ),
                             ),
                             Icon(
                               actions[i].icon,
                               size: 18,
-                              color: actions[i].isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
+                              color: actions[i].isDestructive
+                                  ? theme.colorScheme.error
+                                  : theme.colorScheme.onSurfaceVariant,
                             ),
                           ],
                         ),
@@ -2407,7 +2646,10 @@ class _MessageBodyState extends State<_MessageBody> {
       }
       final url = widget.body.substring(match.start, end);
       final recognizer = TapGestureRecognizer()
-        ..onTap = () => launchUrlExternally(context, url.startsWith('http') ? url : 'https://$url');
+        ..onTap = () => launchUrlExternally(
+          context,
+          url.startsWith('http') ? url : 'https://$url',
+        );
       _linkRecognizers.add(recognizer);
       spans.add(
         TextSpan(
@@ -2456,7 +2698,11 @@ class _MessageBodyState extends State<_MessageBody> {
             ],
           ),
         ),
-        Positioned(right: 0, bottom: 0, child: Text(widget.time, style: timeStyle)),
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: Text(widget.time, style: timeStyle),
+        ),
       ],
     );
   }

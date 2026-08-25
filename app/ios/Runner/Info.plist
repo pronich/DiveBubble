@@ -37,8 +37,20 @@
 				<string>com.googleusercontent.apps.583379001701-1kncasa92pin9ib1laae9obn5t9mum14</string>
 			</array>
 		</dict>
+		<!-- receive_sharing_intent hands shared content back to Runner via this scheme once the
+		     Share Extension has staged it in the shared App Group container. -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ShareMedia-$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			</array>
+		</dict>
 	</array>
 	<!-- End of the Google Sign-in Section -->
+	<key>AppGroupId</key>
+	<string>$(CUSTOM_GROUP_ID)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
