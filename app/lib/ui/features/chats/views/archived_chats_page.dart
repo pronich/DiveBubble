@@ -4,6 +4,7 @@ import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/buddy_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
+import '../../../../data/repositories/expense_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
@@ -32,6 +33,7 @@ class ArchivedChatsPage extends StatefulWidget {
     required this.profileRepository,
     required this.pushRepository,
     required this.diveCenterRepository,
+    required this.expenseRepository,
   });
 
   final String currentUserId;
@@ -44,6 +46,7 @@ class ArchivedChatsPage extends StatefulWidget {
   final ProfileRepository profileRepository;
   final PushRepository pushRepository;
   final DiveCenterRepository diveCenterRepository;
+  final ExpenseRepository expenseRepository;
 
   @override
   State<ArchivedChatsPage> createState() => _ArchivedChatsPageState();
@@ -142,6 +145,7 @@ class _ArchivedChatsPageState extends State<ArchivedChatsPage> {
           profileRepository: widget.profileRepository,
           pushRepository: widget.pushRepository,
           diveCenterRepository: widget.diveCenterRepository,
+          expenseRepository: widget.expenseRepository,
         ),
       ),
     );

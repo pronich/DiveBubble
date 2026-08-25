@@ -4,6 +4,7 @@ import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/buddy_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
+import '../../../../data/repositories/expense_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
@@ -33,6 +34,7 @@ class MyTripsView extends StatefulWidget {
     required this.profileRepository,
     required this.pushRepository,
     required this.diveCenterRepository,
+    required this.expenseRepository,
     required this.currentUserId,
     required this.onGoToExplore,
     required this.isActive,
@@ -48,6 +50,7 @@ class MyTripsView extends StatefulWidget {
   final ProfileRepository profileRepository;
   final PushRepository pushRepository;
   final DiveCenterRepository diveCenterRepository;
+  final ExpenseRepository expenseRepository;
   final String currentUserId;
   final VoidCallback onGoToExplore;
   final bool isActive;
@@ -234,6 +237,7 @@ class _MyTripsViewState extends State<MyTripsView> {
           profileRepository: widget.profileRepository,
           pushRepository: widget.pushRepository,
           diveCenterRepository: widget.diveCenterRepository,
+          expenseRepository: widget.expenseRepository,
         ),
       ),
     );
@@ -260,6 +264,7 @@ class _MyTripsViewState extends State<MyTripsView> {
           profileRepository: widget.profileRepository,
           pushRepository: widget.pushRepository,
           diveCenterRepository: widget.diveCenterRepository,
+          expenseRepository: widget.expenseRepository,
           onTransportAlertCleared: () => widget.viewModel.markTransportAlertCleared(trip.id),
           onBuddyAlertCleared: () => widget.viewModel.markBuddyAlertCleared(trip.id),
         ),

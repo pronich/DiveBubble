@@ -4,6 +4,7 @@ import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/buddy_repository.dart';
 import '../../../data/repositories/chat_repository.dart';
 import '../../../data/repositories/dive_center_repository.dart';
+import '../../../data/repositories/expense_repository.dart';
 import '../../../data/repositories/gear_repository.dart';
 import '../../../data/repositories/profile_repository.dart';
 import '../../../data/repositories/push_repository.dart';
@@ -31,6 +32,7 @@ class RootShell extends StatefulWidget {
     required this.specialtyRepository,
     required this.gearRepository,
     required this.diveCenterRepository,
+    required this.expenseRepository,
     required this.pushRepository,
     required this.currentUserId,
   });
@@ -45,6 +47,7 @@ class RootShell extends StatefulWidget {
   final SpecialtyRepository specialtyRepository;
   final GearRepository gearRepository;
   final DiveCenterRepository diveCenterRepository;
+  final ExpenseRepository expenseRepository;
   final PushRepository pushRepository;
   final String currentUserId;
 
@@ -107,6 +110,7 @@ class _RootShellState extends State<RootShell> {
             profileRepository: widget.profileRepository,
             pushRepository: widget.pushRepository,
             diveCenterRepository: widget.diveCenterRepository,
+            expenseRepository: widget.expenseRepository,
             currentUserId: widget.currentUserId,
           ),
           MyTripsView(
@@ -120,6 +124,7 @@ class _RootShellState extends State<RootShell> {
             profileRepository: widget.profileRepository,
             pushRepository: widget.pushRepository,
             diveCenterRepository: widget.diveCenterRepository,
+            expenseRepository: widget.expenseRepository,
             currentUserId: widget.currentUserId,
             onGoToExplore: () => setState(() => _index = 0),
             isActive: _index == 1,

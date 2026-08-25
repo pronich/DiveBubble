@@ -11,6 +11,7 @@ import 'data/repositories/auth_repository.dart';
 import 'data/repositories/buddy_repository.dart';
 import 'data/repositories/chat_repository.dart';
 import 'data/repositories/dive_center_repository.dart';
+import 'data/repositories/expense_repository.dart';
 import 'data/repositories/gear_repository.dart';
 import 'data/repositories/profile_repository.dart';
 import 'data/repositories/push_repository.dart';
@@ -21,6 +22,7 @@ import 'data/services/auth_api_service.dart';
 import 'data/services/buddy_api_service.dart';
 import 'data/services/chat_api_service.dart';
 import 'data/services/dive_center_api_service.dart';
+import 'data/services/expense_api_service.dart';
 import 'data/services/gear_api_service.dart';
 import 'data/services/profile_api_service.dart';
 import 'data/services/push_api_service.dart';
@@ -122,6 +124,12 @@ class _MyAppState extends State<MyApp> {
       getAccessToken: _authRepository.getValidAccessToken,
     ),
   );
+  late final _expenseRepository = ExpenseRepository(
+    service: ExpenseApiService(
+      baseUrl: _apiBaseUrl,
+      getAccessToken: _authRepository.getValidAccessToken,
+    ),
+  );
   late final _realtimeService = RealtimeService(
     wsUrl: _centrifugoWsUrl,
     getToken: _chatRepository.getRealtimeToken,
@@ -214,6 +222,7 @@ class _MyAppState extends State<MyApp> {
             buddyRepository: _buddyRepository,
             realtimeService: _realtimeService,
             diveCenterRepository: _diveCenterRepository,
+            expenseRepository: _expenseRepository,
             entryCode: code,
           ),
         ),
@@ -273,6 +282,7 @@ class _MyAppState extends State<MyApp> {
           profileRepository: _profileRepository,
           pushRepository: _pushRepository,
           diveCenterRepository: _diveCenterRepository,
+          expenseRepository: _expenseRepository,
           currentUserId: userId,
         ),
       ),
@@ -383,6 +393,7 @@ class _MyAppState extends State<MyApp> {
             profileRepository: _profileRepository,
             pushRepository: _pushRepository,
             diveCenterRepository: _diveCenterRepository,
+            expenseRepository: _expenseRepository,
           ),
         ),
       );
@@ -415,6 +426,7 @@ class _MyAppState extends State<MyApp> {
           specialtyRepository: _specialtyRepository,
           gearRepository: _gearRepository,
           diveCenterRepository: _diveCenterRepository,
+          expenseRepository: _expenseRepository,
           pushRepository: _pushRepository,
           currentUserId: currentUserId,
         ),
