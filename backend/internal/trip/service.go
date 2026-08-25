@@ -120,24 +120,20 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 			return Trip{}, ErrBusinessTripRequiresPriceAndURL
 		}
 	}
-	// Business trips and private individual trips both get a server-generated code, retried
-	// on the rare unique-constraint collision — never client-supplied. Business: only the
-	// dive center controls who can redeem it. Private: it's the only way in, since the trip
-	// is excluded from Explore (see Repository.List) — see Join's matching gate below. A
-	// public individual trip never gets one: direct Join stays open for it.
+	// Every trip gets a server-generated code, retried on the rare unique-constraint
+	// collision — never client-supplied. It backs the invite link (JoinByCode/ResolveByCode)
+	// for every trip type: the only way in for a business or private trip (see Join's
+	// matching gate below), and just an alternate entry point for an otherwise-open public
+	// trip alongside Explore/direct Join.
 	var t Trip
 	var err error
-	if p.DiveCenterID != nil || p.IsPrivate {
-		for attempt := 0; attempt < maxBookingCodeAttempts; attempt++ {
-			code := generateBookingCode()
-			p.BookingCode = &code
-			t, err = s.Repo.Create(ctx, p)
-			if err == nil || !uniqueViolation(err) {
-				break
-			}
-		}
-	} else {
+	for attempt := 0; attempt < maxBookingCodeAttempts; attempt++ {
+		code := generateBookingCode()
+		p.BookingCode = &code
 		t, err = s.Repo.Create(ctx, p)
+		if err == nil || !uniqueViolation(err) {
+			break
+		}
 	}
 	if err != nil {
 		return Trip{}, err
@@ -194,6 +190,26 @@ func (s *Service) Join(ctx context.Context, id string, userID uuid.UUID) error {
 		return ErrRequiresBookingCode
 	}
 	return s.Repo.Join(ctx, tripID, userID)
+}
+
+// ResolveByCode looks up a trip by its booking code without joining — the read-only half of
+// an invite link (divebubble.io/join/{code}): the app resolves the trip first to show a
+// preview, and only calls JoinByCode once the diver actually taps Join. Deliberately doesn't
+// check BookingStatus — a cancelled/full trip should still preview (with its real status),
+// not 404, and Join/JoinByCode already re-check status before actually joining.
+func (s *Service) ResolveByCode(ctx context.Context, code string) (Trip, error) {
+	code = strings.ToUpper(strings.TrimSpace(code))
+	if code == "" {
+		return Trip{}, ErrInvalidArgument
+	}
+	t, err := s.Repo.GetByBookingCode(ctx, code)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return Trip{}, ErrInvalidBookingCode
+		}
+		return Trip{}, err
+	}
+	return t, nil
 }
 
 // JoinByCode resolves a trip purely from its booking code — no trip id needed, since the

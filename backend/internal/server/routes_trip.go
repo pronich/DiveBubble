@@ -43,6 +43,10 @@ func registerTripRoutes(
 	mux.HandleFunc("GET /trips/mine", withAuth(authIssuer, handleListMyTrips(svc)))
 	// Detail stays browsable without an account — "joined" is just false for anonymous viewers.
 	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
+	// Same anonymous-browsable posture — resolves an invite link's code to a trip preview
+	// without joining. Registered before join-by-code's own path segment count differs
+	// (3 segments vs 2), so there's no ambiguity with GET /trips/{id}.
+	mux.HandleFunc("GET /trips/by-code/{code}", optionalAuth(authIssuer, handleResolveTripByCode(svc)))
 	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc, diveCenterSvc, profileSvc, pushSvc, messageSvc, publisher)))
 	mux.HandleFunc("POST /trips/join-by-code", withAuth(authIssuer, handleJoinTripByCode(svc, diveCenterSvc, profileSvc, pushSvc, messageSvc, publisher)))
 	mux.HandleFunc("POST /trips/{id}/leave", withAuth(authIssuer, handleLeaveTrip(svc, transportSvc, buddySvc, pushSvc)))
@@ -298,6 +302,42 @@ func handleGetTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, u
 		participantCount, err := svc.CountParticipants(r.Context(), t.ID)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not get trip")
+			return
+		}
+
+		writeJSON(w, http.StatusOK, toTripResponse(t, joined, participantCount))
+	}
+}
+
+// handleResolveTripByCode is the read-only half of an invite link (divebubble.io/join/{code})
+// — same optionalAuth, anonymous-browsable posture as handleGetTrip, so the app can show a
+// trip preview before the diver has signed in. Never joins; see handleJoinTripByCode for that.
+func handleResolveTripByCode(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		code := r.PathValue("code")
+		t, err := svc.ResolveByCode(r.Context(), code)
+		if err != nil {
+			if errors.Is(err, trip.ErrInvalidArgument) {
+				writeError(w, http.StatusBadRequest, "invalid code")
+				return
+			}
+			if errors.Is(err, trip.ErrInvalidBookingCode) {
+				writeError(w, http.StatusNotFound, "invalid booking code")
+				return
+			}
+			writeError(w, http.StatusInternalServerError, "could not resolve trip")
+			return
+		}
+
+		joined, err := svc.IsJoined(r.Context(), t.ID.String(), userID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not resolve trip")
+			return
+		}
+
+		participantCount, err := svc.CountParticipants(r.Context(), t.ID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "could not resolve trip")
 			return
 		}
 
