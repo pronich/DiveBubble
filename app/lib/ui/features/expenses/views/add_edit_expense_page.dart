@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/expense.dart';
 import '../../../../domain/entities/profile.dart';
+import '../../../core/formatting/date_format.dart';
+import '../../../core/widgets/calendar_picker_sheet.dart';
 import '../utils/expense_format.dart';
 import '../view_models/expense_view_model.dart';
 
@@ -24,6 +26,7 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
   late final TextEditingController _amountController;
   late String _payerUserId;
   late String _splitType;
+  late DateTime _occurredAt;
   final Set<String> _selected = {};
   final Map<String, int> _shareCounts = {};
   final Map<String, TextEditingController> _exactControllers = {};
@@ -39,6 +42,7 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
     );
     _payerUserId = e?.payerUserId ?? widget.viewModel.currentUserId;
     _splitType = e?.splitType ?? 'equal';
+    _occurredAt = e?.occurredAt ?? DateTime.now();
 
     for (final p in widget.viewModel.participants) {
       _exactControllers[p.id] = TextEditingController();
@@ -83,7 +87,7 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEdit ? 'Edit expense' : 'Add expense'),
+        title: Text(widget.isEdit ? 'Edit Expense' : 'Add Expense'),
         actions: [
           if (canDelete)
             IconButton(icon: const Icon(Icons.delete_outline), onPressed: _confirmDelete),
@@ -101,6 +105,14 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(labelText: 'Amount', prefixText: '¤ '),
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: _pickDate,
+            child: InputDecorator(
+              decoration: const InputDecoration(labelText: 'Date'),
+              child: Text(formatShortDate(_occurredAt)),
+            ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
@@ -146,7 +158,7 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(widget.isEdit ? 'Save changes' : 'Add expense'),
+                : Text(widget.isEdit ? 'Save changes' : 'Add Expense'),
           ),
         ],
       ),
@@ -222,6 +234,17 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
     );
   }
 
+  Future<void> _pickDate() async {
+    final picked = await showCalendarPicker(
+      context,
+      initialDate: _occurredAt,
+      // No floor at "today" like trip creation's own use of this picker — an expense
+      // routinely gets logged a day or two after it actually happened.
+      minimumDate: DateTime(_occurredAt.year - 5),
+    );
+    if (picked != null) setState(() => _occurredAt = picked);
+  }
+
   Future<void> _save() async {
     final title = _titleController.text.trim();
     final amountMinor = parseExpenseAmountMinor(_amountController.text);
@@ -265,6 +288,7 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
             title: title,
             amountMinor: amountMinor,
             splitType: _splitType,
+            occurredAt: _occurredAt,
             shares: shares,
           )
         : await widget.viewModel.createExpense(
@@ -272,6 +296,7 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
             title: title,
             amountMinor: amountMinor,
             splitType: _splitType,
+            occurredAt: _occurredAt,
             shares: shares,
           );
     if (errorMsg != null) {

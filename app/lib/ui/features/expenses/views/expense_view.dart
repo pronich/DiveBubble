@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/expense.dart';
+import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import '../utils/expense_format.dart';
 import '../view_models/expense_view_model.dart';
@@ -155,7 +156,9 @@ class _ExpenseRow extends StatelessWidget {
     return ListTile(
       onTap: onTap,
       title: Text(expense.title),
-      subtitle: Text('Paid by ${viewModel.displayName(expense.payerUserId)}'),
+      subtitle: Text(
+        'Paid by ${viewModel.displayName(expense.payerUserId)} · ${formatShortDate(expense.occurredAt)}',
+      ),
       trailing: Text(
         formatExpenseAmount(expense.amountMinor),
         style: Theme.of(context).textTheme.titleMedium,
@@ -172,17 +175,47 @@ void showExpenseBalanceSheet(BuildContext context, ExpenseViewModel viewModel) {
   );
 }
 
-class _ExpenseBalanceSheet extends StatelessWidget {
+class _ExpenseBalanceSheet extends StatefulWidget {
   const _ExpenseBalanceSheet({required this.viewModel});
 
   final ExpenseViewModel viewModel;
 
   @override
+  State<_ExpenseBalanceSheet> createState() => _ExpenseBalanceSheetState();
+}
+
+class _ExpenseBalanceSheetState extends State<_ExpenseBalanceSheet> {
+  bool _closing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.viewModel.addListener(_onViewModelChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.viewModel.removeListener(_onViewModelChanged);
+    super.dispose();
+  }
+
+  // Settling the last debt from a "Mark settled" tap inside this very sheet would otherwise
+  // leave it sitting open showing "All settled up." with nothing left to do — auto-close
+  // shortly after instead of making the diver swipe it away themselves.
+  void _onViewModelChanged() {
+    if (_closing || widget.viewModel.mySettlements.isNotEmpty) return;
+    _closing = true;
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: viewModel,
+      listenable: widget.viewModel,
       builder: (context, _) {
-        final settlements = viewModel.mySettlements;
+        final settlements = widget.viewModel.mySettlements;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -195,7 +228,9 @@ class _ExpenseBalanceSheet extends StatelessWidget {
                 if (settlements.isEmpty)
                   const Padding(padding: EdgeInsets.only(bottom: 8), child: Text('All settled up.'))
                 else
-                  ...settlements.map((s) => _SettlementRow(viewModel: viewModel, settlement: s)),
+                  ...settlements.map(
+                    (s) => _SettlementRow(viewModel: widget.viewModel, settlement: s),
+                  ),
               ],
             ),
           ),

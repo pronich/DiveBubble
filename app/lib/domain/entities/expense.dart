@@ -10,6 +10,7 @@ class Expense {
     required this.title,
     required this.amountMinor,
     required this.splitType,
+    required this.occurredAt,
     required this.createdAt,
     required this.updatedAt,
     required this.shares,
@@ -22,6 +23,9 @@ class Expense {
   final String title;
   final int amountMinor;
   final String splitType; // 'equal' | 'shares' | 'exact'
+  // The date the expense actually happened — distinct from createdAt (when the record was
+  // entered), so a diver can log a purchase from a day or two ago.
+  final DateTime occurredAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<ExpenseShare> shares;
@@ -34,6 +38,7 @@ class Expense {
     title: json['title'] as String,
     amountMinor: json['amountMinor'] as int,
     splitType: json['splitType'] as String,
+    occurredAt: DateTime.parse(json['occurredAt'] as String),
     createdAt: DateTime.parse(json['createdAt'] as String),
     updatedAt: DateTime.parse(json['updatedAt'] as String),
     shares: (json['shares'] as List<dynamic>? ?? [])

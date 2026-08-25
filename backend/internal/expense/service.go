@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -29,10 +30,13 @@ type SplitInput struct {
 	ExactAmountsMinor  map[uuid.UUID]int64 // SplitExact — exact amount per participant, must sum to the total
 }
 
-func (s *Service) Create(ctx context.Context, tripID, payerUserID, createdBy uuid.UUID, title string, amountMinor int64, splitType SplitType, input SplitInput) (Expense, error) {
+func (s *Service) Create(ctx context.Context, tripID, payerUserID, createdBy uuid.UUID, title string, amountMinor int64, splitType SplitType, occurredAt time.Time, input SplitInput) (Expense, error) {
 	title = strings.TrimSpace(title)
 	if title == "" || amountMinor <= 0 || !splitType.Valid() {
 		return Expense{}, ErrInvalidArgument
+	}
+	if occurredAt.IsZero() {
+		occurredAt = time.Now()
 	}
 	shares, err := computeShares(splitType, amountMinor, input)
 	if err != nil {
@@ -40,24 +44,27 @@ func (s *Service) Create(ctx context.Context, tripID, payerUserID, createdBy uui
 	}
 	return s.Repo.Create(ctx, CreateParams{
 		TripID: tripID, PayerUserID: payerUserID, CreatedBy: createdBy,
-		Title: title, AmountMinor: amountMinor, SplitType: splitType, Shares: shares,
+		Title: title, AmountMinor: amountMinor, SplitType: splitType, OccurredAt: occurredAt, Shares: shares,
 	})
 }
 
 // Update lets any participant re-split or correct an expense (matches the product decision
 // that editing is unrestricted, unlike Delete) — CreatedBy never changes, so Delete's
 // creator-only check keeps working after an edit by someone else.
-func (s *Service) Update(ctx context.Context, id, payerUserID uuid.UUID, title string, amountMinor int64, splitType SplitType, input SplitInput) (Expense, error) {
+func (s *Service) Update(ctx context.Context, id, payerUserID uuid.UUID, title string, amountMinor int64, splitType SplitType, occurredAt time.Time, input SplitInput) (Expense, error) {
 	title = strings.TrimSpace(title)
 	if title == "" || amountMinor <= 0 || !splitType.Valid() {
 		return Expense{}, ErrInvalidArgument
+	}
+	if occurredAt.IsZero() {
+		occurredAt = time.Now()
 	}
 	shares, err := computeShares(splitType, amountMinor, input)
 	if err != nil {
 		return Expense{}, err
 	}
 	return s.Repo.Update(ctx, id, UpdateParams{
-		PayerUserID: payerUserID, Title: title, AmountMinor: amountMinor, SplitType: splitType, Shares: shares,
+		PayerUserID: payerUserID, Title: title, AmountMinor: amountMinor, SplitType: splitType, OccurredAt: occurredAt, Shares: shares,
 	})
 }
 

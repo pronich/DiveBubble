@@ -41,6 +41,7 @@ type Expense struct {
 	Title       string
 	AmountMinor int64
 	SplitType   SplitType
+	OccurredAt  time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Shares      []Share

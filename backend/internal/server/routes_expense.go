@@ -104,6 +104,7 @@ type expenseResponse struct {
 	Title       string                 `json:"title"`
 	AmountMinor int64                  `json:"amountMinor"`
 	SplitType   string                 `json:"splitType"`
+	OccurredAt  time.Time              `json:"occurredAt"`
 	CreatedAt   time.Time              `json:"createdAt"`
 	UpdatedAt   time.Time              `json:"updatedAt"`
 	Shares      []expenseShareResponse `json:"shares"`
@@ -117,7 +118,7 @@ func toExpenseResponse(e expense.Expense) expenseResponse {
 	return expenseResponse{
 		ID: e.ID, TripID: e.TripID, PayerUserID: e.PayerUserID, CreatedBy: e.CreatedBy,
 		Title: e.Title, AmountMinor: e.AmountMinor, SplitType: string(e.SplitType),
-		CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt, Shares: shares,
+		OccurredAt: e.OccurredAt, CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt, Shares: shares,
 	}
 }
 
@@ -145,6 +146,7 @@ type createExpenseRequest struct {
 	Title       string                `json:"title"`
 	AmountMinor int64                 `json:"amountMinor"`
 	SplitType   string                `json:"splitType"`
+	OccurredAt  time.Time             `json:"occurredAt"`
 	Shares      []expenseShareRequest `json:"shares"`
 }
 
@@ -177,7 +179,7 @@ func handleCreateExpense(svc *expense.Service, tripSvc *trip.Service) func(http.
 			return
 		}
 
-		e, err := svc.Create(r.Context(), tripID, req.PayerUserID, userID, req.Title, req.AmountMinor, splitType, input)
+		e, err := svc.Create(r.Context(), tripID, req.PayerUserID, userID, req.Title, req.AmountMinor, splitType, req.OccurredAt, input)
 		if err != nil {
 			if errors.Is(err, expense.ErrSplitMismatch) {
 				writeError(w, http.StatusBadRequest, "split amounts do not add up to the total")
@@ -241,7 +243,7 @@ func handleUpdateExpense(svc *expense.Service, tripSvc *trip.Service) func(http.
 			return
 		}
 
-		updated, err := svc.Update(r.Context(), e.ID, req.PayerUserID, req.Title, req.AmountMinor, splitType, input)
+		updated, err := svc.Update(r.Context(), e.ID, req.PayerUserID, req.Title, req.AmountMinor, splitType, req.OccurredAt, input)
 		if err != nil {
 			if errors.Is(err, expense.ErrSplitMismatch) {
 				writeError(w, http.StatusBadRequest, "split amounts do not add up to the total")

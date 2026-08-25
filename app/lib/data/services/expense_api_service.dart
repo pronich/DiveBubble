@@ -52,6 +52,7 @@ class ExpenseApiService {
     required String title,
     required int amountMinor,
     required String splitType,
+    required DateTime occurredAt,
     required List<ExpenseShareInput> shares,
   }) async {
     final res = await _client.post(
@@ -62,6 +63,7 @@ class ExpenseApiService {
         'title': title,
         'amountMinor': amountMinor,
         'splitType': splitType,
+        'occurredAt': _dateOnlyIso(occurredAt),
         'shares': shares.map((s) => s.toJson()).toList(),
       }),
     );
@@ -78,6 +80,7 @@ class ExpenseApiService {
     required String title,
     required int amountMinor,
     required String splitType,
+    required DateTime occurredAt,
     required List<ExpenseShareInput> shares,
   }) async {
     final res = await _client.put(
@@ -88,6 +91,7 @@ class ExpenseApiService {
         'title': title,
         'amountMinor': amountMinor,
         'splitType': splitType,
+        'occurredAt': _dateOnlyIso(occurredAt),
         'shares': shares.map((s) => s.toJson()).toList(),
       }),
     );
@@ -96,6 +100,12 @@ class ExpenseApiService {
     }
     return Expense.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
+
+  // A plain calendar date, sent as UTC midnight — converting the local DateTime with
+  // .toUtc() directly would shift it into the *previous* UTC day for any positive-offset
+  // timezone (same gotcha createTrip/updateTrip already work around for endDate).
+  String _dateOnlyIso(DateTime date) =>
+      DateTime.utc(date.year, date.month, date.day).toIso8601String();
 
   Future<void> deleteExpense(String tripId, String expenseId) async {
     final res = await _client.delete(

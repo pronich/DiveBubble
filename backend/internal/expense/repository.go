@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -18,10 +19,10 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{DB: db}
 }
 
-const expenseColumns = `id, trip_id, payer_user_id, created_by, title, amount_minor, split_type, created_at, updated_at`
+const expenseColumns = `id, trip_id, payer_user_id, created_by, title, amount_minor, split_type, occurred_at, created_at, updated_at`
 
 func scanExpense(row interface{ Scan(...any) error }, e *Expense) error {
-	return row.Scan(&e.ID, &e.TripID, &e.PayerUserID, &e.CreatedBy, &e.Title, &e.AmountMinor, &e.SplitType, &e.CreatedAt, &e.UpdatedAt)
+	return row.Scan(&e.ID, &e.TripID, &e.PayerUserID, &e.CreatedBy, &e.Title, &e.AmountMinor, &e.SplitType, &e.OccurredAt, &e.CreatedAt, &e.UpdatedAt)
 }
 
 type CreateParams struct {
@@ -31,6 +32,7 @@ type CreateParams struct {
 	Title       string
 	AmountMinor int64
 	SplitType   SplitType
+	OccurredAt  time.Time
 	Shares      []Share
 }
 
@@ -46,10 +48,10 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Expense, error
 
 	var e Expense
 	if err := scanExpense(tx.QueryRowContext(ctx, `
-		INSERT INTO trip_expenses (trip_id, payer_user_id, created_by, title, amount_minor, split_type)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO trip_expenses (trip_id, payer_user_id, created_by, title, amount_minor, split_type, occurred_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING `+expenseColumns+`
-	`, p.TripID, p.PayerUserID, p.CreatedBy, p.Title, p.AmountMinor, p.SplitType), &e); err != nil {
+	`, p.TripID, p.PayerUserID, p.CreatedBy, p.Title, p.AmountMinor, p.SplitType, p.OccurredAt), &e); err != nil {
 		return Expense{}, err
 	}
 
@@ -69,6 +71,7 @@ type UpdateParams struct {
 	Title       string
 	AmountMinor int64
 	SplitType   SplitType
+	OccurredAt  time.Time
 	Shares      []Share
 }
 
@@ -85,10 +88,10 @@ func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (
 	var e Expense
 	if err := scanExpense(tx.QueryRowContext(ctx, `
 		UPDATE trip_expenses
-		SET payer_user_id = $2, title = $3, amount_minor = $4, split_type = $5, updated_at = now()
+		SET payer_user_id = $2, title = $3, amount_minor = $4, split_type = $5, occurred_at = $6, updated_at = now()
 		WHERE id = $1
 		RETURNING `+expenseColumns+`
-	`, id, p.PayerUserID, p.Title, p.AmountMinor, p.SplitType), &e); err != nil {
+	`, id, p.PayerUserID, p.Title, p.AmountMinor, p.SplitType, p.OccurredAt), &e); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Expense{}, ErrNotFound
 		}
@@ -140,11 +143,12 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Expense, error)
 	return e, nil
 }
 
-// ListByTrip returns every expense on the trip, most recent first, with shares populated —
-// same batch-not-N+1 shape as message.Repository.ListAttachmentsByMessageIDs.
+// ListByTrip returns every expense on the trip, most recent transaction date first (ties
+// broken by entry order), with shares populated — same batch-not-N+1 shape as
+// message.Repository.ListAttachmentsByMessageIDs.
 func (r *Repository) ListByTrip(ctx context.Context, tripID uuid.UUID) ([]Expense, error) {
 	rows, err := r.DB.QueryContext(ctx, `
-		SELECT `+expenseColumns+` FROM trip_expenses WHERE trip_id = $1 ORDER BY created_at DESC
+		SELECT `+expenseColumns+` FROM trip_expenses WHERE trip_id = $1 ORDER BY occurred_at DESC, created_at DESC
 	`, tripID)
 	if err != nil {
 		return nil, err

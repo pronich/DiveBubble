@@ -14,6 +14,7 @@ class ExpenseRepository {
     required String title,
     required int amountMinor,
     required String splitType,
+    required DateTime occurredAt,
     required List<ExpenseShareInput> shares,
   }) => _service.createExpense(
     tripId,
@@ -21,6 +22,7 @@ class ExpenseRepository {
     title: title,
     amountMinor: amountMinor,
     splitType: splitType,
+    occurredAt: occurredAt,
     shares: shares,
   );
 
@@ -31,6 +33,7 @@ class ExpenseRepository {
     required String title,
     required int amountMinor,
     required String splitType,
+    required DateTime occurredAt,
     required List<ExpenseShareInput> shares,
   }) => _service.updateExpense(
     tripId,
@@ -39,6 +42,7 @@ class ExpenseRepository {
     title: title,
     amountMinor: amountMinor,
     splitType: splitType,
+    occurredAt: occurredAt,
     shares: shares,
   );
 

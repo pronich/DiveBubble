@@ -101,6 +101,7 @@ class ExpenseViewModel extends ChangeNotifier {
     required String title,
     required int amountMinor,
     required String splitType,
+    required DateTime occurredAt,
     required List<ExpenseShareInput> shares,
   }) async {
     _isSubmitting = true;
@@ -112,6 +113,7 @@ class ExpenseViewModel extends ChangeNotifier {
         title: title,
         amountMinor: amountMinor,
         splitType: splitType,
+        occurredAt: occurredAt,
         shares: shares,
       );
       await _reloadExpensesAndBalance();
@@ -130,6 +132,7 @@ class ExpenseViewModel extends ChangeNotifier {
     required String title,
     required int amountMinor,
     required String splitType,
+    required DateTime occurredAt,
     required List<ExpenseShareInput> shares,
   }) async {
     _isSubmitting = true;
@@ -142,6 +145,7 @@ class ExpenseViewModel extends ChangeNotifier {
         title: title,
         amountMinor: amountMinor,
         splitType: splitType,
+        occurredAt: occurredAt,
         shares: shares,
       );
       await _reloadExpensesAndBalance();
