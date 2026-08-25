@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -33,6 +36,8 @@ import 'ui/features/chats/view_models/chat_view_model.dart';
 import 'ui/features/chats/views/trip_conversation_page.dart';
 import 'ui/features/onboarding/views/app_entry_gate.dart';
 import 'ui/features/transport/view_models/transport_view_model.dart';
+import 'ui/features/trips/view_models/trip_view_model.dart';
+import 'ui/features/trips/views/trip_page.dart';
 
 // Build-time config via --dart-define, same pattern as admin/'s main.dart — a physical
 // device can't reach the dev machine's `localhost`, so real-device runs need either the
@@ -81,6 +86,9 @@ class _MyAppState extends State<MyApp> {
   // BuildContext — main.dart is the one place that already holds every repository, so
   // deep-linking happens here rather than threading push state through RootShell.
   final _navigatorKey = GlobalKey<NavigatorState>();
+
+  final _appLinks = AppLinks();
+  StreamSubscription<Uri>? _linkSubscription;
 
   late final _authRepository = AuthRepository(
     googleIosClientId: _googleIosClientId,
@@ -152,12 +160,70 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     _authRepository.addListener(_onAuthChanged);
     _setUpPushNotifications();
+    _setUpDeepLinks();
   }
 
   @override
   void dispose() {
     _authRepository.removeListener(_onAuthChanged);
+    _linkSubscription?.cancel();
     super.dispose();
+  }
+
+  // Invite links (divebubble.io/join/{code}) — Universal Links (iOS) / App Links (Android).
+  // Covers both cold start (app not running, tap launches it) and warm (app already running
+  // in the background) — app_links' getInitialLink/uriLinkStream split mirrors exactly the
+  // split Firebase's getInitialMessage/onMessageOpenedApp already needs for push, below.
+  Future<void> _setUpDeepLinks() async {
+    try {
+      final initial = await _appLinks.getInitialLink();
+      if (initial != null) _handleIncomingLink(initial);
+    } catch (e) {
+      debugPrint('deep link: could not read initial link: $e');
+    }
+    _linkSubscription = _appLinks.uriLinkStream.listen(
+      _handleIncomingLink,
+      onError: (e) => debugPrint('deep link: stream error: $e'),
+    );
+  }
+
+  void _handleIncomingLink(Uri uri) {
+    final segments = uri.pathSegments;
+    if (segments.length == 2 && segments[0] == 'join') {
+      _openTripFromInviteLink(segments[1]);
+    }
+  }
+
+  Future<void> _openTripFromInviteLink(String code) async {
+    try {
+      final trip = await _tripRepository.resolveTripByCode(code);
+      final currentUserId = await _authRepository.currentUserId() ?? '';
+      await _navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (_) => TripPage(
+            viewModel: TripViewModel(
+              repository: _tripRepository,
+              authRepository: _authRepository,
+              profileRepository: _profileRepository,
+              pushRepository: _pushRepository,
+              diveCenterRepository: _diveCenterRepository,
+              tripId: trip.id,
+              currentUserId: currentUserId,
+            ),
+            tripRepository: _tripRepository,
+            chatRepository: _chatRepository,
+            transportRepository: _transportRepository,
+            buddyRepository: _buddyRepository,
+            realtimeService: _realtimeService,
+            diveCenterRepository: _diveCenterRepository,
+            entryCode: code,
+          ),
+        ),
+      );
+    } catch (e) {
+      // Invalid/expired code, or offline — no trip to show, nothing useful to recover into.
+      debugPrint('deep link: could not resolve invite code: $e');
+    }
   }
 
   void _onAuthChanged() => _syncPushTokenIfAuthorized();

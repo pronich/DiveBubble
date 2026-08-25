@@ -154,6 +154,23 @@ class TripViewModel extends ChangeNotifier {
     }
   }
 
+  /// Used when this page was reached via an invite link (see TripPage's entryCode) — the
+  /// code already resolved this exact trip, so Join goes straight through JoinByCode instead
+  /// of the plain per-trip-type button, regardless of whether it's public/private/business.
+  Future<void> joinByCode(String code) async {
+    _isJoining = true;
+    notifyListeners();
+
+    try {
+      _trip = await _repository.joinTripByCode(code);
+    } catch (e) {
+      _error = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _isJoining = false;
+      notifyListeners();
+    }
+  }
+
   /// Returns null on success, or an error message on failure (e.g. the organizer trying
   /// to leave their own trip) — scoped to the confirmation dialog rather than the shared
   /// [error] field, since a rejected leave shouldn't blow away the whole page.

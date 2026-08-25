@@ -51,6 +51,17 @@ class TripApiService {
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
+  // Read-only half of an invite link (GET /invite/{code}) — resolves a trip preview without
+  // joining it, same anonymous-browsable posture as fetchTrip. See joinTripByCode for the
+  // action that actually joins once the diver taps Join on that preview.
+  Future<TripApiModel> resolveTripByCode(String code) async {
+    final res = await _client.get(Uri.parse('$baseUrl/invite/$code'), headers: await _optionalAuthHeaders());
+    if (res.statusCode != 200) {
+      throw Exception(_extractError(res.body) ?? 'resolveTripByCode failed: ${res.statusCode}');
+    }
+    return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   Future<List<TripApiModel>> fetchMyTrips() async {
     final res = await _client.get(Uri.parse('$baseUrl/trips/mine'), headers: await _requiredAuthHeaders());
     if (res.statusCode != 200) {

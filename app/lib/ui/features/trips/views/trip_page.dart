@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
@@ -50,6 +51,7 @@ class TripPage extends StatefulWidget {
     required this.realtimeService,
     required this.diveCenterRepository,
     this.openedFromConversation = false,
+    this.entryCode,
   });
 
   final TripViewModel viewModel;
@@ -64,6 +66,12 @@ class TripPage extends StatefulWidget {
   /// "Dive in to Bubble" would just navigate back into the conversation the diver is
   /// already in, which reads as a broken loop rather than a useful action.
   final bool openedFromConversation;
+
+  /// Set when this page was reached via an invite link (divebubble.io/join/{code}) — the
+  /// code that resolved this exact trip. Join skips straight to JoinByCode with it instead
+  /// of the per-trip-type button/dialog, since re-typing a code the diver already has via
+  /// the link would be redundant. See _InviteJoinButton.
+  final String? entryCode;
 
   @override
   State<TripPage> createState() => _TripPageState();
@@ -644,7 +652,12 @@ class _TripPageState extends State<TripPage>
                 else if (!trip.joined &&
                     !isOrganizer &&
                     trip.bookingStatus == 'open')
-                  if (trip.diveCenterId != null)
+                  if (widget.entryCode != null)
+                    _InviteJoinButton(
+                      code: widget.entryCode!,
+                      viewModel: widget.viewModel,
+                    )
+                  else if (trip.diveCenterId != null)
                     _BookNowSection(
                       trip: trip,
                       diveCenter: widget.viewModel.organizerDiveCenter,
@@ -1310,6 +1323,45 @@ class _OrganizerCard extends StatelessWidget {
 
 // Only rendered for the actionable case (open, not yet joined) — Joined/Full/Cancelled are
 // passive states shown as a pill next to the title instead (see _TripStatusPill).
+/// Reached via an invite link (widget.entryCode) — takes priority over _BookNowSection/
+/// _PrivateJoinSection/_JoinButton regardless of trip type, since the code that resolved
+/// this preview already IS the credential; re-typing it into the manual-entry dialog those
+/// use would be redundant. Always goes through JoinByCode, same as manual code entry.
+class _InviteJoinButton extends StatelessWidget {
+  const _InviteJoinButton({required this.code, required this.viewModel});
+
+  final String code;
+  final TripViewModel viewModel;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: viewModel.isJoining ? null : () => _handleJoin(context),
+        child: viewModel.isJoining
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text('Join'),
+      ),
+    );
+  }
+
+  Future<void> _handleJoin(BuildContext context) async {
+    final userId = await ensureSignedIn(
+      context,
+      viewModel.authRepository,
+      viewModel.profileRepository,
+      viewModel.pushRepository,
+    );
+    if (userId == null) return;
+    await viewModel.joinByCode(code);
+  }
+}
+
 class _JoinButton extends StatelessWidget {
   const _JoinButton({required this.trip, required this.viewModel});
 
@@ -1535,9 +1587,13 @@ const _joinLinkBaseUrl = 'https://divebubble.io/join/';
 /// (see trip.Service.Join), or the code a business trip's dive-center staff would otherwise
 /// have to look up in admin/. Never shown to a non-organizer viewer.
 class _BookingCodeRow extends StatelessWidget {
-  const _BookingCodeRow({required this.bookingCode});
+  _BookingCodeRow({required this.bookingCode});
 
   final String bookingCode;
+
+  // Anchors the share popover to this button on iPad/Mac (required there or it throws,
+  // harmless elsewhere) — same convention as attachment_image_preview_page.dart's own _share.
+  final _actionButtonKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -1567,42 +1623,74 @@ class _BookingCodeRow extends StatelessWidget {
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.copy_outlined),
-          tooltip: 'Copy',
-          onPressed: () => _showCopyBookingCodeSheet(context, bookingCode),
+          key: _actionButtonKey,
+          icon: const Icon(Icons.ios_share),
+          tooltip: 'Share invite',
+          onPressed: () => _showBookingCodeActionsSheet(
+            context,
+            bookingCode,
+            _actionButtonKey,
+          ),
         ),
       ],
     );
   }
 }
 
-Future<void> _showCopyBookingCodeSheet(
+enum _BookingCodeAction { copyCode, copyLink, shareLink }
+
+Future<void> _showBookingCodeActionsSheet(
   BuildContext context,
   String bookingCode,
+  GlobalKey shareButtonKey,
 ) async {
-  final choice = await showModalBottomSheet<String>(
+  final action = await showModalBottomSheet<_BookingCodeAction>(
     context: context,
     builder: (context) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            leading: const Icon(Icons.tag_outlined),
-            title: const Text('Copy booking code'),
-            onTap: () => Navigator.of(context).pop(bookingCode),
+            leading: const Icon(Icons.ios_share),
+            title: const Text('Share invite link'),
+            onTap: () =>
+                Navigator.of(context).pop(_BookingCodeAction.shareLink),
           ),
           ListTile(
             leading: const Icon(Icons.link_outlined),
             title: const Text('Copy invite link'),
-            onTap: () =>
-                Navigator.of(context).pop('$_joinLinkBaseUrl$bookingCode'),
+            onTap: () => Navigator.of(context).pop(_BookingCodeAction.copyLink),
+          ),
+          ListTile(
+            leading: const Icon(Icons.tag_outlined),
+            title: const Text('Copy booking code'),
+            onTap: () => Navigator.of(context).pop(_BookingCodeAction.copyCode),
           ),
         ],
       ),
     ),
   );
-  if (choice == null || !context.mounted) return;
-  await Clipboard.setData(ClipboardData(text: choice));
+  if (action == null || !context.mounted) return;
+
+  final link = '$_joinLinkBaseUrl$bookingCode';
+  switch (action) {
+    case _BookingCodeAction.copyCode:
+      await Clipboard.setData(ClipboardData(text: bookingCode));
+    case _BookingCodeAction.copyLink:
+      await Clipboard.setData(ClipboardData(text: link));
+    case _BookingCodeAction.shareLink:
+      // Anchors the share popover to the button on iPad/Mac — required there or it throws,
+      // harmless elsewhere (see ShareParams.sharePositionOrigin's own doc comment).
+      final box =
+          shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
+      final origin = box == null
+          ? null
+          : (box.localToGlobal(Offset.zero) & box.size);
+      await SharePlus.instance.share(
+        ShareParams(text: link, sharePositionOrigin: origin),
+      );
+      return;
+  }
   if (!context.mounted) return;
   ScaffoldMessenger.of(
     context,

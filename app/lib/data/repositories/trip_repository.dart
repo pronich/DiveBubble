@@ -26,6 +26,11 @@ class TripRepository {
     return apiModel.toDomain();
   }
 
+  Future<Trip> resolveTripByCode(String code) async {
+    final apiModel = await _service.resolveTripByCode(code);
+    return apiModel.toDomain();
+  }
+
   Future<void> leaveTrip(String id) => _service.leaveTrip(id);
 
   Future<void> cancelTrip(String id) => _service.cancelTrip(id);
