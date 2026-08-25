@@ -50,6 +50,12 @@ class _ArchiveRevealListState extends State<ArchiveRevealList> {
   static const _openThreshold = 116.0;
 
   double _pullDistance = 0;
+  // Guards against firing onRevealed more than once per gesture — BouncingScrollPhysics
+  // still delivers a handful of ScrollUpdateNotifications after the finger lifts (the
+  // spring-back), so this can't wait for ScrollEndNotification to check the threshold: by
+  // then the ballistic animation has already carried pixels most of the way back to 0.
+  // Triggering the moment the threshold is crossed mid-drag sidesteps that entirely.
+  bool _triggeredReveal = false;
 
   bool get _canReveal => !widget.revealed && widget.archivedCount > 0;
   bool get _showPinnedRow => widget.revealed && widget.archivedCount > 0;
@@ -60,8 +66,12 @@ class _ArchiveRevealListState extends State<ArchiveRevealList> {
       final pixels = notification.metrics.pixels;
       final pull = pixels < 0 ? -pixels : 0.0;
       if (pull != _pullDistance) setState(() => _pullDistance = pull);
+      if (!_triggeredReveal && pull >= _openThreshold) {
+        _triggeredReveal = true;
+        widget.onRevealed();
+      }
     } else if (notification is ScrollEndNotification) {
-      if (_pullDistance >= _openThreshold) widget.onRevealed();
+      _triggeredReveal = false;
       if (_pullDistance != 0) setState(() => _pullDistance = 0);
     }
     return false;
