@@ -14,10 +14,7 @@ import '../../../core/assets/app_assets.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
-import '../../buddy/view_models/buddy_view_model.dart';
 import '../../onboarding/views/login_sheet.dart';
-import '../../transport/view_models/transport_view_model.dart';
-import '../view_models/chat_view_model.dart';
 import '../view_models/my_trips_view_model.dart';
 import 'trip_conversation_page.dart';
 
@@ -57,7 +54,9 @@ class MyTripsView extends StatefulWidget {
 
 class _MyTripsViewState extends State<MyTripsView> {
   // Refreshes on app resume too — trips/messages may have changed while backgrounded.
-  late final _lifecycleListener = AppLifecycleListener(onResume: widget.viewModel.load);
+  late final _lifecycleListener = AppLifecycleListener(
+    onResume: widget.viewModel.load,
+  );
   String _search = '';
 
   @override
@@ -81,7 +80,12 @@ class _MyTripsViewState extends State<MyTripsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Bubbles', style: Theme.of(context).textTheme.headlineSmall)),
+      appBar: AppBar(
+        title: Text(
+          'Bubbles',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+      ),
       body: ListenableBuilder(
         listenable: widget.viewModel,
         builder: (context, _) {
@@ -93,7 +97,8 @@ class _MyTripsViewState extends State<MyTripsView> {
             return EmptyStateView(
               icon: Icons.login,
               title: 'Sign in to see your trips',
-              subtitle: 'Log in to view the trips you\'ve joined and their group chats.',
+              subtitle:
+                  'Log in to view the trips you\'ve joined and their group chats.',
               ctaLabel: 'Dive in',
               onCtaPressed: () async {
                 final signedIn = await LoginSheet.show(
@@ -117,14 +122,19 @@ class _MyTripsViewState extends State<MyTripsView> {
             return EmptyStateView(
               icon: Icons.luggage_outlined,
               title: 'No Bubbles yet',
-              subtitle: 'Join a trip in Explore and it becomes your Bubble here — chat, transport, and trip details all in one place.',
+              subtitle:
+                  'Join a trip in Explore and it becomes your Bubble here — chat, transport, and trip details all in one place.',
               ctaLabel: 'Explore trips',
               onCtaPressed: widget.onGoToExplore,
             );
           }
 
           final query = _search.trim().toLowerCase();
-          final trips = query.isEmpty ? allTrips : allTrips.where((t) => t.title.toLowerCase().contains(query)).toList();
+          final trips = query.isEmpty
+              ? allTrips
+              : allTrips
+                    .where((t) => t.title.toLowerCase().contains(query))
+                    .toList();
 
           return Column(
             children: [
@@ -134,7 +144,11 @@ class _MyTripsViewState extends State<MyTripsView> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: TextField(
-                    decoration: const InputDecoration(hintText: 'Search Bubbles', prefixIcon: Icon(Icons.search), isDense: true),
+                    decoration: const InputDecoration(
+                      hintText: 'Search Bubbles',
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
+                    ),
                     onChanged: (value) => setState(() => _search = value),
                   ),
                 ),
@@ -143,7 +157,12 @@ class _MyTripsViewState extends State<MyTripsView> {
                     ? Center(
                         child: Text(
                           'No matches.',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                         ),
                       )
                     : RefreshIndicator(
@@ -151,7 +170,8 @@ class _MyTripsViewState extends State<MyTripsView> {
                         child: ListView.separated(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           itemCount: trips.length,
-                          separatorBuilder: (context, _) => const Divider(height: 1, indent: 76),
+                          separatorBuilder: (context, _) =>
+                              const Divider(height: 1, indent: 76),
                           itemBuilder: (context, index) => _TripRow(
                             trip: trips[index],
                             onTap: () => _openChat(context, trips[index]),
@@ -172,33 +192,9 @@ class _MyTripsViewState extends State<MyTripsView> {
     widget.tripRepository.markRead(trip.id).catchError((_) {});
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => TripConversationPage(
-          chatViewModel: ChatViewModel(
-            repository: widget.chatRepository,
-            realtimeService: widget.realtimeService,
-            profileRepository: widget.profileRepository,
-            tripRepository: widget.tripRepository,
-            tripId: trip.id,
-            currentUserId: widget.currentUserId,
-          ),
-          transportViewModel: TransportViewModel(
-            repository: widget.transportRepository,
-            authRepository: widget.authRepository,
-            profileRepository: widget.profileRepository,
-            pushRepository: widget.pushRepository,
-            tripId: trip.id,
-            currentUserId: widget.currentUserId,
-          ),
-          buddyViewModel: BuddyViewModel(
-            repository: widget.buddyRepository,
-            authRepository: widget.authRepository,
-            profileRepository: widget.profileRepository,
-            pushRepository: widget.pushRepository,
-            tripId: trip.id,
-            currentUserId: widget.currentUserId,
-          ),
-          tripTitle: trip.title,
-          tripPhotoUrl: trip.photoUrl,
+        builder: (_) => TripConversationPage.forTrip(
+          trip: trip,
+          currentUserId: widget.currentUserId,
           tripRepository: widget.tripRepository,
           chatRepository: widget.chatRepository,
           transportRepository: widget.transportRepository,
@@ -208,10 +204,10 @@ class _MyTripsViewState extends State<MyTripsView> {
           profileRepository: widget.profileRepository,
           pushRepository: widget.pushRepository,
           diveCenterRepository: widget.diveCenterRepository,
-          initialHasTransportAlert: trip.hasTransportAlert,
-          onTransportAlertCleared: () => widget.viewModel.markTransportAlertCleared(trip.id),
-          initialHasBuddyAlert: trip.hasBuddyAlert,
-          onBuddyAlertCleared: () => widget.viewModel.markBuddyAlertCleared(trip.id),
+          onTransportAlertCleared: () =>
+              widget.viewModel.markTransportAlertCleared(trip.id),
+          onBuddyAlertCleared: () =>
+              widget.viewModel.markBuddyAlertCleared(trip.id),
         ),
       ),
     );
@@ -256,10 +252,19 @@ class _TripRow extends StatelessWidget {
                       width: 52,
                       height: 52,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          Image.asset(AppAssets.tripPlaceholder, width: 52, height: 52, fit: BoxFit.cover),
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        AppAssets.tripPlaceholder,
+                        width: 52,
+                        height: 52,
+                        fit: BoxFit.cover,
+                      ),
                     )
-                  : Image.asset(AppAssets.tripPlaceholder, width: 52, height: 52, fit: BoxFit.cover),
+                  : Image.asset(
+                      AppAssets.tripPlaceholder,
+                      width: 52,
+                      height: 52,
+                      fit: BoxFit.cover,
+                    ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -280,7 +285,9 @@ class _TripRow extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         formatShortDate(trip.startTime),
-                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       if (trip.unreadCount > 0) ...[
                         const SizedBox(width: 6),
@@ -299,20 +306,29 @@ class _TripRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(Icons.location_on_outlined, size: 14, color: theme.colorScheme.onSurfaceVariant),
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 14,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           trip.location,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  _StatusPill(isPast: _isPast, isCancelled: trip.bookingStatus == 'cancelled'),
+                  _StatusPill(
+                    isPast: _isPast,
+                    isCancelled: trip.bookingStatus == 'cancelled',
+                  ),
                 ],
               ),
             ),
@@ -336,7 +352,10 @@ class _UnreadBadge extends StatelessWidget {
       height: 18,
       padding: const EdgeInsets.symmetric(horizontal: 5),
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: theme.colorScheme.error, borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.error,
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Text(
         count > 9 ? '9+' : '$count',
         style: theme.textTheme.labelSmall?.copyWith(
@@ -361,8 +380,15 @@ class _TransportAlertDot extends StatelessWidget {
       width: 18,
       height: 18,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: semantic.infoContainer, shape: BoxShape.circle),
-      child: Icon(Icons.directions_car, size: 12, color: semantic.onInfoContainer),
+      decoration: BoxDecoration(
+        color: semantic.infoContainer,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.directions_car,
+        size: 12,
+        color: semantic.onInfoContainer,
+      ),
     );
   }
 }
@@ -377,8 +403,15 @@ class _BuddyAlertDot extends StatelessWidget {
       width: 18,
       height: 18,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: semantic.infoContainer, shape: BoxShape.circle),
-      child: Icon(Icons.people_outline, size: 12, color: semantic.onInfoContainer),
+      decoration: BoxDecoration(
+        color: semantic.infoContainer,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.people_outline,
+        size: 12,
+        color: semantic.onInfoContainer,
+      ),
     );
   }
 }
@@ -414,12 +447,17 @@ class _StatusPill extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Text(
         label,
-        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600),
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
 }
-

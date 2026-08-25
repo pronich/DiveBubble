@@ -14,9 +14,6 @@ import '../../../../domain/entities/trip.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/empty_state_view.dart';
-import '../../buddy/view_models/buddy_view_model.dart';
-import '../../transport/view_models/transport_view_model.dart';
-import '../view_models/chat_view_model.dart';
 import 'trip_conversation_page.dart';
 
 /// Reached from Share-to-DiveBubble (see main.dart's _handleSharedMedia) — a Telegram-style
@@ -157,33 +154,9 @@ class _ChooseBubblePageState extends State<ChooseBubblePage> {
   Future<void> _openChat(BuildContext context, Trip trip) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => TripConversationPage(
-          chatViewModel: ChatViewModel(
-            repository: widget.chatRepository,
-            realtimeService: widget.realtimeService,
-            profileRepository: widget.profileRepository,
-            tripRepository: widget.tripRepository,
-            tripId: trip.id,
-            currentUserId: widget.currentUserId,
-          ),
-          transportViewModel: TransportViewModel(
-            repository: widget.transportRepository,
-            authRepository: widget.authRepository,
-            profileRepository: widget.profileRepository,
-            pushRepository: widget.pushRepository,
-            tripId: trip.id,
-            currentUserId: widget.currentUserId,
-          ),
-          buddyViewModel: BuddyViewModel(
-            repository: widget.buddyRepository,
-            authRepository: widget.authRepository,
-            profileRepository: widget.profileRepository,
-            pushRepository: widget.pushRepository,
-            tripId: trip.id,
-            currentUserId: widget.currentUserId,
-          ),
-          tripTitle: trip.title,
-          tripPhotoUrl: trip.photoUrl,
+        builder: (_) => TripConversationPage.forTrip(
+          trip: trip,
+          currentUserId: widget.currentUserId,
           tripRepository: widget.tripRepository,
           chatRepository: widget.chatRepository,
           transportRepository: widget.transportRepository,
@@ -193,8 +166,6 @@ class _ChooseBubblePageState extends State<ChooseBubblePage> {
           profileRepository: widget.profileRepository,
           pushRepository: widget.pushRepository,
           diveCenterRepository: widget.diveCenterRepository,
-          initialHasTransportAlert: trip.hasTransportAlert,
-          initialHasBuddyAlert: trip.hasBuddyAlert,
           initialAttachments: widget.attachments,
         ),
       ),

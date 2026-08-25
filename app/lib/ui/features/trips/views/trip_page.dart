@@ -27,13 +27,10 @@ import '../../../core/utils/external_url.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/photo_manager_grid.dart';
 import '../../../core/widgets/pick_image.dart';
-import '../../buddy/view_models/buddy_view_model.dart';
 import '../../chats/view_models/chat_info_view_model.dart';
-import '../../chats/view_models/chat_view_model.dart';
 import '../../chats/views/chat_content_tabs.dart';
 import '../../chats/views/trip_conversation_page.dart';
 import '../../profile/views/diver_id_card.dart';
-import '../../transport/view_models/transport_view_model.dart';
 import '../view_models/create_trip_view_model.dart';
 import '../view_models/trip_view_model.dart';
 import 'create_trip_page.dart';
@@ -112,23 +109,32 @@ class _TripPageState extends State<TripPage>
     _linksFuture = vm.loadLinks();
   }
 
-  // Drives Bubble Info's SliverAppBar (see build's openedFromConversation branch): false while
-  // photoHero is still (at least partly) expanded, true once it's fully collapsed to the
-  // toolbar. Deliberately not relying on SliverAppBar's own built-in title fade — that only
-  // fades in with `floating: true` + a non-null `bottom` present, and even then only kicks in
-  // right at the end, so driving the title's presence ourselves off this flag is what
-  // guarantees the large in-flow title (Column below the SliverAppBar) and the small toolbar
-  // title are never both visible at once.
-  final _bubbleScrollController = ScrollController();
+  // Drives the collapsing SliverAppBar's toolbar title (see build() — shared by both the
+  // general view's CustomScrollView and Bubble Info's NestedScrollView, same header
+  // structure either way): false while the in-flow title+badge block (_titleBlockKey) is
+  // still at least partly visible, true once it's scrolled fully behind the pinned header.
+  // Deliberately not relying on SliverAppBar's own built-in title fade — that only fades in
+  // with `floating: true` + a non-null `bottom` present, and even then only kicks in right at
+  // the end. Driving it off the in-flow block's own measured height (rather than just "the
+  // photo finished collapsing") is what stops the toolbar title and the in-flow title from
+  // ever both being on screen together — the photo can fully collapse into the toolbar well
+  // before the title block underneath it has scrolled out of view.
+  final _scrollController = ScrollController();
+  final _titleBlockKey = GlobalKey();
   final ValueNotifier<bool> _showCollapsedTitle = ValueNotifier(false);
 
-  void _handleBubbleScroll() {
-    if (!_bubbleScrollController.hasClients) return;
+  void _handleScroll() {
+    if (!_scrollController.hasClients) return;
     final width = MediaQuery.sizeOf(context).width;
     final photoHeight = width * 3 / 4; // matches photoHero's AspectRatio(4/3)
     final toolbarHeight = kToolbarHeight + MediaQuery.paddingOf(context).top;
-    final threshold = photoHeight - toolbarHeight;
-    final collapsed = _bubbleScrollController.offset >= threshold;
+    final titleBlockHeight =
+        (_titleBlockKey.currentContext?.findRenderObject() as RenderBox?)
+            ?.size
+            .height ??
+        0;
+    final threshold = photoHeight - toolbarHeight + titleBlockHeight;
+    final collapsed = _scrollController.offset >= threshold;
     if (collapsed != _showCollapsedTitle.value) {
       _showCollapsedTitle.value = collapsed;
     }
@@ -138,14 +144,14 @@ class _TripPageState extends State<TripPage>
   void initState() {
     super.initState();
     widget.viewModel.load();
-    _bubbleScrollController.addListener(_handleBubbleScroll);
+    _scrollController.addListener(_handleScroll);
   }
 
   @override
   void dispose() {
     _photoPageController.dispose();
     _tabController.dispose();
-    _bubbleScrollController.dispose();
+    _scrollController.dispose();
     _showCollapsedTitle.dispose();
     super.dispose();
   }
@@ -177,85 +183,6 @@ class _TripPageState extends State<TripPage>
     if (mounted) widget.viewModel.load();
   }
 
-  /// Everything below Bubble Info's collapsing header — location/date/meeting point/level/
-  /// duration/description. Mirrors the equivalent block inside detailContent (used by the
-  /// Explore-preview ListView path instead), since openedFromConversation never renders the
-  /// organizer/tail section that otherwise follows it there.
-  Widget _tripDetailBody(
-    BuildContext context,
-    ThemeData theme,
-    Trip trip,
-    bool isOrganizer,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.location_on_outlined,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                trip.location,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Icon(
-                Icons.calendar_today_outlined,
-                size: 16,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                formatDateRange(trip.startTime, trip.endDate),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'MEETING POINT',
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (isOrganizer && trip.bookingCode != null) ...[
-            const SizedBox(height: 16),
-            _BookingCodeRow(bookingCode: trip.bookingCode!),
-          ],
-          const SizedBox(height: 16),
-          _InfoGrid(trip: trip),
-          if (trip.description != null) ...[
-            const SizedBox(height: 20),
-            Text('About this dive', style: theme.textTheme.labelLarge),
-            const SizedBox(height: 6),
-            Text(trip.description!, style: theme.textTheme.bodyMedium),
-          ],
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -267,20 +194,12 @@ class _TripPageState extends State<TripPage>
     // with the back button's row rather than sitting a full toolbar-height below it.
     final systemTopPadding = MediaQuery.paddingOf(context).top;
     return Scaffold(
-      // Explore preview floats a transparent app bar over its photo hero. Bubble Info does
-      // the same thing but as a SliverAppBar *inside* the NestedScrollView instead of a
-      // separate Scaffold.appBar (see build's openedFromConversation branch) — putting it in
-      // the same sliver list as the pinned People/Media/Files/Links tab bar is what makes the
-      // tab bar park correctly right below it once collapsed, instead of being painted over by
-      // a separately-layered app bar.
-      extendBodyBehindAppBar: !widget.openedFromConversation,
-      appBar: widget.openedFromConversation
-          ? null
-          : AppBar(
-              backgroundColor: Colors.transparent,
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
+      // Both modes now build their own SliverAppBar inside a scroll view (see headerSlivers
+      // below) rather than a separate Scaffold.appBar — that's what lets the photo run
+      // full-bleed behind the status bar with no extendBodyBehindAppBar padding quirks to
+      // work around, and what lets Bubble Info's pinned People/Media/Files/Links tab bar
+      // park correctly right below the collapsed header (stacked in the same sliver list,
+      // no manual offset math needed).
       body: ListenableBuilder(
         listenable: widget.viewModel,
         builder: (context, _) {
@@ -519,12 +438,42 @@ class _TripPageState extends State<TripPage>
             },
           );
 
-          final detailContent = Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          final photoHeight = MediaQuery.sizeOf(context).width * 3 / 4;
+
+          // Collapsing header + in-flow title/badge — identical in both the general
+          // (Explore-reached) view and Bubble Info now. _handleScroll drives the
+          // toolbar-title timing off _titleBlockKey's own measured height (see its own doc
+          // comment); _TripInfoBlock is the location/date/meeting-point/description content
+          // shared by both modes.
+          final headerSlivers = <Widget>[
+            ValueListenableBuilder<bool>(
+              valueListenable: _showCollapsedTitle,
+              builder: (context, collapsed, child) => SliverAppBar(
+                pinned: true,
+                expandedHeight: photoHeight,
+                backgroundColor: collapsed
+                    ? theme.colorScheme.surface
+                    : Colors.transparent,
+                foregroundColor: collapsed
+                    ? theme.colorScheme.onSurface
+                    : Colors.white,
+                elevation: 0,
+                title: collapsed
+                    ? Text(
+                        trip.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    : null,
+                flexibleSpace: FlexibleSpaceBar(background: child),
+              ),
+              child: photoHero,
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                key: _titleBlockKey,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
@@ -537,167 +486,27 @@ class _TripPageState extends State<TripPage>
                     _TripStatusPill(trip: trip, isOrganizer: isOrganizer),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      size: 16,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      trip.location,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today_outlined,
-                      size: 16,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      formatDateRange(trip.startTime, trip.endDate),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'MEETING POINT',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (isOrganizer && trip.bookingCode != null) ...[
-                  const SizedBox(height: 16),
-                  _BookingCodeRow(bookingCode: trip.bookingCode!),
-                ],
-                const SizedBox(height: 16),
-                _InfoGrid(trip: trip),
-                if (trip.description != null) ...[
-                  const SizedBox(height: 20),
-                  Text('About this dive', style: theme.textTheme.labelLarge),
-                  const SizedBox(height: 6),
-                  Text(trip.description!, style: theme.textTheme.bodyMedium),
-                ],
-                // Deliberately gated on *how this screen was reached*, not just
-                // trip.joined: Explore's "general" trip detail never shows who's in
-                // it, even for a trip the viewer has already joined — the People/Media/
-                // Files/Links tabs (chat-derived, member-list-bearing) only appear on the
-                // "specific" view reached from inside the Bubble itself. Two privacy
-                // postures for the same data, not two widgets. When opened from the
-                // conversation, this whole section is omitted here — it becomes the
-                // People/Media/Files/Links tab bar pinned via the SliverAppBar's own
-                // `bottom` instead (see build()).
-                if (!widget.openedFromConversation) ...[
-                  const SizedBox(height: 20),
-                  _OrganizerCard(
-                    isOrganizer: isOrganizer,
-                    profile: widget.viewModel.organizerProfile,
-                    creatorUserId: trip.creatorUserId,
-                    currentUserId: widget.viewModel.currentUserId,
-                    profileRepository: widget.viewModel.profileRepository,
-                    diveCenter: widget.viewModel.organizerDiveCenter,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.groups_outlined,
-                        size: 16,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        _participantsText(trip),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 24),
-                if (trip.joined && !widget.openedFromConversation)
-                  _DiveInButton(
-                    trip: trip,
-                    chatRepository: widget.chatRepository,
-                    transportRepository: widget.transportRepository,
-                    buddyRepository: widget.buddyRepository,
-                    realtimeService: widget.realtimeService,
-                    tripRepository: widget.tripRepository,
-                    authRepository: widget.viewModel.authRepository,
-                    profileRepository: widget.viewModel.profileRepository,
-                    pushRepository: widget.viewModel.pushRepository,
-                    diveCenterRepository: widget.diveCenterRepository,
-                    currentUserId: widget.viewModel.currentUserId,
-                  )
-                else if (!trip.joined &&
-                    !isOrganizer &&
-                    trip.bookingStatus == 'open')
-                  if (widget.entryCode != null)
-                    _InviteJoinButton(
-                      code: widget.entryCode!,
-                      viewModel: widget.viewModel,
-                    )
-                  else if (trip.diveCenterId != null)
-                    _BookNowSection(
-                      trip: trip,
-                      diveCenter: widget.viewModel.organizerDiveCenter,
-                      viewModel: widget.viewModel,
-                      tripRepository: widget.tripRepository,
-                      chatRepository: widget.chatRepository,
-                      transportRepository: widget.transportRepository,
-                      buddyRepository: widget.buddyRepository,
-                      realtimeService: widget.realtimeService,
-                      diveCenterRepository: widget.diveCenterRepository,
-                    )
-                  else if (trip.isPrivate)
-                    _PrivateJoinSection(
-                      trip: trip,
-                      viewModel: widget.viewModel,
-                      tripRepository: widget.tripRepository,
-                      chatRepository: widget.chatRepository,
-                      transportRepository: widget.transportRepository,
-                      buddyRepository: widget.buddyRepository,
-                      realtimeService: widget.realtimeService,
-                      diveCenterRepository: widget.diveCenterRepository,
-                    )
-                  else
-                    _JoinButton(trip: trip, viewModel: widget.viewModel),
-                // Leave/Cancel now live in _ActionPillsRow up top, Telegram-Group-Info-style.
-              ],
+              ),
             ),
-          );
+            // Mute/Leave/Cancel — Bubble Info only, Telegram-Group-Info-style (see
+            // _ActionPillsRow's own doc comment). The general view has no equivalent
+            // affordance today; not something this unification changes.
+            if (widget.openedFromConversation)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: _ActionPillsRow(
+                    viewModel: widget.viewModel,
+                    trip: trip,
+                    isOrganizer: isOrganizer,
+                  ),
+                ),
+              ),
+            SliverToBoxAdapter(
+              child: _TripInfoBlock(trip: trip, isOrganizer: isOrganizer),
+            ),
+          ];
 
-          // Opened from the Bubble: everything — the collapsing photo/toolbar, the in-flow
-          // title+buttons+dive-info, and the pinned People/Media/Files/Links tab bar — lives in
-          // one NestedScrollView sliver list (no separate Scaffold.appBar, see build() above).
-          // That's what makes the tab bar park correctly right below the collapsed toolbar
-          // instead of being painted over by it: multiple pinned slivers in the same list stack
-          // in order automatically, no manual offset math needed. The large in-flow title
-          // (Column right after the SliverAppBar) and the small toolbar title
-          // (SliverAppBar.title, gated on _showCollapsedTitle) are never both built at once.
-          // Explore preview keeps the old full-photo scrolling page below instead — no chat to
-          // browse tabs for, no member list to show (see the privacy comment above
-          // detailContent's title Row).
           if (widget.openedFromConversation) {
             _ensureBubbleContentLoaded(trip.id);
             final tabBar = TabBar(
@@ -709,56 +518,10 @@ class _TripPageState extends State<TripPage>
                 Tab(text: 'Links'),
               ],
             );
-            final photoHeight = MediaQuery.sizeOf(context).width * 3 / 4;
             return NestedScrollView(
-              controller: _bubbleScrollController,
+              controller: _scrollController,
               headerSliverBuilder: (context, innerBoxIsScrolled) => [
-                ValueListenableBuilder<bool>(
-                  valueListenable: _showCollapsedTitle,
-                  builder: (context, collapsed, child) => SliverAppBar(
-                    pinned: true,
-                    expandedHeight: photoHeight,
-                    backgroundColor: collapsed
-                        ? theme.colorScheme.surface
-                        : Colors.transparent,
-                    foregroundColor: collapsed
-                        ? theme.colorScheme.onSurface
-                        : Colors.white,
-                    elevation: 0,
-                    title: collapsed
-                        ? Text(
-                            trip.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          )
-                        : null,
-                    flexibleSpace: FlexibleSpaceBar(background: child),
-                  ),
-                  child: photoHero,
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: Column(
-                      children: [
-                        Text(
-                          trip.title,
-                          style: theme.textTheme.headlineSmall,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        _ActionPillsRow(
-                          viewModel: widget.viewModel,
-                          trip: trip,
-                          isOrganizer: isOrganizer,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: _tripDetailBody(context, theme, trip, isOrganizer),
-                ),
+                ...headerSlivers,
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _PinnedTabBarDelegate(
@@ -786,14 +549,118 @@ class _TripPageState extends State<TripPage>
             );
           }
 
-          return ListView(
-            // Bottom-only: the hero image intentionally runs full-bleed under the app bar,
-            // but the last item (Join/Book now button) needs room above the system nav bar —
-            // otherwise 3-button nav on Android overlaps it (no MediaQuery inset otherwise).
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.paddingOf(context).bottom,
-            ),
-            children: [photoHero, detailContent],
+          // General (Explore-reached) view — no tabs, so a plain CustomScrollView rather than
+          // NestedScrollView (that machinery exists specifically to sync an outer collapsing
+          // header with an inner TabBarView's own per-tab scrolling, which only Bubble Info
+          // needs). Organizer card + participant count stay general-view-only — deliberately
+          // gated on *how this screen was reached*, not just trip.joined: Explore's preview
+          // never shows who's in the trip, even to an already-joined viewer, since the
+          // People/Media/Files/Links tabs (chat-derived, member-list-bearing) are reserved for
+          // the specific view reached from inside the Bubble. Two privacy postures for the
+          // same data, not two widgets.
+          return CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              ...headerSlivers,
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _OrganizerCard(
+                        isOrganizer: isOrganizer,
+                        profile: widget.viewModel.organizerProfile,
+                        creatorUserId: trip.creatorUserId,
+                        currentUserId: widget.viewModel.currentUserId,
+                        profileRepository: widget.viewModel.profileRepository,
+                        diveCenter: widget.viewModel.organizerDiveCenter,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.groups_outlined,
+                            size: 16,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _participantsText(trip),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  // Bottom-only: the last item (Join/Book now button) needs room above the
+                  // system nav bar — otherwise 3-button nav on Android overlaps it.
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    24,
+                    16,
+                    16 + MediaQuery.paddingOf(context).bottom,
+                  ),
+                  child: trip.joined
+                      ? _DiveInButton(
+                          trip: trip,
+                          chatRepository: widget.chatRepository,
+                          transportRepository: widget.transportRepository,
+                          buddyRepository: widget.buddyRepository,
+                          realtimeService: widget.realtimeService,
+                          tripRepository: widget.tripRepository,
+                          authRepository: widget.viewModel.authRepository,
+                          profileRepository: widget.viewModel.profileRepository,
+                          pushRepository: widget.viewModel.pushRepository,
+                          diveCenterRepository: widget.diveCenterRepository,
+                          currentUserId: widget.viewModel.currentUserId,
+                        )
+                      : !isOrganizer && trip.bookingStatus == 'open'
+                      ? widget.entryCode != null
+                            ? _InviteJoinButton(
+                                code: widget.entryCode!,
+                                viewModel: widget.viewModel,
+                              )
+                            : trip.diveCenterId != null
+                            ? _BookNowSection(
+                                trip: trip,
+                                diveCenter:
+                                    widget.viewModel.organizerDiveCenter,
+                                viewModel: widget.viewModel,
+                                tripRepository: widget.tripRepository,
+                                chatRepository: widget.chatRepository,
+                                transportRepository: widget.transportRepository,
+                                buddyRepository: widget.buddyRepository,
+                                realtimeService: widget.realtimeService,
+                                diveCenterRepository:
+                                    widget.diveCenterRepository,
+                              )
+                            : trip.isPrivate
+                            ? _PrivateJoinSection(
+                                trip: trip,
+                                viewModel: widget.viewModel,
+                                tripRepository: widget.tripRepository,
+                                chatRepository: widget.chatRepository,
+                                transportRepository: widget.transportRepository,
+                                buddyRepository: widget.buddyRepository,
+                                realtimeService: widget.realtimeService,
+                                diveCenterRepository:
+                                    widget.diveCenterRepository,
+                              )
+                            : _JoinButton(
+                                trip: trip,
+                                viewModel: widget.viewModel,
+                              )
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -1040,6 +907,88 @@ class _PersonRow extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Location/date/meeting-point/booking-code/info-grid/description — the one block genuinely
+/// shared between the general (Explore-reached) view and Bubble Info, now a single widget
+/// instead of two independently-maintained copies (see TripPage.build's unified header).
+class _TripInfoBlock extends StatelessWidget {
+  const _TripInfoBlock({required this.trip, required this.isOrganizer});
+
+  final Trip trip;
+  final bool isOrganizer;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.location_on_outlined,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                trip.location,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_today_outlined,
+                size: 16,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                formatDateRange(trip.startTime, trip.endDate),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'MEETING POINT',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${formatTime(trip.startTime)} · ${trip.meetingPoint ?? trip.location}',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (isOrganizer && trip.bookingCode != null) ...[
+            const SizedBox(height: 16),
+            _BookingCodeRow(bookingCode: trip.bookingCode!),
+          ],
+          const SizedBox(height: 16),
+          _InfoGrid(trip: trip),
+          if (trip.description != null) ...[
+            const SizedBox(height: 20),
+            Text('About this dive', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 6),
+            Text(trip.description!, style: theme.textTheme.bodyMedium),
+          ],
+        ],
       ),
     );
   }
@@ -1993,33 +1942,9 @@ class _DiveInButton extends StatelessWidget {
           tripRepository.markRead(trip.id).catchError((_) {});
           await Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => TripConversationPage(
-                chatViewModel: ChatViewModel(
-                  repository: chatRepository,
-                  realtimeService: realtimeService,
-                  profileRepository: profileRepository,
-                  tripRepository: tripRepository,
-                  tripId: trip.id,
-                  currentUserId: currentUserId,
-                ),
-                transportViewModel: TransportViewModel(
-                  repository: transportRepository,
-                  authRepository: authRepository,
-                  profileRepository: profileRepository,
-                  pushRepository: pushRepository,
-                  tripId: trip.id,
-                  currentUserId: currentUserId,
-                ),
-                buddyViewModel: BuddyViewModel(
-                  repository: buddyRepository,
-                  authRepository: authRepository,
-                  profileRepository: profileRepository,
-                  pushRepository: pushRepository,
-                  tripId: trip.id,
-                  currentUserId: currentUserId,
-                ),
-                tripTitle: trip.title,
-                tripPhotoUrl: trip.photoUrl,
+              builder: (_) => TripConversationPage.forTrip(
+                trip: trip,
+                currentUserId: currentUserId,
                 tripRepository: tripRepository,
                 chatRepository: chatRepository,
                 transportRepository: transportRepository,
@@ -2029,8 +1954,6 @@ class _DiveInButton extends StatelessWidget {
                 profileRepository: profileRepository,
                 pushRepository: pushRepository,
                 diveCenterRepository: diveCenterRepository,
-                initialHasTransportAlert: trip.hasTransportAlert,
-                initialHasBuddyAlert: trip.hasBuddyAlert,
               ),
             ),
           );

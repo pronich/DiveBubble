@@ -10,6 +10,7 @@ import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/picked_attachment.dart';
+import '../../../../domain/entities/trip.dart';
 import '../../buddy/view_models/buddy_view_model.dart';
 import '../../buddy/views/buddy_view.dart';
 import '../../transport/view_models/transport_view_model.dart';
@@ -47,6 +48,71 @@ class TripConversationPage extends StatefulWidget {
     this.onBuddyAlertCleared,
     this.initialAttachments = const [],
   });
+
+  /// Builds the three per-trip ViewModels (Chat/Transport/Buddy) and the rest of this page's
+  /// params from a Trip + the repos already in hand — every call site used to hand-roll this
+  /// exact ~35-line block itself (main.dart's push-notification handler, MyTripsView, Trip
+  /// Page's own Dive-in button, and ChooseBubblePage), which is exactly the kind of duplicate
+  /// that drifts the moment one of them needs a new param and the other three don't get it.
+  TripConversationPage.forTrip({
+    Key? key,
+    required Trip trip,
+    required String currentUserId,
+    required TripRepository tripRepository,
+    required ChatRepository chatRepository,
+    required TransportRepository transportRepository,
+    required BuddyRepository buddyRepository,
+    required RealtimeService realtimeService,
+    required AuthRepository authRepository,
+    required ProfileRepository profileRepository,
+    required PushRepository pushRepository,
+    required DiveCenterRepository diveCenterRepository,
+    VoidCallback? onTransportAlertCleared,
+    VoidCallback? onBuddyAlertCleared,
+    List<PickedAttachment> initialAttachments = const [],
+  }) : this(
+         key: key,
+         chatViewModel: ChatViewModel(
+           repository: chatRepository,
+           realtimeService: realtimeService,
+           profileRepository: profileRepository,
+           tripRepository: tripRepository,
+           tripId: trip.id,
+           currentUserId: currentUserId,
+         ),
+         transportViewModel: TransportViewModel(
+           repository: transportRepository,
+           authRepository: authRepository,
+           profileRepository: profileRepository,
+           pushRepository: pushRepository,
+           tripId: trip.id,
+           currentUserId: currentUserId,
+         ),
+         buddyViewModel: BuddyViewModel(
+           repository: buddyRepository,
+           authRepository: authRepository,
+           profileRepository: profileRepository,
+           pushRepository: pushRepository,
+           tripId: trip.id,
+           currentUserId: currentUserId,
+         ),
+         tripTitle: trip.title,
+         tripPhotoUrl: trip.photoUrl,
+         tripRepository: tripRepository,
+         chatRepository: chatRepository,
+         transportRepository: transportRepository,
+         buddyRepository: buddyRepository,
+         realtimeService: realtimeService,
+         authRepository: authRepository,
+         profileRepository: profileRepository,
+         pushRepository: pushRepository,
+         diveCenterRepository: diveCenterRepository,
+         initialHasTransportAlert: trip.hasTransportAlert,
+         onTransportAlertCleared: onTransportAlertCleared,
+         initialHasBuddyAlert: trip.hasBuddyAlert,
+         onBuddyAlertCleared: onBuddyAlertCleared,
+         initialAttachments: initialAttachments,
+       );
 
   final ChatViewModel chatViewModel;
   final TransportViewModel transportViewModel;

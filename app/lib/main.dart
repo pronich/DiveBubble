@@ -34,12 +34,9 @@ import 'ui/core/auth/ensure_signed_in.dart';
 import 'ui/core/navigation/root_shell.dart';
 import 'ui/core/theme/app_theme.dart';
 import 'ui/core/widgets/shared_media_classifier.dart';
-import 'ui/features/buddy/view_models/buddy_view_model.dart';
-import 'ui/features/chats/view_models/chat_view_model.dart';
 import 'ui/features/chats/views/choose_bubble_page.dart';
 import 'ui/features/chats/views/trip_conversation_page.dart';
 import 'ui/features/onboarding/views/app_entry_gate.dart';
-import 'ui/features/transport/view_models/transport_view_model.dart';
 import 'ui/features/trips/view_models/trip_view_model.dart';
 import 'ui/features/trips/views/trip_page.dart';
 
@@ -374,33 +371,9 @@ class _MyAppState extends State<MyApp> {
       _tripRepository.markRead(trip.id).catchError((_) {});
       await _navigatorKey.currentState?.push(
         MaterialPageRoute(
-          builder: (_) => TripConversationPage(
-            chatViewModel: ChatViewModel(
-              repository: _chatRepository,
-              realtimeService: _realtimeService,
-              profileRepository: _profileRepository,
-              tripRepository: _tripRepository,
-              tripId: trip.id,
-              currentUserId: currentUserId,
-            ),
-            transportViewModel: TransportViewModel(
-              repository: _transportRepository,
-              authRepository: _authRepository,
-              profileRepository: _profileRepository,
-              pushRepository: _pushRepository,
-              tripId: trip.id,
-              currentUserId: currentUserId,
-            ),
-            buddyViewModel: BuddyViewModel(
-              repository: _buddyRepository,
-              authRepository: _authRepository,
-              profileRepository: _profileRepository,
-              pushRepository: _pushRepository,
-              tripId: trip.id,
-              currentUserId: currentUserId,
-            ),
-            tripTitle: trip.title,
-            tripPhotoUrl: trip.photoUrl,
+          builder: (_) => TripConversationPage.forTrip(
+            trip: trip,
+            currentUserId: currentUserId,
             tripRepository: _tripRepository,
             chatRepository: _chatRepository,
             transportRepository: _transportRepository,
@@ -410,8 +383,6 @@ class _MyAppState extends State<MyApp> {
             profileRepository: _profileRepository,
             pushRepository: _pushRepository,
             diveCenterRepository: _diveCenterRepository,
-            initialHasTransportAlert: trip.hasTransportAlert,
-            initialHasBuddyAlert: trip.hasBuddyAlert,
           ),
         ),
       );
