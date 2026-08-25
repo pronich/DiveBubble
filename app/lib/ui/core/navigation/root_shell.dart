@@ -122,6 +122,7 @@ class _RootShellState extends State<RootShell> {
             diveCenterRepository: widget.diveCenterRepository,
             currentUserId: widget.currentUserId,
             onGoToExplore: () => setState(() => _index = 0),
+            isActive: _index == 1,
           ),
           ProfileView(
             authRepository: widget.authRepository,
@@ -141,13 +142,24 @@ class _RootShellState extends State<RootShell> {
             selectedIndex: _index,
             onDestinationSelected: _onDestinationSelected,
             destinations: [
-              const NavigationDestination(icon: Icon(Icons.explore_outlined), selectedIcon: Icon(Icons.explore), label: 'Explore'),
+              const NavigationDestination(
+                icon: Icon(Icons.explore_outlined),
+                selectedIcon: Icon(Icons.explore),
+                label: 'Explore',
+              ),
               NavigationDestination(
-                icon: Badge(isLabelVisible: showDot, child: const Icon(Icons.bubble_chart_outlined)),
+                icon: Badge(
+                  isLabelVisible: showDot,
+                  child: const Icon(Icons.bubble_chart_outlined),
+                ),
                 selectedIcon: Badge(isLabelVisible: showDot, child: const Icon(Icons.bubble_chart)),
                 label: 'Bubbles',
               ),
-              const NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profile'),
+              const NavigationDestination(
+                icon: Icon(Icons.person_outline),
+                selectedIcon: Icon(Icons.person),
+                label: 'Profile',
+              ),
             ],
           );
         },

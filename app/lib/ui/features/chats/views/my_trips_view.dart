@@ -35,6 +35,7 @@ class MyTripsView extends StatefulWidget {
     required this.diveCenterRepository,
     required this.currentUserId,
     required this.onGoToExplore,
+    required this.isActive,
   });
 
   final MyTripsViewModel viewModel;
@@ -49,6 +50,7 @@ class MyTripsView extends StatefulWidget {
   final DiveCenterRepository diveCenterRepository;
   final String currentUserId;
   final VoidCallback onGoToExplore;
+  final bool isActive;
 
   @override
   State<MyTripsView> createState() => _MyTripsViewState();
@@ -56,8 +58,18 @@ class MyTripsView extends StatefulWidget {
 
 class _MyTripsViewState extends State<MyTripsView> {
   // Refreshes on app resume too — trips/messages may have changed while backgrounded.
-  late final _lifecycleListener = AppLifecycleListener(onResume: widget.viewModel.load);
+  late final _lifecycleListener = AppLifecycleListener(
+    onResume: () {
+      widget.viewModel.load();
+      setState(() => _archiveRevealed = false);
+    },
+  );
   String _search = '';
+
+  // Pinned by pulling past the reveal threshold (see ArchiveRevealList) — reset whenever this
+  // tab is left and returned to, or the app comes back from background, so the diver has to
+  // pull again each time rather than it staying stuck open, per the product ask.
+  bool _archiveRevealed = false;
 
   @override
   void initState() {
@@ -66,6 +78,14 @@ class _MyTripsViewState extends State<MyTripsView> {
     // Reload once signed in — this tab may have already loaded (and cached "needs sign in")
     // before the user logged in via some other screen's gate (Create trip, Join, etc.).
     widget.authRepository.addListener(_onAuthChanged);
+  }
+
+  @override
+  void didUpdateWidget(MyTripsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) {
+      setState(() => _archiveRevealed = false);
+    }
   }
 
   @override
@@ -160,7 +180,10 @@ class _MyTripsViewState extends State<MyTripsView> {
                         separatorBuilder: (context, _) => const Divider(height: 1, indent: 76),
                         archivedCount: widget.viewModel.archivedCount,
                         archivedPreviewText: widget.viewModel.archivedPreviewText,
+                        revealed: _archiveRevealed,
+                        onRevealed: () => setState(() => _archiveRevealed = true),
                         onOpenArchive: () => _openArchive(context),
+                        onRefresh: widget.viewModel.load,
                         itemBuilder: (context, index) {
                           final trip = trips[index];
                           return Dismissible(
