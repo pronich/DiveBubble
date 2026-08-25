@@ -96,6 +96,7 @@ type tripResponse struct {
 	BookingCode      *string    `json:"bookingCode,omitempty"`
 	MaxParticipants  *int       `json:"maxParticipants,omitempty"`
 	BookingStatus    string     `json:"bookingStatus"`
+	IsPrivate        bool       `json:"isPrivate"`
 	PhotoURL         *string    `json:"photoUrl,omitempty"`
 
 	DiveCenterID *uuid.UUID `json:"diveCenterId,omitempty"`
@@ -161,6 +162,7 @@ func toTripResponse(t trip.Trip, joined bool, participantCount int) tripResponse
 		BookingCode:       nullStringPtr(t.BookingCode),
 		MaxParticipants:   nullInt32Ptr(t.MaxParticipants),
 		BookingStatus:     t.BookingStatus,
+		IsPrivate:         t.IsPrivate,
 		PhotoURL:          nullStringPtr(t.PhotoURL),
 		PriceMinor:        nullInt32Ptr(t.PriceMinor),
 		Currency:          t.Currency,
@@ -205,6 +207,10 @@ type createTripRequest struct {
 	// Best-effort client-side forward-geocode of Location/MeetingPoint — see model.go.
 	Latitude  *float64 `json:"latitude"`
 	Longitude *float64 `json:"longitude"`
+
+	// Individual trips only — fixed at creation, no edit path (see trip.CreateParams).
+	// Ignored (forced false) for business trips, see trip.Service.CreateTrip.
+	IsPrivate bool `json:"isPrivate"`
 }
 
 func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
@@ -236,6 +242,7 @@ func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 			BookingURL:       req.BookingURL,
 			Latitude:         req.Latitude,
 			Longitude:        req.Longitude,
+			IsPrivate:        req.IsPrivate,
 		})
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {

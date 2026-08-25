@@ -93,6 +93,9 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 		}
 	}
 	if p.DiveCenterID != nil {
+		// A business trip is always a public marketplace listing — is_private only means
+		// anything for an individual trip.
+		p.IsPrivate = false
 		if s.DiveCenterSvc == nil {
 			return Trip{}, ErrInvalidArgument
 		}
@@ -117,13 +120,14 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 			return Trip{}, ErrBusinessTripRequiresPriceAndURL
 		}
 	}
-	// Business trips get a server-generated code, retried on the rare unique-constraint
-	// collision — never client-supplied, since the whole point is that only the dive
-	// center (via this trip's own creation) controls who can redeem it. Individual trips
-	// never get one: direct Join stays open for them (see Join below).
+	// Business trips and private individual trips both get a server-generated code, retried
+	// on the rare unique-constraint collision — never client-supplied. Business: only the
+	// dive center controls who can redeem it. Private: it's the only way in, since the trip
+	// is excluded from Explore (see Repository.List) — see Join's matching gate below. A
+	// public individual trip never gets one: direct Join stays open for it.
 	var t Trip
 	var err error
-	if p.DiveCenterID != nil {
+	if p.DiveCenterID != nil || p.IsPrivate {
 		for attempt := 0; attempt < maxBookingCodeAttempts; attempt++ {
 			code := generateBookingCode()
 			p.BookingCode = &code
@@ -182,9 +186,11 @@ func (s *Service) Join(ctx context.Context, id string, userID uuid.UUID) error {
 	}
 	// Business trips are a marketplace listing, not a direct join — a diver has to actually
 	// pay on the dive center's own site and come back with the code it gave them (see
-	// JoinByCode below). Rejecting this server-side (not just hiding the button) matters:
-	// nothing stops a diver from calling this endpoint directly otherwise.
-	if t.DiveCenterID.Valid {
+	// JoinByCode below). Private trips have no external payment step, but the same code gate
+	// applies: they're excluded from Explore, so this only matters if someone calls the
+	// endpoint directly with a trip id they got some other way. Rejecting this server-side
+	// (not just hiding the button) matters in both cases.
+	if t.DiveCenterID.Valid || t.IsPrivate {
 		return ErrRequiresBookingCode
 	}
 	return s.Repo.Join(ctx, tripID, userID)

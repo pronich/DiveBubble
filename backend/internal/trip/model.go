@@ -35,6 +35,10 @@ type Trip struct {
 	BookingCode      sql.NullString
 	MaxParticipants  sql.NullInt32
 	BookingStatus    string
+	// IsPrivate excludes the trip from Explore's List; joining still goes through the same
+	// booking_code gate as a business trip (see Service.CreateTrip/Join) rather than a
+	// separate visibility system. Fixed at creation — no edit path.
+	IsPrivate bool
 
 	// PhotoURL is derived, not stored — the first photo in trip_photos (position 0), via a
 	// subquery in every SELECT that populates it. See Photo below for the full ordered list.

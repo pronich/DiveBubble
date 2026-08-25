@@ -19,7 +19,7 @@ var tripColumnNames = []string{
 	"dive_count_min", "dive_count_max", "depth_min_m", "depth_max_m",
 	"min_certification", "booking_code", "max_participants", "booking_status",
 	"dive_center_id", "price_minor", "currency", "booking_url",
-	"latitude", "longitude",
+	"latitude", "longitude", "is_private",
 }
 
 // coverPhotoExpr is the trip's first photo (trip_photos, position 0) — photo_url isn't a
@@ -57,7 +57,7 @@ func scanTrip(row interface{ Scan(...any) error }) (Trip, error) {
 		&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
 		&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus,
 		&t.DiveCenterID, &t.PriceMinor, &t.Currency, &t.BookingURL,
-		&t.Latitude, &t.Longitude,
+		&t.Latitude, &t.Longitude, &t.IsPrivate,
 		&t.PhotoURL,
 	)
 	return t, err
@@ -114,6 +114,10 @@ type CreateParams struct {
 	// Latitude/Longitude — see model.go's own doc comment. Best-effort, client-geocoded.
 	Latitude  *float64
 	Longitude *float64
+
+	// IsPrivate — individual trips only (never set for a business trip, which is always a
+	// public marketplace listing). See model.go's own doc comment.
+	IsPrivate bool
 }
 
 func (r *Repository) Create(ctx context.Context, p CreateParams) (Trip, error) {
@@ -124,16 +128,16 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Trip, error) {
 			dive_count_min, dive_count_max, depth_min_m, depth_max_m,
 			min_certification, booking_code, max_participants,
 			dive_center_id, price_minor, booking_url,
-			latitude, longitude
+			latitude, longitude, is_private
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
 		RETURNING `+tripColumns,
 		p.Title, p.Location, p.StartTime, p.CreatorUserID,
 		p.EndDate, p.Description, p.MeetingPoint,
 		p.DiveCountMin, p.DiveCountMax, p.DepthMinM, p.DepthMaxM,
 		p.MinCertification, p.BookingCode, p.MaxParticipants,
 		p.DiveCenterID, p.PriceMinor, p.BookingURL,
-		p.Latitude, p.Longitude,
+		p.Latitude, p.Longitude, p.IsPrivate,
 	))
 }
 
@@ -200,6 +204,8 @@ func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (
 // on the trips table itself, hence the two LEFT JOINs — an empty query skips the match
 // entirely rather than joining for nothing). Sort stays date order here; distance-based
 // "Nearest" sort is computed client-side (see CLAUDE.md's Search & Filters sheet section).
+// Private trips are excluded outright — they're only reachable via booking code/invite link,
+// never through Explore (see Service.Join's gate).
 // includeTestCenters lets users.is_owner accounts see test dive centers' trips too — everyone
 // else has them excluded from Explore. Also excludes trips whose dive date has already
 // passed — Explore is upcoming trips to join, not history (that's My Trips/ListJoinedByUser).
@@ -211,6 +217,7 @@ func (r *Repository) List(ctx context.Context, query string, includeTestCenters 
 		LEFT JOIN dive_centers dc ON dc.id = t.dive_center_id
 		WHERE t.booking_status != 'cancelled'
 		  AND t.start_time > now()
+		  AND NOT t.is_private
 		  AND ($1 = '' OR t.title ILIKE '%' || $1 || '%' OR t.location ILIKE '%' || $1 || '%'
 		       OR creator.display_name ILIKE '%' || $1 || '%' OR dc.name ILIKE '%' || $1 || '%')
 		  AND (dc.is_test IS NOT TRUE OR $2)
