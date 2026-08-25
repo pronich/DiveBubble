@@ -219,36 +219,44 @@ class _ExpenseBalanceSheetState extends State<_ExpenseBalanceSheet> {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Balance', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 12),
-                if (settlements.isEmpty)
-                  // A short, empty-looking sheet reads as a rendering glitch rather than a
-                  // deliberate "you're done here" state — this fills the same footprint a
-                  // settlement row would, so it never flashes as a squashed sliver on its
-                  // way to auto-closing (see _onViewModelChanged).
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline,
-                          size: 40,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        const SizedBox(height: 12),
-                        const Text('All settled up.'),
-                      ],
+            // Column shrink-wraps to its widest child's intrinsic width by default (only
+            // mainAxisSize governs the vertical axis) — without forcing full width here, the
+            // sheet's own Material surface shrinks right along with it, which is exactly the
+            // "squished horizontally" card the empty/settled state (just an icon + one line)
+            // was rendering as.
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Balance', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 12),
+                  if (settlements.isEmpty)
+                    // A short, empty-looking sheet reads as a rendering glitch rather than a
+                    // deliberate "you're done here" state — this fills the same footprint a
+                    // settlement row would, so it never flashes as a squashed sliver on its
+                    // way to auto-closing (see _onViewModelChanged).
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.check_circle_outline,
+                            size: 40,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(height: 12),
+                          const Text('All settled up.'),
+                        ],
+                      ),
+                    )
+                  else
+                    ...settlements.map(
+                      (s) => _SettlementRow(viewModel: widget.viewModel, settlement: s),
                     ),
-                  )
-                else
-                  ...settlements.map(
-                    (s) => _SettlementRow(viewModel: widget.viewModel, settlement: s),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         );
