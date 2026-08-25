@@ -37,6 +37,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- App Links for invite links (divebubble.io/join/{code}) — autoVerify requires a
+                 matching assetlinks.json at divebubble.io/.well-known/assetlinks.json (SHA-256
+                 of the Play App Signing certificate) or Android silently falls back to a
+                 disambiguation dialog instead of opening the app directly. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="divebubble.io" android:pathPrefix="/join"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
