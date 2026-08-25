@@ -409,7 +409,7 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID) ([]
 			&t.DiveCountMin, &t.DiveCountMax, &t.DepthMinM, &t.DepthMaxM,
 			&t.MinCertification, &t.BookingCode, &t.MaxParticipants, &t.BookingStatus,
 			&t.DiveCenterID, &t.PriceMinor, &t.Currency, &t.BookingURL,
-			&t.Latitude, &t.Longitude,
+			&t.Latitude, &t.Longitude, &t.IsPrivate,
 			&t.PhotoURL,
 			&t.UnreadCount, &t.ParticipantCount, &t.HasTransportAlert, &t.HasUnreadMention, &t.HasBuddyAlert,
 		)
