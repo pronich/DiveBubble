@@ -14,8 +14,8 @@ class MyTripsViewModel extends ChangeNotifier {
     required TripRepository repository,
     required RealtimeService realtimeService,
     required this.currentUserId,
-  })  : _repository = repository,
-        _realtimeService = realtimeService;
+  }) : _repository = repository,
+       _realtimeService = realtimeService;
 
   final TripRepository _repository;
   final RealtimeService _realtimeService;
@@ -35,7 +35,20 @@ class MyTripsViewModel extends ChangeNotifier {
   List<Trip> _trips = [];
   List<Trip> get trips => _trips;
 
-  bool get hasAnyAttention => _trips.any((t) => t.unreadCount > 0 || t.hasTransportAlert || t.hasBuddyAlert);
+  // Fetched alongside the main list purely for the Archive reveal cell's preview/badge (see
+  // ArchivedTripsRevealList) — archived trips never get a realtime subscription here, so this
+  // is a snapshot refreshed on each load()/pull-to-refresh, not a live-updating count. That's
+  // a deliberate simplification: subscribing to every archived trip's channel too just to keep
+  // one badge live would double the socket footprint for a number the diver only glances at.
+  List<Trip> _archivedTrips = [];
+  int get archivedCount => _archivedTrips.length;
+
+  // Matches the two-line preview Telegram's own Archived Chats cell shows — most recent
+  // first, same ordering the backend already returns.
+  String get archivedPreviewText => _archivedTrips.take(2).map((t) => t.title).join(', ');
+
+  bool get hasAnyAttention =>
+      _trips.any((t) => t.unreadCount > 0 || t.hasTransportAlert || t.hasBuddyAlert);
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -73,6 +86,11 @@ class MyTripsViewModel extends ChangeNotifier {
     try {
       _trips = await _repository.getMyTrips();
       await _subscribeToAll();
+      try {
+        _archivedTrips = await _repository.getMyTrips(archived: true);
+      } catch (_) {
+        // Best-effort — the reveal cell just shows stale/empty preview until the next load.
+      }
     } on AuthRequiredException {
       _needsSignIn = true;
     } catch (e) {
@@ -87,7 +105,9 @@ class MyTripsViewModel extends ChangeNotifier {
     for (final trip in _trips) {
       if (_subscriptions.containsKey(trip.id)) continue;
       final sub = await _realtimeService.subscribe('trip:${trip.id}');
-      _publicationListeners[trip.id] = sub.publication.listen((event) => _onMessage(trip.id, event));
+      _publicationListeners[trip.id] = sub.publication.listen(
+        (event) => _onMessage(trip.id, event),
+      );
       _subscriptions[trip.id] = sub;
     }
   }
@@ -101,11 +121,40 @@ class MyTripsViewModel extends ChangeNotifier {
     final trip = _trips[index];
     // Own messages never count as unread for yourself (matches the backend's rule) —
     // this only fires for the optimistic client-side bump between reloads.
-    final updated = trip.copyWith(unreadCount: senderId == currentUserId ? trip.unreadCount : trip.unreadCount + 1);
+    final updated = trip.copyWith(
+      unreadCount: senderId == currentUserId ? trip.unreadCount : trip.unreadCount + 1,
+    );
 
     // Move to the front, same "most recent activity" ordering the backend applies.
     _trips = [updated, ..._trips.where((t) => t.id != tripId)];
     notifyListeners();
+  }
+
+  // Optimistic — leaves the row visible until the request actually settles (Dismissible/the
+  // long-press sheet call this only after the diver already committed to the action), and
+  // rolls back into place if the request fails rather than leaving the trip stuck in limbo.
+  Future<void> archiveTrip(String tripId) async {
+    final index = _trips.indexWhere((t) => t.id == tripId);
+    if (index == -1) return;
+    final trip = _trips[index];
+    _trips = _trips.where((t) => t.id != tripId).toList();
+    _archivedTrips = [trip, ..._archivedTrips];
+    notifyListeners();
+
+    final listener = _publicationListeners.remove(tripId);
+    final sub = _subscriptions.remove(tripId);
+    if (listener != null) await listener.cancel();
+    if (sub != null) _realtimeService.unsubscribe(sub);
+
+    try {
+      await _repository.archiveTrip(tripId);
+    } catch (e) {
+      _trips = [trip, ..._trips];
+      _archivedTrips = _archivedTrips.where((t) => t.id != tripId).toList();
+      await _subscribeToAll();
+      notifyListeners();
+      rethrow;
+    }
   }
 
   void markTransportAlertCleared(String tripId) {

@@ -45,6 +45,12 @@ class TripRepository {
 
   Future<void> unmuteTrip(String id) => _service.unmuteTrip(id);
 
+  Future<bool> getArchived(String id) => _service.getArchived(id);
+
+  Future<void> archiveTrip(String id) => _service.archiveTrip(id);
+
+  Future<void> unarchiveTrip(String id) => _service.unarchiveTrip(id);
+
   Future<List<TripPhoto>> getTripPhotos(String id) async {
     final apiModels = await _service.fetchTripPhotos(id);
     return apiModels.map((m) => m.toDomain()).toList();
@@ -57,8 +63,8 @@ class TripRepository {
 
   Future<void> removeTripPhoto(String id, String photoId) => _service.removeTripPhoto(id, photoId);
 
-  Future<List<Trip>> getMyTrips() async {
-    final apiModels = await _service.fetchMyTrips();
+  Future<List<Trip>> getMyTrips({bool archived = false}) async {
+    final apiModels = await _service.fetchMyTrips(archived: archived);
     return apiModels.map((m) => m.toDomain()).toList();
   }
 

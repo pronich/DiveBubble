@@ -10,7 +10,7 @@ import 'multipart_upload.dart';
 
 class TripApiService {
   TripApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   final String baseUrl;
   final AccessTokenProvider getAccessToken;
@@ -38,13 +38,14 @@ class TripApiService {
       throw Exception('fetchTrips failed: ${res.statusCode} ${res.body}');
     }
     final decoded = jsonDecode(res.body) as List<dynamic>;
-    return decoded
-        .map((e) => TripApiModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return decoded.map((e) => TripApiModel.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<TripApiModel> fetchTrip(String id) async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips/$id'), headers: await _optionalAuthHeaders());
+    final res = await _client.get(
+      Uri.parse('$baseUrl/trips/$id'),
+      headers: await _optionalAuthHeaders(),
+    );
     if (res.statusCode != 200) {
       throw Exception('fetchTrip failed: ${res.statusCode} ${res.body}');
     }
@@ -55,26 +56,33 @@ class TripApiService {
   // joining it, same anonymous-browsable posture as fetchTrip. See joinTripByCode for the
   // action that actually joins once the diver taps Join on that preview.
   Future<TripApiModel> resolveTripByCode(String code) async {
-    final res = await _client.get(Uri.parse('$baseUrl/invite/$code'), headers: await _optionalAuthHeaders());
+    final res = await _client.get(
+      Uri.parse('$baseUrl/invite/$code'),
+      headers: await _optionalAuthHeaders(),
+    );
     if (res.statusCode != 200) {
       throw Exception(_extractError(res.body) ?? 'resolveTripByCode failed: ${res.statusCode}');
     }
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  Future<List<TripApiModel>> fetchMyTrips() async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips/mine'), headers: await _requiredAuthHeaders());
+  Future<List<TripApiModel>> fetchMyTrips({bool archived = false}) async {
+    final uri = Uri.parse(
+      '$baseUrl/trips/mine',
+    ).replace(queryParameters: archived ? {'archived': 'true'} : null);
+    final res = await _client.get(uri, headers: await _requiredAuthHeaders());
     if (res.statusCode != 200) {
       throw Exception('fetchMyTrips failed: ${res.statusCode} ${res.body}');
     }
     final decoded = jsonDecode(res.body) as List<dynamic>;
-    return decoded
-        .map((e) => TripApiModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return decoded.map((e) => TripApiModel.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<void> joinTrip(String id) async {
-    final res = await _client.post(Uri.parse('$baseUrl/trips/$id/join'), headers: await _requiredAuthHeaders());
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$id/join'),
+      headers: await _requiredAuthHeaders(),
+    );
     if (res.statusCode != 200) {
       throw Exception('joinTrip failed: ${res.statusCode} ${res.body}');
     }
@@ -111,7 +119,10 @@ class TripApiService {
   // 403 (mapped to an Exception here) if the caller is the trip's organizer — they cancel
   // the trip instead of leaving it.
   Future<void> leaveTrip(String id) async {
-    final res = await _client.post(Uri.parse('$baseUrl/trips/$id/leave'), headers: await _requiredAuthHeaders());
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$id/leave'),
+      headers: await _requiredAuthHeaders(),
+    );
     if (res.statusCode != 204) {
       throw Exception('leaveTrip failed: ${res.statusCode} ${res.body}');
     }
@@ -120,7 +131,10 @@ class TripApiService {
   // 403 if the caller isn't the trip's organizer. Idempotent server-side — cancelling an
   // already-cancelled trip still returns 204.
   Future<void> cancelTrip(String id) async {
-    final res = await _client.post(Uri.parse('$baseUrl/trips/$id/cancel'), headers: await _requiredAuthHeaders());
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$id/cancel'),
+      headers: await _requiredAuthHeaders(),
+    );
     if (res.statusCode != 204) {
       throw Exception('cancelTrip failed: ${res.statusCode} ${res.body}');
     }
@@ -128,7 +142,10 @@ class TripApiService {
 
   // Gated to participants server-side — who joined a trip isn't public.
   Future<List<String>> fetchParticipantUserIds(String id) async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips/$id/participants'), headers: await _requiredAuthHeaders());
+    final res = await _client.get(
+      Uri.parse('$baseUrl/trips/$id/participants'),
+      headers: await _requiredAuthHeaders(),
+    );
     if (res.statusCode != 200) {
       throw Exception('fetchParticipantUserIds failed: ${res.statusCode} ${res.body}');
     }
@@ -138,7 +155,10 @@ class TripApiService {
 
   // Same optional-auth posture as fetchTrip — a trip's gallery is part of its public detail.
   Future<List<TripPhotoApiModel>> fetchTripPhotos(String id) async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips/$id/photos'), headers: await _optionalAuthHeaders());
+    final res = await _client.get(
+      Uri.parse('$baseUrl/trips/$id/photos'),
+      headers: await _optionalAuthHeaders(),
+    );
     if (res.statusCode != 200) {
       throw Exception('fetchTripPhotos failed: ${res.statusCode} ${res.body}');
     }
@@ -158,21 +178,30 @@ class TripApiService {
   }
 
   Future<void> removeTripPhoto(String id, String photoId) async {
-    final res = await _client.delete(Uri.parse('$baseUrl/trips/$id/photos/$photoId'), headers: await _requiredAuthHeaders());
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/trips/$id/photos/$photoId'),
+      headers: await _requiredAuthHeaders(),
+    );
     if (res.statusCode != 204) {
       throw Exception('removeTripPhoto failed: ${res.statusCode} ${res.body}');
     }
   }
 
   Future<void> markRead(String id) async {
-    final res = await _client.post(Uri.parse('$baseUrl/trips/$id/read'), headers: await _requiredAuthHeaders());
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$id/read'),
+      headers: await _requiredAuthHeaders(),
+    );
     if (res.statusCode != 204) {
       throw Exception('markRead failed: ${res.statusCode} ${res.body}');
     }
   }
 
   Future<bool> getMuted(String id) async {
-    final res = await _client.get(Uri.parse('$baseUrl/trips/$id/mute'), headers: await _requiredAuthHeaders());
+    final res = await _client.get(
+      Uri.parse('$baseUrl/trips/$id/mute'),
+      headers: await _requiredAuthHeaders(),
+    );
     if (res.statusCode != 200) {
       throw Exception('getMuted failed: ${res.statusCode} ${res.body}');
     }
@@ -180,16 +209,53 @@ class TripApiService {
   }
 
   Future<void> muteTrip(String id) async {
-    final res = await _client.post(Uri.parse('$baseUrl/trips/$id/mute'), headers: await _requiredAuthHeaders());
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$id/mute'),
+      headers: await _requiredAuthHeaders(),
+    );
     if (res.statusCode != 204) {
       throw Exception('muteTrip failed: ${res.statusCode} ${res.body}');
     }
   }
 
   Future<void> unmuteTrip(String id) async {
-    final res = await _client.delete(Uri.parse('$baseUrl/trips/$id/mute'), headers: await _requiredAuthHeaders());
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/trips/$id/mute'),
+      headers: await _requiredAuthHeaders(),
+    );
     if (res.statusCode != 204) {
       throw Exception('unmuteTrip failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
+  Future<bool> getArchived(String id) async {
+    final res = await _client.get(
+      Uri.parse('$baseUrl/trips/$id/archive'),
+      headers: await _requiredAuthHeaders(),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('getArchived failed: ${res.statusCode} ${res.body}');
+    }
+    return (jsonDecode(res.body) as Map<String, dynamic>)['archived'] as bool;
+  }
+
+  Future<void> archiveTrip(String id) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$id/archive'),
+      headers: await _requiredAuthHeaders(),
+    );
+    if (res.statusCode != 204) {
+      throw Exception('archiveTrip failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
+  Future<void> unarchiveTrip(String id) async {
+    final res = await _client.delete(
+      Uri.parse('$baseUrl/trips/$id/archive'),
+      headers: await _requiredAuthHeaders(),
+    );
+    if (res.statusCode != 204) {
+      throw Exception('unarchiveTrip failed: ${res.statusCode} ${res.body}');
     }
   }
 
@@ -219,7 +285,8 @@ class TripApiService {
       // on that shifts it into the *previous* UTC day for any positive-offset timezone,
       // which then fails the backend's endDate >= startTime check for same-day trips. Build
       // a fresh UTC-midnight DateTime from the Y/M/D instead of converting the local one.
-      if (endDate != null) 'endDate': DateTime.utc(endDate.year, endDate.month, endDate.day).toIso8601String(),
+      if (endDate != null)
+        'endDate': DateTime.utc(endDate.year, endDate.month, endDate.day).toIso8601String(),
       if (description != null) 'description': description,
       if (meetingPoint != null) 'meetingPoint': meetingPoint,
       if (diveCountMin != null) 'diveCountMin': diveCountMin,
@@ -265,7 +332,8 @@ class TripApiService {
       if (title != null) 'title': title,
       if (location != null) 'location': location,
       if (startTime != null) 'startTime': startTime.toUtc().toIso8601String(),
-      if (endDate != null) 'endDate': DateTime.utc(endDate.year, endDate.month, endDate.day).toIso8601String(),
+      if (endDate != null)
+        'endDate': DateTime.utc(endDate.year, endDate.month, endDate.day).toIso8601String(),
       if (description != null) 'description': description,
       if (meetingPoint != null) 'meetingPoint': meetingPoint,
       if (diveCountMin != null) 'diveCountMin': diveCountMin,

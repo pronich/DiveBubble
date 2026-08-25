@@ -15,11 +15,13 @@ class TripRow extends StatelessWidget {
   const TripRow({
     required this.trip,
     required this.onTap,
+    this.onLongPress,
     this.showBadges = true,
   });
 
   final Trip trip;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final bool showBadges;
 
   // Past once the trip's last calendar day (endDate if set, else startTime's day) has fully
@@ -36,6 +38,7 @@ class TripRow extends StatelessWidget {
     final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
@@ -122,10 +125,7 @@ class TripRow extends StatelessWidget {
                   ),
                   if (showBadges) ...[
                     const SizedBox(height: 6),
-                    _StatusPill(
-                      isPast: _isPast,
-                      isCancelled: trip.bookingStatus == 'cancelled',
-                    ),
+                    _StatusPill(isPast: _isPast, isCancelled: trip.bookingStatus == 'cancelled'),
                   ],
                 ],
               ),
@@ -178,15 +178,8 @@ class _TransportAlertDot extends StatelessWidget {
       width: 18,
       height: 18,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: semantic.infoContainer,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        Icons.directions_car,
-        size: 12,
-        color: semantic.onInfoContainer,
-      ),
+      decoration: BoxDecoration(color: semantic.infoContainer, shape: BoxShape.circle),
+      child: Icon(Icons.directions_car, size: 12, color: semantic.onInfoContainer),
     );
   }
 }
@@ -201,15 +194,8 @@ class _BuddyAlertDot extends StatelessWidget {
       width: 18,
       height: 18,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: semantic.infoContainer,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        Icons.people_outline,
-        size: 12,
-        color: semantic.onInfoContainer,
-      ),
+      decoration: BoxDecoration(color: semantic.infoContainer, shape: BoxShape.circle),
+      child: Icon(Icons.people_outline, size: 12, color: semantic.onInfoContainer),
     );
   }
 }
@@ -245,16 +231,10 @@ class _StatusPill extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
+      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(999)),
       child: Text(
         label,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: foreground,
-          fontWeight: FontWeight.w600,
-        ),
+        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600),
       ),
     );
   }

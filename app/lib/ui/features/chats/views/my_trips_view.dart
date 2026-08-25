@@ -10,11 +10,15 @@ import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import '../../onboarding/views/login_sheet.dart';
 import '../view_models/my_trips_view_model.dart';
+import 'archive_reveal_list.dart';
+import 'archived_chats_page.dart';
 import 'trip_conversation_page.dart';
 import 'trip_row.dart';
+import 'trip_row_actions.dart';
 
 class MyTripsView extends StatefulWidget {
   const MyTripsView({
@@ -52,9 +56,7 @@ class MyTripsView extends StatefulWidget {
 
 class _MyTripsViewState extends State<MyTripsView> {
   // Refreshes on app resume too — trips/messages may have changed while backgrounded.
-  late final _lifecycleListener = AppLifecycleListener(
-    onResume: widget.viewModel.load,
-  );
+  late final _lifecycleListener = AppLifecycleListener(onResume: widget.viewModel.load);
   String _search = '';
 
   @override
@@ -78,12 +80,7 @@ class _MyTripsViewState extends State<MyTripsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Bubbles',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-      ),
+      appBar: AppBar(title: Text('Bubbles', style: Theme.of(context).textTheme.headlineSmall)),
       body: ListenableBuilder(
         listenable: widget.viewModel,
         builder: (context, _) {
@@ -95,8 +92,7 @@ class _MyTripsViewState extends State<MyTripsView> {
             return EmptyStateView(
               icon: Icons.login,
               title: 'Sign in to see your trips',
-              subtitle:
-                  'Log in to view the trips you\'ve joined and their group chats.',
+              subtitle: 'Log in to view the trips you\'ve joined and their group chats.',
               ctaLabel: 'Dive in',
               onCtaPressed: () async {
                 final signedIn = await LoginSheet.show(
@@ -130,9 +126,7 @@ class _MyTripsViewState extends State<MyTripsView> {
           final query = _search.trim().toLowerCase();
           final trips = query.isEmpty
               ? allTrips
-              : allTrips
-                    .where((t) => t.title.toLowerCase().contains(query))
-                    .toList();
+              : allTrips.where((t) => t.title.toLowerCase().contains(query)).toList();
 
           return Column(
             children: [
@@ -155,26 +149,32 @@ class _MyTripsViewState extends State<MyTripsView> {
                     ? Center(
                         child: Text(
                           'No matches.',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: widget.viewModel.load,
-                        child: ListView.separated(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemCount: trips.length,
-                          separatorBuilder: (context, _) =>
-                              const Divider(height: 1, indent: 76),
-                          itemBuilder: (context, index) => TripRow(
-                            trip: trips[index],
-                            onTap: () => _openChat(context, trips[index]),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
+                      )
+                    : ArchiveRevealList(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: trips.length,
+                        separatorBuilder: (context, _) => const Divider(height: 1, indent: 76),
+                        archivedCount: widget.viewModel.archivedCount,
+                        archivedPreviewText: widget.viewModel.archivedPreviewText,
+                        onOpenArchive: () => _openArchive(context),
+                        itemBuilder: (context, index) {
+                          final trip = trips[index];
+                          return Dismissible(
+                            key: ValueKey(trip.id),
+                            direction: DismissDirection.endToStart,
+                            background: _ArchiveSwipeBackground(theme: Theme.of(context)),
+                            onDismissed: (_) => widget.viewModel.archiveTrip(trip.id),
+                            child: TripRow(
+                              trip: trip,
+                              onTap: () => _openChat(context, trip),
+                              onLongPress: () => _showActions(context, trip),
+                            ),
+                          );
+                        },
                       ),
               ),
             ],
@@ -182,6 +182,40 @@ class _MyTripsViewState extends State<MyTripsView> {
         },
       ),
     );
+  }
+
+  Future<void> _showActions(BuildContext context, Trip trip) {
+    return showTripRowActionsSheet(
+      context,
+      trip: trip,
+      currentUserId: widget.currentUserId,
+      tripRepository: widget.tripRepository,
+      isArchived: false,
+      onArchiveToggled: () => widget.viewModel.archiveTrip(trip.id),
+      onLeftOrCancelled: widget.viewModel.load,
+    );
+  }
+
+  Future<void> _openArchive(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ArchivedChatsPage(
+          currentUserId: widget.currentUserId,
+          tripRepository: widget.tripRepository,
+          chatRepository: widget.chatRepository,
+          transportRepository: widget.transportRepository,
+          buddyRepository: widget.buddyRepository,
+          realtimeService: widget.realtimeService,
+          authRepository: widget.authRepository,
+          profileRepository: widget.profileRepository,
+          pushRepository: widget.pushRepository,
+          diveCenterRepository: widget.diveCenterRepository,
+        ),
+      ),
+    );
+    // An unarchive on that screen isn't reflected in this list until we reload — cheap
+    // either way since returning here means the diver's back on this tab regardless.
+    if (context.mounted) widget.viewModel.load();
   }
 
   Future<void> _openChat(BuildContext context, Trip trip) async {
@@ -202,10 +236,8 @@ class _MyTripsViewState extends State<MyTripsView> {
           profileRepository: widget.profileRepository,
           pushRepository: widget.pushRepository,
           diveCenterRepository: widget.diveCenterRepository,
-          onTransportAlertCleared: () =>
-              widget.viewModel.markTransportAlertCleared(trip.id),
-          onBuddyAlertCleared: () =>
-              widget.viewModel.markBuddyAlertCleared(trip.id),
+          onTransportAlertCleared: () => widget.viewModel.markTransportAlertCleared(trip.id),
+          onBuddyAlertCleared: () => widget.viewModel.markBuddyAlertCleared(trip.id),
         ),
       ),
     );
@@ -215,5 +247,22 @@ class _MyTripsViewState extends State<MyTripsView> {
     if (!context.mounted) return;
     widget.tripRepository.markRead(trip.id).catchError((_) {});
     widget.viewModel.load();
+  }
+}
+
+class _ArchiveSwipeBackground extends StatelessWidget {
+  const _ArchiveSwipeBackground({required this.theme});
+
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final semantic = theme.extension<SemanticColors>()!;
+    return Container(
+      color: semantic.infoContainer,
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Icon(Icons.archive_outlined, color: semantic.onInfoContainer),
+    );
   }
 }
