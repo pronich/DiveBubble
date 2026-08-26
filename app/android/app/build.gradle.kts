@@ -19,7 +19,10 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "io.divebubble.app"
-    compileSdk = flutter.compileSdkVersion
+    // receive_sharing_intent requires compileSdk 37 — flutter.compileSdkVersion (36) is one
+    // behind, which used to build fine until this plugin's own build.gradle started requiring
+    // 37 directly (backward-compatible either way, per Flutter's own build warning).
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
