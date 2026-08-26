@@ -10,6 +10,7 @@ import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
+import '../../../../domain/entities/chat_reaction.dart';
 import '../../../../domain/entities/my_profile.dart';
 import '../../../../domain/entities/trip.dart';
 
@@ -171,6 +172,16 @@ class BubblesViewModel extends ChangeNotifier {
     _subscription = await _realtimeService.subscribe('trip:$tripId');
     _publicationListener = _subscription!.publication.listen((event) async {
       final json = jsonDecode(utf8.decode(event.data)) as Map<String, dynamic>;
+      // Reaction changes get their own small sentinel (see publishReactionUpdate) instead of a
+      // full message republish — a Centrifugo publish is one shared payload for every
+      // subscriber, and ReactedByMe is per-viewer, so it can never be correct in a broadcast.
+      // Only per-emoji Count travels over the wire; _applyReactionUpdate merges that in while
+      // leaving each emoji's locally-known ReactedByMe untouched (it only ever changes via this
+      // viewer's own reactToMessage call, never via someone else's reaction).
+      if (json['event'] == 'reaction_update') {
+        _applyReactionUpdate(json);
+        return;
+      }
       final message = ChatMessage(
         id: json['id'] as String,
         tripId: json['tripId'] as String,
@@ -276,5 +287,39 @@ class BubblesViewModel extends ChangeNotifier {
     final tripId = _selectedTripId;
     if (tripId == null) throw Exception('no trip selected');
     return _messageRepository.uploadAttachment(tripId, bytes, filename);
+  }
+
+  void _applyReactionUpdate(Map<String, dynamic> json) {
+    final messageId = json['messageId'] as String;
+    final index = _messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return;
+    final message = _messages[index];
+    final counts = (json['counts'] as Map<String, dynamic>? ?? {});
+    final updated = {
+      for (final entry in counts.entries)
+        entry.key: ChatReaction(count: entry.value as int, reactedByMe: message.reactions[entry.key]?.reactedByMe ?? false),
+    };
+    _messages = [for (final m in _messages) if (m.id == messageId) m.copyWith(reactions: updated) else m];
+    notifyListeners();
+  }
+
+  // Toggles the caller's own reaction — tapping the same emoji already reacted with removes it
+  // (Messenger semantics), tapping a different one replaces it.
+  Future<String?> reactToMessage(String messageId, String emoji) async {
+    final tripId = _selectedTripId;
+    if (tripId == null) return null;
+    final index = _messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return null;
+    final removing = _messages[index].reactions[emoji]?.reactedByMe ?? false;
+    try {
+      final reactions = removing
+          ? await _messageRepository.removeReaction(tripId, messageId)
+          : await _messageRepository.setReaction(tripId, messageId, emoji);
+      _messages = [for (final m in _messages) if (m.id == messageId) m.copyWith(reactions: reactions) else m];
+      notifyListeners();
+      return null;
+    } catch (e) {
+      return e.toString().replaceFirst('Exception: ', '');
+    }
   }
 }

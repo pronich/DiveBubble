@@ -14,6 +14,7 @@ import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
+import '../../../../domain/entities/chat_reaction.dart';
 import '../../../../domain/entities/my_profile.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/formatting/date_format.dart';
@@ -26,6 +27,10 @@ import 'transport_tab.dart';
 // Same grouping window as app/'s ChatView — consecutive messages from the same sender on
 // the same day collapse into one visual cluster as long as the gap stays under this.
 const _groupingWindow = Duration(minutes: 5);
+
+// Fixed 8-emoji set, same as app/'s ChatView — one reaction per user per message (Messenger
+// semantics, see BubblesViewModel.reactToMessage).
+const _reactionEmojis = ['❤️', '😅', '😁', '🙃', '😢', '😮', '😡', '👌'];
 
 /// Body-only (embedded in AdminShell). Named "Bubbles" (not "Messages") to match the app's
 /// own branding — a joined trip *is* its chat there too (see CLAUDE.md's Navigation / IA
@@ -464,6 +469,13 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     await widget.onSend(attachments, replyToId);
   }
 
+  Future<void> _react(String messageId, String emoji) async {
+    final error = await widget.viewModel.reactToMessage(messageId, emoji);
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    }
+  }
+
   // No realtime for transport offers yet (only chat has Centrifugo wired up) — an offer
   // created from app/ while this Bubble is already open on the web wouldn't otherwise show
   // up here without a full page reload. Reloading whenever the Transport tab is switched to
@@ -691,6 +703,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                                         isHighlighted: _highlightedMessageId == message.id,
                                         onReply: () => setState(() => _replyingTo = message),
                                         onTapReplyPreview: repliedTo == null ? null : () => _scrollToMessage(repliedTo.id),
+                                        onReact: (emoji) => _react(message.id, emoji),
                                       );
                                     },
                                   ),
@@ -1033,6 +1046,7 @@ class _MessageRow extends StatefulWidget {
     required this.isHighlighted,
     required this.onReply,
     required this.onTapReplyPreview,
+    required this.onReact,
   });
 
   final ChatMessage message;
@@ -1059,6 +1073,7 @@ class _MessageRow extends StatefulWidget {
 
   final VoidCallback onReply;
   final VoidCallback? onTapReplyPreview;
+  final void Function(String emoji) onReact;
 
   @override
   State<_MessageRow> createState() => _MessageRowState();
@@ -1066,6 +1081,39 @@ class _MessageRow extends StatefulWidget {
 
 class _MessageRowState extends State<_MessageRow> {
   bool _hovering = false;
+
+  // Web has no long-press — a hover-reveal icon (see build's reactButton) opens this small
+  // anchored picker instead of app/'s bespoke long-press overlay+reaction row.
+  Future<void> _openReactionPicker(BuildContext buttonContext) async {
+    final box = buttonContext.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(buttonContext).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(box.localToGlobal(Offset.zero, ancestor: overlay), box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay)),
+      Offset.zero & overlay.size,
+    );
+    final emoji = await showMenu<String>(
+      context: buttonContext,
+      position: position,
+      items: [
+        PopupMenuItem<String>(
+          enabled: false,
+          padding: EdgeInsets.zero,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final e in _reactionEmojis)
+                InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => Navigator.of(buttonContext).pop(e),
+                  child: Padding(padding: const EdgeInsets.all(6), child: Text(e, style: const TextStyle(fontSize: 20))),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+    if (emoji != null) widget.onReact(emoji);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1151,6 +1199,11 @@ class _MessageRowState extends State<_MessageRow> {
               child: _MessageAttachments(attachments: message.attachments, onColor: onBubbleColor),
             ),
           _MessageBody(body: message.body, time: formatTime(message.createdAt), color: onBubbleColor),
+          if (message.reactions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: _ReactionSummary(reactions: message.reactions, color: onBubbleColor, onTap: widget.onReact),
+            ),
         ],
       ),
     );
@@ -1179,10 +1232,24 @@ class _MessageRowState extends State<_MessageRow> {
       ),
     );
 
+    final reactButton = AnimatedOpacity(
+      opacity: _hovering ? 1 : 0,
+      duration: const Duration(milliseconds: 120),
+      child: Builder(
+        builder: (buttonContext) => IconButton(
+          tooltip: 'React',
+          iconSize: 16,
+          visualDensity: VisualDensity.compact,
+          icon: Icon(Icons.add_reaction_outlined, color: theme.colorScheme.onSurfaceVariant),
+          onPressed: () => _openReactionPicker(buttonContext),
+        ),
+      ),
+    );
+
     final row = isOwn
         ? Row(
             mainAxisSize: MainAxisSize.min,
-            children: [replyButton, Flexible(child: highlightedBubble)],
+            children: [reactButton, replyButton, Flexible(child: highlightedBubble)],
           )
         : Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -1201,6 +1268,7 @@ class _MessageRowState extends State<_MessageRow> {
               const SizedBox(width: 8),
               Flexible(child: highlightedBubble),
               replyButton,
+              reactButton,
             ],
           );
 
@@ -1222,6 +1290,48 @@ class _MessageRowState extends State<_MessageRow> {
 
 /// Photo/PDF attachments on a received or sent message — a small thumbnail grid for images,
 /// a filename chip for PDFs (opens in a new browser tab either way, no in-admin preview page).
+/// "❤️ 3 😂 1" under a bubble that has any reactions — tapping a pill is a one-tap shortcut to
+/// add that same reaction yourself (same toggle semantics as the picker: tapping your own
+/// current reaction again removes it). Sorted by _reactionEmojis' own fixed order so the row
+/// doesn't visually reshuffle as counts change.
+class _ReactionSummary extends StatelessWidget {
+  const _ReactionSummary({required this.reactions, required this.color, this.onTap});
+
+  final Map<String, ChatReaction> reactions;
+  final Color color;
+  final void Function(String emoji)? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final entries = [
+      for (final emoji in _reactionEmojis)
+        if (reactions[emoji] != null) MapEntry(emoji, reactions[emoji]!),
+    ];
+    if (entries.isEmpty) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 6,
+      children: [
+        for (final entry in entries)
+          GestureDetector(
+            onTap: onTap == null ? null : () => onTap!(entry.key),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: entry.value.reactedByMe ? color.withValues(alpha: 0.15) : null,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${entry.key} ${entry.value.count}',
+                style: theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.85)),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 class _MessageAttachments extends StatelessWidget {
   const _MessageAttachments({required this.attachments, required this.onColor});
 

@@ -1,6 +1,7 @@
 import '../../domain/entities/chat_attachment.dart';
 import '../../domain/entities/chat_link.dart';
 import '../../domain/entities/chat_message.dart';
+import '../../domain/entities/chat_reaction.dart';
 import '../../domain/entities/media_item.dart';
 import '../services/message_api_service.dart';
 
@@ -29,4 +30,10 @@ class MessageRepository {
   Future<List<MediaItem>> getFileAttachments(String tripId) => _service.fetchAttachments(tripId, type: 'pdf');
 
   Future<List<ChatLink>> getLinks(String tripId) => _service.fetchLinks(tripId);
+
+  Future<Map<String, ChatReaction>> setReaction(String tripId, String messageId, String emoji) =>
+      _service.setReaction(tripId, messageId, emoji);
+
+  Future<Map<String, ChatReaction>> removeReaction(String tripId, String messageId) =>
+      _service.removeReaction(tripId, messageId);
 }

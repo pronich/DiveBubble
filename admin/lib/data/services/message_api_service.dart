@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../domain/entities/chat_attachment.dart';
 import '../../domain/entities/chat_link.dart';
 import '../../domain/entities/chat_message.dart';
+import '../../domain/entities/chat_reaction.dart';
 import '../../domain/entities/media_item.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
@@ -100,5 +101,32 @@ class MessageApiService {
     }
     final list = jsonDecode(res.body) as List<dynamic>;
     return list.map((e) => ChatLink.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // Upserts the caller's own reaction (one per user per message, server-enforced) — returns
+  // the message's full updated reaction summary, same shape reactToMessage splices back in.
+  Future<Map<String, ChatReaction>> setReaction(String tripId, String messageId, String emoji) async {
+    final res = await _client.put(
+      Uri.parse('$baseUrl/trips/$tripId/messages/$messageId/reaction'),
+      headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
+      body: jsonEncode({'emoji': emoji}),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('setReaction failed: ${res.statusCode} ${res.body}');
+    }
+    return _decodeReactions(res.body);
+  }
+
+  Future<Map<String, ChatReaction>> removeReaction(String tripId, String messageId) async {
+    final res = await _client.delete(Uri.parse('$baseUrl/trips/$tripId/messages/$messageId/reaction'), headers: await _authHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('removeReaction failed: ${res.statusCode} ${res.body}');
+    }
+    return _decodeReactions(res.body);
+  }
+
+  Map<String, ChatReaction> _decodeReactions(String body) {
+    final reactions = (jsonDecode(body) as Map<String, dynamic>)['reactions'] as Map<String, dynamic>;
+    return reactions.map((emoji, raw) => MapEntry(emoji, ChatReaction.fromJson(raw as Map<String, dynamic>)));
   }
 }
