@@ -8,6 +8,7 @@ import '../../../../data/repositories/message_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
+import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
 import '../../../../domain/entities/my_profile.dart';
 import '../../../../domain/entities/trip.dart';
@@ -178,6 +179,12 @@ class BubblesViewModel extends ChangeNotifier {
         createdAt: DateTime.parse(json['createdAt'] as String),
         isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
         mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
+        // Hand-decoded like every other field above, not via ChatMessage.fromJson (same
+        // precedent as app/'s own realtime handler) — easy to forget when adding a new
+        // message field, so don't skip these on the next one.
+        attachments: ((json['attachments'] as List<dynamic>?) ?? [])
+            .map((e) => ChatAttachment.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
       // Only this trip's own messages matter here — the shared channel this listener is
       // attached to is scoped to exactly one trip at a time already, but a stale listener
@@ -247,13 +254,13 @@ class BubblesViewModel extends ChangeNotifier {
     }
   }
 
-  Future<String?> send(String body) async {
+  Future<String?> send(String body, {List<ChatAttachment> attachments = const []}) async {
     final tripId = _selectedTripId;
-    if (tripId == null || body.trim().isEmpty) return null;
+    if (tripId == null || (body.trim().isEmpty && attachments.isEmpty)) return null;
     _isSending = true;
     notifyListeners();
     try {
-      await _messageRepository.sendMessage(tripId, body.trim());
+      await _messageRepository.sendMessage(tripId, body.trim(), attachments: attachments);
       _messages = await _messageRepository.getMessages(tripId);
       return null;
     } catch (e) {
@@ -262,5 +269,11 @@ class BubblesViewModel extends ChangeNotifier {
       _isSending = false;
       notifyListeners();
     }
+  }
+
+  Future<ChatAttachment> uploadAttachment(List<int> bytes, String filename) async {
+    final tripId = _selectedTripId;
+    if (tripId == null) throw Exception('no trip selected');
+    return _messageRepository.uploadAttachment(tripId, bytes, filename);
   }
 }

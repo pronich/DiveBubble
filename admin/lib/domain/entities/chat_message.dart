@@ -1,3 +1,5 @@
+import 'chat_attachment.dart';
+
 // Plain class, not freezed — same pragmatic call as MyProfile/DiveCenterMember.
 class ChatMessage {
   const ChatMessage({
@@ -8,6 +10,7 @@ class ChatMessage {
     required this.createdAt,
     this.isDiveCenterStaff = false,
     this.mentionsDiveCenter = false,
+    this.attachments = const [],
   });
 
   final String id;
@@ -24,6 +27,8 @@ class ChatMessage {
   // history can spot "this one was flagged for us" without re-reading everything.
   final bool mentionsDiveCenter;
 
+  final List<ChatAttachment> attachments;
+
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
         id: json['id'] as String,
         tripId: json['tripId'] as String,
@@ -32,5 +37,8 @@ class ChatMessage {
         createdAt: DateTime.parse(json['createdAt'] as String),
         isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
         mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
+        attachments: ((json['attachments'] as List<dynamic>?) ?? [])
+            .map((e) => ChatAttachment.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
 }

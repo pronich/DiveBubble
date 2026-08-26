@@ -2,11 +2,13 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../../domain/entities/chat_attachment.dart';
 import '../../domain/entities/chat_link.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/entities/media_item.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'multipart_upload.dart';
 
 /// No realtime (Centrifugo) wiring yet — REST only, same reload-after-send shape as
 /// app/'s own chat before its realtime round landed. A diver's own app already gets live
@@ -43,16 +45,34 @@ class MessageApiService {
     return (jsonDecode(res.body) as Map<String, dynamic>)['token'] as String;
   }
 
-  Future<ChatMessage> sendMessage(String tripId, String body) async {
+  Future<ChatMessage> sendMessage(String tripId, String body, {List<ChatAttachment> attachments = const []}) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/trips/$tripId/messages'),
       headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
-      body: jsonEncode({'body': body}),
+      body: jsonEncode({
+        'body': body,
+        if (attachments.isNotEmpty)
+          'attachments': [
+            for (final a in attachments) {'url': a.url, 'type': a.type, 'filename': a.filename, 'sizeBytes': a.sizeBytes},
+          ],
+      }),
     );
     if (res.statusCode != 201) {
       throw Exception('sendMessage failed: ${res.statusCode} ${res.body}');
     }
     return ChatMessage.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  // Uploads one file first (returning its url/type/filename/sizeBytes), then that result
+  // gets passed into sendMessage's attachments list — same two-step flow as app/'s own chat.
+  Future<ChatAttachment> uploadAttachment(String tripId, List<int> bytes, String filename) async {
+    final json = await uploadImageBytes(
+      Uri.parse('$baseUrl/trips/$tripId/messages/attachment'),
+      bytes: bytes,
+      filename: filename,
+      headers: await _authHeaders(),
+    );
+    return ChatAttachment.fromJson(json);
   }
 
   // Backs the Media ("type=media", image+video) / Files ("type=pdf") tabs on TripDetailPage.

@@ -1,3 +1,4 @@
+import '../../domain/entities/chat_attachment.dart';
 import '../../domain/entities/chat_link.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/entities/media_item.dart';
@@ -10,7 +11,11 @@ class MessageRepository {
 
   Future<List<ChatMessage>> getMessages(String tripId) => _service.fetchMessages(tripId);
 
-  Future<ChatMessage> sendMessage(String tripId, String body) => _service.sendMessage(tripId, body);
+  Future<ChatMessage> sendMessage(String tripId, String body, {List<ChatAttachment> attachments = const []}) =>
+      _service.sendMessage(tripId, body, attachments: attachments);
+
+  Future<ChatAttachment> uploadAttachment(String tripId, List<int> bytes, String filename) =>
+      _service.uploadAttachment(tripId, bytes, filename);
 
   Future<String> getRealtimeToken() => _service.fetchRealtimeToken();
 

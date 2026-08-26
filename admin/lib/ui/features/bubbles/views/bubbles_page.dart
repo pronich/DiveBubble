@@ -1,16 +1,19 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../data/repositories/message_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
+import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
 import '../../../../domain/entities/my_profile.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/formatting/date_format.dart';
+import '../../../core/widgets/pick_chat_attachment.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../../trips/views/trip_detail_page.dart';
 import '../view_models/bubbles_view_model.dart';
@@ -146,13 +149,23 @@ class _BubblesPageState extends State<BubblesPage> {
     super.dispose();
   }
 
-  Future<void> _send() async {
+  Future<void> _send(List<PickedChatAttachment> pending) async {
     final body = _messageController.text;
-    if (body.trim().isEmpty) return;
+    if (body.trim().isEmpty && pending.isEmpty) return;
     _messageController.clear();
-    final error = await _viewModel!.send(body);
-    if (error != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    try {
+      final uploaded = <ChatAttachment>[];
+      for (final a in pending) {
+        uploaded.add(await _viewModel!.uploadAttachment(a.bytes, a.filename));
+      }
+      final error = await _viewModel!.send(body, attachments: uploaded);
+      if (error != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
     }
   }
 
@@ -355,7 +368,7 @@ class _Conversation extends StatefulWidget {
 
   final BubblesViewModel viewModel;
   final TextEditingController controller;
-  final VoidCallback onSend;
+  final Future<void> Function(List<PickedChatAttachment> attachments) onSend;
   final TripRepository tripRepository;
   final MessageRepository messageRepository;
   final TransportRepository transportRepository;
@@ -386,11 +399,47 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
   // as app/'s own TransportViewModel, unlike BubblesViewModel itself.
   TransportViewModel? _transportViewModel;
 
+  // Cleared on send (see _handleSend) and whenever the selected trip changes (build's
+  // trip.id != _lastTripId check) — a picked-but-unsent photo shouldn't follow the staff
+  // member into a different Bubble.
+  List<PickedChatAttachment> _pendingAttachments = [];
+  bool _isPickingAttachment = false;
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     _tabController.addListener(_onTabChanged);
+  }
+
+  Future<void> _pickPhotos() async {
+    setState(() => _isPickingAttachment = true);
+    try {
+      final picked = await pickChatPhotos();
+      if (mounted) setState(() => _pendingAttachments = [..._pendingAttachments, ...picked]);
+    } finally {
+      if (mounted) setState(() => _isPickingAttachment = false);
+    }
+  }
+
+  Future<void> _pickDocuments() async {
+    setState(() => _isPickingAttachment = true);
+    try {
+      final picked = await pickChatDocuments();
+      if (mounted) setState(() => _pendingAttachments = [..._pendingAttachments, ...picked]);
+    } finally {
+      if (mounted) setState(() => _isPickingAttachment = false);
+    }
+  }
+
+  void _removePendingAttachment(int index) {
+    setState(() => _pendingAttachments = [..._pendingAttachments]..removeAt(index));
+  }
+
+  Future<void> _handleSend() async {
+    final attachments = _pendingAttachments;
+    setState(() => _pendingAttachments = []);
+    await widget.onSend(attachments);
   }
 
   // No realtime for transport offers yet (only chat has Centrifugo wired up) — an offer
@@ -482,6 +531,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
       _lastMessageCount = 0;
       _isNearBottom = true;
       _showNewMessagesPill = false;
+      _pendingAttachments = [];
       _tabController.index = 0;
       _transportViewModel?.dispose();
       _transportViewModel = TransportViewModel(
@@ -627,36 +677,67 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant))),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            // Enter alone sends (and is swallowed here so it never lands as a
-                            // newline first); Shift+Enter falls through to the TextField and
-                            // inserts a newline normally — needs keyboardType: multiline, since a
-                            // single-line field never lets Enter produce a newline to begin with.
-                            child: Focus(
-                              onKeyEvent: (node, event) {
-                                if (event is KeyDownEvent &&
-                                    event.logicalKey == LogicalKeyboardKey.enter &&
-                                    !HardwareKeyboard.instance.isShiftPressed) {
-                                  widget.onSend();
-                                  return KeyEventResult.handled;
-                                }
-                                return KeyEventResult.ignored;
-                              },
-                              child: TextField(
-                                controller: widget.controller,
-                                decoration: InputDecoration(hintText: 'Message ${trip.title} as organization'),
-                                keyboardType: TextInputType.multiline,
-                                minLines: 1,
-                                maxLines: 5,
+                          if (_pendingAttachments.isNotEmpty) ...[
+                            SizedBox(
+                              height: 64,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _pendingAttachments.length,
+                                separatorBuilder: (context, _) => const SizedBox(width: 8),
+                                itemBuilder: (context, index) => _PendingAttachmentChip(
+                                  attachment: _pendingAttachments[index],
+                                  onRemove: () => _removePendingAttachment(index),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton.filled(
-                            onPressed: viewModel.isSending ? null : widget.onSend,
-                            icon: const Icon(Icons.send),
+                            const SizedBox(height: 12),
+                          ],
+                          Row(
+                            children: [
+                              IconButton(
+                                tooltip: 'Attach photos',
+                                onPressed: _isPickingAttachment ? null : _pickPhotos,
+                                icon: const Icon(Icons.image_outlined),
+                              ),
+                              IconButton(
+                                tooltip: 'Attach document',
+                                onPressed: _isPickingAttachment ? null : _pickDocuments,
+                                icon: const Icon(Icons.attach_file),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                // Enter alone sends (and is swallowed here so it never lands as a
+                                // newline first); Shift+Enter falls through to the TextField and
+                                // inserts a newline normally — needs keyboardType: multiline, since a
+                                // single-line field never lets Enter produce a newline to begin with.
+                                child: Focus(
+                                  onKeyEvent: (node, event) {
+                                    if (event is KeyDownEvent &&
+                                        event.logicalKey == LogicalKeyboardKey.enter &&
+                                        !HardwareKeyboard.instance.isShiftPressed) {
+                                      _handleSend();
+                                      return KeyEventResult.handled;
+                                    }
+                                    return KeyEventResult.ignored;
+                                  },
+                                  child: TextField(
+                                    controller: widget.controller,
+                                    decoration: InputDecoration(hintText: 'Message ${trip.title} as organization'),
+                                    keyboardType: TextInputType.multiline,
+                                    minLines: 1,
+                                    maxLines: 5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton.filled(
+                                onPressed: viewModel.isSending ? null : _handleSend,
+                                icon: const Icon(Icons.send),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -665,6 +746,66 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
               ),
               TransportTab(viewModel: _transportViewModel!),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One picked-but-unsent photo/document, shown above the composer before Send is pressed.
+class _PendingAttachmentChip extends StatelessWidget {
+  const _PendingAttachmentChip({required this.attachment, required this.onRemove});
+
+  final PickedChatAttachment attachment;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isImage = attachment.type == 'image';
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: 64,
+            height: 64,
+            child: isImage
+                ? Image.memory(attachment.bytes, fit: BoxFit.cover)
+                : Container(
+                    color: theme.colorScheme.secondaryContainer,
+                    padding: const EdgeInsets.all(4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.picture_as_pdf_outlined, size: 20, color: theme.colorScheme.onSecondaryContainer),
+                        Text(
+                          attachment.filename,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ),
+        Positioned(
+          right: -8,
+          top: -8,
+          child: Material(
+            color: theme.colorScheme.surface,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onRemove,
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: Icon(Icons.cancel, size: 18, color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
           ),
         ),
       ],
@@ -859,6 +1000,11 @@ class _MessageRow extends StatelessWidget {
                 style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: onBubbleColor),
               ),
             ),
+          if (message.attachments.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: _MessageAttachments(attachments: message.attachments, onColor: onBubbleColor),
+            ),
           _MessageBody(body: message.body, time: formatTime(message.createdAt), color: onBubbleColor),
         ],
       ),
@@ -891,6 +1037,64 @@ class _MessageRow extends StatelessWidget {
           Flexible(child: bubble),
         ],
       ),
+    );
+  }
+}
+
+/// Photo/PDF attachments on a received or sent message — a small thumbnail grid for images,
+/// a filename chip for PDFs (opens in a new browser tab either way, no in-admin preview page).
+class _MessageAttachments extends StatelessWidget {
+  const _MessageAttachments({required this.attachments, required this.onColor});
+
+  final List<ChatAttachment> attachments;
+  final Color onColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final images = attachments.where((a) => a.type == 'image' || a.type == 'video').toList();
+    final files = attachments.where((a) => a.type != 'image' && a.type != 'video').toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (images.isNotEmpty)
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              for (final a in images)
+                GestureDetector(
+                  onTap: () => launchUrl(Uri.parse(a.url), mode: LaunchMode.externalApplication),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(width: 140, height: 140, child: Image.network(a.url, fit: BoxFit.cover)),
+                  ),
+                ),
+            ],
+          ),
+        for (final a in files)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: InkWell(
+              onTap: () => launchUrl(Uri.parse(a.url), mode: LaunchMode.externalApplication),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.picture_as_pdf_outlined, size: 18, color: onColor),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      a.filename ?? 'Document.pdf',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: onColor, decoration: TextDecoration.underline),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
