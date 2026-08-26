@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"os"
+	"strconv"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -13,11 +14,7 @@ var ErrInvalidSQLite = errors.New("could not read this SQLite dive log — expec
 
 // parseDivingLogSQLite reads a Diving Log 6 (tenderson software) export — despite the ".sql"
 // extension some versions give it, the file is an actual SQLite database, not SQL text (see
-// parseImportFile's magic-byte sniff). Deliberately reads only the plain descriptive/summary
-// columns off the Logbook table (date, time, country, site, max/avg depth, duration, water
-// temp) — the app's own Profile/Profile2/... columns encoding the depth/temperature sample
-// curve are an undocumented, version-specific format not safe to guess at, so imported dives
-// from this source never get a profile_samples graph, same as a manual entry.
+// parseImportFile's magic-byte sniff).
 func parseDivingLogSQLite(data []byte) ([]Entry, error) {
 	tmp, err := os.CreateTemp("", "divelog-import-*.sqlite")
 	if err != nil {
@@ -39,7 +36,7 @@ func parseDivingLogSQLite(data []byte) ([]Entry, error) {
 	defer db.Close()
 
 	rows, err := db.Query(`
-		SELECT Divedate, Entrytime, Country, Place, Divetime, Depth, DepthAvg, Watertemp
+		SELECT Divedate, Entrytime, Country, Place, Divetime, Depth, DepthAvg, Watertemp, Profile, Profile2, ProfileInt
 		FROM Logbook
 	`)
 	if err != nil {
@@ -50,9 +47,13 @@ func parseDivingLogSQLite(data []byte) ([]Entry, error) {
 	var entries []Entry
 	for rows.Next() {
 		var divedate string
-		var entrytime, country, place sql.NullString
+		var entrytime, country, place, profile, profile2 sql.NullString
 		var divetime, depth, depthAvg, watertemp sql.NullFloat64
-		if err := rows.Scan(&divedate, &entrytime, &country, &place, &divetime, &depth, &depthAvg, &watertemp); err != nil {
+		var profileInt sql.NullInt64
+		if err := rows.Scan(
+			&divedate, &entrytime, &country, &place, &divetime, &depth, &depthAvg, &watertemp,
+			&profile, &profile2, &profileInt,
+		); err != nil {
 			continue // one malformed row shouldn't sink the whole import
 		}
 
@@ -90,6 +91,30 @@ func parseDivingLogSQLite(data []byte) ([]Entry, error) {
 			v := place.String
 			e.SiteName = &v
 		}
+
+		if samples := decodeDivingLogProfile(profile.String, profile2.String, int(profileInt.Int64)); samples != nil {
+			e.ProfileSamples = samples
+			// The decoded curve is more precise than the single stored summary stats for
+			// exactly the cases those stats are missing (older DepthAvg is often NULL for
+			// newer watch-sourced dives) or coarser (Watertemp is one averaged reading, the
+			// samples let us report the dive's actual minimum) — prefer it over the column
+			// whenever we have it, rather than only using it as a fallback.
+			var depthSum, minTemp float64
+			var minTempSet bool
+			for _, s := range samples {
+				depthSum += s.DepthM
+				if s.TemperatureC != nil && (!minTempSet || *s.TemperatureC < minTemp) {
+					minTemp = *s.TemperatureC
+					minTempSet = true
+				}
+			}
+			avg := depthSum / float64(len(samples))
+			e.AvgDepthM = &avg
+			if minTempSet {
+				e.MinTemperatureC = &minTemp
+			}
+		}
+
 		entries = append(entries, e)
 	}
 	if err := rows.Err(); err != nil {
@@ -99,4 +124,46 @@ func parseDivingLogSQLite(data []byte) ([]Entry, error) {
 		return nil, ErrInvalidSQLite
 	}
 	return entries, nil
+}
+
+// decodeDivingLogProfile decodes Diving Log 6's own undocumented (but empirically verified —
+// cross-checked against this same file's Depth/DepthAvg/Watertemp summary columns until the
+// averages matched) sample encoding: Profile is a flat string of fixed-width 12-character
+// chunks, one per sample, whose first 4 characters are the depth in decimeters (e.g. "0122"
+// = 12.2m); Profile2 is the same idea at 11 characters per chunk, whose first 2 characters
+// are the water temperature in whole degrees Celsius (0 across the board on older entries
+// from a device with no temperature sensor — treated as "no temperature data" below, same as
+// UDDF's own per-waypoint optional temperature). Returns nil if either column doesn't divide
+// evenly by its chunk width, doesn't match the other's sample count, or there's no usable
+// sample interval — a dive just keeps its summary stats and no graph in that case, same as
+// before this function existed.
+func decodeDivingLogProfile(profile, profile2 string, intervalSeconds int) []ProfileSample {
+	const depthChunkWidth = 12
+	const tempChunkWidth = 11
+	if intervalSeconds <= 0 || len(profile) == 0 || len(profile)%depthChunkWidth != 0 {
+		return nil
+	}
+	n := len(profile) / depthChunkWidth
+
+	hasTemp := len(profile2) > 0 && len(profile2)%tempChunkWidth == 0 && len(profile2)/tempChunkWidth == n
+
+	samples := make([]ProfileSample, n)
+	for i := 0; i < n; i++ {
+		chunk := profile[i*depthChunkWidth : i*depthChunkWidth+depthChunkWidth]
+		depthDm, err := strconv.Atoi(chunk[:4])
+		if err != nil {
+			return nil // one malformed sample means the whole decode is untrustworthy
+		}
+		samples[i] = ProfileSample{OffsetSeconds: i * intervalSeconds, DepthM: float64(depthDm) / 10}
+
+		if hasTemp {
+			tempChunk := profile2[i*tempChunkWidth : i*tempChunkWidth+tempChunkWidth]
+			tempC, err := strconv.Atoi(tempChunk[:2])
+			if err == nil && tempC > 0 {
+				v := float64(tempC)
+				samples[i].TemperatureC = &v
+			}
+		}
+	}
+	return samples
 }
