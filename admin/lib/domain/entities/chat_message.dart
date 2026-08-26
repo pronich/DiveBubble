@@ -11,6 +11,7 @@ class ChatMessage {
     this.isDiveCenterStaff = false,
     this.mentionsDiveCenter = false,
     this.attachments = const [],
+    this.replyToId,
   });
 
   final String id;
@@ -29,6 +30,10 @@ class ChatMessage {
 
   final List<ChatAttachment> attachments;
 
+  // Set when this message is a reply to another — resolved back to the original ChatMessage
+  // (if still in the loaded history) by BubblesPage before rendering (see _MessageRow.repliedTo).
+  final String? replyToId;
+
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
         id: json['id'] as String,
         tripId: json['tripId'] as String,
@@ -40,5 +45,6 @@ class ChatMessage {
         attachments: ((json['attachments'] as List<dynamic>?) ?? [])
             .map((e) => ChatAttachment.fromJson(e as Map<String, dynamic>))
             .toList(),
+        replyToId: json['replyToId'] as String?,
       );
 }

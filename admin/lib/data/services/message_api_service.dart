@@ -45,7 +45,12 @@ class MessageApiService {
     return (jsonDecode(res.body) as Map<String, dynamic>)['token'] as String;
   }
 
-  Future<ChatMessage> sendMessage(String tripId, String body, {List<ChatAttachment> attachments = const []}) async {
+  Future<ChatMessage> sendMessage(
+    String tripId,
+    String body, {
+    List<ChatAttachment> attachments = const [],
+    String? replyToId,
+  }) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/trips/$tripId/messages'),
       headers: {...await _authHeaders(), 'Content-Type': 'application/json'},
@@ -55,6 +60,7 @@ class MessageApiService {
           'attachments': [
             for (final a in attachments) {'url': a.url, 'type': a.type, 'filename': a.filename, 'sizeBytes': a.sizeBytes},
           ],
+        if (replyToId != null) 'replyToId': replyToId,
       }),
     );
     if (res.statusCode != 201) {

@@ -185,6 +185,7 @@ class BubblesViewModel extends ChangeNotifier {
         attachments: ((json['attachments'] as List<dynamic>?) ?? [])
             .map((e) => ChatAttachment.fromJson(e as Map<String, dynamic>))
             .toList(),
+        replyToId: json['replyToId'] as String?,
       );
       // Only this trip's own messages matter here — the shared channel this listener is
       // attached to is scoped to exactly one trip at a time already, but a stale listener
@@ -254,13 +255,13 @@ class BubblesViewModel extends ChangeNotifier {
     }
   }
 
-  Future<String?> send(String body, {List<ChatAttachment> attachments = const []}) async {
+  Future<String?> send(String body, {List<ChatAttachment> attachments = const [], String? replyToId}) async {
     final tripId = _selectedTripId;
     if (tripId == null || (body.trim().isEmpty && attachments.isEmpty)) return null;
     _isSending = true;
     notifyListeners();
     try {
-      await _messageRepository.sendMessage(tripId, body.trim(), attachments: attachments);
+      await _messageRepository.sendMessage(tripId, body.trim(), attachments: attachments, replyToId: replyToId);
       _messages = await _messageRepository.getMessages(tripId);
       return null;
     } catch (e) {

@@ -11,8 +11,13 @@ class MessageRepository {
 
   Future<List<ChatMessage>> getMessages(String tripId) => _service.fetchMessages(tripId);
 
-  Future<ChatMessage> sendMessage(String tripId, String body, {List<ChatAttachment> attachments = const []}) =>
-      _service.sendMessage(tripId, body, attachments: attachments);
+  Future<ChatMessage> sendMessage(
+    String tripId,
+    String body, {
+    List<ChatAttachment> attachments = const [],
+    String? replyToId,
+  }) =>
+      _service.sendMessage(tripId, body, attachments: attachments, replyToId: replyToId);
 
   Future<ChatAttachment> uploadAttachment(String tripId, List<int> bytes, String filename) =>
       _service.uploadAttachment(tripId, bytes, filename);

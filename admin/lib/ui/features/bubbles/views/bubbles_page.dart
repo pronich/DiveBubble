@@ -150,7 +150,7 @@ class _BubblesPageState extends State<BubblesPage> {
     super.dispose();
   }
 
-  Future<void> _send(List<PickedChatAttachment> pending) async {
+  Future<void> _send(List<PickedChatAttachment> pending, String? replyToId) async {
     final body = _messageController.text;
     if (body.trim().isEmpty && pending.isEmpty) return;
     _messageController.clear();
@@ -159,7 +159,7 @@ class _BubblesPageState extends State<BubblesPage> {
       for (final a in pending) {
         uploaded.add(await _viewModel!.uploadAttachment(a.bytes, a.filename));
       }
-      final error = await _viewModel!.send(body, attachments: uploaded);
+      final error = await _viewModel!.send(body, attachments: uploaded, replyToId: replyToId);
       if (error != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
       }
@@ -369,7 +369,7 @@ class _Conversation extends StatefulWidget {
 
   final BubblesViewModel viewModel;
   final TextEditingController controller;
-  final Future<void> Function(List<PickedChatAttachment> attachments) onSend;
+  final Future<void> Function(List<PickedChatAttachment> attachments, String? replyToId) onSend;
   final TripRepository tripRepository;
   final MessageRepository messageRepository;
   final TransportRepository transportRepository;
@@ -405,6 +405,10 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
   // member into a different Bubble.
   List<PickedChatAttachment> _pendingAttachments = [];
   bool _isPickingAttachment = false;
+
+  // Set by a message row's Reply button (see _MessageRow.onReply) — cleared on send or
+  // cancel, and whenever the selected trip changes, same lifecycle as _pendingAttachments.
+  ChatMessage? _replyingTo;
 
   @override
   void initState() {
@@ -443,8 +447,12 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
 
   Future<void> _handleSend() async {
     final attachments = _pendingAttachments;
-    setState(() => _pendingAttachments = []);
-    await widget.onSend(attachments);
+    final replyToId = _replyingTo?.id;
+    setState(() {
+      _pendingAttachments = [];
+      _replyingTo = null;
+    });
+    await widget.onSend(attachments, replyToId);
   }
 
   // No realtime for transport offers yet (only chat has Centrifugo wired up) — an offer
@@ -537,6 +545,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
       _isNearBottom = true;
       _showNewMessagesPill = false;
       _pendingAttachments = [];
+      _replyingTo = null;
       _tabController.index = 0;
       _transportViewModel?.dispose();
       _transportViewModel = TransportViewModel(
@@ -550,6 +559,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     final messages = viewModel.messages;
     final items = _buildDisplayItems(messages);
     final reversedItems = items.reversed.toList();
+    final messagesById = {for (final m in messages) m.id: m};
 
     if (messages.length != _lastMessageCount) {
       final wasEmpty = _lastMessageCount == 0;
@@ -640,6 +650,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                                         return _DateSeparator(date: item.date!);
                                       }
                                       final message = item.message!;
+                                      final repliedTo = message.replyToId == null ? null : messagesById[message.replyToId];
                                       return _MessageRow(
                                         message: message,
                                         isOwn: message.userId == viewModel.currentUserId,
@@ -647,6 +658,9 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                                         isLastInCluster: item.isLastInCluster,
                                         profile: viewModel.senderProfiles[message.userId],
                                         diveCenterName: viewModel.diveCenterName,
+                                        repliedTo: repliedTo,
+                                        repliedToProfile: repliedTo == null ? null : viewModel.senderProfiles[repliedTo.userId],
+                                        onReply: () => setState(() => _replyingTo = message),
                                       );
                                     },
                                   ),
@@ -685,6 +699,37 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (_replyingTo != null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.reply, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _replyingTo!.body.isEmpty ? '📎 Attachment' : _replyingTo!.body,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Cancel reply',
+                                    iconSize: 16,
+                                    visualDensity: VisualDensity.compact,
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () => setState(() => _replyingTo = null),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           if (_pendingAttachments.isNotEmpty) ...[
                             SizedBox(
                               height: 64,
@@ -944,7 +989,7 @@ class _DateSeparator extends StatelessWidget {
 /// Own messages never carry a name/avatar; everyone else's reserve a fixed-width avatar
 /// gutter so bubbles line up whether or not this particular row shows the avatar — same
 /// layout convention as app/'s ChatView._MessageRow.
-class _MessageRow extends StatelessWidget {
+class _MessageRow extends StatefulWidget {
   const _MessageRow({
     required this.message,
     required this.isOwn,
@@ -952,6 +997,9 @@ class _MessageRow extends StatelessWidget {
     required this.isLastInCluster,
     required this.profile,
     required this.diveCenterName,
+    required this.repliedTo,
+    required this.repliedToProfile,
+    required this.onReply,
   });
 
   final ChatMessage message;
@@ -965,20 +1013,39 @@ class _MessageRow extends StatelessWidget {
   // knows at a glance it's a colleague, not a diver, without needing a separate bubble color.
   final String diveCenterName;
 
+  // Resolved from message.replyToId by _ConversationState (null if replyToId is unset, or the
+  // original fell outside the loaded history) — a quoted preview renders above the bubble when
+  // set. No tap-to-scroll-to-original here (unlike app/'s ChatView) — that needs
+  // scrollable_positioned_list's arbitrary-index jump, a bigger swap out of scope for now.
+  final ChatMessage? repliedTo;
+  final MyProfile? repliedToProfile;
+
+  final VoidCallback onReply;
+
+  @override
+  State<_MessageRow> createState() => _MessageRowState();
+}
+
+class _MessageRowState extends State<_MessageRow> {
+  bool _hovering = false;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final message = widget.message;
+    final isOwn = widget.isOwn;
     final isColleague = !isOwn && message.isDiveCenterStaff;
     final bubbleColor = isOwn ? colorScheme.primary : colorScheme.secondaryContainer;
     final onBubbleColor = isOwn ? colorScheme.onPrimary : colorScheme.onSecondaryContainer;
 
-    final baseName = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
-    final name = (isColleague && diveCenterName.isNotEmpty) ? '$baseName | $diveCenterName' : baseName;
+    final baseName = (widget.profile?.displayName?.isNotEmpty ?? false) ? widget.profile!.displayName! : 'Diver';
+    final name = (isColleague && widget.diveCenterName.isNotEmpty) ? '$baseName | ${widget.diveCenterName}' : baseName;
     // A colleague's name always shows, even mid-cluster — unlike a diver's, where only the
     // first message in a cluster needs it (see _buildClusters).
-    final showName = !isOwn && (isFirstInCluster || isColleague);
+    final showName = !isOwn && (widget.isFirstInCluster || isColleague);
 
+    final repliedTo = widget.repliedTo;
     final bubble = Container(
       constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.5),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -989,11 +1056,11 @@ class _MessageRow extends StatelessWidget {
         children: [
           // A diver flagged this one for staff attention — surfaced here so scrolling
           // history makes it obvious which messages were actually meant to be noticed.
-          if (message.mentionsDiveCenter && diveCenterName.isNotEmpty)
+          if (message.mentionsDiveCenter && widget.diveCenterName.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
               child: Text(
-                '@$diveCenterName',
+                '@${widget.diveCenterName}',
                 style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
               ),
             ),
@@ -1003,6 +1070,32 @@ class _MessageRow extends StatelessWidget {
               child: Text(
                 name,
                 style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: onBubbleColor),
+              ),
+            ),
+          if (repliedTo != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: onBubbleColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border(left: BorderSide(color: onBubbleColor.withValues(alpha: 0.6), width: 3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    (widget.repliedToProfile?.displayName?.isNotEmpty ?? false) ? widget.repliedToProfile!.displayName! : 'Diver',
+                    style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
+                  ),
+                  Text(
+                    repliedTo.body.isEmpty ? '📎 Attachment' : repliedTo.body,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(color: onBubbleColor.withValues(alpha: 0.85)),
+                  ),
+                ],
               ),
             ),
           if (message.attachments.isNotEmpty)
@@ -1015,33 +1108,55 @@ class _MessageRow extends StatelessWidget {
       ),
     );
 
-    if (isOwn) {
-      return Padding(
-        padding: EdgeInsets.only(top: isFirstInCluster ? 10 : 2, bottom: 2),
-        child: Align(alignment: Alignment.centerRight, child: bubble),
-      );
-    }
-
-    return Padding(
-      padding: EdgeInsets.only(top: isFirstInCluster ? 14 : 2, bottom: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          SizedBox(
-            width: 32,
-            child: isLastInCluster
-                ? CircleAvatar(
-                    radius: 16,
-                    backgroundColor: bubbleColor,
-                    backgroundImage: (profile?.avatarUrl?.isNotEmpty ?? false) ? NetworkImage(profile!.avatarUrl!) : null,
-                    child: (profile?.avatarUrl?.isNotEmpty ?? false) ? null : Icon(Icons.person, size: 18, color: onBubbleColor),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Flexible(child: bubble),
-        ],
+    final replyButton = AnimatedOpacity(
+      opacity: _hovering ? 1 : 0,
+      duration: const Duration(milliseconds: 120),
+      child: IconButton(
+        tooltip: 'Reply',
+        iconSize: 16,
+        visualDensity: VisualDensity.compact,
+        icon: Icon(Icons.reply, color: theme.colorScheme.onSurfaceVariant),
+        onPressed: widget.onReply,
       ),
+    );
+
+    final row = isOwn
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [replyButton, Flexible(child: bubble)],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              SizedBox(
+                width: 32,
+                child: widget.isLastInCluster
+                    ? CircleAvatar(
+                        radius: 16,
+                        backgroundColor: bubbleColor,
+                        backgroundImage: (widget.profile?.avatarUrl?.isNotEmpty ?? false) ? NetworkImage(widget.profile!.avatarUrl!) : null,
+                        child: (widget.profile?.avatarUrl?.isNotEmpty ?? false) ? null : Icon(Icons.person, size: 18, color: onBubbleColor),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Flexible(child: bubble),
+              replyButton,
+            ],
+          );
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: isOwn
+          ? Padding(
+              padding: EdgeInsets.only(top: widget.isFirstInCluster ? 10 : 2, bottom: 2),
+              child: Align(alignment: Alignment.centerRight, child: row),
+            )
+          : Padding(
+              padding: EdgeInsets.only(top: widget.isFirstInCluster ? 14 : 2, bottom: 2),
+              child: row,
+            ),
     );
   }
 }
