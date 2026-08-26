@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -417,6 +418,8 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     try {
       final picked = await pickChatPhotos();
       if (mounted) setState(() => _pendingAttachments = [..._pendingAttachments, ...picked]);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not pick photos: $e')));
     } finally {
       if (mounted) setState(() => _isPickingAttachment = false);
     }
@@ -427,6 +430,8 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     try {
       final picked = await pickChatDocuments();
       if (mounted) setState(() => _pendingAttachments = [..._pendingAttachments, ...picked]);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not pick document: $e')));
     } finally {
       if (mounted) setState(() => _isPickingAttachment = false);
     }
@@ -1104,7 +1109,9 @@ class _MessageAttachments extends StatelessWidget {
 /// [WidgetSpan] so the paragraph's line-wrapping reserves room for it (falling to a new line
 /// if the last line is already full); the real, visible timestamp is then drawn on top at the
 /// bottom-right corner via [Stack]+[Positioned], landing in that reserved space.
-class _MessageBody extends StatelessWidget {
+final _urlPattern = RegExp(r'(https?:\/\/\S+|www\.\S+)', caseSensitive: false);
+
+class _MessageBody extends StatefulWidget {
   const _MessageBody({required this.body, required this.time, required this.color});
 
   final String body;
@@ -1112,29 +1119,79 @@ class _MessageBody extends StatelessWidget {
   final Color color;
 
   @override
+  State<_MessageBody> createState() => _MessageBodyState();
+}
+
+class _MessageBodyState extends State<_MessageBody> {
+  final _linkRecognizers = <TapGestureRecognizer>[];
+
+  @override
+  void dispose() {
+    for (final recognizer in _linkRecognizers) {
+      recognizer.dispose();
+    }
+    super.dispose();
+  }
+
+  List<TextSpan> _buildSpans(TextStyle? bodyStyle) {
+    for (final recognizer in _linkRecognizers) {
+      recognizer.dispose();
+    }
+    _linkRecognizers.clear();
+
+    final spans = <TextSpan>[];
+    var start = 0;
+    for (final match in _urlPattern.allMatches(widget.body)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: widget.body.substring(start, match.start)));
+      }
+      // Trailing punctuation (e.g. a sentence-ending period) usually isn't part of the URL.
+      var end = match.end;
+      while (end > match.start && '.,;:!?)'.contains(widget.body[end - 1])) {
+        end--;
+      }
+      final url = widget.body.substring(match.start, end);
+      final recognizer = TapGestureRecognizer()
+        ..onTap = () => launchUrl(Uri.parse(url.startsWith('http') ? url : 'https://$url'), mode: LaunchMode.externalApplication);
+      _linkRecognizers.add(recognizer);
+      spans.add(
+        TextSpan(text: url, style: bodyStyle?.copyWith(decoration: TextDecoration.underline), recognizer: recognizer),
+      );
+      if (end < match.end) {
+        spans.add(TextSpan(text: widget.body.substring(end, match.end)));
+      }
+      start = match.end;
+    }
+    if (start < widget.body.length) {
+      spans.add(TextSpan(text: widget.body.substring(start)));
+    }
+    return spans;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bodyStyle = TextStyle(color: color);
-    final timeStyle = theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.7), fontSize: 11);
+    final bodyStyle = TextStyle(color: widget.color);
+    final timeStyle = theme.textTheme.labelSmall?.copyWith(color: widget.color.withValues(alpha: 0.7), fontSize: 11);
     return Stack(
       children: [
         Text.rich(
           TextSpan(
             style: bodyStyle,
             children: [
-              TextSpan(text: body),
+              ..._buildSpans(bodyStyle),
               WidgetSpan(
                 alignment: PlaceholderAlignment.baseline,
                 baseline: TextBaseline.alphabetic,
                 child: Opacity(
                   opacity: 0,
-                  child: Padding(padding: const EdgeInsets.only(left: 8), child: Text(time, style: timeStyle)),
+                  child: Padding(padding: const EdgeInsets.only(left: 8), child: Text(widget.time, style: timeStyle)),
                 ),
               ),
             ],
           ),
         ),
-        Positioned(right: 0, bottom: 0, child: Text(time, style: timeStyle)),
+        Positioned(right: 0, bottom: 0, child: Text(widget.time, style: timeStyle)),
       ],
     );
   }
