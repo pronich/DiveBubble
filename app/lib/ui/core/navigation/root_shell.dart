@@ -70,15 +70,29 @@ class _RootShellState extends State<RootShell> {
     currentUserId: widget.currentUserId,
   );
 
+  // One-shot — applied once the very first trips load resolves, then never again, so it
+  // can't clobber a tab the diver already picked by hand (either before the load finished,
+  // or afterwards). Set eagerly by _onDestinationSelected the moment any manual tap happens.
+  bool _hasAppliedInitialTab = false;
+
   @override
   void initState() {
     super.initState();
     // Proactive — the Bubbles bottom-nav dot needs trips loaded from a cold start, not just
     // after the diver's first tap into the tab (see _onDestinationSelected's own load() call).
-    _myTripsViewModel.load();
+    // Also decides the landing tab: no active Bubble to land on means Explore is more useful
+    // than an empty Bubbles list (new signup, or every joined trip since archived/left).
+    _myTripsViewModel.load().then((_) {
+      if (!mounted || _hasAppliedInitialTab) return;
+      _hasAppliedInitialTab = true;
+      if (_myTripsViewModel.trips.isNotEmpty) {
+        setState(() => _index = 1);
+      }
+    });
   }
 
   void _onDestinationSelected(int i) {
+    _hasAppliedInitialTab = true;
     setState(() => _index = i);
     // MyTripsViewModel only loads once via IndexedStack's initState — a trip joined
     // elsewhere (Explore -> Trip Page) wouldn't show up here otherwise until app resume.
