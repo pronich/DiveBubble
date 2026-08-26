@@ -424,11 +424,90 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
   String? _highlightedMessageId;
   Timer? _highlightTimer;
 
+  // Every diver on the selected trip, refreshed on trip switch (see build) — no dive-center
+  // entry here (unlike app/'s own mention list): admin/ staff mentioning "the dive center"
+  // makes no sense when staff already are the dive center.
+  List<String> _participantNames = [];
+
+  // Index of the '@' that opened the currently-active mention token in widget.controller's
+  // text, or -1 when no mention is being typed right now (see _onComposerTextChanged).
+  int _mentionTokenStart = -1;
+  List<String> _mentionMatches = [];
+
   @override
   void initState() {
     super.initState();
     _itemPositionsListener.itemPositions.addListener(_onScroll);
     _tabController.addListener(_onTabChanged);
+    widget.controller.addListener(_onComposerTextChanged);
+  }
+
+  Future<void> _loadParticipantNames(String tripId) async {
+    try {
+      final ids = await widget.tripRepository.getParticipantUserIds(tripId);
+      final names = <String>[];
+      for (final id in ids) {
+        if (id == widget.viewModel.currentUserId) continue;
+        var profile = widget.viewModel.senderProfiles[id];
+        profile ??= await widget.profileRepository.getById(id).catchError((_) => const MyProfile());
+        if (profile.displayName?.isNotEmpty ?? false) names.add(profile.displayName!);
+      }
+      if (mounted) setState(() => _participantNames = names);
+    } catch (_) {
+      // Best-effort — a failed fetch just leaves the mention list empty for this Bubble.
+    }
+  }
+
+  // Telegram-style: typing '@' always opens the participant list, live-filtered as more
+  // characters follow — same convention as app/'s own ChatView composer.
+  void _onComposerTextChanged() {
+    final text = widget.controller.text;
+    final cursor = widget.controller.selection.baseOffset;
+    if (cursor < 0) {
+      if (_mentionTokenStart != -1) setState(() => _mentionTokenStart = -1);
+      return;
+    }
+    final atIndex = _activeMentionStart(text, cursor);
+    if (atIndex == -1) {
+      if (_mentionTokenStart != -1) setState(() => _mentionTokenStart = -1);
+      return;
+    }
+    final query = text.substring(atIndex + 1, cursor).toLowerCase();
+    final matches = query.isEmpty
+        ? _participantNames
+        : _participantNames.where((n) => n.toLowerCase().contains(query)).toList();
+    setState(() {
+      _mentionTokenStart = atIndex;
+      _mentionMatches = matches;
+    });
+  }
+
+  // Scans backward from the cursor for an '@' that starts the current word (at the very start
+  // of the text, or preceded by whitespace) — hitting whitespace first, or no '@' at all, means
+  // no mention is currently being typed.
+  int _activeMentionStart(String text, int cursor) {
+    for (var i = cursor - 1; i >= 0; i--) {
+      final char = text[i];
+      if (char == '@') {
+        final prev = i == 0 ? null : text[i - 1];
+        return (prev == null || prev == ' ' || prev == '\n') ? i : -1;
+      }
+      if (char == ' ' || char == '\n') return -1;
+    }
+    return -1;
+  }
+
+  void _selectMention(String name) {
+    final text = widget.controller.text;
+    final cursor = widget.controller.selection.baseOffset;
+    final start = _mentionTokenStart;
+    if (start == -1 || cursor < 0 || cursor > text.length) return;
+    final replacement = '@$name ';
+    widget.controller.value = TextEditingValue(
+      text: text.replaceRange(start, cursor, replacement),
+      selection: TextSelection.collapsed(offset: start + replacement.length),
+    );
+    setState(() => _mentionTokenStart = -1);
   }
 
   Future<void> _pickPhotos() async {
@@ -494,6 +573,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     _highlightTimer?.cancel();
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    widget.controller.removeListener(_onComposerTextChanged);
     super.dispose();
   }
 
@@ -584,6 +664,8 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
       _showNewMessagesPill = false;
       _pendingAttachments = [];
       _replyingTo = null;
+      _participantNames = [];
+      _mentionTokenStart = -1;
       _tabController.index = 0;
       _transportViewModel?.dispose();
       _transportViewModel = TransportViewModel(
@@ -591,6 +673,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
         profileRepository: widget.profileRepository,
         tripId: trip.id,
       )..load();
+      _loadParticipantNames(trip.id);
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(animate: false));
     }
 
@@ -742,6 +825,32 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Typing '@' opens this list; tapping a row inserts "@Display Name "
+                          // and closes it — same convention as app/'s own composer.
+                          if (_mentionTokenStart != -1 && _mentionMatches.isNotEmpty) ...[
+                            Container(
+                              constraints: const BoxConstraints(maxHeight: 180),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListView.builder(
+                                shrinkWrap: true,
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                itemCount: _mentionMatches.length,
+                                itemBuilder: (context, index) {
+                                  final name = _mentionMatches[index];
+                                  return ListTile(
+                                    dense: true,
+                                    leading: const Icon(Icons.person_outline, size: 20),
+                                    title: Text(name),
+                                    onTap: () => _selectMention(name),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                           if (_replyingTo != null) ...[
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
