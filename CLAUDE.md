@@ -143,10 +143,14 @@ until Figma defines one.
 - **Share expenses**: 4th Bubble tab — equal/shares/exact splits, simplified net balances +
   settle-up (mirrors Splitwise's own approach), transaction date picker, plain ¤ units (no
   real-currency handling yet).
+- **Dive Log**: personal log on Profile (deck teaser → full list), independent of the
+  self-reported dive count (summed together for the profile's "Dives" stat, never
+  reconciled) — manual entries or import from UDDF, CSV (DiveBubble's own template), or a
+  Diving Log 6 SQLite export; interactive depth/temperature charts with drag-to-inspect;
+  country + site fields; multi-select (long-press/tap-icon) with swipe or bulk delete.
 
 ## Deferred
 
-- Logbook (personal dive log across trips), per-trip Dives sub-tab
 - In-extension destination picker for Share-to-DiveBubble (Slack/Telegram-style, no app
   hand-off) — see ROADMAP.md's idea backlog
 - Drag-to-reorder trip photos
