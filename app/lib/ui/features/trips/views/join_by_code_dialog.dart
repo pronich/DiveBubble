@@ -55,6 +55,11 @@ class _JoinByCodeDialogState extends State<_JoinByCodeDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Enter booking code'),
+      // Off by default — on a small screen the keyboard (autofocus below triggers it
+      // immediately) can shrink the available height enough that the content column no
+      // longer fits, and without this the TextField itself is what silently collapses to
+      // zero height while the title/actions stay visible, not the whole dialog.
+      scrollable: true,
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
