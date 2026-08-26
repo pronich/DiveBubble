@@ -32,6 +32,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late final _locationController = TextEditingController(text: widget.profile.location);
   late final _bioController = TextEditingController(text: widget.profile.bio);
   late final _diveCountController = TextEditingController(text: widget.profile.diveCount.toString());
+  // Toggled on means "I don't need to track this separately, my Dive Log covers everything"
+  // — there's no separate stored field for this, it's derived from the count already being
+  // 0 *and* the diver actually having logged something (so a diver who turned it on, saved,
+  // and comes back later sees it still on, rather than the toggle silently resetting to off
+  // every time this page reopens) — a brand-new diver who just hasn't dived yet also has a
+  // count of 0 but no log entries, and shouldn't see the field pre-disabled for that reason.
+  late bool _allDivesLogged = widget.profile.diveCount == 0 && widget.viewModel.diveLog.isNotEmpty;
   late List<String> _languages = widget.profile.languages.isEmpty
       ? []
       : widget.profile.languages.split(',').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
@@ -69,6 +76,27 @@ class _EditProfilePageState extends State<EditProfilePage> {
       setState(() => _locationController.text = result);
     }
     if (mounted) setState(() => _locating = false);
+  }
+
+  Future<void> _onToggleAllDivesLogged(bool value) async {
+    if (value && int.tryParse(_diveCountController.text.trim()) != 0) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Zero out unlogged dives?'),
+          content: const Text(
+            'This clears the number above to 0. Your Dive Log entries are untouched — this only affects the manually-entered count.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Zero out')),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      _diveCountController.text = '0';
+    }
+    setState(() => _allDivesLogged = value);
   }
 
   Future<void> _pickLanguages() async {
@@ -152,8 +180,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
               const SizedBox(height: 12),
               TextField(
                 controller: _diveCountController,
-                decoration: const InputDecoration(labelText: 'Dives'),
+                enabled: !_allDivesLogged,
+                decoration: const InputDecoration(
+                  labelText: 'Unlogged dives',
+                  helperText: 'Dives you haven\'t added to your Dive Log — shown together with it as your total',
+                ),
                 keyboardType: TextInputType.number,
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('All my dives are logged'),
+                value: _allDivesLogged,
+                onChanged: _onToggleAllDivesLogged,
               ),
               const SizedBox(height: 12),
               InkWell(

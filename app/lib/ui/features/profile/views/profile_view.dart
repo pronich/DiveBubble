@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
+import '../../../../data/repositories/chat_repository.dart';
+import '../../../../data/repositories/dive_log_repository.dart';
 import '../../../../data/repositories/gear_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/specialty_repository.dart';
+import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/location_service.dart';
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/profile.dart';
@@ -15,6 +18,8 @@ import '../view_models/profile_view_model.dart';
 import 'about_page.dart';
 import 'add_specialty_sheet.dart';
 import 'blocked_users_page.dart';
+import 'dive_log_deck.dart';
+import 'dive_log_list_page.dart';
 import 'edit_profile_page.dart';
 import 'gear_locker_page.dart';
 import 'gear_summary_card.dart';
@@ -33,6 +38,9 @@ class ProfileView extends StatefulWidget {
     required this.profileRepository,
     required this.specialtyRepository,
     required this.gearRepository,
+    required this.diveLogRepository,
+    required this.tripRepository,
+    required this.chatRepository,
     required this.pushRepository,
     required this.isActive,
   });
@@ -41,6 +49,9 @@ class ProfileView extends StatefulWidget {
   final ProfileRepository profileRepository;
   final SpecialtyRepository specialtyRepository;
   final GearRepository gearRepository;
+  final DiveLogRepository diveLogRepository;
+  final TripRepository tripRepository;
+  final ChatRepository chatRepository;
   final PushRepository pushRepository;
 
   /// Whether this is the currently-selected bottom-nav tab. RootShell's IndexedStack keeps
@@ -56,6 +67,7 @@ class _ProfileViewState extends State<ProfileView> {
     repository: widget.profileRepository,
     specialtyRepository: widget.specialtyRepository,
     gearRepository: widget.gearRepository,
+    diveLogRepository: widget.diveLogRepository,
   );
   final _locationService = LocationService();
   bool _signedIn = false;
@@ -168,6 +180,8 @@ class _ProfileViewState extends State<ProfileView> {
                   onToggleSpecialtiesExpanded: (v) => setState(() => _specialtiesExpanded = v),
                   pushRepository: widget.pushRepository,
                   profileRepository: widget.profileRepository,
+                  tripRepository: widget.tripRepository,
+                  chatRepository: widget.chatRepository,
                 );
               },
             ),
@@ -255,6 +269,8 @@ class _SignedInBody extends StatelessWidget {
     required this.onToggleSpecialtiesExpanded,
     required this.pushRepository,
     required this.profileRepository,
+    required this.tripRepository,
+    required this.chatRepository,
   });
 
   final Profile profile;
@@ -268,6 +284,8 @@ class _SignedInBody extends StatelessWidget {
   final ValueChanged<bool> onToggleSpecialtiesExpanded;
   final PushRepository pushRepository;
   final ProfileRepository profileRepository;
+  final TripRepository tripRepository;
+  final ChatRepository chatRepository;
 
   bool get _hasLevel => profile.certificationLevel?.isNotEmpty ?? false;
 
@@ -382,6 +400,7 @@ class _SignedInBody extends StatelessWidget {
                 onLevelStatTap: onLevelStatTap,
                 onAvatarTap: () => _showAvatarOptions(context),
                 isUploadingAvatar: viewModel.isUploadingPhoto,
+                diveCountOverride: viewModel.totalDiveCount,
               ),
               const SizedBox(height: 24),
               DashedDivider(key: certificationsKey),
@@ -424,6 +443,23 @@ class _SignedInBody extends StatelessWidget {
                 onRemove: viewModel.removeSpecialty,
                 onPhotoTap: (id) => _pickAndUploadSpecialtyPhoto(context, id),
                 uploadingPhotoId: viewModel.uploadingSpecialtyId,
+              ),
+              const SizedBox(height: 24),
+              const DashedDivider(),
+              const SizedBox(height: 16),
+              Text('Dive Log', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 16),
+              DiveLogDeck(
+                entries: viewModel.diveLog,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => DiveLogListPage(
+                      viewModel: viewModel,
+                      tripRepository: tripRepository,
+                      chatRepository: chatRepository,
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               const DashedDivider(),

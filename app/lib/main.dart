@@ -11,6 +11,7 @@ import 'data/repositories/auth_repository.dart';
 import 'data/repositories/buddy_repository.dart';
 import 'data/repositories/chat_repository.dart';
 import 'data/repositories/dive_center_repository.dart';
+import 'data/repositories/dive_log_repository.dart';
 import 'data/repositories/expense_repository.dart';
 import 'data/repositories/gear_repository.dart';
 import 'data/repositories/profile_repository.dart';
@@ -22,6 +23,7 @@ import 'data/services/auth_api_service.dart';
 import 'data/services/buddy_api_service.dart';
 import 'data/services/chat_api_service.dart';
 import 'data/services/dive_center_api_service.dart';
+import 'data/services/dive_log_api_service.dart';
 import 'data/services/expense_api_service.dart';
 import 'data/services/gear_api_service.dart';
 import 'data/services/profile_api_service.dart';
@@ -126,6 +128,12 @@ class _MyAppState extends State<MyApp> {
   );
   late final _expenseRepository = ExpenseRepository(
     service: ExpenseApiService(
+      baseUrl: _apiBaseUrl,
+      getAccessToken: _authRepository.getValidAccessToken,
+    ),
+  );
+  late final _diveLogRepository = DiveLogRepository(
+    service: DiveLogApiService(
       baseUrl: _apiBaseUrl,
       getAccessToken: _authRepository.getValidAccessToken,
     ),
@@ -427,6 +435,7 @@ class _MyAppState extends State<MyApp> {
           gearRepository: _gearRepository,
           diveCenterRepository: _diveCenterRepository,
           expenseRepository: _expenseRepository,
+          diveLogRepository: _diveLogRepository,
           pushRepository: _pushRepository,
           currentUserId: currentUserId,
         ),

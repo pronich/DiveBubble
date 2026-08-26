@@ -14,6 +14,14 @@ String formatShortDate(DateTime dateTime) {
   return '${_weekdays[local.weekday - 1]}, ${_months[local.month - 1]} ${local.day}';
 }
 
+/// e.g. "Sat, Jul 18, 2026" — same as [formatShortDate] plus the year, for contexts (like
+/// Dive Log, which can span many years) where "which year was this" isn't obvious from
+/// context the way it is for a trip you just created.
+String formatShortDateWithYear(DateTime dateTime) {
+  final local = dateTime.toLocal();
+  return '${formatShortDate(local)}, ${local.year}';
+}
+
 /// e.g. "09:30" (24h) — same dependency-free approach as formatShortDate.
 String formatTime(DateTime dateTime) {
   final local = dateTime.toLocal();
