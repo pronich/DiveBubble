@@ -33,10 +33,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late final _bioController = TextEditingController(text: widget.profile.bio);
   late final _diveCountController = TextEditingController(text: widget.profile.diveCount.toString());
   // Toggled on means "I don't need to track this separately, my Dive Log covers everything"
-  // — a diver who's arrived at 0 organically (nothing left uncounted) vs. one who just
-  // hasn't logged any dives yet look identical in the stored value, so this is purely a UI
-  // convenience for the zero-out action, not a separate field.
-  bool _allDivesLogged = false;
+  // — there's no separate stored field for this, it's derived from the count already being
+  // 0 *and* the diver actually having logged something (so a diver who turned it on, saved,
+  // and comes back later sees it still on, rather than the toggle silently resetting to off
+  // every time this page reopens) — a brand-new diver who just hasn't dived yet also has a
+  // count of 0 but no log entries, and shouldn't see the field pre-disabled for that reason.
+  late bool _allDivesLogged = widget.profile.diveCount == 0 && widget.viewModel.diveLog.isNotEmpty;
   late List<String> _languages = widget.profile.languages.isEmpty
       ? []
       : widget.profile.languages.split(',').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
