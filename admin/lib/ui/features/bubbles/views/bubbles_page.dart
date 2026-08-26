@@ -1210,14 +1210,19 @@ class _MessageRowState extends State<_MessageRow> {
 
     // AnimatedContainer color-flash for _scrollToMessage's landing highlight — transparent
     // to isHighlighted's own tertiaryContainer-tinted overlay otherwise.
-    final highlightedBubble = AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      decoration: BoxDecoration(
-        color: widget.isHighlighted ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.6) : Colors.transparent,
-        borderRadius: BorderRadius.circular(14),
+    // Double-tap-to-reply, Telegram/WhatsApp-style — a quicker path than hovering for the
+    // reply icon (see replyButton below), which still works too.
+    final highlightedBubble = GestureDetector(
+      onDoubleTap: widget.onReply,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        decoration: BoxDecoration(
+          color: widget.isHighlighted ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.6) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        padding: widget.isHighlighted ? const EdgeInsets.all(2) : EdgeInsets.zero,
+        child: bubble,
       ),
-      padding: widget.isHighlighted ? const EdgeInsets.all(2) : EdgeInsets.zero,
-      child: bubble,
     );
 
     final replyButton = AnimatedOpacity(
