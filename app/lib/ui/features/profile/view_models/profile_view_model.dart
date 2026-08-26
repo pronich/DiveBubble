@@ -42,6 +42,12 @@ class ProfileViewModel extends ChangeNotifier {
   List<DiveLogEntry> _diveLog = [];
   List<DiveLogEntry> get diveLog => _diveLog;
 
+  /// Profile.diveCount ("unlogged dives", see EditProfilePage) plus however many are
+  /// actually in the Dive Log — the number the profile's own "Dives" stat card should show,
+  /// since diveCount alone under-counts the moment a diver has logged anything (most visibly
+  /// once they've zeroed it out via "All my dives are logged" and it'd otherwise read 0).
+  int get totalDiveCount => (_profile?.diveCount ?? 0) + _diveLog.length;
+
   bool _isSubmittingDiveLog = false;
   bool get isSubmittingDiveLog => _isSubmittingDiveLog;
 

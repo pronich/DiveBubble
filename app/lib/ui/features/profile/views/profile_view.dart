@@ -400,6 +400,7 @@ class _SignedInBody extends StatelessWidget {
                 onLevelStatTap: onLevelStatTap,
                 onAvatarTap: () => _showAvatarOptions(context),
                 isUploadingAvatar: viewModel.isUploadingPhoto,
+                diveCountOverride: viewModel.totalDiveCount,
               ),
               const SizedBox(height: 24),
               DashedDivider(key: certificationsKey),

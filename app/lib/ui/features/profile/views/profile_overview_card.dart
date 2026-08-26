@@ -18,6 +18,7 @@ class ProfileOverviewCard extends StatelessWidget {
     this.onLevelStatTap,
     this.onAvatarTap,
     this.isUploadingAvatar = false,
+    this.diveCountOverride,
   });
 
   final Profile profile;
@@ -28,6 +29,12 @@ class ProfileOverviewCard extends StatelessWidget {
   /// diver's own Profile screen passes this, not the public/diver-ID-card usage.
   final VoidCallback? onAvatarTap;
   final bool isUploadingAvatar;
+
+  /// The diver's own Profile screen passes ProfileViewModel.totalDiveCount here (diveCount
+  /// plus however many are in the Dive Log) — profile.diveCount alone under-counts once
+  /// anything's logged. Null falls back to profile.diveCount as-is, since the public/
+  /// diver-ID-card usage has no access to someone else's private Dive Log to add in.
+  final int? diveCountOverride;
 
   bool get _hasLevel => profile.certificationLevel?.isNotEmpty ?? false;
 
@@ -114,7 +121,9 @@ class ProfileOverviewCard extends StatelessWidget {
         const SizedBox(height: 20),
         Row(
           children: [
-            Expanded(child: ProfileStatCard(value: '${profile.diveCount}', label: 'Dives')),
+            Expanded(
+              child: ProfileStatCard(value: '${diveCountOverride ?? profile.diveCount}', label: 'Dives'),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: ProfileStatCard(

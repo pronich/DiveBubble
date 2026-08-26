@@ -142,11 +142,6 @@ class _ReadoutRow extends StatelessWidget {
     }
 
     final s = samples[touchIndex!];
-    var depthSum = 0.0;
-    for (var i = 0; i <= touchIndex!; i++) {
-      depthSum += samples[i].depthM;
-    }
-    final avgSoFar = depthSum / (touchIndex! + 1);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -157,7 +152,6 @@ class _ReadoutRow extends StatelessWidget {
           s.temperatureC != null ? '${s.temperatureC!.toStringAsFixed(1)}°C' : '—',
           style: style,
         ),
-        Text('avg ${avgSoFar.toStringAsFixed(1)}m', style: style),
       ],
     );
   }
