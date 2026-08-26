@@ -175,9 +175,11 @@ class _BubblesPageState extends State<BubblesPage> {
           controller: _messageController,
           onSend: _send,
           tripRepository: widget.tripRepository,
+          messageRepository: widget.messageRepository,
           transportRepository: widget.transportRepository,
           profileRepository: widget.profileRepository,
           diveCenterId: widget.diveCenterId,
+          diveCenterName: widget.diveCenterName,
           onDiveIntoBubble: widget.onDiveIntoBubble,
         );
 
@@ -192,9 +194,11 @@ class _BubblesPageState extends State<BubblesPage> {
                   controller: _messageController,
                   onSend: _send,
                   tripRepository: widget.tripRepository,
+                  messageRepository: widget.messageRepository,
                   transportRepository: widget.transportRepository,
                   profileRepository: widget.profileRepository,
                   diveCenterId: widget.diveCenterId,
+                  diveCenterName: widget.diveCenterName,
                   onDiveIntoBubble: widget.onDiveIntoBubble,
                   onBack: vm.clearSelection,
                 );
@@ -340,9 +344,11 @@ class _Conversation extends StatefulWidget {
     required this.controller,
     required this.onSend,
     required this.tripRepository,
+    required this.messageRepository,
     required this.transportRepository,
     required this.profileRepository,
     required this.diveCenterId,
+    required this.diveCenterName,
     required this.onDiveIntoBubble,
     this.onBack,
   });
@@ -351,9 +357,11 @@ class _Conversation extends StatefulWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
   final TripRepository tripRepository;
+  final MessageRepository messageRepository;
   final TransportRepository transportRepository;
   final ProfileRepository profileRepository;
   final String diveCenterId;
+  final String diveCenterName;
   final ValueChanged<String> onDiveIntoBubble;
 
   // Mobile layout only (see BubblesPage.build) — renders a back button in the header that
@@ -412,7 +420,10 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
         builder: (_) => TripDetailPage(
           trip: trip,
           tripRepository: widget.tripRepository,
+          messageRepository: widget.messageRepository,
+          profileRepository: widget.profileRepository,
           diveCenterId: widget.diveCenterId,
+          diveCenterName: widget.diveCenterName,
           onDiveIntoBubble: widget.onDiveIntoBubble,
         ),
       ),

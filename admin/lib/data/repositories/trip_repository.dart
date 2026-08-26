@@ -97,4 +97,6 @@ class TripRepository {
       _service.addTripPhoto(tripId, bytes, filename);
 
   Future<void> removeTripPhoto(String tripId, String photoId) => _service.removeTripPhoto(tripId, photoId);
+
+  Future<List<String>> getParticipantUserIds(String tripId) => _service.fetchParticipantUserIds(tripId);
 }

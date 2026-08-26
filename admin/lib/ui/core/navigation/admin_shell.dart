@@ -90,7 +90,10 @@ class _AdminShellState extends State<AdminShell> {
   late final _pages = [
     TripsPage(
       tripRepository: widget.tripRepository,
+      messageRepository: widget.messageRepository,
+      profileRepository: widget.profileRepository,
       diveCenterId: widget.diveCenter.id,
+      diveCenterName: widget.diveCenter.name,
       onDiveIntoBubble: _diveIntoBubble,
     ),
     BubblesPage(

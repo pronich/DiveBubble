@@ -2,14 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../data/repositories/message_repository.dart';
+import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/certification_level.dart';
+import '../../../../domain/entities/chat_link.dart';
+import '../../../../domain/entities/media_item.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../../domain/entities/trip_photo.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/photo_manager_grid.dart';
 import '../../../core/widgets/pick_image.dart';
 import 'create_trip_page.dart';
+import 'trip_content_tabs.dart';
 
 // Mirrors trip.MaxPhotosPerTrip server-side — hides/disables the "+" affordance once
 // reached instead of letting the staff member hit the 409 the hard way.
@@ -25,13 +30,19 @@ class TripDetailPage extends StatefulWidget {
     super.key,
     required this.trip,
     required this.tripRepository,
+    required this.messageRepository,
+    required this.profileRepository,
     required this.diveCenterId,
+    required this.diveCenterName,
     required this.onDiveIntoBubble,
   });
 
   final Trip trip;
   final TripRepository tripRepository;
+  final MessageRepository messageRepository;
+  final ProfileRepository profileRepository;
   final String diveCenterId;
+  final String diveCenterName;
 
   // Threaded from AdminShell (via TripsPage) — pops this page and switches AdminShell to
   // the Bubbles tab with this trip's conversation already selected.
@@ -41,12 +52,20 @@ class TripDetailPage extends StatefulWidget {
   State<TripDetailPage> createState() => _TripDetailPageState();
 }
 
-class _TripDetailPageState extends State<TripDetailPage> {
+class _TripDetailPageState extends State<TripDetailPage> with SingleTickerProviderStateMixin {
   late Trip _trip = widget.trip;
   final _photoPageController = PageController();
   int _currentPhotoIndex = 0;
   List<TripPhoto> _photos = [];
   bool _isLoadingPhotos = true;
+
+  // One shot per page instance — People/Media/Files/Links don't change from anything this
+  // page itself does, so there's no reason to refetch them on every rebuild the way _photos
+  // (mutable via Manage photos) needs to.
+  late final _tabController = TabController(length: 4, vsync: this);
+  late final Future<List<MediaItem>> _mediaFuture = widget.messageRepository.getMediaAttachments(_trip.id);
+  late final Future<List<MediaItem>> _filesFuture = widget.messageRepository.getFileAttachments(_trip.id);
+  late final Future<List<ChatLink>> _linksFuture = widget.messageRepository.getLinks(_trip.id);
 
   @override
   void initState() {
@@ -57,6 +76,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
   @override
   void dispose() {
     _photoPageController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -173,10 +193,58 @@ class _TripDetailPageState extends State<TripDetailPage> {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              Builder(builder: (context) {
+          child: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                  child: _buildHeaderContent(context, trip),
+                ),
+              ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _PinnedTabBarDelegate(
+                  backgroundColor: theme.colorScheme.surface,
+                  tabBar: TabBar(
+                    controller: _tabController,
+                    tabs: const [Tab(text: 'People'), Tab(text: 'Media'), Tab(text: 'Files'), Tab(text: 'Links')],
+                  ),
+                ),
+              ),
+            ],
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                PeopleTab(
+                  tripId: trip.id,
+                  tripRepository: widget.tripRepository,
+                  profileRepository: widget.profileRepository,
+                  diveCenterName: widget.diveCenterName,
+                ),
+                MediaTab(future: _mediaFuture),
+                FilesTab(future: _filesFuture),
+                LinksTab(future: _linksFuture),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Everything above the People/Media/Files/Links tabs — photo hero, title/price, date/time,
+  // stat grid, booking code, meeting point, description, participant count. Pulled out of
+  // build() so it can sit in NestedScrollView's headerSliverBuilder alongside the pinned tab
+  // bar (see _PinnedTabBarDelegate), while still reading/mutating this State's own fields
+  // directly (_photos, _currentPhotoIndex) rather than prop-drilling into a separate widget.
+  Widget _buildHeaderContent(BuildContext context, Trip trip) {
+    final theme = Theme.of(context);
+    final cancelled = trip.bookingStatus == 'cancelled';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Builder(builder: (context) {
                 final hasPhotos = _photos.isNotEmpty;
                 if (hasPhotos && _currentPhotoIndex >= _photos.length) {
                   _currentPhotoIndex = _photos.length - 1;
@@ -305,6 +373,10 @@ class _TripDetailPageState extends State<TripDetailPage> {
                   Icon(Icons.calendar_today_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
                   const SizedBox(width: 4),
                   Text(formatShortDate(trip.startTime), style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  const SizedBox(width: 16),
+                  Icon(Icons.access_time_outlined, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 4),
+                  Text(formatTime(trip.startTime), style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                 ],
               ),
               const SizedBox(height: 20),
@@ -332,11 +404,31 @@ class _TripDetailPageState extends State<TripDetailPage> {
                     : '${trip.participantCount} people joined',
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
-            ],
-          ),
-        ),
-      ),
+      ],
     );
+  }
+}
+
+class _PinnedTabBarDelegate extends SliverPersistentHeaderDelegate {
+  _PinnedTabBarDelegate({required this.tabBar, required this.backgroundColor});
+
+  final TabBar tabBar;
+  final Color backgroundColor;
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Material(color: backgroundColor, elevation: overlapsContent ? 2 : 0, child: tabBar);
+  }
+
+  @override
+  bool shouldRebuild(covariant _PinnedTabBarDelegate oldDelegate) {
+    return tabBar != oldDelegate.tabBar || backgroundColor != oldDelegate.backgroundColor;
   }
 }
 
@@ -409,7 +501,17 @@ class _InfoGrid extends StatelessWidget {
         _InfoTile(icon: Icons.scuba_diving_outlined, label: 'DIVES', value: _range(trip.diveCountMin, trip.diveCountMax, '')),
       _InfoTile(icon: Icons.schedule, label: 'DURATION', value: _duration(trip)),
     ];
-    return Wrap(spacing: 12, runSpacing: 12, children: tiles);
+    // Row+Expanded, not Wrap — Wrap's fixed-width tiles (140) added up to just over the
+    // 640px page's usable width with all 4 present, wrapping DURATION onto its own row.
+    // Expanded instead shares the available width evenly, so 2-4 tiles always fit one row.
+    return Row(
+      children: [
+        for (var i = 0; i < tiles.length; i++) ...[
+          if (i > 0) const SizedBox(width: 12),
+          Expanded(child: tiles[i]),
+        ],
+      ],
+    );
   }
 
   String _range(int? min, int? max, String unit) {
@@ -421,7 +523,11 @@ class _InfoGrid extends StatelessWidget {
   String _duration(Trip trip) {
     final end = trip.endDate;
     if (end == null) return '1d';
-    final days = end.difference(trip.startTime).inDays + 1;
+    final start = trip.startTime.toLocal();
+    final endLocal = end.toLocal();
+    final startDate = DateTime(start.year, start.month, start.day);
+    final endDateOnly = DateTime(endLocal.year, endLocal.month, endLocal.day);
+    final days = endDateOnly.difference(startDate).inDays + 1;
     return '${days}d';
   }
 }
@@ -437,7 +543,6 @@ class _InfoTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      width: 140,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         border: Border.all(color: theme.colorScheme.outlineVariant),
@@ -472,60 +577,65 @@ class _BookingCodeCard extends StatelessWidget {
     final code = trip.bookingCode;
     final url = trip.bookingUrl;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'BOOKING CODE',
-            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer, letterSpacing: 0.5),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(height: 4),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                code ?? '—',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  color: theme.colorScheme.onSecondaryContainer,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                  fontFamily: 'monospace',
-                ),
+                'BOOKING CODE',
+                style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer, letterSpacing: 0.5),
               ),
-              if (code != null) ...[
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Copy code',
-                  icon: Icon(Icons.copy, size: 18, color: theme.colorScheme.onSecondaryContainer),
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: code));
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking code copied')));
-                  },
-                ),
-              ],
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Text(
+                    code ?? '—',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                  if (code != null) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'Copy code',
+                      icon: Icon(Icons.copy, size: 18, color: theme.colorScheme.onSecondaryContainer),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: code));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking code copied')));
+                      },
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Give this code to divers after they book on your own site — they redeem it in the app to join this trip.',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSecondaryContainer.withValues(alpha: 0.85)),
+              ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Give this code to divers after they book on your own site — they redeem it in the app to join this trip.',
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSecondaryContainer.withValues(alpha: 0.85)),
+        ),
+        if (url != null) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+            icon: const Icon(Icons.open_in_new, size: 16),
+            label: Text(url, overflow: TextOverflow.ellipsis),
           ),
-          if (url != null) ...[
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
-              icon: const Icon(Icons.open_in_new, size: 16),
-              label: Text(url, overflow: TextOverflow.ellipsis),
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 }

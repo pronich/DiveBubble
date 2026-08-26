@@ -8,8 +8,9 @@ import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
 import 'multipart_upload.dart';
 
-/// Trimmed to what admin/ actually needs — no join/leave/participants here, those
-/// stay diver-facing actions in app/. Business trip creation/listing/cancel only.
+/// Trimmed to what admin/ actually needs — no join/leave here, those stay diver-facing
+/// actions in app/. Business trip creation/listing/cancel, plus read-only participants
+/// (People tab on TripDetailPage).
 class TripApiService {
   TripApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
       : _client = client ?? http.Client();
@@ -176,5 +177,16 @@ class TripApiService {
     if (res.statusCode != 204) {
       throw Exception('removeTripPhoto failed: ${res.statusCode} ${res.body}');
     }
+  }
+
+  // Gated to participants server-side (dive-center staff always qualify, see HasAccess) —
+  // backs the People tab.
+  Future<List<String>> fetchParticipantUserIds(String tripId) async {
+    final res = await _client.get(Uri.parse('$baseUrl/trips/$tripId/participants'), headers: await _authHeaders());
+    if (res.statusCode != 200) {
+      throw Exception('fetchParticipantUserIds failed: ${res.statusCode} ${res.body}');
+    }
+    final decoded = jsonDecode(res.body) as List<dynamic>;
+    return decoded.cast<String>();
   }
 }
