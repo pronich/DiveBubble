@@ -3,6 +3,7 @@ package divelog
 import (
 	"context"
 	"errors"
+	"regexp"
 	"strings"
 	"time"
 
@@ -25,8 +26,37 @@ type CreateManualInput struct {
 	MaxDepthM       *float64
 	DurationMinutes *int
 	MinTemperatureC *float64
+	Country         *string
 	SiteName        *string
 	Notes           *string
+}
+
+// cleanText trims whitespace and turns an empty result into nil — shared by every text
+// field (Country, SiteName) across create/update so an all-whitespace input is stored as
+// "not set" rather than an empty string.
+func cleanText(s *string) *string {
+	if s == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*s)
+	if trimmed == "" {
+		return nil
+	}
+	if looksLikeInternalID(trimmed) {
+		return nil
+	}
+	return &trimmed
+}
+
+// Some dive computer export tools (Oceanic+ among them) write their own internal site
+// record key into UDDF's site name field instead of the diver-facing name — e.g.
+// "site_6a8ade1b7070f27" or a bare UUID — rather than surface that as a "dive site" a
+// human never actually typed, treat it the same as no site name at all.
+var internalIDPattern = regexp.MustCompile(`(?i)^[a-z]*_?[0-9a-f]{10,}$`)
+var uuidPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+func looksLikeInternalID(s string) bool {
+	return internalIDPattern.MatchString(s) || uuidPattern.MatchString(s)
 }
 
 // CreateManual is the "no file, just numbers" add path — no profile_samples, ever (see
@@ -38,14 +68,6 @@ func (s *Service) CreateManual(ctx context.Context, userID uuid.UUID, input Crea
 	if input.DivedAt.IsZero() {
 		return Entry{}, ErrInvalidArgument
 	}
-	if input.SiteName != nil {
-		trimmed := strings.TrimSpace(*input.SiteName)
-		if trimmed == "" {
-			input.SiteName = nil
-		} else {
-			input.SiteName = &trimmed
-		}
-	}
 	e := Entry{
 		UserID:          userID,
 		Source:          SourceManual,
@@ -53,7 +75,8 @@ func (s *Service) CreateManual(ctx context.Context, userID uuid.UUID, input Crea
 		MaxDepthM:       input.MaxDepthM,
 		DurationMinutes: input.DurationMinutes,
 		MinTemperatureC: input.MinTemperatureC,
-		SiteName:        input.SiteName,
+		Country:         cleanText(input.Country),
+		SiteName:        cleanText(input.SiteName),
 		Notes:           input.Notes,
 	}
 	created, _, err := s.Repo.Create(ctx, e, false)
@@ -67,20 +90,24 @@ type ImportResult struct {
 	Skipped  int
 }
 
-// Import parses the file and inserts every dive it finds, silently skipping any whose
-// dived_at exactly matches an entry this diver already has (see the migration's unique
-// index) — a diver re-exporting "everything" after already importing once shouldn't end up
-// with duplicates of dives they'd previously logged.
+// Import sniffs the file's actual content (never the filename/extension, which is
+// unreliable — Diving Log 6's own SQLite export is literally named "....sql" despite not
+// being SQL text at all) to pick a parser, then inserts every dive it finds, silently
+// skipping any whose dived_at exactly matches an entry this diver already has (see the
+// migration's unique index) — a diver re-exporting "everything" after already importing
+// once shouldn't end up with duplicates of dives they'd previously logged.
 func (s *Service) Import(ctx context.Context, userID uuid.UUID, data []byte) (ImportResult, error) {
-	dives, err := ParseUDDF(data)
+	entries, err := parseImportFile(data)
 	if err != nil {
 		return ImportResult{}, err
 	}
 
 	var result ImportResult
-	for _, d := range dives {
-		e := d.ToEntry()
+	for _, e := range entries {
 		e.UserID = userID
+		e.Source = SourceImported
+		e.SiteName = cleanText(e.SiteName)
+		e.Country = cleanText(e.Country)
 		_, inserted, err := s.Repo.Create(ctx, e, true)
 		if err != nil {
 			return result, err
@@ -110,6 +137,7 @@ type UpdateInput struct {
 	MaxDepthM       *float64
 	DurationMinutes *int
 	MinTemperatureC *float64
+	Country         *string
 	SiteName        *string
 	Notes           *string
 }
@@ -127,19 +155,12 @@ func (s *Service) Update(ctx context.Context, id, callerUserID uuid.UUID, input 
 	if input.DivedAt.IsZero() {
 		return Entry{}, ErrInvalidArgument
 	}
-	if input.SiteName != nil {
-		trimmed := strings.TrimSpace(*input.SiteName)
-		if trimmed == "" {
-			input.SiteName = nil
-		} else {
-			input.SiteName = &trimmed
-		}
-	}
 	existing.DivedAt = input.DivedAt
 	existing.MaxDepthM = input.MaxDepthM
 	existing.DurationMinutes = input.DurationMinutes
 	existing.MinTemperatureC = input.MinTemperatureC
-	existing.SiteName = input.SiteName
+	existing.Country = cleanText(input.Country)
+	existing.SiteName = cleanText(input.SiteName)
 	existing.Notes = input.Notes
 	return s.Repo.Update(ctx, id, existing)
 }

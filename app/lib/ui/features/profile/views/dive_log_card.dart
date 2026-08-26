@@ -40,17 +40,17 @@ class DiveLogCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    formatShortDate(entry.divedAt),
+                    formatShortDateWithYear(entry.divedAt),
                     style: theme.textTheme.titleSmall,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
-            if (entry.siteName?.isNotEmpty ?? false) ...[
+            if (entry.locationText != null) ...[
               const SizedBox(height: 4),
               Text(
-                entry.siteName!,
+                entry.locationText!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(

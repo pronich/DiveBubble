@@ -13,6 +13,7 @@ class DiveLogRepository {
     double? maxDepthM,
     int? durationMinutes,
     double? minTemperatureC,
+    String? country,
     String? siteName,
     String? notes,
   }) => _service.createEntry(
@@ -20,6 +21,7 @@ class DiveLogRepository {
     maxDepthM: maxDepthM,
     durationMinutes: durationMinutes,
     minTemperatureC: minTemperatureC,
+    country: country,
     siteName: siteName,
     notes: notes,
   );
@@ -30,6 +32,7 @@ class DiveLogRepository {
     double? maxDepthM,
     int? durationMinutes,
     double? minTemperatureC,
+    String? country,
     String? siteName,
     String? notes,
   }) => _service.updateEntry(
@@ -38,11 +41,12 @@ class DiveLogRepository {
     maxDepthM: maxDepthM,
     durationMinutes: durationMinutes,
     minTemperatureC: minTemperatureC,
+    country: country,
     siteName: siteName,
     notes: notes,
   );
 
-  Future<DiveLogImportResult> importUDDF(String filePath) => _service.importUDDF(filePath);
+  Future<DiveLogImportResult> importFile(String filePath) => _service.importFile(filePath);
 
   Future<void> deleteEntry(String id) => _service.deleteEntry(id);
 }

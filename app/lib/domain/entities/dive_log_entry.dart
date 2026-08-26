@@ -8,8 +8,10 @@ class DiveLogEntry {
     required this.source,
     required this.divedAt,
     this.maxDepthM,
+    this.avgDepthM,
     this.durationMinutes,
     this.minTemperatureC,
+    this.country,
     this.siteName,
     this.latitude,
     this.longitude,
@@ -23,8 +25,12 @@ class DiveLogEntry {
   final String source; // 'manual' | 'imported'
   final DateTime divedAt;
   final double? maxDepthM;
+  // Only ever set by an importer that actually knows it (a source app's own average-depth
+  // column, or computed from sample depths) — there's no manual-entry field for this.
+  final double? avgDepthM;
   final int? durationMinutes;
   final double? minTemperatureC;
+  final String? country;
   final String? siteName;
   final double? latitude;
   final double? longitude;
@@ -37,14 +43,31 @@ class DiveLogEntry {
 
   bool get isImported => source == 'imported';
 
+  /// "{country} - {site}", or whichever half is actually present, or null if neither is —
+  /// the one line every dive-log card/row/detail page uses for "where".
+  String? get locationText {
+    final parts = [country, siteName].where((s) => s?.isNotEmpty ?? false).toList();
+    return parts.isEmpty ? null : parts.join(' - ');
+  }
+
+  /// Highest temperature sample — only meaningful alongside minTemperatureC once a diver
+  /// drills into a dive with a full profile; there's no single "max temp" field for a
+  /// manual entry (which only ever has minTemperatureC, hand-typed).
+  double? get maxTemperatureC {
+    final temps = profileSamples.map((s) => s.temperatureC).whereType<double>();
+    return temps.isEmpty ? null : temps.reduce((a, b) => a > b ? a : b);
+  }
+
   factory DiveLogEntry.fromJson(Map<String, dynamic> json) => DiveLogEntry(
     id: json['id'] as String,
     tripId: json['tripId'] as String?,
     source: json['source'] as String,
     divedAt: DateTime.parse(json['divedAt'] as String),
     maxDepthM: (json['maxDepthM'] as num?)?.toDouble(),
+    avgDepthM: (json['avgDepthM'] as num?)?.toDouble(),
     durationMinutes: json['durationMinutes'] as int?,
     minTemperatureC: (json['minTemperatureC'] as num?)?.toDouble(),
+    country: json['country'] as String?,
     siteName: json['siteName'] as String?,
     latitude: (json['latitude'] as num?)?.toDouble(),
     longitude: (json['longitude'] as num?)?.toDouble(),

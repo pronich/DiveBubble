@@ -28,6 +28,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
   late final TextEditingController _depthController;
   late final TextEditingController _durationController;
   late final TextEditingController _tempController;
+  late final TextEditingController _countryController;
   late final TextEditingController _siteController;
   late final TextEditingController _notesController;
   String? _error;
@@ -42,6 +43,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
     _depthController = TextEditingController(text: e?.maxDepthM?.toStringAsFixed(1) ?? '');
     _durationController = TextEditingController(text: e?.durationMinutes?.toString() ?? '');
     _tempController = TextEditingController(text: e?.minTemperatureC?.toStringAsFixed(1) ?? '');
+    _countryController = TextEditingController(text: e?.country ?? '');
     _siteController = TextEditingController(text: e?.siteName ?? '');
     _notesController = TextEditingController(text: e?.notes ?? '');
   }
@@ -51,6 +53,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
     _depthController.dispose();
     _durationController.dispose();
     _tempController.dispose();
+    _countryController.dispose();
     _siteController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -76,7 +79,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Text(
-                'This dive was imported from your dive computer — only the site name and notes can be edited.',
+                'This dive was imported from your dive computer — only the country, dive site, and notes can be edited.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -89,7 +92,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
                   onTap: locked ? null : _pickDate,
                   child: InputDecorator(
                     decoration: const InputDecoration(labelText: 'Date'),
-                    child: Text(formatShortDate(_date)),
+                    child: Text(formatShortDateWithYear(_date)),
                   ),
                 ),
               ),
@@ -125,6 +128,12 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
             enabled: !locked,
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
             decoration: const InputDecoration(labelText: 'Min temperature', suffixText: '°C'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _countryController,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Country'),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -178,6 +187,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
 
   Future<void> _save() async {
     final divedAt = DateTime(_date.year, _date.month, _date.day, _time.hour, _time.minute);
+    final country = _countryController.text.trim();
     final siteName = _siteController.text.trim();
     final notes = _notesController.text.trim();
 
@@ -189,6 +199,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
             maxDepthM: _parseDouble(_depthController.text),
             durationMinutes: _parseInt(_durationController.text),
             minTemperatureC: _parseDouble(_tempController.text),
+            country: country,
             siteName: siteName,
             notes: notes,
           )
@@ -197,6 +208,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
             maxDepthM: _parseDouble(_depthController.text),
             durationMinutes: _parseInt(_durationController.text),
             minTemperatureC: _parseDouble(_tempController.text),
+            country: country,
             siteName: siteName,
             notes: notes,
           );

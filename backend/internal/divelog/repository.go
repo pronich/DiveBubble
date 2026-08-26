@@ -19,14 +19,14 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{DB: db}
 }
 
-const entryColumns = `id, user_id, trip_id, source, dived_at, max_depth_m, duration_minutes,
-	min_temperature_c, site_name, latitude, longitude, notes, profile_samples, created_at`
+const entryColumns = `id, user_id, trip_id, source, dived_at, max_depth_m, avg_depth_m, duration_minutes,
+	min_temperature_c, country, site_name, latitude, longitude, notes, profile_samples, created_at`
 
 func scanEntry(row interface{ Scan(...any) error }, e *Entry) error {
 	var samplesJSON []byte
 	if err := row.Scan(
-		&e.ID, &e.UserID, &e.TripID, &e.Source, &e.DivedAt, &e.MaxDepthM, &e.DurationMinutes,
-		&e.MinTemperatureC, &e.SiteName, &e.Latitude, &e.Longitude, &e.Notes, &samplesJSON, &e.CreatedAt,
+		&e.ID, &e.UserID, &e.TripID, &e.Source, &e.DivedAt, &e.MaxDepthM, &e.AvgDepthM, &e.DurationMinutes,
+		&e.MinTemperatureC, &e.Country, &e.SiteName, &e.Latitude, &e.Longitude, &e.Notes, &samplesJSON, &e.CreatedAt,
 	); err != nil {
 		return err
 	}
@@ -59,13 +59,13 @@ func (r *Repository) Create(ctx context.Context, e Entry, onConflictSkip bool) (
 
 	var out Entry
 	row := r.DB.QueryRowContext(ctx, `
-		INSERT INTO dive_log_entries (user_id, trip_id, source, dived_at, max_depth_m, duration_minutes,
-			min_temperature_c, site_name, latitude, longitude, notes, profile_samples)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		INSERT INTO dive_log_entries (user_id, trip_id, source, dived_at, max_depth_m, avg_depth_m, duration_minutes,
+			min_temperature_c, country, site_name, latitude, longitude, notes, profile_samples)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		`+conflictClause+`
 		RETURNING `+entryColumns+`
-	`, e.UserID, e.TripID, e.Source, e.DivedAt, e.MaxDepthM, e.DurationMinutes,
-		e.MinTemperatureC, e.SiteName, e.Latitude, e.Longitude, e.Notes, samplesJSON)
+	`, e.UserID, e.TripID, e.Source, e.DivedAt, e.MaxDepthM, e.AvgDepthM, e.DurationMinutes,
+		e.MinTemperatureC, e.Country, e.SiteName, e.Latitude, e.Longitude, e.Notes, samplesJSON)
 
 	if err := scanEntry(row, &out); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -78,18 +78,19 @@ func (r *Repository) Create(ctx context.Context, e Entry, onConflictSkip bool) (
 	return out, true, nil
 }
 
-// Update replaces every editable field (never source or profile_samples, which are fixed at
-// creation) — the app only ever sends siteName/notes changes for an imported entry, and the
-// full set for a manual one, but this doesn't itself distinguish the two.
+// Update replaces every editable field (never source, avg_depth_m, or profile_samples,
+// which are fixed at creation — avg_depth_m is only ever known by an importer, there's no
+// manual-entry UI for it) — the app only ever sends country/siteName/notes changes for an
+// imported entry, and the full set for a manual one, but this doesn't itself distinguish the two.
 func (r *Repository) Update(ctx context.Context, id uuid.UUID, e Entry) (Entry, error) {
 	var out Entry
 	if err := scanEntry(r.DB.QueryRowContext(ctx, `
 		UPDATE dive_log_entries
 		SET dived_at = $2, max_depth_m = $3, duration_minutes = $4, min_temperature_c = $5,
-			site_name = $6, notes = $7
+			country = $6, site_name = $7, notes = $8
 		WHERE id = $1
 		RETURNING `+entryColumns+`
-	`, id, e.DivedAt, e.MaxDepthM, e.DurationMinutes, e.MinTemperatureC, e.SiteName, e.Notes), &out); err != nil {
+	`, id, e.DivedAt, e.MaxDepthM, e.DurationMinutes, e.MinTemperatureC, e.Country, e.SiteName, e.Notes), &out); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return Entry{}, ErrNotFound
 		}

@@ -446,17 +446,6 @@ class _SignedInBody extends StatelessWidget {
               const SizedBox(height: 24),
               const DashedDivider(),
               const SizedBox(height: 16),
-              Text('Gear', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 16),
-              GearSummaryCard(
-                gear: viewModel.gear,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => GearLockerPage(viewModel: viewModel)),
-                ),
-              ),
-              const SizedBox(height: 24),
-              const DashedDivider(),
-              const SizedBox(height: 16),
               Text('Dive Log', style: theme.textTheme.titleMedium),
               const SizedBox(height: 16),
               DiveLogDeck(
@@ -469,6 +458,17 @@ class _SignedInBody extends StatelessWidget {
                       chatRepository: chatRepository,
                     ),
                   ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const DashedDivider(),
+              const SizedBox(height: 16),
+              Text('Gear', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 16),
+              GearSummaryCard(
+                gear: viewModel.gear,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => GearLockerPage(viewModel: viewModel)),
                 ),
               ),
             ],

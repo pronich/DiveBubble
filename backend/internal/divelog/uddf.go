@@ -55,6 +55,7 @@ type uddfDive struct {
 type ParsedDive struct {
 	DivedAt        time.Time
 	MaxDepthM      *float64
+	AvgDepthM      *float64
 	DurationSecs   *float64
 	MinTempKelvin  *float64
 	SiteName       *string
@@ -111,6 +112,7 @@ func parseDive(d uddfDive, siteNames map[string]string, siteLat, siteLon map[str
 	var samples []ProfileSample
 	var maxDepthFromSamples *float64
 	var minTempFromSamples *float64
+	var depthSum float64
 	for _, wp := range d.Samples.Waypoint {
 		if wp.Depth == nil || wp.DiveTime == nil {
 			continue
@@ -126,11 +128,18 @@ func parseDive(d uddfDive, siteNames map[string]string, siteLat, siteLon map[str
 		if maxDepthFromSamples == nil || *wp.Depth > *maxDepthFromSamples {
 			maxDepthFromSamples = wp.Depth
 		}
+		depthSum += *wp.Depth
 		samples = append(samples, ProfileSample{
 			OffsetSeconds: int(*wp.DiveTime),
 			DepthM:        *wp.Depth,
 			TemperatureC:  tempC,
 		})
+	}
+
+	var avgDepth *float64
+	if len(samples) > 0 {
+		avg := depthSum / float64(len(samples))
+		avgDepth = &avg
 	}
 
 	maxDepth := d.InformationAfter.GreatestDepth
@@ -169,6 +178,7 @@ func parseDive(d uddfDive, siteNames map[string]string, siteLat, siteLon map[str
 	return ParsedDive{
 		DivedAt:        divedAt,
 		MaxDepthM:      maxDepth,
+		AvgDepthM:      avgDepth,
 		DurationSecs:   duration,
 		MinTempKelvin:  minTempKelvin,
 		SiteName:       siteName,
@@ -184,6 +194,7 @@ func (p ParsedDive) ToEntry() Entry {
 		Source:         SourceImported,
 		DivedAt:        p.DivedAt,
 		MaxDepthM:      p.MaxDepthM,
+		AvgDepthM:      p.AvgDepthM,
 		SiteName:       p.SiteName,
 		Latitude:       p.Latitude,
 		Longitude:      p.Longitude,

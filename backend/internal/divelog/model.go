@@ -28,8 +28,10 @@ type Entry struct {
 	Source          Source
 	DivedAt         time.Time
 	MaxDepthM       *float64
+	AvgDepthM       *float64
 	DurationMinutes *int
 	MinTemperatureC *float64
+	Country         *string
 	SiteName        *string
 	Latitude        *float64
 	Longitude       *float64

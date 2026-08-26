@@ -11,7 +11,7 @@ import 'add_edit_dive_log_entry_page.dart';
 import 'dive_log_detail_page.dart';
 import 'edit_profile_page.dart';
 
-class DiveLogListPage extends StatelessWidget {
+class DiveLogListPage extends StatefulWidget {
   const DiveLogListPage({
     super.key,
     required this.viewModel,
@@ -24,18 +24,58 @@ class DiveLogListPage extends StatelessWidget {
   final ChatRepository chatRepository;
 
   @override
+  State<DiveLogListPage> createState() => _DiveLogListPageState();
+}
+
+class _DiveLogListPageState extends State<DiveLogListPage> {
+  bool _multiSelect = false;
+  final Set<String> _selectedIds = {};
+
+  void _enterMultiSelect(String id) {
+    setState(() {
+      _multiSelect = true;
+      _selectedIds.add(id);
+    });
+  }
+
+  void _toggleSelection(String id) {
+    setState(() {
+      if (!_selectedIds.remove(id)) _selectedIds.add(id);
+      if (_selectedIds.isEmpty) _multiSelect = false;
+    });
+  }
+
+  void _exitMultiSelect() {
+    setState(() {
+      _multiSelect = false;
+      _selectedIds.clear();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: viewModel,
+      listenable: widget.viewModel,
       builder: (context, _) {
-        final entries = viewModel.diveLog;
+        final entries = widget.viewModel.diveLog;
         return Scaffold(
-          appBar: AppBar(title: const Text('Dive Log')),
+          appBar: _multiSelect
+              ? AppBar(
+                  leading: IconButton(icon: const Icon(Icons.close), onPressed: _exitMultiSelect),
+                  title: Text('${_selectedIds.length} selected'),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: _selectedIds.isEmpty ? null : _confirmDeleteSelected,
+                    ),
+                  ],
+                )
+              : AppBar(title: const Text('Dive Log')),
           body: entries.isEmpty
               ? EmptyStateView(
                   icon: Icons.scuba_diving_outlined,
                   title: 'No dives logged yet',
-                  subtitle: 'Add a dive by hand, or import your dive computer\'s UDDF export.',
+                  subtitle: 'Add a dive by hand, or import a dive log file.',
                   ctaLabel: 'Add a dive',
                   onCtaPressed: () => _openAdd(context),
                 )
@@ -43,18 +83,101 @@ class DiveLogListPage extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   itemCount: entries.length,
                   separatorBuilder: (_, _) => const Divider(height: 1, indent: 16),
-                  itemBuilder: (context, index) => _DiveLogRow(
-                    entry: entries[index],
-                    onTap: () => _openDetail(context, entries[index]),
-                  ),
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    return _DiveLogRow(
+                      key: ValueKey(entry.id),
+                      entry: entry,
+                      multiSelect: _multiSelect,
+                      selected: _selectedIds.contains(entry.id),
+                      onTap: () {
+                        if (_multiSelect) {
+                          _toggleSelection(entry.id);
+                        } else {
+                          _openDetail(context, entry);
+                        }
+                      },
+                      onLongPress: _multiSelect ? null : () => _enterMultiSelect(entry.id),
+                      onIconTap: _multiSelect ? null : () => _enterMultiSelect(entry.id),
+                      onSwipeDelete: _multiSelect ? null : () => _confirmDeleteOne(context, entry),
+                    );
+                  },
                 ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () => _openAddChoices(context),
-            child: const Icon(Icons.add),
-          ),
+          floatingActionButton: _multiSelect
+              ? null
+              : FloatingActionButton(
+                  onPressed: () => _openAddChoices(context),
+                  child: const Icon(Icons.add),
+                ),
         );
       },
     );
+  }
+
+  Future<void> _confirmDeleteSelected() async {
+    final count = _selectedIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete $count dive${count == 1 ? '' : 's'}?'),
+        content: const Text("This can't be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final ids = _selectedIds.toList();
+    final deleted = await widget.viewModel.deleteDiveLogEntries(ids);
+    if (!mounted) return;
+    _exitMultiSelect();
+    if (deleted.length < ids.length) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not delete ${ids.length - deleted.length} dive(s): ${widget.viewModel.error}',
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Backs the swipe-left gesture — confirms before deleting since a swipe is easy to
+  /// trigger by accident, same as the detail page's own delete confirmation.
+  Future<bool> _confirmDeleteOne(BuildContext context, DiveLogEntry entry) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete this dive?'),
+        content: const Text("This can't be undone."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return false;
+    final ok = await widget.viewModel.deleteDiveLogEntry(entry.id);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not delete: ${widget.viewModel.error}')));
+    }
+    return ok;
   }
 
   Future<void> _openAddChoices(BuildContext context) async {
@@ -71,11 +194,17 @@ class DiveLogListPage extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.upload_file_outlined),
-              title: const Text('Import from a UDDF file'),
-              subtitle: const Text(
-                'Exported from Subsurface, Suunto app, Garmin Connect, Shearwater Cloud, etc.',
-              ),
+              title: const Text('Import a dive log file'),
+              subtitle: const Text('UDDF, CSV, or a Diving Log 6 export'),
               onTap: () => Navigator.of(context).pop(_AddChoice.import),
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('CSV column format'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _showCSVFormatInfo(context);
+              },
             ),
           ],
         ),
@@ -87,15 +216,40 @@ class DiveLogListPage extends StatelessWidget {
       case _AddChoice.manual:
         _openAdd(context);
       case _AddChoice.import:
-        _pickAndImportUDDF(context);
+        _pickAndImportFile(context);
     }
+  }
+
+  void _showCSVFormatInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('CSV column format'),
+        content: const Text(
+          'First row must be a header with these column names (any order, only "date" is '
+          'required):\n\n'
+          'date (YYYY-MM-DD)\n'
+          'time (HH:MM)\n'
+          'country\n'
+          'site\n'
+          'max_depth_m\n'
+          'avg_depth_m\n'
+          'duration_min\n'
+          'min_temp_c\n'
+          'notes',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Got it')),
+        ],
+      ),
+    );
   }
 
   Future<void> _openAdd(BuildContext context) async {
     await Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => AddEditDiveLogEntryPage(viewModel: viewModel)));
-    if (context.mounted && viewModel.consumeJustLoggedFirstEntry()) {
+    ).push(MaterialPageRoute(builder: (_) => AddEditDiveLogEntryPage(viewModel: widget.viewModel)));
+    if (context.mounted && widget.viewModel.consumeJustLoggedFirstEntry()) {
       _showUpdateUnloggedCountPrompt(context);
     }
   }
@@ -104,28 +258,28 @@ class DiveLogListPage extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => DiveLogDetailPage(
-          viewModel: viewModel,
+          viewModel: widget.viewModel,
           entry: entry,
-          tripRepository: tripRepository,
-          chatRepository: chatRepository,
+          tripRepository: widget.tripRepository,
+          chatRepository: widget.chatRepository,
         ),
       ),
     );
   }
 
-  Future<void> _pickAndImportUDDF(BuildContext context) async {
+  Future<void> _pickAndImportFile(BuildContext context) async {
     final picked = await FilePicker.pickFile(
       type: FileType.custom,
-      allowedExtensions: ['uddf', 'xml'],
+      allowedExtensions: ['uddf', 'xml', 'csv', 'sql', 'db', 'sqlite'],
     );
     if (picked?.path == null || !context.mounted) return;
 
-    final result = await viewModel.importDiveLog(picked!.path!);
+    final result = await widget.viewModel.importDiveLog(picked!.path!);
     if (!context.mounted) return;
 
     if (result == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not import: ${viewModel.error ?? 'unknown error'}')),
+        SnackBar(content: Text('Could not import: ${widget.viewModel.error ?? 'unknown error'}')),
       );
       return;
     }
@@ -135,13 +289,13 @@ class DiveLogListPage extends StatelessWidget {
         : '${result.imported} dive${result.imported == 1 ? '' : 's'} imported';
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 
-    if (viewModel.consumeJustLoggedFirstEntry()) {
+    if (widget.viewModel.consumeJustLoggedFirstEntry()) {
       _showUpdateUnloggedCountPrompt(context);
     }
   }
 
   void _showUpdateUnloggedCountPrompt(BuildContext context) {
-    final profile = viewModel.profile;
+    final profile = widget.viewModel.profile;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text(
@@ -153,7 +307,7 @@ class DiveLogListPage extends StatelessWidget {
                 label: 'Edit Profile',
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => EditProfilePage(viewModel: viewModel, profile: profile),
+                    builder: (_) => EditProfilePage(viewModel: widget.viewModel, profile: profile),
                   ),
                 ),
               ),
@@ -166,27 +320,72 @@ class DiveLogListPage extends StatelessWidget {
 enum _AddChoice { manual, import }
 
 class _DiveLogRow extends StatelessWidget {
-  const _DiveLogRow({required this.entry, required this.onTap});
+  const _DiveLogRow({
+    super.key,
+    required this.entry,
+    required this.multiSelect,
+    required this.selected,
+    required this.onTap,
+    required this.onLongPress,
+    required this.onIconTap,
+    required this.onSwipeDelete,
+  });
 
   final DiveLogEntry entry;
+  final bool multiSelect;
+  final bool selected;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onIconTap;
+  // Null while in multi-select mode — swipe-to-delete is disabled there, bulk delete via
+  // the AppBar action is the equivalent action.
+  final Future<bool> Function()? onSwipeDelete;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final subtitleParts = <String>[
-      if (entry.siteName?.isNotEmpty ?? false) entry.siteName!,
+      if (entry.locationText != null) entry.locationText!,
       if (entry.durationMinutes != null) '${entry.durationMinutes} min',
       if (entry.minTemperatureC != null) '${entry.minTemperatureC!.toStringAsFixed(0)}°C',
     ];
-    return ListTile(
-      onTap: onTap,
-      leading: Icon(entry.isImported ? Icons.download_outlined : Icons.edit_outlined),
-      title: Text(formatShortDate(entry.divedAt)),
-      subtitle: subtitleParts.isEmpty ? null : Text(subtitleParts.join(' · ')),
-      trailing: Text(
-        entry.maxDepthM != null ? '${entry.maxDepthM!.toStringAsFixed(0)}m' : '—',
-        style: Theme.of(context).textTheme.titleMedium,
+
+    final row = Container(
+      color: selected ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3) : null,
+      child: ListTile(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        leading: multiSelect
+            ? Checkbox(value: selected, onChanged: (_) => onTap())
+            : InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: onIconTap,
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.scuba_diving_outlined),
+                ),
+              ),
+        title: Text(formatShortDateWithYear(entry.divedAt)),
+        subtitle: subtitleParts.isEmpty ? null : Text(subtitleParts.join(' · ')),
+        trailing: Text(
+          entry.maxDepthM != null ? '${entry.maxDepthM!.toStringAsFixed(0)}m' : '—',
+          style: theme.textTheme.titleMedium,
+        ),
       ),
+    );
+
+    if (onSwipeDelete == null) return row;
+    return Dismissible(
+      key: ValueKey(entry.id),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => onSwipeDelete!(),
+      background: Container(
+        color: theme.colorScheme.errorContainer,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Icon(Icons.delete_outline, color: theme.colorScheme.onErrorContainer),
+      ),
+      child: row,
     );
   }
 }

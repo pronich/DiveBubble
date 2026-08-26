@@ -20,10 +20,10 @@ class ProfileViewModel extends ChangeNotifier {
     SpecialtyRepository? specialtyRepository,
     GearRepository? gearRepository,
     DiveLogRepository? diveLogRepository,
-  })  : _repository = repository,
-        _specialtyRepository = specialtyRepository,
-        _gearRepository = gearRepository,
-        _diveLogRepository = diveLogRepository;
+  }) : _repository = repository,
+       _specialtyRepository = specialtyRepository,
+       _gearRepository = gearRepository,
+       _diveLogRepository = diveLogRepository;
 
   final ProfileRepository _repository;
   final SpecialtyRepository? _specialtyRepository;
@@ -266,6 +266,7 @@ class ProfileViewModel extends ChangeNotifier {
     double? maxDepthM,
     int? durationMinutes,
     double? minTemperatureC,
+    String? country,
     String? siteName,
     String? notes,
   }) async {
@@ -278,6 +279,7 @@ class ProfileViewModel extends ChangeNotifier {
         maxDepthM: maxDepthM,
         durationMinutes: durationMinutes,
         minTemperatureC: minTemperatureC,
+        country: country,
         siteName: siteName,
         notes: notes,
       );
@@ -301,7 +303,7 @@ class ProfileViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       final wasEmpty = _diveLog.isEmpty;
-      final result = await _diveLogRepository!.importUDDF(filePath);
+      final result = await _diveLogRepository!.importFile(filePath);
       _diveLog = await _diveLogRepository.getEntries();
       if (wasEmpty && result.imported > 0) _justLoggedFirstEntry = true;
       return result;
@@ -320,6 +322,7 @@ class ProfileViewModel extends ChangeNotifier {
     double? maxDepthM,
     int? durationMinutes,
     double? minTemperatureC,
+    String? country,
     String? siteName,
     String? notes,
   }) async {
@@ -332,6 +335,7 @@ class ProfileViewModel extends ChangeNotifier {
         maxDepthM: maxDepthM,
         durationMinutes: durationMinutes,
         minTemperatureC: minTemperatureC,
+        country: country,
         siteName: siteName,
         notes: notes,
       );
@@ -359,6 +363,24 @@ class ProfileViewModel extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  /// Bulk delete for multi-select — best-effort per entry (one failing mid-batch doesn't
+  /// abandon the rest), returns the ids that actually got deleted so the caller can report
+  /// a partial failure if fewer came back than were asked for.
+  Future<List<String>> deleteDiveLogEntries(List<String> ids) async {
+    final deleted = <String>[];
+    for (final id in ids) {
+      try {
+        await _diveLogRepository!.deleteEntry(id);
+        deleted.add(id);
+      } catch (e) {
+        _error = e.toString();
+      }
+    }
+    _diveLog = _diveLog.where((e) => !deleted.contains(e.id)).toList();
+    notifyListeners();
+    return deleted;
   }
 
   Future<bool> submit({

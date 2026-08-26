@@ -13,10 +13,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// maxUDDFFileSize caps the raw XML upload — a dive log export, even with hundreds of dives
-// and full depth/temperature profiles, is a few MB of text at most; this just guards against
-// an absurd or malformed upload rather than reflecting any real UDDF file size.
-const maxUDDFFileSize = 10 << 20
+// maxImportFileSize caps the raw upload (UDDF/CSV text, or a Diving Log 6 SQLite export) — a
+// dive log export, even with hundreds of dives and full depth/temperature profiles, is a few
+// MB at most; this just guards against an absurd or malformed upload rather than reflecting
+// any real file size for these formats.
+const maxImportFileSize = 10 << 20
 
 func registerDiveLogRoutes(mux *http.ServeMux, svc *divelog.Service, authIssuer *auth.TokenIssuer) {
 	mux.HandleFunc("GET /divelog", withAuth(authIssuer, handleListDiveLog(svc)))
@@ -38,8 +39,10 @@ type diveLogEntryResponse struct {
 	Source          string                  `json:"source"`
 	DivedAt         time.Time               `json:"divedAt"`
 	MaxDepthM       *float64                `json:"maxDepthM,omitempty"`
+	AvgDepthM       *float64                `json:"avgDepthM,omitempty"`
 	DurationMinutes *int                    `json:"durationMinutes,omitempty"`
 	MinTemperatureC *float64                `json:"minTemperatureC,omitempty"`
+	Country         *string                 `json:"country,omitempty"`
 	SiteName        *string                 `json:"siteName,omitempty"`
 	Latitude        *float64                `json:"latitude,omitempty"`
 	Longitude       *float64                `json:"longitude,omitempty"`
@@ -59,8 +62,8 @@ func toDiveLogEntryResponse(e divelog.Entry) diveLogEntryResponse {
 	}
 	return diveLogEntryResponse{
 		ID: e.ID, TripID: tripID, Source: string(e.Source), DivedAt: e.DivedAt,
-		MaxDepthM: e.MaxDepthM, DurationMinutes: e.DurationMinutes, MinTemperatureC: e.MinTemperatureC,
-		SiteName: e.SiteName, Latitude: e.Latitude, Longitude: e.Longitude, Notes: e.Notes,
+		MaxDepthM: e.MaxDepthM, AvgDepthM: e.AvgDepthM, DurationMinutes: e.DurationMinutes, MinTemperatureC: e.MinTemperatureC,
+		Country: e.Country, SiteName: e.SiteName, Latitude: e.Latitude, Longitude: e.Longitude, Notes: e.Notes,
 		ProfileSamples: samples, CreatedAt: e.CreatedAt,
 	}
 }
@@ -85,6 +88,7 @@ type createDiveLogEntryRequest struct {
 	MaxDepthM       *float64  `json:"maxDepthM"`
 	DurationMinutes *int      `json:"durationMinutes"`
 	MinTemperatureC *float64  `json:"minTemperatureC"`
+	Country         *string   `json:"country"`
 	SiteName        *string   `json:"siteName"`
 	Notes           *string   `json:"notes"`
 }
@@ -100,7 +104,7 @@ func handleCreateDiveLogEntry(svc *divelog.Service) func(http.ResponseWriter, *h
 
 		e, err := svc.CreateManual(r.Context(), userID, divelog.CreateManualInput{
 			DivedAt: req.DivedAt, MaxDepthM: req.MaxDepthM, DurationMinutes: req.DurationMinutes,
-			MinTemperatureC: req.MinTemperatureC, SiteName: req.SiteName, Notes: req.Notes,
+			MinTemperatureC: req.MinTemperatureC, Country: req.Country, SiteName: req.SiteName, Notes: req.Notes,
 		})
 		if err != nil {
 			if errors.Is(err, divelog.ErrInvalidArgument) {
@@ -131,7 +135,7 @@ func handleUpdateDiveLogEntry(svc *divelog.Service) func(http.ResponseWriter, *h
 
 		e, err := svc.Update(r.Context(), id, userID, divelog.UpdateInput{
 			DivedAt: req.DivedAt, MaxDepthM: req.MaxDepthM, DurationMinutes: req.DurationMinutes,
-			MinTemperatureC: req.MinTemperatureC, SiteName: req.SiteName, Notes: req.Notes,
+			MinTemperatureC: req.MinTemperatureC, Country: req.Country, SiteName: req.SiteName, Notes: req.Notes,
 		})
 		if err != nil {
 			if errors.Is(err, divelog.ErrNotFound) {
@@ -160,7 +164,7 @@ type importDiveLogResponse struct {
 
 func handleImportDiveLog(svc *divelog.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
-		if err := r.ParseMultipartForm(maxUDDFFileSize + 1<<20); err != nil {
+		if err := r.ParseMultipartForm(maxImportFileSize + 1<<20); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid upload")
 			return
 		}
@@ -171,7 +175,7 @@ func handleImportDiveLog(svc *divelog.Service) func(http.ResponseWriter, *http.R
 		}
 		defer file.Close()
 
-		data, err := io.ReadAll(io.LimitReader(file, maxUDDFFileSize))
+		data, err := io.ReadAll(io.LimitReader(file, maxImportFileSize))
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "could not read file")
 			return
@@ -179,11 +183,18 @@ func handleImportDiveLog(svc *divelog.Service) func(http.ResponseWriter, *http.R
 
 		result, err := svc.Import(r.Context(), userID, data)
 		if err != nil {
-			if errors.Is(err, divelog.ErrInvalidUDDF) {
+			switch {
+			case errors.Is(err, divelog.ErrInvalidUDDF):
 				writeError(w, http.StatusBadRequest, "this doesn't look like a valid UDDF dive log file")
-				return
+			case errors.Is(err, divelog.ErrInvalidCSV):
+				writeError(w, http.StatusBadRequest, "could not parse this CSV file — check the column headers")
+			case errors.Is(err, divelog.ErrInvalidSQLite):
+				writeError(w, http.StatusBadRequest, "could not read this file as a Diving Log 6 export")
+			case errors.Is(err, divelog.ErrUnrecognizedFormat):
+				writeError(w, http.StatusBadRequest, "unrecognized file format — expected UDDF, CSV, or a Diving Log 6 export")
+			default:
+				writeError(w, http.StatusInternalServerError, "could not import dive log")
 			}
-			writeError(w, http.StatusInternalServerError, "could not import dive log")
 			return
 		}
 		writeJSON(w, http.StatusOK, importDiveLogResponse{Imported: result.Imported, Skipped: result.Skipped})

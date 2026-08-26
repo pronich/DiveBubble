@@ -28,7 +28,7 @@ class DiveLogDetailPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(formatShortDate(entry.divedAt)),
+        title: Text(formatShortDateWithYear(entry.divedAt)),
         actions: [
           IconButton(
             icon: const Icon(Icons.ios_share_outlined),
@@ -58,11 +58,23 @@ class DiveLogDetailPage extends StatelessWidget {
                 child: _StatTile(label: 'Max depth', value: _depthText(entry.maxDepthM)),
               ),
               Expanded(
+                child: _StatTile(label: 'Avg depth', value: _depthText(entry.avgDepthM)),
+              ),
+              Expanded(
                 child: _StatTile(label: 'Duration', value: _durationText(entry.durationMinutes)),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
               Expanded(
                 child: _StatTile(label: 'Min temp', value: _tempText(entry.minTemperatureC)),
               ),
+              Expanded(
+                child: _StatTile(label: 'Max temp', value: _tempText(entry.maxTemperatureC)),
+              ),
+              const Expanded(child: SizedBox.shrink()),
             ],
           ),
           const SizedBox(height: 20),
@@ -73,7 +85,7 @@ class DiveLogDetailPage extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _InfoRow(label: 'Dive site', value: entry.siteName ?? '—'),
+                _InfoRow(label: 'Location', value: entry.locationText ?? '—'),
                 const Divider(height: 1),
                 _InfoRow(label: 'Source', value: entry.isImported ? 'Imported' : 'Manual'),
               ],
@@ -213,8 +225,8 @@ class _ShareToBubbleSheetState extends State<_ShareToBubbleSheet> {
     setState(() => _sendingTripId = tripId);
     final e = widget.entry;
     final parts = <String>[
-      'Dive on ${formatShortDate(e.divedAt)}',
-      if (e.siteName?.isNotEmpty ?? false) e.siteName!,
+      'Dive on ${formatShortDateWithYear(e.divedAt)}',
+      if (e.locationText != null) e.locationText!,
       if (e.maxDepthM != null) 'Max depth: ${_depthText(e.maxDepthM)}',
       if (e.durationMinutes != null) 'Duration: ${_durationText(e.durationMinutes)}',
       if (e.minTemperatureC != null) 'Min temp: ${_tempText(e.minTemperatureC)}',

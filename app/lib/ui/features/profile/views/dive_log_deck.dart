@@ -36,6 +36,11 @@ class DiveLogDeck extends StatelessWidget {
 
         return GestureDetector(
           onTap: onTap,
+          // Without this, only the area actually painted by a descendant (the front card,
+          // the count badge) registers a hit — GestureDetector's default deferToChild
+          // behavior means empty space anywhere else in this box (around the peeking cards,
+          // to their sides) silently swallows the tap instead of opening the list.
+          behavior: HitTestBehavior.opaque,
           child: SizedBox(
             width: constraints.maxWidth,
             height: _cardHeight,

@@ -47,6 +47,7 @@ class DiveLogApiService {
     double? maxDepthM,
     int? durationMinutes,
     double? minTemperatureC,
+    String? country,
     String? siteName,
     String? notes,
   }) async {
@@ -58,6 +59,7 @@ class DiveLogApiService {
         if (maxDepthM != null) 'maxDepthM': maxDepthM,
         if (durationMinutes != null) 'durationMinutes': durationMinutes,
         if (minTemperatureC != null) 'minTemperatureC': minTemperatureC,
+        if (country != null) 'country': country,
         if (siteName != null) 'siteName': siteName,
         if (notes != null) 'notes': notes,
       }),
@@ -74,6 +76,7 @@ class DiveLogApiService {
     double? maxDepthM,
     int? durationMinutes,
     double? minTemperatureC,
+    String? country,
     String? siteName,
     String? notes,
   }) async {
@@ -85,6 +88,7 @@ class DiveLogApiService {
         if (maxDepthM != null) 'maxDepthM': maxDepthM,
         if (durationMinutes != null) 'durationMinutes': durationMinutes,
         if (minTemperatureC != null) 'minTemperatureC': minTemperatureC,
+        if (country != null) 'country': country,
         if (siteName != null) 'siteName': siteName,
         if (notes != null) 'notes': notes,
       }),
@@ -95,7 +99,10 @@ class DiveLogApiService {
     return DiveLogEntry.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  Future<DiveLogImportResult> importUDDF(String filePath) async {
+  /// Handles all three accepted formats (UDDF, CSV, a Diving Log 6 SQLite export) — the
+  /// backend sniffs the actual bytes to tell them apart, this just uploads whatever file
+  /// the diver picked.
+  Future<DiveLogImportResult> importFile(String filePath) async {
     final token = await getAccessToken();
     if (token == null) throw const AuthRequiredException();
     try {
