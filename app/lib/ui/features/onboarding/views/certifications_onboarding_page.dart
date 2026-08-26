@@ -47,7 +47,7 @@ class _CertificationsOnboardingPageState extends State<CertificationsOnboardingP
     final theme = Theme.of(context);
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
