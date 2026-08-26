@@ -51,6 +51,7 @@ dependencies:
   file_picker: ^12.0.0
   url_launcher: ^6.3.1
   centrifuge: ^0.20.0
+  scrollable_positioned_list: ^0.3.8
   google_fonts: ^6.2.1
 
 dev_dependencies:

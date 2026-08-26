@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../data/repositories/message_repository.dart';
@@ -388,7 +391,8 @@ class _Conversation extends StatefulWidget {
 }
 
 class _ConversationState extends State<_Conversation> with SingleTickerProviderStateMixin {
-  final _scrollController = ScrollController();
+  final _itemScrollController = ItemScrollController();
+  final _itemPositionsListener = ItemPositionsListener.create();
   late final _tabController = TabController(length: 2, vsync: this);
   String? _lastTripId;
   int _lastMessageCount = 0;
@@ -410,10 +414,15 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
   // cancel, and whenever the selected trip changes, same lifecycle as _pendingAttachments.
   ChatMessage? _replyingTo;
 
+  // Briefly flashed on the bubble _scrollToMessage lands on, then cleared — same pattern as
+  // app/'s own ChatView.
+  String? _highlightedMessageId;
+  Timer? _highlightTimer;
+
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
+    _itemPositionsListener.itemPositions.addListener(_onScroll);
     _tabController.addListener(_onTabChanged);
   }
 
@@ -469,8 +478,8 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
+    _itemPositionsListener.itemPositions.removeListener(_onScroll);
+    _highlightTimer?.cancel();
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
@@ -492,12 +501,12 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     );
   }
 
-  // Reversed list (see build) means pixels near 0 is "near the bottom" — same convention
-  // as app/'s ChatView, and for the same reason: offset 0 in a reversed list is exactly
-  // the newest message, not an estimate.
+  // Reversed list (see build) means index 0 is the newest message — near-bottom means that
+  // item is currently among the visible ones, not a precise pixel threshold
+  // (scrollable_positioned_list doesn't expose raw scroll-offset pixels the way a plain
+  // ScrollController did — same tradeoff app/'s own ChatView made).
   void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    final nearBottom = _scrollController.position.pixels <= 80;
+    final nearBottom = _itemPositionsListener.itemPositions.value.any((p) => p.index == 0);
     if (nearBottom == _isNearBottom && !(nearBottom && _showNewMessagesPill)) return;
     setState(() {
       _isNearBottom = nearBottom;
@@ -505,13 +514,30 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     });
   }
 
+  // Reversed list means the bottom/newest message is item index 0 — jumpTo/scrollTo(index: 0)
+  // always lands exactly there, same guarantee the old pixel-offset-0 approach relied on.
   void _scrollToBottom({required bool animate}) {
-    if (!_scrollController.hasClients) return;
+    if (!_itemScrollController.isAttached) return;
     if (animate) {
-      _scrollController.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+      _itemScrollController.scrollTo(index: 0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
     } else {
-      _scrollController.jumpTo(0);
+      _itemScrollController.jumpTo(index: 0);
     }
+  }
+
+  // Jumps to and briefly highlights an arbitrary earlier message — tapping a reply's quoted
+  // strip (see _MessageRow.onTapReplyPreview). Recomputes reversedItems fresh rather than
+  // caching it, since the display-item list only otherwise exists inside build()'s scope.
+  void _scrollToMessage(String messageId) {
+    final reversedItems = _buildDisplayItems(widget.viewModel.messages).reversed.toList();
+    final index = reversedItems.indexWhere((item) => item.message?.id == messageId);
+    if (index == -1 || !_itemScrollController.isAttached) return;
+    _itemScrollController.scrollTo(index: index, duration: const Duration(milliseconds: 300), curve: Curves.easeOut, alignment: 0.4);
+    _highlightTimer?.cancel();
+    setState(() => _highlightedMessageId = messageId);
+    _highlightTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) setState(() => _highlightedMessageId = null);
+    });
   }
 
   @override
@@ -639,19 +665,21 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                               )
                             : Stack(
                                 children: [
-                                  ListView.builder(
-                                    controller: _scrollController,
+                                  ScrollablePositionedList.builder(
+                                    itemScrollController: _itemScrollController,
+                                    itemPositionsListener: _itemPositionsListener,
                                     reverse: true,
                                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                                     itemCount: reversedItems.length,
                                     itemBuilder: (context, index) {
                                       final item = reversedItems[index];
                                       if (item.date != null) {
-                                        return _DateSeparator(date: item.date!);
+                                        return _DateSeparator(key: ValueKey(item.date), date: item.date!);
                                       }
                                       final message = item.message!;
                                       final repliedTo = message.replyToId == null ? null : messagesById[message.replyToId];
                                       return _MessageRow(
+                                        key: ValueKey(message.id),
                                         message: message,
                                         isOwn: message.userId == viewModel.currentUserId,
                                         isFirstInCluster: item.isFirstInCluster,
@@ -660,7 +688,9 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                                         diveCenterName: viewModel.diveCenterName,
                                         repliedTo: repliedTo,
                                         repliedToProfile: repliedTo == null ? null : viewModel.senderProfiles[repliedTo.userId],
+                                        isHighlighted: _highlightedMessageId == message.id,
                                         onReply: () => setState(() => _replyingTo = message),
+                                        onTapReplyPreview: repliedTo == null ? null : () => _scrollToMessage(repliedTo.id),
                                       );
                                     },
                                   ),
@@ -960,7 +990,7 @@ List<_ChatDisplayItem> _buildDisplayItems(List<ChatMessage> messages) {
 }
 
 class _DateSeparator extends StatelessWidget {
-  const _DateSeparator({required this.date});
+  const _DateSeparator({super.key, required this.date});
 
   final DateTime date;
 
@@ -991,6 +1021,7 @@ class _DateSeparator extends StatelessWidget {
 /// layout convention as app/'s ChatView._MessageRow.
 class _MessageRow extends StatefulWidget {
   const _MessageRow({
+    super.key,
     required this.message,
     required this.isOwn,
     required this.isFirstInCluster,
@@ -999,7 +1030,9 @@ class _MessageRow extends StatefulWidget {
     required this.diveCenterName,
     required this.repliedTo,
     required this.repliedToProfile,
+    required this.isHighlighted,
     required this.onReply,
+    required this.onTapReplyPreview,
   });
 
   final ChatMessage message;
@@ -1015,12 +1048,17 @@ class _MessageRow extends StatefulWidget {
 
   // Resolved from message.replyToId by _ConversationState (null if replyToId is unset, or the
   // original fell outside the loaded history) — a quoted preview renders above the bubble when
-  // set. No tap-to-scroll-to-original here (unlike app/'s ChatView) — that needs
-  // scrollable_positioned_list's arbitrary-index jump, a bigger swap out of scope for now.
+  // set; tapping it calls onTapReplyPreview (see _ConversationState._scrollToMessage).
   final ChatMessage? repliedTo;
   final MyProfile? repliedToProfile;
 
+  // True for the ~1.2s after a reply-preview tap lands this row in view (see
+  // _ConversationState._scrollToMessage) — briefly flashes the bubble so it's obvious which
+  // message the jump landed on.
+  final bool isHighlighted;
+
   final VoidCallback onReply;
+  final VoidCallback? onTapReplyPreview;
 
   @override
   State<_MessageRow> createState() => _MessageRowState();
@@ -1073,29 +1111,38 @@ class _MessageRowState extends State<_MessageRow> {
               ),
             ),
           if (repliedTo != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 6),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: onBubbleColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-                border: Border(left: BorderSide(color: onBubbleColor.withValues(alpha: 0.6), width: 3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    (widget.repliedToProfile?.displayName?.isNotEmpty ?? false) ? widget.repliedToProfile!.displayName! : 'Diver',
-                    style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: widget.onTapReplyPreview,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: onBubbleColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border(left: BorderSide(color: onBubbleColor.withValues(alpha: 0.6), width: 3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          (widget.repliedToProfile?.displayName?.isNotEmpty ?? false) ? widget.repliedToProfile!.displayName! : 'Diver',
+                          style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
+                        ),
+                        Text(
+                          repliedTo.body.isEmpty ? '📎 Attachment' : repliedTo.body,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(color: onBubbleColor.withValues(alpha: 0.85)),
+                        ),
+                      ],
+                    ),
                   ),
-                  Text(
-                    repliedTo.body.isEmpty ? '📎 Attachment' : repliedTo.body,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(color: onBubbleColor.withValues(alpha: 0.85)),
-                  ),
-                ],
+                ),
               ),
             ),
           if (message.attachments.isNotEmpty)
@@ -1106,6 +1153,18 @@ class _MessageRowState extends State<_MessageRow> {
           _MessageBody(body: message.body, time: formatTime(message.createdAt), color: onBubbleColor),
         ],
       ),
+    );
+
+    // AnimatedContainer color-flash for _scrollToMessage's landing highlight — transparent
+    // to isHighlighted's own tertiaryContainer-tinted overlay otherwise.
+    final highlightedBubble = AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      decoration: BoxDecoration(
+        color: widget.isHighlighted ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.6) : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      padding: widget.isHighlighted ? const EdgeInsets.all(2) : EdgeInsets.zero,
+      child: bubble,
     );
 
     final replyButton = AnimatedOpacity(
@@ -1123,7 +1182,7 @@ class _MessageRowState extends State<_MessageRow> {
     final row = isOwn
         ? Row(
             mainAxisSize: MainAxisSize.min,
-            children: [replyButton, Flexible(child: bubble)],
+            children: [replyButton, Flexible(child: highlightedBubble)],
           )
         : Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -1140,7 +1199,7 @@ class _MessageRowState extends State<_MessageRow> {
                     : null,
               ),
               const SizedBox(width: 8),
-              Flexible(child: bubble),
+              Flexible(child: highlightedBubble),
               replyButton,
             ],
           );
