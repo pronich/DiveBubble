@@ -1,3 +1,6 @@
+import 'chat_attachment.dart';
+import 'chat_reaction.dart';
+
 // Plain class, not freezed — same pragmatic call as MyProfile/DiveCenterMember.
 class ChatMessage {
   const ChatMessage({
@@ -8,6 +11,9 @@ class ChatMessage {
     required this.createdAt,
     this.isDiveCenterStaff = false,
     this.mentionsDiveCenter = false,
+    this.attachments = const [],
+    this.replyToId,
+    this.reactions = const {},
   });
 
   final String id;
@@ -24,6 +30,27 @@ class ChatMessage {
   // history can spot "this one was flagged for us" without re-reading everything.
   final bool mentionsDiveCenter;
 
+  final List<ChatAttachment> attachments;
+
+  // Set when this message is a reply to another — resolved back to the original ChatMessage
+  // (if still in the loaded history) by BubblesPage before rendering (see _MessageRow.repliedTo).
+  final String? replyToId;
+
+  final Map<String, ChatReaction> reactions;
+
+  ChatMessage copyWith({Map<String, ChatReaction>? reactions}) => ChatMessage(
+        id: id,
+        tripId: tripId,
+        userId: userId,
+        body: body,
+        createdAt: createdAt,
+        isDiveCenterStaff: isDiveCenterStaff,
+        mentionsDiveCenter: mentionsDiveCenter,
+        attachments: attachments,
+        replyToId: replyToId,
+        reactions: reactions ?? this.reactions,
+      );
+
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
         id: json['id'] as String,
         tripId: json['tripId'] as String,
@@ -32,5 +59,11 @@ class ChatMessage {
         createdAt: DateTime.parse(json['createdAt'] as String),
         isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
         mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
+        attachments: ((json['attachments'] as List<dynamic>?) ?? [])
+            .map((e) => ChatAttachment.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        replyToId: json['replyToId'] as String?,
+        reactions: ((json['reactions'] as Map<String, dynamic>?) ?? {})
+            .map((emoji, raw) => MapEntry(emoji, ChatReaction.fromJson(raw as Map<String, dynamic>))),
       );
 }

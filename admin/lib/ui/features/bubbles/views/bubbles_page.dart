@@ -1,16 +1,24 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../data/repositories/message_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
+import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
+import '../../../../domain/entities/chat_reaction.dart';
 import '../../../../domain/entities/my_profile.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../core/formatting/date_format.dart';
+import '../../../core/widgets/pick_chat_attachment.dart';
 import '../../transport/view_models/transport_view_model.dart';
 import '../../trips/views/trip_detail_page.dart';
 import '../view_models/bubbles_view_model.dart';
@@ -19,6 +27,10 @@ import 'transport_tab.dart';
 // Same grouping window as app/'s ChatView — consecutive messages from the same sender on
 // the same day collapse into one visual cluster as long as the gap stays under this.
 const _groupingWindow = Duration(minutes: 5);
+
+// Fixed 8-emoji set, same as app/'s ChatView — one reaction per user per message (Messenger
+// semantics, see BubblesViewModel.reactToMessage).
+const _reactionEmojis = ['❤️', '😅', '😁', '🙃', '😢', '😮', '😡', '👌'];
 
 /// Body-only (embedded in AdminShell). Named "Bubbles" (not "Messages") to match the app's
 /// own branding — a joined trip *is* its chat there too (see CLAUDE.md's Navigation / IA
@@ -146,13 +158,23 @@ class _BubblesPageState extends State<BubblesPage> {
     super.dispose();
   }
 
-  Future<void> _send() async {
+  Future<void> _send(List<PickedChatAttachment> pending, String? replyToId) async {
     final body = _messageController.text;
-    if (body.trim().isEmpty) return;
+    if (body.trim().isEmpty && pending.isEmpty) return;
     _messageController.clear();
-    final error = await _viewModel!.send(body);
-    if (error != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    try {
+      final uploaded = <ChatAttachment>[];
+      for (final a in pending) {
+        uploaded.add(await _viewModel!.uploadAttachment(a.bytes, a.filename));
+      }
+      final error = await _viewModel!.send(body, attachments: uploaded, replyToId: replyToId);
+      if (error != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))));
+      }
     }
   }
 
@@ -175,9 +197,11 @@ class _BubblesPageState extends State<BubblesPage> {
           controller: _messageController,
           onSend: _send,
           tripRepository: widget.tripRepository,
+          messageRepository: widget.messageRepository,
           transportRepository: widget.transportRepository,
           profileRepository: widget.profileRepository,
           diveCenterId: widget.diveCenterId,
+          diveCenterName: widget.diveCenterName,
           onDiveIntoBubble: widget.onDiveIntoBubble,
         );
 
@@ -192,9 +216,11 @@ class _BubblesPageState extends State<BubblesPage> {
                   controller: _messageController,
                   onSend: _send,
                   tripRepository: widget.tripRepository,
+                  messageRepository: widget.messageRepository,
                   transportRepository: widget.transportRepository,
                   profileRepository: widget.profileRepository,
                   diveCenterId: widget.diveCenterId,
+                  diveCenterName: widget.diveCenterName,
                   onDiveIntoBubble: widget.onDiveIntoBubble,
                   onBack: vm.clearSelection,
                 );
@@ -340,20 +366,24 @@ class _Conversation extends StatefulWidget {
     required this.controller,
     required this.onSend,
     required this.tripRepository,
+    required this.messageRepository,
     required this.transportRepository,
     required this.profileRepository,
     required this.diveCenterId,
+    required this.diveCenterName,
     required this.onDiveIntoBubble,
     this.onBack,
   });
 
   final BubblesViewModel viewModel;
   final TextEditingController controller;
-  final VoidCallback onSend;
+  final Future<void> Function(List<PickedChatAttachment> attachments, String? replyToId) onSend;
   final TripRepository tripRepository;
+  final MessageRepository messageRepository;
   final TransportRepository transportRepository;
   final ProfileRepository profileRepository;
   final String diveCenterId;
+  final String diveCenterName;
   final ValueChanged<String> onDiveIntoBubble;
 
   // Mobile layout only (see BubblesPage.build) — renders a back button in the header that
@@ -366,7 +396,8 @@ class _Conversation extends StatefulWidget {
 }
 
 class _ConversationState extends State<_Conversation> with SingleTickerProviderStateMixin {
-  final _scrollController = ScrollController();
+  final _itemScrollController = ItemScrollController();
+  final _itemPositionsListener = ItemPositionsListener.create();
   late final _tabController = TabController(length: 2, vsync: this);
   String? _lastTripId;
   int _lastMessageCount = 0;
@@ -378,11 +409,150 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
   // as app/'s own TransportViewModel, unlike BubblesViewModel itself.
   TransportViewModel? _transportViewModel;
 
+  // Cleared on send (see _handleSend) and whenever the selected trip changes (build's
+  // trip.id != _lastTripId check) — a picked-but-unsent photo shouldn't follow the staff
+  // member into a different Bubble.
+  List<PickedChatAttachment> _pendingAttachments = [];
+  bool _isPickingAttachment = false;
+
+  // Set by a message row's Reply button (see _MessageRow.onReply) — cleared on send or
+  // cancel, and whenever the selected trip changes, same lifecycle as _pendingAttachments.
+  ChatMessage? _replyingTo;
+
+  // Briefly flashed on the bubble _scrollToMessage lands on, then cleared — same pattern as
+  // app/'s own ChatView.
+  String? _highlightedMessageId;
+  Timer? _highlightTimer;
+
+  // Every diver on the selected trip, refreshed on trip switch (see build) — no dive-center
+  // entry here (unlike app/'s own mention list): admin/ staff mentioning "the dive center"
+  // makes no sense when staff already are the dive center.
+  List<String> _participantNames = [];
+
+  // Index of the '@' that opened the currently-active mention token in widget.controller's
+  // text, or -1 when no mention is being typed right now (see _onComposerTextChanged).
+  int _mentionTokenStart = -1;
+  List<String> _mentionMatches = [];
+
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
+    _itemPositionsListener.itemPositions.addListener(_onScroll);
     _tabController.addListener(_onTabChanged);
+    widget.controller.addListener(_onComposerTextChanged);
+  }
+
+  Future<void> _loadParticipantNames(String tripId) async {
+    try {
+      final ids = await widget.tripRepository.getParticipantUserIds(tripId);
+      final names = <String>[];
+      for (final id in ids) {
+        if (id == widget.viewModel.currentUserId) continue;
+        var profile = widget.viewModel.senderProfiles[id];
+        profile ??= await widget.profileRepository.getById(id).catchError((_) => const MyProfile());
+        if (profile.displayName?.isNotEmpty ?? false) names.add(profile.displayName!);
+      }
+      if (mounted) setState(() => _participantNames = names);
+    } catch (_) {
+      // Best-effort — a failed fetch just leaves the mention list empty for this Bubble.
+    }
+  }
+
+  // Telegram-style: typing '@' always opens the participant list, live-filtered as more
+  // characters follow — same convention as app/'s own ChatView composer.
+  void _onComposerTextChanged() {
+    final text = widget.controller.text;
+    final cursor = widget.controller.selection.baseOffset;
+    if (cursor < 0) {
+      if (_mentionTokenStart != -1) setState(() => _mentionTokenStart = -1);
+      return;
+    }
+    final atIndex = _activeMentionStart(text, cursor);
+    if (atIndex == -1) {
+      if (_mentionTokenStart != -1) setState(() => _mentionTokenStart = -1);
+      return;
+    }
+    final query = text.substring(atIndex + 1, cursor).toLowerCase();
+    final matches = query.isEmpty
+        ? _participantNames
+        : _participantNames.where((n) => n.toLowerCase().contains(query)).toList();
+    setState(() {
+      _mentionTokenStart = atIndex;
+      _mentionMatches = matches;
+    });
+  }
+
+  // Scans backward from the cursor for an '@' that starts the current word (at the very start
+  // of the text, or preceded by whitespace) — hitting whitespace first, or no '@' at all, means
+  // no mention is currently being typed.
+  int _activeMentionStart(String text, int cursor) {
+    for (var i = cursor - 1; i >= 0; i--) {
+      final char = text[i];
+      if (char == '@') {
+        final prev = i == 0 ? null : text[i - 1];
+        return (prev == null || prev == ' ' || prev == '\n') ? i : -1;
+      }
+      if (char == ' ' || char == '\n') return -1;
+    }
+    return -1;
+  }
+
+  void _selectMention(String name) {
+    final text = widget.controller.text;
+    final cursor = widget.controller.selection.baseOffset;
+    final start = _mentionTokenStart;
+    if (start == -1 || cursor < 0 || cursor > text.length) return;
+    final replacement = '@$name ';
+    widget.controller.value = TextEditingValue(
+      text: text.replaceRange(start, cursor, replacement),
+      selection: TextSelection.collapsed(offset: start + replacement.length),
+    );
+    setState(() => _mentionTokenStart = -1);
+  }
+
+  Future<void> _pickPhotos() async {
+    setState(() => _isPickingAttachment = true);
+    try {
+      final picked = await pickChatPhotos();
+      if (mounted) setState(() => _pendingAttachments = [..._pendingAttachments, ...picked]);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not pick photos: $e')));
+    } finally {
+      if (mounted) setState(() => _isPickingAttachment = false);
+    }
+  }
+
+  Future<void> _pickDocuments() async {
+    setState(() => _isPickingAttachment = true);
+    try {
+      final picked = await pickChatDocuments();
+      if (mounted) setState(() => _pendingAttachments = [..._pendingAttachments, ...picked]);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not pick document: $e')));
+    } finally {
+      if (mounted) setState(() => _isPickingAttachment = false);
+    }
+  }
+
+  void _removePendingAttachment(int index) {
+    setState(() => _pendingAttachments = [..._pendingAttachments]..removeAt(index));
+  }
+
+  Future<void> _handleSend() async {
+    final attachments = _pendingAttachments;
+    final replyToId = _replyingTo?.id;
+    setState(() {
+      _pendingAttachments = [];
+      _replyingTo = null;
+    });
+    await widget.onSend(attachments, replyToId);
+  }
+
+  Future<void> _react(String messageId, String emoji) async {
+    final error = await widget.viewModel.reactToMessage(messageId, emoji);
+    if (error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    }
   }
 
   // No realtime for transport offers yet (only chat has Centrifugo wired up) — an offer
@@ -399,10 +569,11 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
+    _itemPositionsListener.itemPositions.removeListener(_onScroll);
+    _highlightTimer?.cancel();
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    widget.controller.removeListener(_onComposerTextChanged);
     super.dispose();
   }
 
@@ -412,19 +583,22 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
         builder: (_) => TripDetailPage(
           trip: trip,
           tripRepository: widget.tripRepository,
+          messageRepository: widget.messageRepository,
+          profileRepository: widget.profileRepository,
           diveCenterId: widget.diveCenterId,
+          diveCenterName: widget.diveCenterName,
           onDiveIntoBubble: widget.onDiveIntoBubble,
         ),
       ),
     );
   }
 
-  // Reversed list (see build) means pixels near 0 is "near the bottom" — same convention
-  // as app/'s ChatView, and for the same reason: offset 0 in a reversed list is exactly
-  // the newest message, not an estimate.
+  // Reversed list (see build) means index 0 is the newest message — near-bottom means that
+  // item is currently among the visible ones, not a precise pixel threshold
+  // (scrollable_positioned_list doesn't expose raw scroll-offset pixels the way a plain
+  // ScrollController did — same tradeoff app/'s own ChatView made).
   void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    final nearBottom = _scrollController.position.pixels <= 80;
+    final nearBottom = _itemPositionsListener.itemPositions.value.any((p) => p.index == 0);
     if (nearBottom == _isNearBottom && !(nearBottom && _showNewMessagesPill)) return;
     setState(() {
       _isNearBottom = nearBottom;
@@ -432,13 +606,30 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     });
   }
 
+  // Reversed list means the bottom/newest message is item index 0 — jumpTo/scrollTo(index: 0)
+  // always lands exactly there, same guarantee the old pixel-offset-0 approach relied on.
   void _scrollToBottom({required bool animate}) {
-    if (!_scrollController.hasClients) return;
+    if (!_itemScrollController.isAttached) return;
     if (animate) {
-      _scrollController.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+      _itemScrollController.scrollTo(index: 0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
     } else {
-      _scrollController.jumpTo(0);
+      _itemScrollController.jumpTo(index: 0);
     }
+  }
+
+  // Jumps to and briefly highlights an arbitrary earlier message — tapping a reply's quoted
+  // strip (see _MessageRow.onTapReplyPreview). Recomputes reversedItems fresh rather than
+  // caching it, since the display-item list only otherwise exists inside build()'s scope.
+  void _scrollToMessage(String messageId) {
+    final reversedItems = _buildDisplayItems(widget.viewModel.messages).reversed.toList();
+    final index = reversedItems.indexWhere((item) => item.message?.id == messageId);
+    if (index == -1 || !_itemScrollController.isAttached) return;
+    _itemScrollController.scrollTo(index: index, duration: const Duration(milliseconds: 300), curve: Curves.easeOut, alignment: 0.4);
+    _highlightTimer?.cancel();
+    setState(() => _highlightedMessageId = messageId);
+    _highlightTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) setState(() => _highlightedMessageId = null);
+    });
   }
 
   @override
@@ -471,6 +662,10 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
       _lastMessageCount = 0;
       _isNearBottom = true;
       _showNewMessagesPill = false;
+      _pendingAttachments = [];
+      _replyingTo = null;
+      _participantNames = [];
+      _mentionTokenStart = -1;
       _tabController.index = 0;
       _transportViewModel?.dispose();
       _transportViewModel = TransportViewModel(
@@ -478,12 +673,14 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
         profileRepository: widget.profileRepository,
         tripId: trip.id,
       )..load();
+      _loadParticipantNames(trip.id);
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom(animate: false));
     }
 
     final messages = viewModel.messages;
     final items = _buildDisplayItems(messages);
     final reversedItems = items.reversed.toList();
+    final messagesById = {for (final m in messages) m.id: m};
 
     if (messages.length != _lastMessageCount) {
       final wasEmpty = _lastMessageCount == 0;
@@ -563,24 +760,33 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                               )
                             : Stack(
                                 children: [
-                                  ListView.builder(
-                                    controller: _scrollController,
+                                  ScrollablePositionedList.builder(
+                                    itemScrollController: _itemScrollController,
+                                    itemPositionsListener: _itemPositionsListener,
                                     reverse: true,
                                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                                     itemCount: reversedItems.length,
                                     itemBuilder: (context, index) {
                                       final item = reversedItems[index];
                                       if (item.date != null) {
-                                        return _DateSeparator(date: item.date!);
+                                        return _DateSeparator(key: ValueKey(item.date), date: item.date!);
                                       }
                                       final message = item.message!;
+                                      final repliedTo = message.replyToId == null ? null : messagesById[message.replyToId];
                                       return _MessageRow(
+                                        key: ValueKey(message.id),
                                         message: message,
                                         isOwn: message.userId == viewModel.currentUserId,
                                         isFirstInCluster: item.isFirstInCluster,
                                         isLastInCluster: item.isLastInCluster,
                                         profile: viewModel.senderProfiles[message.userId],
                                         diveCenterName: viewModel.diveCenterName,
+                                        repliedTo: repliedTo,
+                                        repliedToProfile: repliedTo == null ? null : viewModel.senderProfiles[repliedTo.userId],
+                                        isHighlighted: _highlightedMessageId == message.id,
+                                        onReply: () => setState(() => _replyingTo = message),
+                                        onTapReplyPreview: repliedTo == null ? null : () => _scrollToMessage(repliedTo.id),
+                                        onReact: (emoji) => _react(message.id, emoji),
                                       );
                                     },
                                   ),
@@ -616,36 +822,124 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(border: Border(top: BorderSide(color: theme.colorScheme.outlineVariant))),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            // Enter alone sends (and is swallowed here so it never lands as a
-                            // newline first); Shift+Enter falls through to the TextField and
-                            // inserts a newline normally — needs keyboardType: multiline, since a
-                            // single-line field never lets Enter produce a newline to begin with.
-                            child: Focus(
-                              onKeyEvent: (node, event) {
-                                if (event is KeyDownEvent &&
-                                    event.logicalKey == LogicalKeyboardKey.enter &&
-                                    !HardwareKeyboard.instance.isShiftPressed) {
-                                  widget.onSend();
-                                  return KeyEventResult.handled;
-                                }
-                                return KeyEventResult.ignored;
-                              },
-                              child: TextField(
-                                controller: widget.controller,
-                                decoration: InputDecoration(hintText: 'Message ${trip.title} as organization'),
-                                keyboardType: TextInputType.multiline,
-                                minLines: 1,
-                                maxLines: 5,
+                          // Typing '@' opens this list; tapping a row inserts "@Display Name "
+                          // and closes it — same convention as app/'s own composer.
+                          if (_mentionTokenStart != -1 && _mentionMatches.isNotEmpty) ...[
+                            Container(
+                              constraints: const BoxConstraints(maxHeight: 180),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListView.builder(
+                                shrinkWrap: true,
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                itemCount: _mentionMatches.length,
+                                itemBuilder: (context, index) {
+                                  final name = _mentionMatches[index];
+                                  return ListTile(
+                                    dense: true,
+                                    leading: const Icon(Icons.person_outline, size: 20),
+                                    title: Text(name),
+                                    onTap: () => _selectMention(name),
+                                  );
+                                },
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton.filled(
-                            onPressed: viewModel.isSending ? null : widget.onSend,
-                            icon: const Icon(Icons.send),
+                            const SizedBox(height: 12),
+                          ],
+                          if (_replyingTo != null) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.reply, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _replyingTo!.body.isEmpty ? '📎 Attachment' : _replyingTo!.body,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Cancel reply',
+                                    iconSize: 16,
+                                    visualDensity: VisualDensity.compact,
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () => setState(() => _replyingTo = null),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (_pendingAttachments.isNotEmpty) ...[
+                            SizedBox(
+                              height: 64,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _pendingAttachments.length,
+                                separatorBuilder: (context, _) => const SizedBox(width: 8),
+                                itemBuilder: (context, index) => _PendingAttachmentChip(
+                                  attachment: _pendingAttachments[index],
+                                  onRemove: () => _removePendingAttachment(index),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          Row(
+                            children: [
+                              IconButton(
+                                tooltip: 'Attach photos',
+                                onPressed: _isPickingAttachment ? null : _pickPhotos,
+                                icon: const Icon(Icons.image_outlined),
+                              ),
+                              IconButton(
+                                tooltip: 'Attach document',
+                                onPressed: _isPickingAttachment ? null : _pickDocuments,
+                                icon: const Icon(Icons.attach_file),
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                // Enter alone sends (and is swallowed here so it never lands as a
+                                // newline first); Shift+Enter falls through to the TextField and
+                                // inserts a newline normally — needs keyboardType: multiline, since a
+                                // single-line field never lets Enter produce a newline to begin with.
+                                child: Focus(
+                                  onKeyEvent: (node, event) {
+                                    if (event is KeyDownEvent &&
+                                        event.logicalKey == LogicalKeyboardKey.enter &&
+                                        !HardwareKeyboard.instance.isShiftPressed) {
+                                      _handleSend();
+                                      return KeyEventResult.handled;
+                                    }
+                                    return KeyEventResult.ignored;
+                                  },
+                                  child: TextField(
+                                    controller: widget.controller,
+                                    decoration: InputDecoration(hintText: 'Message ${trip.title} as organization'),
+                                    keyboardType: TextInputType.multiline,
+                                    minLines: 1,
+                                    maxLines: 5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton.filled(
+                                onPressed: viewModel.isSending ? null : _handleSend,
+                                icon: const Icon(Icons.send),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -654,6 +948,66 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
               ),
               TransportTab(viewModel: _transportViewModel!),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One picked-but-unsent photo/document, shown above the composer before Send is pressed.
+class _PendingAttachmentChip extends StatelessWidget {
+  const _PendingAttachmentChip({required this.attachment, required this.onRemove});
+
+  final PickedChatAttachment attachment;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isImage = attachment.type == 'image';
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: 64,
+            height: 64,
+            child: isImage
+                ? Image.memory(attachment.bytes, fit: BoxFit.cover)
+                : Container(
+                    color: theme.colorScheme.secondaryContainer,
+                    padding: const EdgeInsets.all(4),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.picture_as_pdf_outlined, size: 20, color: theme.colorScheme.onSecondaryContainer),
+                        Text(
+                          attachment.filename,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSecondaryContainer),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ),
+        Positioned(
+          right: -8,
+          top: -8,
+          child: Material(
+            color: theme.colorScheme.surface,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onRemove,
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: Icon(Icons.cancel, size: 18, color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
           ),
         ),
       ],
@@ -758,7 +1112,7 @@ List<_ChatDisplayItem> _buildDisplayItems(List<ChatMessage> messages) {
 }
 
 class _DateSeparator extends StatelessWidget {
-  const _DateSeparator({required this.date});
+  const _DateSeparator({super.key, required this.date});
 
   final DateTime date;
 
@@ -787,14 +1141,21 @@ class _DateSeparator extends StatelessWidget {
 /// Own messages never carry a name/avatar; everyone else's reserve a fixed-width avatar
 /// gutter so bubbles line up whether or not this particular row shows the avatar — same
 /// layout convention as app/'s ChatView._MessageRow.
-class _MessageRow extends StatelessWidget {
+class _MessageRow extends StatefulWidget {
   const _MessageRow({
+    super.key,
     required this.message,
     required this.isOwn,
     required this.isFirstInCluster,
     required this.isLastInCluster,
     required this.profile,
     required this.diveCenterName,
+    required this.repliedTo,
+    required this.repliedToProfile,
+    required this.isHighlighted,
+    required this.onReply,
+    required this.onTapReplyPreview,
+    required this.onReact,
   });
 
   final ChatMessage message;
@@ -808,20 +1169,78 @@ class _MessageRow extends StatelessWidget {
   // knows at a glance it's a colleague, not a diver, without needing a separate bubble color.
   final String diveCenterName;
 
+  // Resolved from message.replyToId by _ConversationState (null if replyToId is unset, or the
+  // original fell outside the loaded history) — a quoted preview renders above the bubble when
+  // set; tapping it calls onTapReplyPreview (see _ConversationState._scrollToMessage).
+  final ChatMessage? repliedTo;
+  final MyProfile? repliedToProfile;
+
+  // True for the ~1.2s after a reply-preview tap lands this row in view (see
+  // _ConversationState._scrollToMessage) — briefly flashes the bubble so it's obvious which
+  // message the jump landed on.
+  final bool isHighlighted;
+
+  final VoidCallback onReply;
+  final VoidCallback? onTapReplyPreview;
+  final void Function(String emoji) onReact;
+
+  @override
+  State<_MessageRow> createState() => _MessageRowState();
+}
+
+class _MessageRowState extends State<_MessageRow> {
+  bool _hovering = false;
+
+  // Web has no long-press — a hover-reveal icon (see build's reactButton) opens this small
+  // anchored picker instead of app/'s bespoke long-press overlay+reaction row.
+  Future<void> _openReactionPicker(BuildContext buttonContext) async {
+    final box = buttonContext.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(buttonContext).context.findRenderObject() as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(box.localToGlobal(Offset.zero, ancestor: overlay), box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay)),
+      Offset.zero & overlay.size,
+    );
+    final emoji = await showMenu<String>(
+      context: buttonContext,
+      position: position,
+      items: [
+        PopupMenuItem<String>(
+          enabled: false,
+          padding: EdgeInsets.zero,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final e in _reactionEmojis)
+                InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => Navigator.of(buttonContext).pop(e),
+                  child: Padding(padding: const EdgeInsets.all(6), child: Text(e, style: const TextStyle(fontSize: 20))),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+    if (emoji != null) widget.onReact(emoji);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final message = widget.message;
+    final isOwn = widget.isOwn;
     final isColleague = !isOwn && message.isDiveCenterStaff;
     final bubbleColor = isOwn ? colorScheme.primary : colorScheme.secondaryContainer;
     final onBubbleColor = isOwn ? colorScheme.onPrimary : colorScheme.onSecondaryContainer;
 
-    final baseName = (profile?.displayName?.isNotEmpty ?? false) ? profile!.displayName! : 'Diver';
-    final name = (isColleague && diveCenterName.isNotEmpty) ? '$baseName | $diveCenterName' : baseName;
+    final baseName = (widget.profile?.displayName?.isNotEmpty ?? false) ? widget.profile!.displayName! : 'Diver';
+    final name = (isColleague && widget.diveCenterName.isNotEmpty) ? '$baseName | ${widget.diveCenterName}' : baseName;
     // A colleague's name always shows, even mid-cluster — unlike a diver's, where only the
     // first message in a cluster needs it (see _buildClusters).
-    final showName = !isOwn && (isFirstInCluster || isColleague);
+    final showName = !isOwn && (widget.isFirstInCluster || isColleague);
 
+    final repliedTo = widget.repliedTo;
     final bubble = Container(
       constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.5),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -832,11 +1251,11 @@ class _MessageRow extends StatelessWidget {
         children: [
           // A diver flagged this one for staff attention — surfaced here so scrolling
           // history makes it obvious which messages were actually meant to be noticed.
-          if (message.mentionsDiveCenter && diveCenterName.isNotEmpty)
+          if (message.mentionsDiveCenter && widget.diveCenterName.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
               child: Text(
-                '@$diveCenterName',
+                '@${widget.diveCenterName}',
                 style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
               ),
             ),
@@ -848,38 +1267,237 @@ class _MessageRow extends StatelessWidget {
                 style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600, color: onBubbleColor),
               ),
             ),
+          if (repliedTo != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: widget.onTapReplyPreview,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: onBubbleColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border(left: BorderSide(color: onBubbleColor.withValues(alpha: 0.6), width: 3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          (widget.repliedToProfile?.displayName?.isNotEmpty ?? false) ? widget.repliedToProfile!.displayName! : 'Diver',
+                          style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700, color: onBubbleColor),
+                        ),
+                        Text(
+                          repliedTo.body.isEmpty ? '📎 Attachment' : repliedTo.body,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(color: onBubbleColor.withValues(alpha: 0.85)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (message.attachments.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: _MessageAttachments(attachments: message.attachments, onColor: onBubbleColor),
+            ),
           _MessageBody(body: message.body, time: formatTime(message.createdAt), color: onBubbleColor),
+          if (message.reactions.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: _ReactionSummary(reactions: message.reactions, color: onBubbleColor, onTap: widget.onReact),
+            ),
         ],
       ),
     );
 
-    if (isOwn) {
-      return Padding(
-        padding: EdgeInsets.only(top: isFirstInCluster ? 10 : 2, bottom: 2),
-        child: Align(alignment: Alignment.centerRight, child: bubble),
-      );
-    }
-
-    return Padding(
-      padding: EdgeInsets.only(top: isFirstInCluster ? 14 : 2, bottom: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          SizedBox(
-            width: 32,
-            child: isLastInCluster
-                ? CircleAvatar(
-                    radius: 16,
-                    backgroundColor: bubbleColor,
-                    backgroundImage: (profile?.avatarUrl?.isNotEmpty ?? false) ? NetworkImage(profile!.avatarUrl!) : null,
-                    child: (profile?.avatarUrl?.isNotEmpty ?? false) ? null : Icon(Icons.person, size: 18, color: onBubbleColor),
-                  )
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Flexible(child: bubble),
-        ],
+    // AnimatedContainer color-flash for _scrollToMessage's landing highlight — transparent
+    // to isHighlighted's own tertiaryContainer-tinted overlay otherwise.
+    // Double-tap-to-reply, Telegram/WhatsApp-style — a quicker path than hovering for the
+    // reply icon (see replyButton below), which still works too.
+    final highlightedBubble = GestureDetector(
+      onDoubleTap: widget.onReply,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        decoration: BoxDecoration(
+          color: widget.isHighlighted ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.6) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        padding: widget.isHighlighted ? const EdgeInsets.all(2) : EdgeInsets.zero,
+        child: bubble,
       ),
+    );
+
+    final replyButton = AnimatedOpacity(
+      opacity: _hovering ? 1 : 0,
+      duration: const Duration(milliseconds: 120),
+      child: IconButton(
+        tooltip: 'Reply',
+        iconSize: 16,
+        visualDensity: VisualDensity.compact,
+        icon: Icon(Icons.reply, color: theme.colorScheme.onSurfaceVariant),
+        onPressed: widget.onReply,
+      ),
+    );
+
+    final reactButton = AnimatedOpacity(
+      opacity: _hovering ? 1 : 0,
+      duration: const Duration(milliseconds: 120),
+      child: Builder(
+        builder: (buttonContext) => IconButton(
+          tooltip: 'React',
+          iconSize: 16,
+          visualDensity: VisualDensity.compact,
+          icon: Icon(Icons.add_reaction_outlined, color: theme.colorScheme.onSurfaceVariant),
+          onPressed: () => _openReactionPicker(buttonContext),
+        ),
+      ),
+    );
+
+    final row = isOwn
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [reactButton, replyButton, Flexible(child: highlightedBubble)],
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              SizedBox(
+                width: 32,
+                child: widget.isLastInCluster
+                    ? CircleAvatar(
+                        radius: 16,
+                        backgroundColor: bubbleColor,
+                        backgroundImage: (widget.profile?.avatarUrl?.isNotEmpty ?? false) ? NetworkImage(widget.profile!.avatarUrl!) : null,
+                        child: (widget.profile?.avatarUrl?.isNotEmpty ?? false) ? null : Icon(Icons.person, size: 18, color: onBubbleColor),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Flexible(child: highlightedBubble),
+              replyButton,
+              reactButton,
+            ],
+          );
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovering = true),
+      onExit: (_) => setState(() => _hovering = false),
+      child: isOwn
+          ? Padding(
+              padding: EdgeInsets.only(top: widget.isFirstInCluster ? 10 : 2, bottom: 2),
+              child: Align(alignment: Alignment.centerRight, child: row),
+            )
+          : Padding(
+              padding: EdgeInsets.only(top: widget.isFirstInCluster ? 14 : 2, bottom: 2),
+              child: row,
+            ),
+    );
+  }
+}
+
+/// Photo/PDF attachments on a received or sent message — a small thumbnail grid for images,
+/// a filename chip for PDFs (opens in a new browser tab either way, no in-admin preview page).
+/// "❤️ 3 😂 1" under a bubble that has any reactions — tapping a pill is a one-tap shortcut to
+/// add that same reaction yourself (same toggle semantics as the picker: tapping your own
+/// current reaction again removes it). Sorted by _reactionEmojis' own fixed order so the row
+/// doesn't visually reshuffle as counts change.
+class _ReactionSummary extends StatelessWidget {
+  const _ReactionSummary({required this.reactions, required this.color, this.onTap});
+
+  final Map<String, ChatReaction> reactions;
+  final Color color;
+  final void Function(String emoji)? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final entries = [
+      for (final emoji in _reactionEmojis)
+        if (reactions[emoji] != null) MapEntry(emoji, reactions[emoji]!),
+    ];
+    if (entries.isEmpty) return const SizedBox.shrink();
+    return Wrap(
+      spacing: 6,
+      children: [
+        for (final entry in entries)
+          GestureDetector(
+            onTap: onTap == null ? null : () => onTap!(entry.key),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: entry.value.reactedByMe ? color.withValues(alpha: 0.15) : null,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${entry.key} ${entry.value.count}',
+                style: theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.85)),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MessageAttachments extends StatelessWidget {
+  const _MessageAttachments({required this.attachments, required this.onColor});
+
+  final List<ChatAttachment> attachments;
+  final Color onColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final images = attachments.where((a) => a.type == 'image' || a.type == 'video').toList();
+    final files = attachments.where((a) => a.type != 'image' && a.type != 'video').toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (images.isNotEmpty)
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: [
+              for (final a in images)
+                GestureDetector(
+                  onTap: () => launchUrl(Uri.parse(a.url), mode: LaunchMode.externalApplication),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(width: 140, height: 140, child: Image.network(a.url, fit: BoxFit.cover)),
+                  ),
+                ),
+            ],
+          ),
+        for (final a in files)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: InkWell(
+              onTap: () => launchUrl(Uri.parse(a.url), mode: LaunchMode.externalApplication),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.picture_as_pdf_outlined, size: 18, color: onColor),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      a.filename ?? 'Document.pdf',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: onColor, decoration: TextDecoration.underline),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -889,7 +1507,9 @@ class _MessageRow extends StatelessWidget {
 /// [WidgetSpan] so the paragraph's line-wrapping reserves room for it (falling to a new line
 /// if the last line is already full); the real, visible timestamp is then drawn on top at the
 /// bottom-right corner via [Stack]+[Positioned], landing in that reserved space.
-class _MessageBody extends StatelessWidget {
+final _urlPattern = RegExp(r'(https?:\/\/\S+|www\.\S+)', caseSensitive: false);
+
+class _MessageBody extends StatefulWidget {
   const _MessageBody({required this.body, required this.time, required this.color});
 
   final String body;
@@ -897,29 +1517,79 @@ class _MessageBody extends StatelessWidget {
   final Color color;
 
   @override
+  State<_MessageBody> createState() => _MessageBodyState();
+}
+
+class _MessageBodyState extends State<_MessageBody> {
+  final _linkRecognizers = <TapGestureRecognizer>[];
+
+  @override
+  void dispose() {
+    for (final recognizer in _linkRecognizers) {
+      recognizer.dispose();
+    }
+    super.dispose();
+  }
+
+  List<TextSpan> _buildSpans(TextStyle? bodyStyle) {
+    for (final recognizer in _linkRecognizers) {
+      recognizer.dispose();
+    }
+    _linkRecognizers.clear();
+
+    final spans = <TextSpan>[];
+    var start = 0;
+    for (final match in _urlPattern.allMatches(widget.body)) {
+      if (match.start > start) {
+        spans.add(TextSpan(text: widget.body.substring(start, match.start)));
+      }
+      // Trailing punctuation (e.g. a sentence-ending period) usually isn't part of the URL.
+      var end = match.end;
+      while (end > match.start && '.,;:!?)'.contains(widget.body[end - 1])) {
+        end--;
+      }
+      final url = widget.body.substring(match.start, end);
+      final recognizer = TapGestureRecognizer()
+        ..onTap = () => launchUrl(Uri.parse(url.startsWith('http') ? url : 'https://$url'), mode: LaunchMode.externalApplication);
+      _linkRecognizers.add(recognizer);
+      spans.add(
+        TextSpan(text: url, style: bodyStyle?.copyWith(decoration: TextDecoration.underline), recognizer: recognizer),
+      );
+      if (end < match.end) {
+        spans.add(TextSpan(text: widget.body.substring(end, match.end)));
+      }
+      start = match.end;
+    }
+    if (start < widget.body.length) {
+      spans.add(TextSpan(text: widget.body.substring(start)));
+    }
+    return spans;
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bodyStyle = TextStyle(color: color);
-    final timeStyle = theme.textTheme.labelSmall?.copyWith(color: color.withValues(alpha: 0.7), fontSize: 11);
+    final bodyStyle = TextStyle(color: widget.color);
+    final timeStyle = theme.textTheme.labelSmall?.copyWith(color: widget.color.withValues(alpha: 0.7), fontSize: 11);
     return Stack(
       children: [
         Text.rich(
           TextSpan(
             style: bodyStyle,
             children: [
-              TextSpan(text: body),
+              ..._buildSpans(bodyStyle),
               WidgetSpan(
                 alignment: PlaceholderAlignment.baseline,
                 baseline: TextBaseline.alphabetic,
                 child: Opacity(
                   opacity: 0,
-                  child: Padding(padding: const EdgeInsets.only(left: 8), child: Text(time, style: timeStyle)),
+                  child: Padding(padding: const EdgeInsets.only(left: 8), child: Text(widget.time, style: timeStyle)),
                 ),
               ),
             ],
           ),
         ),
-        Positioned(right: 0, bottom: 0, child: Text(time, style: timeStyle)),
+        Positioned(right: 0, bottom: 0, child: Text(widget.time, style: timeStyle)),
       ],
     );
   }

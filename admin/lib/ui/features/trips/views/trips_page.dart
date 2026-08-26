@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/repositories/message_repository.dart';
+import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
@@ -14,10 +16,21 @@ enum _TripFilter { all, upcoming, past }
 /// Formerly DashboardPage/DashboardViewModel — renamed once this became specifically the
 /// Trips section of a multi-section shell rather than the app's only screen.
 class TripsPage extends StatefulWidget {
-  const TripsPage({super.key, required this.tripRepository, required this.diveCenterId, required this.onDiveIntoBubble});
+  const TripsPage({
+    super.key,
+    required this.tripRepository,
+    required this.messageRepository,
+    required this.profileRepository,
+    required this.diveCenterId,
+    required this.diveCenterName,
+    required this.onDiveIntoBubble,
+  });
 
   final TripRepository tripRepository;
+  final MessageRepository messageRepository;
+  final ProfileRepository profileRepository;
   final String diveCenterId;
+  final String diveCenterName;
 
   // Threaded down to TripDetailPage's "Dive into Bubble" button — see AdminShell._diveIntoBubble.
   final ValueChanged<String> onDiveIntoBubble;
@@ -59,7 +72,10 @@ class _TripsPageState extends State<TripsPage> {
         builder: (_) => TripDetailPage(
           trip: trip,
           tripRepository: widget.tripRepository,
+          messageRepository: widget.messageRepository,
+          profileRepository: widget.profileRepository,
           diveCenterId: widget.diveCenterId,
+          diveCenterName: widget.diveCenterName,
           onDiveIntoBubble: widget.onDiveIntoBubble,
         ),
       ),
@@ -254,11 +270,17 @@ String _rangeText(int? min, int? max, String unit) {
 }
 
 // Same "1d if no end date, otherwise inclusive day span" rule as TripDetailPage's _InfoGrid
-// and app/'s Explore card badges.
+// and app/'s Explore card badges. Diffs calendar dates (both sides converted to local first),
+// not raw DateTime.difference — startTime carries a real time-of-day while endDate is
+// UTC-midnight-normalized, which truncates the count if diffed directly.
 String _durationText(Trip trip) {
   final end = trip.endDate;
   if (end == null) return '1d';
-  final days = end.difference(trip.startTime).inDays + 1;
+  final start = trip.startTime.toLocal();
+  final endLocal = end.toLocal();
+  final startDate = DateTime(start.year, start.month, start.day);
+  final endDateOnly = DateTime(endLocal.year, endLocal.month, endLocal.day);
+  final days = endDateOnly.difference(startDate).inDays + 1;
   return '${days}d';
 }
 

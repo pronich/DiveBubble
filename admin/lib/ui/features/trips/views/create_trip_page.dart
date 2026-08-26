@@ -98,8 +98,11 @@ class _CreateTripPageState extends State<CreateTripPage> {
     final priceMinor = trip.priceMinor;
     _priceController.text = priceMinor == null ? '' : (priceMinor / 100).toStringAsFixed(2);
     _bookingUrlController.text = trip.bookingUrl ?? '';
-    _startDate = DateTime(trip.startTime.year, trip.startTime.month, trip.startTime.day);
-    _startTimeOfDay = TimeOfDay(hour: trip.startTime.hour, minute: trip.startTime.minute);
+    // startTime comes off the wire UTC-tagged (mapper leaves it as-is) — convert to local
+    // before reading date/time fields, same as app/'s create_trip_page.dart.
+    final localStart = trip.startTime.toLocal();
+    _startDate = DateTime(localStart.year, localStart.month, localStart.day);
+    _startTimeOfDay = TimeOfDay(hour: localStart.hour, minute: localStart.minute);
     _endDate = trip.endDate;
     _minCertification = kCertificationLevels.contains(trip.minCertification) ? trip.minCertification : null;
   }
