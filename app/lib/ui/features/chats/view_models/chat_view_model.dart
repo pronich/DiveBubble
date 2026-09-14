@@ -150,6 +150,13 @@ class ChatViewModel extends ChangeNotifier {
         _applyReactionUpdate(json);
         return;
       }
+      // Tagged sentinel published alongside a car/buddy-chat message (see
+      // handleSendOfferMessage/handleSendBuddyMessage) — only meaningful to MyTripsViewModel
+      // (Bubbles list) and TripConversationPage's own pill-dot listener, both of which share
+      // this same trip:$id channel. The main chat has no use for it; falling through to
+      // ChatMessage(...) below would throw trying to read fields (id, body, createdAt, ...)
+      // this event doesn't have.
+      if (json['event'] == 'sub_chat_activity') return;
       final message = ChatMessage(
         id: json['id'] as String,
         tripId: json['tripId'] as String,
