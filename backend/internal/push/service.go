@@ -73,7 +73,11 @@ func (s *Service) UnregisterToken(ctx context.Context, userID uuid.UUID, token s
 
 type Notification struct {
 	Title string
-	Body  string
+	// Subtitle renders as a smaller line between title and body — only a real, separate line
+	// on iOS (via the APNs alert override in sendOne); FCM's Android notification payload has
+	// no equivalent field, so Android folds it into the title instead of dropping it.
+	Subtitle string
+	Body     string
 	// Data is delivered alongside the notification for the client to act on when the user
 	// taps it (e.g. tripId, to deep-link into the right Bubble) — see CLAUDE.md.
 	Data map[string]string
@@ -122,11 +126,32 @@ type fcmMessage struct {
 	Token        string            `json:"token"`
 	Notification *fcmNotification  `json:"notification,omitempty"`
 	Data         map[string]string `json:"data,omitempty"`
+	APNS         *fcmApnsConfig    `json:"apns,omitempty"`
 }
 
 type fcmNotification struct {
 	Title string `json:"title"`
 	Body  string `json:"body"`
+}
+
+// fcmApnsConfig overrides the alert shown on iOS — needed only for Subtitle, which has no
+// equivalent in fcmNotification above (that block is title/body only, shared with Android).
+type fcmApnsConfig struct {
+	Payload fcmApnsPayload `json:"payload"`
+}
+
+type fcmApnsPayload struct {
+	Aps fcmApnsAps `json:"aps"`
+}
+
+type fcmApnsAps struct {
+	Alert fcmApnsAlert `json:"alert"`
+}
+
+type fcmApnsAlert struct {
+	Title    string `json:"title"`
+	Subtitle string `json:"subtitle,omitempty"`
+	Body     string `json:"body"`
 }
 
 type fcmErrorResponse struct {
@@ -139,11 +164,28 @@ type fcmErrorResponse struct {
 // not found) so the caller can prune it — anything else is just logged, not pruned, since
 // e.g. a transient quota or server error doesn't mean the token itself is bad.
 func (s *Service) sendOne(ctx context.Context, token string, n Notification) (dead bool, err error) {
-	body, err := json.Marshal(fcmSendRequest{Message: fcmMessage{
+	// Android has no subtitle field to put this in — folded into the title as the least-bad
+	// fallback rather than silently dropping the category. iOS gets a real separate line via
+	// the apns override below.
+	androidTitle := n.Title
+	if n.Subtitle != "" {
+		androidTitle = n.Title + " · " + n.Subtitle
+	}
+
+	msg := fcmMessage{
 		Token:        token,
-		Notification: &fcmNotification{Title: n.Title, Body: n.Body},
+		Notification: &fcmNotification{Title: androidTitle, Body: n.Body},
 		Data:         n.Data,
-	}})
+	}
+	if n.Subtitle != "" {
+		// Overrides the alert for iOS specifically — the shared Notification block above still
+		// covers Android (and acts as the FCM-required fallback if this were ever missing).
+		msg.APNS = &fcmApnsConfig{Payload: fcmApnsPayload{Aps: fcmApnsAps{
+			Alert: fcmApnsAlert{Title: n.Title, Subtitle: n.Subtitle, Body: n.Body},
+		}}}
+	}
+
+	body, err := json.Marshal(fcmSendRequest{Message: msg})
 	if err != nil {
 		return false, err
 	}

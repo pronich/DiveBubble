@@ -230,9 +230,10 @@ func handleJoinBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, profileSv
 					joinerName = joiner.DisplayName.String
 				}
 				pushSvc.SendToUsers(r.Context(), []uuid.UUID{req.UserID}, push.Notification{
-					Title: t.Title,
-					Body:  joinerName + " joined your buddy group.",
-					Data:  map[string]string{"tripId": t.ID.String(), "type": "buddy_joined"},
+					Title:    t.Title,
+					Subtitle: "Buddy",
+					Body:     joinerName + " joined your buddy group.",
+					Data:     map[string]string{"tripId": t.ID.String(), "type": "buddy_joined", "chatScope": "buddy"},
 				})
 
 				// One system message per join event — not idempotent like SendSystem, since
@@ -413,6 +414,13 @@ func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, dive
 		if pubErr := publisher.Publish(r.Context(), "buddy_request:"+req.ID.String(), resp); pubErr != nil {
 			log.Printf("realtime publish failed for buddy_request:%s: %v", req.ID, pubErr)
 		}
+		// Also pinged on the trip channel — see the identical comment in
+		// handleSendOfferMessage (routes_transport.go) for why.
+		if pubErr := publisher.Publish(r.Context(), "trip:"+req.TripID.String(), map[string]string{
+			"event": "sub_chat_activity", "scope": "buddy", "userId": userID.String(),
+		}); pubErr != nil {
+			log.Printf("realtime publish failed for trip:%s: %v", req.TripID, pubErr)
+		}
 		if tErr == nil {
 			notifyNewBuddyMessage(r.Context(), pushSvc, profileSvc, buddySvc, t, req, m, userID)
 		}
@@ -483,10 +491,13 @@ func notifyNewBuddyMessage(ctx context.Context, pushSvc *push.Service, profileSv
 	if sender, err := profileSvc.Get(ctx, senderID); err == nil && sender.DisplayName.Valid && sender.DisplayName.String != "" {
 		senderName = sender.DisplayName.String
 	}
+	// Same three-tier Title/Subtitle/Body shape as notifyNewMessage — Subtitle/chatScope are
+	// what let the diver (and the tap handler) tell this apart from the trip's main chat.
 	pushSvc.SendToUsers(ctx, recipients, push.Notification{
-		Title: senderName + " · " + t.Title,
-		Body:  pushBodyFor(m),
-		Data:  map[string]string{"tripId": t.ID.String(), "type": "message"},
+		Title:    t.Title,
+		Subtitle: "Buddy",
+		Body:     senderName + ": " + pushBodyFor(m),
+		Data:     map[string]string{"tripId": t.ID.String(), "type": "message", "chatScope": "buddy"},
 	})
 }
 

@@ -253,9 +253,10 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service, pro
 					joinerName = joiner.DisplayName.String
 				}
 				pushSvc.SendToUsers(r.Context(), []uuid.UUID{offer.UserID}, push.Notification{
-					Title: t.Title,
-					Body:  joinerName + " joined your ride.",
-					Data:  map[string]string{"tripId": t.ID.String(), "type": "transport_joined"},
+					Title:    t.Title,
+					Subtitle: "Transport",
+					Body:     joinerName + " joined your ride.",
+					Data:     map[string]string{"tripId": t.ID.String(), "type": "transport_joined", "chatScope": "transport"},
 				})
 
 				// One system message per join event — not idempotent like SendSystem, since
@@ -441,6 +442,16 @@ func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Servi
 		if pubErr := publisher.Publish(r.Context(), "transport_offer:"+offer.ID.String(), resp); pubErr != nil {
 			log.Printf("realtime publish failed for transport_offer:%s: %v", offer.ID, pubErr)
 		}
+		// Also pinged on the trip channel — MyTripsViewModel (Bubbles list) and
+		// TripConversationPage both already subscribe to trip:$id, but neither of them is
+		// subscribed to transport_offer:$id unless the diver is actually looking at this car's
+		// chat right now. Without this second, tagged publish, the Bubbles-list badge and the
+		// Transport pill dot would only refresh on the next explicit reload.
+		if pubErr := publisher.Publish(r.Context(), "trip:"+offer.TripID.String(), map[string]string{
+			"event": "sub_chat_activity", "scope": "transport", "userId": userID.String(),
+		}); pubErr != nil {
+			log.Printf("realtime publish failed for trip:%s: %v", offer.TripID, pubErr)
+		}
 		if tErr == nil {
 			notifyNewOfferMessage(r.Context(), pushSvc, profileSvc, transportSvc, t, offer, m, userID)
 		}
@@ -511,10 +522,13 @@ func notifyNewOfferMessage(ctx context.Context, pushSvc *push.Service, profileSv
 	if sender, err := profileSvc.Get(ctx, senderID); err == nil && sender.DisplayName.Valid && sender.DisplayName.String != "" {
 		senderName = sender.DisplayName.String
 	}
+	// Same three-tier Title/Subtitle/Body shape as notifyNewMessage — Subtitle/chatScope are
+	// what let the diver (and the tap handler) tell this apart from the trip's main chat.
 	pushSvc.SendToUsers(ctx, recipients, push.Notification{
-		Title: senderName + " · " + t.Title,
-		Body:  pushBodyFor(m),
-		Data:  map[string]string{"tripId": t.ID.String(), "type": "message"},
+		Title:    t.Title,
+		Subtitle: "Transport",
+		Body:     senderName + ": " + pushBodyFor(m),
+		Data:     map[string]string{"tripId": t.ID.String(), "type": "message", "chatScope": "transport"},
 	})
 }
 

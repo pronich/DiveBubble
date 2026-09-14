@@ -124,6 +124,24 @@ class MyTripsViewModel extends ChangeNotifier {
     final json = jsonDecode(utf8.decode(event.data)) as Map<String, dynamic>;
     final senderId = json['userId'] as String;
     final trip = _trips[index];
+
+    // Tagged sentinel published alongside a car/buddy-chat message (see
+    // handleSendOfferMessage/handleSendBuddyMessage) — distinct from a plain main-chat
+    // message republish, which has no 'event' key at all. Bumps the alert-dot fields, not
+    // unreadCount: those chats have their own read-state, independent of the trip-level one
+    // unreadCount tracks (see Trip.hasUnreadTransportMessages's own doc comment).
+    if (json['event'] == 'sub_chat_activity') {
+      if (senderId == currentUserId) return;
+      final scope = json['scope'] as String?;
+      final updated = trip.copyWith(
+        hasUnreadTransportMessages: scope == 'transport' ? true : trip.hasUnreadTransportMessages,
+        hasUnreadBuddyMessages: scope == 'buddy' ? true : trip.hasUnreadBuddyMessages,
+      );
+      _trips = [updated, ..._trips.where((t) => t.id != tripId)];
+      notifyListeners();
+      return;
+    }
+
     // Own messages never count as unread for yourself (matches the backend's rule) —
     // this only fires for the optimistic client-side bump between reloads.
     final updated = trip.copyWith(
