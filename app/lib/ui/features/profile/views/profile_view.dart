@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/chat_repository.dart';
-import '../../../../data/repositories/dive_log_repository.dart';
-import '../../../../data/repositories/gear_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
-import '../../../../data/repositories/specialty_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/location_service.dart';
 import '../../../../domain/certification_level.dart';
@@ -36,9 +33,7 @@ class ProfileView extends StatefulWidget {
     super.key,
     required this.authRepository,
     required this.profileRepository,
-    required this.specialtyRepository,
-    required this.gearRepository,
-    required this.diveLogRepository,
+    required this.viewModel,
     required this.tripRepository,
     required this.chatRepository,
     required this.pushRepository,
@@ -47,9 +42,9 @@ class ProfileView extends StatefulWidget {
 
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
-  final SpecialtyRepository specialtyRepository;
-  final GearRepository gearRepository;
-  final DiveLogRepository diveLogRepository;
+  // Shared with the DiveLog tab (see RootShell) — not built here, so a dive logged from
+  // either tab shows up in both without a second fetch.
+  final ProfileViewModel viewModel;
   final TripRepository tripRepository;
   final ChatRepository chatRepository;
   final PushRepository pushRepository;
@@ -63,12 +58,7 @@ class ProfileView extends StatefulWidget {
 }
 
 class _ProfileViewState extends State<ProfileView> {
-  late final _viewModel = ProfileViewModel(
-    repository: widget.profileRepository,
-    specialtyRepository: widget.specialtyRepository,
-    gearRepository: widget.gearRepository,
-    diveLogRepository: widget.diveLogRepository,
-  );
+  ProfileViewModel get _viewModel => widget.viewModel;
   final _locationService = LocationService();
   bool _signedIn = false;
   String? _guestLocation;
