@@ -13,5 +13,6 @@ extension BuddyRequestApiMapper on BuddyRequestApiModel {
         creatorName: creatorName,
         creatorLevel: creatorLevel,
         creatorDiveCount: creatorDiveCount,
+        hasUnreadMessages: hasUnreadMessages,
       );
 }

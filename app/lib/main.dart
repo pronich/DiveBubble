@@ -402,6 +402,7 @@ class _MyAppState extends State<MyApp> {
             pushRepository: _pushRepository,
             diveCenterRepository: _diveCenterRepository,
             expenseRepository: _expenseRepository,
+            initialTabIndex: _tabIndexForChatScope(message.data['chatScope']),
           ),
         ),
       );
@@ -409,6 +410,20 @@ class _MyAppState extends State<MyApp> {
       // Best-effort — a failed deep-link (e.g. trip fetch failed) means the tap does
       // nothing, not a crash. The diver can still find the trip from Bubbles directly.
       debugPrint('push: could not open trip from notification: $e');
+    }
+  }
+
+  // Matches the "chatScope" data field set by notifyNewMessage/notifyNewOfferMessage/
+  // notifyNewBuddyMessage and the two join-event pushes (see routes_transport.go/
+  // routes_buddy.go) — an absent or unrecognized value falls back to the main Chat tab.
+  int _tabIndexForChatScope(String? scope) {
+    switch (scope) {
+      case 'transport':
+        return 1;
+      case 'buddy':
+        return 2;
+      default:
+        return 0;
     }
   }
 

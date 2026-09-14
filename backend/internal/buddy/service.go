@@ -133,3 +133,7 @@ func (s *Service) HasAlert(ctx context.Context, tripID, userID uuid.UUID) (bool,
 func (s *Service) ClearAlert(ctx context.Context, tripID, userID uuid.UUID) error {
 	return s.Repo.ClearAlert(ctx, tripID, userID)
 }
+
+func (s *Service) MarkRead(ctx context.Context, requestID, userID uuid.UUID) error {
+	return s.Repo.MarkRead(ctx, requestID, userID)
+}

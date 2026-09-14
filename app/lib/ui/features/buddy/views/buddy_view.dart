@@ -58,15 +58,11 @@ class _BuddyViewState extends State<BuddyView>
   ChatViewModel? _buddyChatViewModel;
   String? _buddyChatRequestId;
 
-  @override
-  void initState() {
-    super.initState();
-    // Deferred a tick: TabBarView builds all tabs eagerly up front, so calling load() (whose
-    // first line is a synchronous notifyListeners()) straight from initState here fires
-    // while a *sibling* tab's build is still in flight, tripping "setState called during
-    // build". A microtask lets the current build pass finish first.
-    Future.microtask(widget.viewModel.load);
-  }
+  // No load() call here anymore — TripConversationPage.initState loads this ViewModel
+  // eagerly (myRequest/hasUnreadMessages need to be ready before this tab is ever built,
+  // since TabBarView doesn't build an offscreen page). A second load from here used to be
+  // redundant at best; at worst its isLoading flash could unmount a live ChatView without
+  // resetting _buddyChatRequestId (see the isLoading-branch guard in build() below).
 
   ChatViewModel _ensureBuddyChatViewModel(BuddyRequest request) {
     if (_buddyChatRequestId != request.id) {
@@ -106,7 +102,12 @@ class _BuddyViewState extends State<BuddyView>
     return ListenableBuilder(
       listenable: widget.viewModel,
       builder: (context, _) {
-        if (widget.viewModel.isLoading) {
+        // Only the very first load (no requests cached yet) shows the full-screen spinner —
+        // a background refresh while a group chat is already open must NOT swap it out for a
+        // spinner: that would unmount the live ChatView (disposing its ChatViewModel) without
+        // resetting _buddyChatRequestId, so the next build would hand ChatView a disposed
+        // instance.
+        if (widget.viewModel.isLoading && widget.viewModel.requests.isEmpty) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );

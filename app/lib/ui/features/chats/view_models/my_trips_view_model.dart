@@ -122,12 +122,30 @@ class MyTripsViewModel extends ChangeNotifier {
     if (index == -1) return;
 
     final json = jsonDecode(utf8.decode(event.data)) as Map<String, dynamic>;
-    final senderId = json['userId'] as String;
+    final eventType = json['event'] as String?;
+    // reaction_update (see publishReactionUpdate) also lands on this same trip:$id channel
+    // and has no 'userId' at all — every other subscriber of the shared channel (Bubbles
+    // list included) needs to shrug off event shapes it doesn't know about instead of
+    // crashing on the unconditional cast below, which used to run for every event
+    // regardless of type.
+    if (eventType != null && eventType != 'sub_chat_activity') return;
+
+    final senderId = json['userId'] as String?;
+    if (senderId == null) return;
     final trip = _trips[index];
-    // Own messages never count as unread for yourself (matches the backend's rule) —
-    // this only fires for the optimistic client-side bump between reloads.
+    final isOwn = senderId == currentUserId;
+    // sub_chat_activity (see handleSendOfferMessage/handleSendBuddyMessage) is a car/buddy
+    // chat message — it sums into the same unreadCount a main-chat message would (one number
+    // for "how much is new in this Bubble"), plus its own dot so the diver can tell which
+    // chat it's in without opening the trip.
+    final scope = eventType == 'sub_chat_activity' ? json['scope'] as String? : null;
+
+    // Own activity never counts as unread for yourself (matches the backend's rule) — this
+    // only fires for the optimistic client-side bump between reloads.
     final updated = trip.copyWith(
-      unreadCount: senderId == currentUserId ? trip.unreadCount : trip.unreadCount + 1,
+      unreadCount: isOwn ? trip.unreadCount : trip.unreadCount + 1,
+      hasUnreadTransportMessages: !isOwn && scope == 'transport' ? true : trip.hasUnreadTransportMessages,
+      hasUnreadBuddyMessages: !isOwn && scope == 'buddy' ? true : trip.hasUnreadBuddyMessages,
     );
 
     // Move to the front, same "most recent activity" ordering the backend applies.

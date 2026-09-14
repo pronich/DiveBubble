@@ -36,7 +36,11 @@ services:
     volumes:
       - ./centrifugo/config.json:/centrifugo/config.json:ro
     ports:
-      - "127.0.0.1:${CENTRIFUGO_PORT:-8000}:8000"
+      # Not 127.0.0.1-only like before — a physical device testing over the LAN (see
+      # CLAUDE.md's --dart-define=CENTRIFUGO_WS_URL example) needs to reach this directly,
+      # same as the Go API itself already binds openly. Local dev only; prod's compose file
+      # is separate and puts Centrifugo behind nginx regardless.
+      - "${CENTRIFUGO_PORT:-8000}:8000"
     environment:
       CENTRIFUGO_API_KEY: "${CENTRIFUGO_API_KEY:-devkey}"
       CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: "${CENTRIFUGO_TOKEN_SECRET:-devsecret}"

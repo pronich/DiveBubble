@@ -87,6 +87,25 @@ class TransportViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Marks [myOffer]'s own car chat as read — call whenever the Transport tab is shown and
+  /// the diver is actually in a car, same "viewing acknowledges it" moment as [checkAlert].
+  /// Updates the local flag optimistically so the pill dot clears immediately rather than
+  /// waiting on the next [load].
+  Future<void> markMyOfferRead() async {
+    final offer = myOffer;
+    if (offer == null || !offer.hasUnreadMessages) return;
+    _offers = [
+      for (final o in _offers)
+        if (o.id == offer.id) o.copyWith(hasUnreadMessages: false) else o,
+    ];
+    notifyListeners();
+    try {
+      await _repository.markOfferRead(tripId, offer.id);
+    } catch (_) {
+      // Best-effort — worst case the dot reappears on the next load().
+    }
+  }
+
   /// Returns null on success, or an error message on failure — same reasoning as [join]:
   /// a failed submission shouldn't blow away the whole list via the shared [error] field,
   /// just the "Add transport info" sheet that's still open.

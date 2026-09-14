@@ -98,6 +98,17 @@ class BuddyApiService {
     }
   }
 
+  // Marks this one group's chat read up to now — call whenever its chat is actually opened.
+  Future<void> markRequestRead(String tripId, String requestId) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$tripId/buddy/$requestId/read'),
+      headers: await _authHeaders(),
+    );
+    if (res.statusCode != 204) {
+      throw Exception('markRequestRead failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
   // Also clears the alert server-side — checking is the acknowledgment, same as opening a chat.
   Future<bool> fetchHasAlert(String tripId) async {
     final res = await _client.get(

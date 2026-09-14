@@ -19,5 +19,9 @@ abstract class BuddyRequest with _$BuddyRequest {
     @Default('') String creatorName,
     String? creatorLevel,
     @Default(0) int creatorDiveCount,
+    // True when this group's own chat has a message the caller hasn't seen yet — distinct
+    // from BuddyViewModel.hasAlert (a dissolved group you'd joined), this is about ordinary
+    // new activity in a chat you're still part of.
+    @Default(false) bool hasUnreadMessages,
   }) = _BuddyRequest;
 }

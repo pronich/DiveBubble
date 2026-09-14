@@ -87,6 +87,25 @@ class BuddyViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Marks [myRequest]'s own group chat as read — call whenever the Buddy tab is shown and
+  /// the diver is actually in a group, same "viewing acknowledges it" moment as [checkAlert].
+  /// Updates the local flag optimistically so the pill dot clears immediately rather than
+  /// waiting on the next [load].
+  Future<void> markMyRequestRead() async {
+    final request = myRequest;
+    if (request == null || !request.hasUnreadMessages) return;
+    _requests = [
+      for (final r in _requests)
+        if (r.id == request.id) r.copyWith(hasUnreadMessages: false) else r,
+    ];
+    notifyListeners();
+    try {
+      await _repository.markRequestRead(tripId, request.id);
+    } catch (_) {
+      // Best-effort — worst case the dot reappears on the next load().
+    }
+  }
+
   /// No fields at all — a buddy request is just "I want a buddy for this trip".
   Future<bool> submit() async {
     _isSubmitting = true;

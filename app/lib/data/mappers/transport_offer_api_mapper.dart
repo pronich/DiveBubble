@@ -13,5 +13,6 @@ extension TransportOfferApiMapper on TransportOfferApiModel {
         joinedCount: joinedCount,
         joined: joined,
         isDiveCenterStaff: isDiveCenterStaff,
+        hasUnreadMessages: hasUnreadMessages,
       );
 }

@@ -16,6 +16,7 @@ abstract class BuddyRequestApiModel with _$BuddyRequestApiModel {
     @Default('') String creatorName,
     String? creatorLevel,
     @Default(0) int creatorDiveCount,
+    @Default(false) bool hasUnreadMessages,
   }) = _BuddyRequestApiModel;
 
   factory BuddyRequestApiModel.fromJson(Map<String, dynamic> json) =>

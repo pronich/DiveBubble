@@ -564,10 +564,14 @@ func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *pr
 		senderName = sender.DisplayName.String
 	}
 
+	// Title/Subtitle/Body: which Bubble, which chat within it, who said what — same three-tier
+	// shape notifyNewOfferMessage/notifyNewBuddyMessage use, so a diver can tell at a glance
+	// which of a trip's chats a push is about instead of just "something changed on this trip".
 	pushSvc.SendToUsers(ctx, recipients, push.Notification{
-		Title: senderName + " · " + t.Title,
-		Body:  pushBodyFor(m),
-		Data:  map[string]string{"tripId": t.ID.String(), "type": "message"},
+		Title:    t.Title,
+		Subtitle: "Chat",
+		Body:     senderName + ": " + pushBodyFor(m),
+		Data:     map[string]string{"tripId": t.ID.String(), "type": "message", "chatScope": "chat"},
 	})
 }
 

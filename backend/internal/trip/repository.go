@@ -389,7 +389,23 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID, arc
 			(SELECT EXISTS(SELECT 1 FROM chat_messages cm
 			 WHERE cm.trip_id = t.id AND cm.user_id != $1 AND cm.mentions_dive_center
 			   AND cm.created_at > COALESCE(tp.last_read_at, trs.last_read_at, '-infinity'::timestamptz))),
-			(SELECT EXISTS(SELECT 1 FROM buddy_alerts ba WHERE ba.trip_id = t.id AND ba.user_id = $1))
+			(SELECT EXISTS(SELECT 1 FROM buddy_alerts ba WHERE ba.trip_id = t.id AND ba.user_id = $1)),
+			(SELECT EXISTS(
+				SELECT 1 FROM trip_transport_offers o
+				LEFT JOIN transport_offer_read_state tors ON tors.offer_id = o.id AND tors.user_id = $1
+				WHERE o.trip_id = t.id
+				  AND (o.user_id = $1 OR EXISTS(SELECT 1 FROM transport_offer_joins WHERE offer_id = o.id AND user_id = $1))
+				  AND EXISTS(SELECT 1 FROM chat_messages cm WHERE cm.offer_id = o.id AND cm.user_id != $1
+				             AND cm.created_at > COALESCE(tors.last_read_at, '-infinity'::timestamptz))
+			)),
+			(SELECT EXISTS(
+				SELECT 1 FROM trip_buddy_requests b
+				LEFT JOIN buddy_request_read_state brrs ON brrs.request_id = b.id AND brrs.user_id = $1
+				WHERE b.trip_id = t.id
+				  AND (b.user_id = $1 OR EXISTS(SELECT 1 FROM buddy_request_joins WHERE request_id = b.id AND user_id = $1))
+				  AND EXISTS(SELECT 1 FROM chat_messages cm WHERE cm.buddy_request_id = b.id AND cm.user_id != $1
+				             AND cm.created_at > COALESCE(brrs.last_read_at, '-infinity'::timestamptz))
+			))
 		FROM trips t
 		LEFT JOIN trip_participants tp ON tp.trip_id = t.id AND tp.user_id = $1
 		LEFT JOIN trip_read_state trs ON trs.trip_id = t.id AND trs.user_id = $1
@@ -419,6 +435,7 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID, arc
 			&t.Latitude, &t.Longitude, &t.IsPrivate,
 			&t.PhotoURL,
 			&t.UnreadCount, &t.ParticipantCount, &t.HasTransportAlert, &t.HasUnreadMention, &t.HasBuddyAlert,
+			&t.HasUnreadTransportMessages, &t.HasUnreadBuddyMessages,
 		)
 		if err != nil {
 			return nil, err

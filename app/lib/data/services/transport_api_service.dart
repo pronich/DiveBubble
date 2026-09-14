@@ -108,6 +108,17 @@ class TransportApiService {
     }
   }
 
+  // Marks this one car's chat read up to now — call whenever its chat is actually opened.
+  Future<void> markOfferRead(String tripId, String offerId) async {
+    final res = await _client.post(
+      Uri.parse('$baseUrl/trips/$tripId/transport/$offerId/read'),
+      headers: await _authHeaders(),
+    );
+    if (res.statusCode != 204) {
+      throw Exception('markOfferRead failed: ${res.statusCode} ${res.body}');
+    }
+  }
+
   // Also clears the alert server-side — checking is the acknowledgment, same as opening a chat.
   Future<bool> fetchHasAlert(String tripId) async {
     final res = await _client.get(

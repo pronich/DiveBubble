@@ -18,6 +18,14 @@ type Trip struct {
 	UnreadCount       int  // only populated by ListJoinedByUser
 	HasTransportAlert bool // only populated by ListJoinedByUser — see transport_alerts
 	HasBuddyAlert     bool // only populated by ListJoinedByUser — see buddy_alerts
+	// HasUnreadTransportMessages/HasUnreadBuddyMessages — only populated by ListJoinedByUser.
+	// Distinct from the two Alert fields above (a dissolved car/group): true when the
+	// caller's own active offer/request has a chat message they haven't seen. Unlike
+	// UnreadCount, this survives just opening the Bubble (trip-level MarkRead doesn't touch
+	// transport_offer_read_state/buddy_request_read_state), so it only clears once the
+	// diver actually visits the Transport/Buddy tab.
+	HasUnreadTransportMessages bool
+	HasUnreadBuddyMessages     bool
 	// True when an unread message on this trip has mentions_dive_center set — only ever
 	// true for a business trip (see message.Service.Send's own gate). Only populated by
 	// ListJoinedByUser; backs the Bubbles-sidebar mention dot in admin/.

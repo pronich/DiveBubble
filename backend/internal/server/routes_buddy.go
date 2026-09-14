@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -39,9 +40,10 @@ func registerBuddyRoutes(
 	mux.HandleFunc("GET /trips/{id}/buddy/{requestId}/joins", withAuth(authIssuer, handleListBuddyRequestJoins(svc, tripSvc)))
 	mux.HandleFunc("GET /trips/{id}/buddy/alert", withAuth(authIssuer, handleGetBuddyAlert(svc, tripSvc)))
 	mux.HandleFunc("GET /trips/{id}/buddy/{requestId}/messages", withAuth(authIssuer, handleListBuddyMessages(svc, tripSvc, diveCenterSvc, moderationSvc, messageSvc)))
-	mux.HandleFunc("POST /trips/{id}/buddy/{requestId}/messages", withAuth(authIssuer, handleSendBuddyMessage(svc, tripSvc, diveCenterSvc, messageSvc, publisher)))
+	mux.HandleFunc("POST /trips/{id}/buddy/{requestId}/messages", withAuth(authIssuer, handleSendBuddyMessage(svc, tripSvc, diveCenterSvc, profileSvc, pushSvc, messageSvc, publisher)))
 	mux.HandleFunc("POST /trips/{id}/buddy/{requestId}/leave", withAuth(authIssuer, handleLeaveBuddyRequest(svc, tripSvc)))
 	mux.HandleFunc("POST /trips/{id}/buddy/{requestId}/dissolve", withAuth(authIssuer, handleDissolveBuddyRequest(svc, tripSvc, publisher)))
+	mux.HandleFunc("POST /trips/{id}/buddy/{requestId}/read", withAuth(authIssuer, handleMarkBuddyRequestRead(svc, tripSvc)))
 }
 
 // requireBuddyRequestAccess is requireParticipant (trip-level) plus a request-level check:
@@ -88,16 +90,17 @@ func requireBuddyRequestAccess(w http.ResponseWriter, r *http.Request, buddySvc 
 }
 
 type buddyRequestResponse struct {
-	ID               uuid.UUID `json:"id"`
-	TripID           uuid.UUID `json:"tripId"`
-	UserID           uuid.UUID `json:"userId"`
-	CreatedAt        time.Time `json:"createdAt"`
-	JoinedCount      int       `json:"joinedCount"`
-	Joined           bool      `json:"joined"`
-	MaxMembers       int       `json:"maxMembers"`
-	CreatorName      string    `json:"creatorName"`
-	CreatorLevel     *string   `json:"creatorLevel,omitempty"`
-	CreatorDiveCount int       `json:"creatorDiveCount"`
+	ID                uuid.UUID `json:"id"`
+	TripID            uuid.UUID `json:"tripId"`
+	UserID            uuid.UUID `json:"userId"`
+	CreatedAt         time.Time `json:"createdAt"`
+	JoinedCount       int       `json:"joinedCount"`
+	Joined            bool      `json:"joined"`
+	MaxMembers        int       `json:"maxMembers"`
+	CreatorName       string    `json:"creatorName"`
+	CreatorLevel      *string   `json:"creatorLevel,omitempty"`
+	CreatorDiveCount  int       `json:"creatorDiveCount"`
+	HasUnreadMessages bool      `json:"hasUnreadMessages"`
 }
 
 func toBuddyRequestResponse(req buddy.Request, creator profile.Profile) buddyRequestResponse {
@@ -106,16 +109,17 @@ func toBuddyRequestResponse(req buddy.Request, creator profile.Profile) buddyReq
 		creatorName = creator.DisplayName.String
 	}
 	return buddyRequestResponse{
-		ID:               req.ID,
-		TripID:           req.TripID,
-		UserID:           req.UserID,
-		CreatedAt:        req.CreatedAt,
-		JoinedCount:      req.JoinedCount,
-		Joined:           req.Joined,
-		MaxMembers:       buddy.MaxMembers,
-		CreatorName:      creatorName,
-		CreatorLevel:     nullStringPtr(creator.CertificationLevel),
-		CreatorDiveCount: creator.DiveCount,
+		ID:                req.ID,
+		TripID:            req.TripID,
+		UserID:            req.UserID,
+		CreatedAt:         req.CreatedAt,
+		JoinedCount:       req.JoinedCount,
+		Joined:            req.Joined,
+		MaxMembers:        buddy.MaxMembers,
+		CreatorName:       creatorName,
+		CreatorLevel:      nullStringPtr(creator.CertificationLevel),
+		CreatorDiveCount:  creator.DiveCount,
+		HasUnreadMessages: req.HasUnreadMessages,
 	}
 }
 
@@ -226,9 +230,10 @@ func handleJoinBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, profileSv
 					joinerName = joiner.DisplayName.String
 				}
 				pushSvc.SendToUsers(r.Context(), []uuid.UUID{req.UserID}, push.Notification{
-					Title: t.Title,
-					Body:  joinerName + " joined your buddy group.",
-					Data:  map[string]string{"tripId": t.ID.String(), "type": "buddy_joined"},
+					Title:    t.Title,
+					Subtitle: "Buddy chat",
+					Body:     joinerName + " joined your buddy group.",
+					Data:     map[string]string{"tripId": t.ID.String(), "type": "buddy_joined", "chatScope": "buddy"},
 				})
 
 				// One system message per join event — not idempotent like SendSystem, since
@@ -239,6 +244,13 @@ func handleJoinBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, profileSv
 				} else if pubErr := publisher.Publish(r.Context(), "buddy_request:"+requestID.String(), toMessageResponse(msg, false, false, nil)); pubErr != nil {
 					log.Printf("realtime publish failed for buddy_request:%s: %v", requestID, pubErr)
 				}
+			}
+
+			// The system join message is attributed to message.SystemUserID, not the joiner,
+			// so ListByTrip's unread check (cm.user_id != caller) can't tell it was their own
+			// action — without this, the joiner would see their own join flagged as unread.
+			if err := svc.MarkRead(r.Context(), requestID, userID); err != nil {
+				log.Printf("buddy chat: could not mark request read for joiner:%s request:%s: %v", userID, requestID, err)
 			}
 		}
 
@@ -359,7 +371,7 @@ type sendBuddyMessageRequest struct {
 	attachmentRequest
 }
 
-func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, messageSvc *message.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, pushSvc *push.Service, messageSvc *message.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		req, ok := requireBuddyRequestAccess(w, r, buddySvc, tripSvc, r.PathValue("id"), r.PathValue("requestId"), userID)
 		if !ok {
@@ -392,7 +404,8 @@ func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, dive
 		}
 
 		isDiveCenterStaff := false
-		if t, err := tripSvc.GetTrip(r.Context(), req.TripID.String()); err == nil && t.DiveCenterID.Valid {
+		t, tErr := tripSvc.GetTrip(r.Context(), req.TripID.String())
+		if tErr == nil && t.DiveCenterID.Valid {
 			isDiveCenterStaff, _ = diveCenterSvc.IsMember(r.Context(), t.DiveCenterID.UUID, userID)
 		}
 
@@ -400,6 +413,16 @@ func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, dive
 		// Best-effort — REST already persisted the message, realtime push is not required for correctness.
 		if pubErr := publisher.Publish(r.Context(), "buddy_request:"+req.ID.String(), resp); pubErr != nil {
 			log.Printf("realtime publish failed for buddy_request:%s: %v", req.ID, pubErr)
+		}
+		// Also pinged on the trip channel — see the identical comment in
+		// handleSendOfferMessage (routes_transport.go) for why.
+		if pubErr := publisher.Publish(r.Context(), "trip:"+req.TripID.String(), map[string]string{
+			"event": "sub_chat_activity", "scope": "buddy", "userId": userID.String(),
+		}); pubErr != nil {
+			log.Printf("realtime publish failed for trip:%s: %v", req.TripID, pubErr)
+		}
+		if tErr == nil {
+			notifyNewBuddyMessage(r.Context(), pushSvc, profileSvc, buddySvc, t, req, m, userID)
 		}
 		writeJSON(w, http.StatusCreated, resp)
 	}
@@ -445,6 +468,51 @@ func handleDissolveBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, publi
 		}
 		if pubErr := publisher.Publish(r.Context(), "buddy_request:"+req.ID.String(), map[string]string{"event": "dissolved"}); pubErr != nil {
 			log.Printf("realtime publish failed for buddy_request:%s: %v", req.ID, pubErr)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// notifyNewBuddyMessage pushes a group chat message to the request's own members only
+// (creator + joiners) — narrower than notifyNewMessage's whole-trip-roster reach, since the
+// rest of the trip has no visibility into a buddy group they haven't joined.
+func notifyNewBuddyMessage(ctx context.Context, pushSvc *push.Service, profileSvc *profile.Service, buddySvc *buddy.Service, t trip.Trip, req buddy.Request, m message.Message, senderID uuid.UUID) {
+	joinedIDs, err := buddySvc.ListJoins(ctx, req.ID)
+	if err != nil {
+		log.Printf("push: could not list joins for buddy request:%s: %v", req.ID, err)
+		return
+	}
+	recipients := excludeUser(dedupeUsers(append(joinedIDs, req.UserID)), senderID)
+	if len(recipients) == 0 {
+		return
+	}
+
+	senderName := "New message"
+	if sender, err := profileSvc.Get(ctx, senderID); err == nil && sender.DisplayName.Valid && sender.DisplayName.String != "" {
+		senderName = sender.DisplayName.String
+	}
+	// Same three-tier Title/Subtitle/Body shape as notifyNewMessage — Subtitle/chatScope are
+	// what let the diver (and the tap handler) tell this apart from the trip's main chat.
+	pushSvc.SendToUsers(ctx, recipients, push.Notification{
+		Title:    t.Title,
+		Subtitle: "Buddy chat",
+		Body:     senderName + ": " + pushBodyFor(m),
+		Data:     map[string]string{"tripId": t.ID.String(), "type": "message", "chatScope": "buddy"},
+	})
+}
+
+// handleMarkBuddyRequestRead marks this one group's chat read up to now — called when the
+// diver actually opens it, same "viewing acknowledges it" idea as trip.MarkRead, but scoped
+// to a single request instead of clearing the whole Buddy tab's dissolved-alert dot.
+func handleMarkBuddyRequestRead(svc *buddy.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		req, ok := requireBuddyRequestAccess(w, r, svc, tripSvc, r.PathValue("id"), r.PathValue("requestId"), userID)
+		if !ok {
+			return
+		}
+		if err := svc.MarkRead(r.Context(), req.ID, userID); err != nil {
+			writeError(w, http.StatusInternalServerError, "could not mark request read")
+			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}

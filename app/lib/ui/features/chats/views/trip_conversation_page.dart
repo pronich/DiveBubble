@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:centrifuge/centrifuge.dart' as centrifuge;
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/auth_repository.dart';
@@ -52,6 +56,7 @@ class TripConversationPage extends StatefulWidget {
     required this.initialHasBuddyAlert,
     this.onBuddyAlertCleared,
     this.initialAttachments = const [],
+    this.initialTabIndex = 0,
   });
 
   /// Builds the three per-trip ViewModels (Chat/Transport/Buddy) and the rest of this page's
@@ -76,6 +81,7 @@ class TripConversationPage extends StatefulWidget {
     VoidCallback? onTransportAlertCleared,
     VoidCallback? onBuddyAlertCleared,
     List<PickedAttachment> initialAttachments = const [],
+    int initialTabIndex = 0,
   }) : this(
          key: key,
          chatViewModel: ChatViewModel(
@@ -126,6 +132,7 @@ class TripConversationPage extends StatefulWidget {
          initialHasBuddyAlert: trip.hasBuddyAlert,
          onBuddyAlertCleared: onBuddyAlertCleared,
          initialAttachments: initialAttachments,
+         initialTabIndex: initialTabIndex,
        );
 
   final ChatViewModel chatViewModel;
@@ -163,6 +170,12 @@ class TripConversationPage extends StatefulWidget {
   /// see ChatView.initialAttachments for what happens with it.
   final List<PickedAttachment> initialAttachments;
 
+  /// Which pill tab to land on — 0/1/2/3 for Chat/Transport/Buddy/Expenses. Set when opening
+  /// straight from a push notification for a specific chat (see main.dart's
+  /// _openTripFromPush), so the diver lands on the chat the notification was actually about
+  /// instead of always the main Chat tab.
+  final int initialTabIndex;
+
   @override
   State<TripConversationPage> createState() => _TripConversationPageState();
 }
@@ -177,17 +190,59 @@ class _TripConversationPageState extends State<TripConversationPage>
   // gate, which only checks "is this a business trip", not "am I the diver here").
   bool _isDiveCenterStaff = false;
 
+  // Listens for sub_chat_activity (see handleSendOfferMessage/handleSendBuddyMessage) so the
+  // Transport/Buddy pill dots update live even while sitting on a different tab — neither
+  // ViewModel otherwise has any way to know about a car/buddy chat message that isn't the one
+  // currently open (that chat's own transport_offer:$id/buddy_request:$id subscription only
+  // exists while its ChatView is actually mounted).
+  centrifuge.Subscription? _tripSubscription;
+  StreamSubscription<centrifuge.PublicationEvent>? _tripPublicationListener;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 4, vsync: this, initialIndex: widget.initialTabIndex);
     _tabController.addListener(_onTabChanged);
     // Seeded from the Trip already in hand (see the field's own comment) — the dot itself
     // lives in the AppBar, always visible regardless of which tab is active, so this is
     // what actually surfaces it before the diver ever switches to Transport/Buddy.
     widget.transportViewModel.seedAlert(widget.initialHasTransportAlert);
     widget.buddyViewModel.seedAlert(widget.initialHasBuddyAlert);
+    // Loaded here, not left to TransportView/BuddyView's own initState — the pill bar (built
+    // right away, regardless of which tab is selected) needs myOffer/myRequest.
+    // hasUnreadMessages immediately, but those tabs are TabBarView pages and Flutter doesn't
+    // build an offscreen page (or run its initState) until it's actually scrolled/switched to.
+    // Chained with a mark-read for a push notification that opened straight onto that tab —
+    // TabController's initialIndex doesn't fire the "changed" listener _onTabChanged relies on
+    // for that, since nothing actually changes from the controller's point of view.
+    widget.transportViewModel.load().then((_) {
+      if (mounted && _tabController.index == 1) widget.transportViewModel.markMyOfferRead();
+    });
+    widget.buddyViewModel.load().then((_) {
+      if (mounted && _tabController.index == 2) widget.buddyViewModel.markMyRequestRead();
+    });
+    _subscribeToTripChannel();
     _refreshTripDerivedState();
+  }
+
+  Future<void> _subscribeToTripChannel() async {
+    final sub = await widget.realtimeService.subscribe('trip:${widget.chatViewModel.tripId}');
+    if (!mounted) {
+      widget.realtimeService.unsubscribe(sub);
+      return;
+    }
+    _tripSubscription = sub;
+    _tripPublicationListener = sub.publication.listen((event) {
+      final json = jsonDecode(utf8.decode(event.data)) as Map<String, dynamic>;
+      if (json['event'] != 'sub_chat_activity') return;
+      if (json['userId'] == widget.chatViewModel.currentUserId) return;
+      switch (json['scope']) {
+        case 'transport':
+          widget.transportViewModel.load();
+        case 'buddy':
+          widget.buddyViewModel.load();
+      }
+    });
   }
 
   // Owned here, not by ChatViewModel/TransportViewModel — both tabs (plus the message
@@ -237,10 +292,12 @@ class _TripConversationPageState extends State<TripConversationPage>
       widget.transportViewModel.checkAlert().then(
         (_) => widget.onTransportAlertCleared?.call(),
       );
+      widget.transportViewModel.markMyOfferRead();
     } else if (_tabController.index == 2) {
       widget.buddyViewModel.checkAlert().then(
         (_) => widget.onBuddyAlertCleared?.call(),
       );
+      widget.buddyViewModel.markMyRequestRead();
     }
   }
 
@@ -248,6 +305,9 @@ class _TripConversationPageState extends State<TripConversationPage>
   void dispose() {
     _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
+    _tripPublicationListener?.cancel();
+    final sub = _tripSubscription;
+    if (sub != null) widget.realtimeService.unsubscribe(sub);
     super.dispose();
   }
 
@@ -435,7 +495,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                       outlinedIcon: Icons.directions_car_outlined,
                       filledIcon: Icons.directions_car,
                       label: 'Transport',
-                      hasAlert: transportViewModel.hasAlert,
+                      hasAlert: transportViewModel.hasAlert || (myOffer?.hasUnreadMessages ?? false),
                       onTap: () => tabController.animateTo(
                         1,
                         duration: _switchDuration,
@@ -462,7 +522,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                       outlinedIcon: Icons.emoji_people_outlined,
                       filledIcon: Icons.emoji_people,
                       label: 'Buddy',
-                      hasAlert: buddyViewModel.hasAlert,
+                      hasAlert: buddyViewModel.hasAlert || (myRequest?.hasUnreadMessages ?? false),
                       onTap: () => tabController.animateTo(
                         2,
                         duration: _switchDuration,

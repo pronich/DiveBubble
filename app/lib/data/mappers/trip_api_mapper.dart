@@ -13,6 +13,8 @@ extension TripApiMapper on TripApiModel {
         unreadCount: unreadCount,
         hasTransportAlert: hasTransportAlert,
         hasBuddyAlert: hasBuddyAlert,
+        hasUnreadTransportMessages: hasUnreadTransportMessages,
+        hasUnreadBuddyMessages: hasUnreadBuddyMessages,
         endDate: endDate,
         description: description,
         meetingPoint: meetingPoint,
