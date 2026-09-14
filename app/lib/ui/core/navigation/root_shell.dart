@@ -15,12 +15,14 @@ import '../../../data/repositories/trip_repository.dart';
 import '../../../data/services/realtime_service.dart';
 import '../../features/chats/view_models/my_trips_view_model.dart';
 import '../../features/chats/views/my_trips_view.dart';
+import '../../features/profile/view_models/profile_view_model.dart';
+import '../../features/profile/views/dive_log_list_page.dart';
 import '../../features/profile/views/profile_view.dart';
 
-// Bubbles / Profile bottom nav — the app's top-level shell. Explore is deliberately not wired
-// in here for the B2C pivot (divers organize their own trips instead of browsing dive-center
-// listings) — TripsListView/TripsListViewModel are kept in the codebase, just unreachable, in
-// case Explore comes back.
+// Bubbles / DiveLog / Profile bottom nav — the app's top-level shell. Explore is deliberately
+// not wired in here for the B2C pivot (divers organize their own trips instead of browsing
+// dive-center listings) — TripsListView/TripsListViewModel are kept in the codebase, just
+// unreachable, in case Explore comes back.
 class RootShell extends StatefulWidget {
   const RootShell({
     super.key,
@@ -70,6 +72,15 @@ class _RootShellState extends State<RootShell> {
     currentUserId: widget.currentUserId,
   );
 
+  // Shared between the Profile tab and the DiveLog tab — a dive logged from one shows up in
+  // the other's Dive Log deck teaser without a second fetch or state going stale between them.
+  late final _profileViewModel = ProfileViewModel(
+    repository: widget.profileRepository,
+    specialtyRepository: widget.specialtyRepository,
+    gearRepository: widget.gearRepository,
+    diveLogRepository: widget.diveLogRepository,
+  );
+
   @override
   void initState() {
     super.initState();
@@ -117,16 +128,19 @@ class _RootShellState extends State<RootShell> {
             currentUserId: widget.currentUserId,
             isActive: _index == 0,
           ),
+          DiveLogListPage(
+            viewModel: _profileViewModel,
+            tripRepository: widget.tripRepository,
+            chatRepository: widget.chatRepository,
+          ),
           ProfileView(
             authRepository: widget.authRepository,
             profileRepository: widget.profileRepository,
-            specialtyRepository: widget.specialtyRepository,
-            gearRepository: widget.gearRepository,
-            diveLogRepository: widget.diveLogRepository,
+            viewModel: _profileViewModel,
             tripRepository: widget.tripRepository,
             chatRepository: widget.chatRepository,
             pushRepository: widget.pushRepository,
-            isActive: _index == 1,
+            isActive: _index == 2,
           ),
         ],
       ),
@@ -145,6 +159,11 @@ class _RootShellState extends State<RootShell> {
                 ),
                 selectedIcon: Badge(isLabelVisible: showDot, child: const Icon(Icons.bubble_chart)),
                 label: 'Bubbles',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.menu_book_outlined),
+                selectedIcon: Icon(Icons.menu_book),
+                label: 'Dive Log',
               ),
               const NavigationDestination(
                 icon: Icon(Icons.person_outline),
