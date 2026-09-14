@@ -16,10 +16,11 @@ import '../../../data/services/realtime_service.dart';
 import '../../features/chats/view_models/my_trips_view_model.dart';
 import '../../features/chats/views/my_trips_view.dart';
 import '../../features/profile/views/profile_view.dart';
-import '../../features/trips/view_models/trips_list_view_model.dart';
-import '../../features/trips/views/trips_list_view.dart';
 
-// Explore / Trips / Profile bottom nav — the app's top-level shell.
+// Bubbles / Profile bottom nav — the app's top-level shell. Explore is deliberately not wired
+// in here for the B2C pivot (divers organize their own trips instead of browsing dive-center
+// listings) — TripsListView/TripsListViewModel are kept in the codebase, just unreachable, in
+// case Explore comes back.
 class RootShell extends StatefulWidget {
   const RootShell({
     super.key,
@@ -61,42 +62,27 @@ class RootShell extends StatefulWidget {
 class _RootShellState extends State<RootShell> {
   int _index = 0;
 
-  // Created once — building these inline in build() would hand each tab a
+  // Created once — building this inline in build() would hand the tab a
   // fresh, unloaded ViewModel on every rebuild (e.g. every tab switch).
-  late final _exploreViewModel = TripsListViewModel(repository: widget.tripRepository);
   late final _myTripsViewModel = MyTripsViewModel(
     repository: widget.tripRepository,
     realtimeService: widget.realtimeService,
     currentUserId: widget.currentUserId,
   );
 
-  // One-shot — applied once the very first trips load resolves, then never again, so it
-  // can't clobber a tab the diver already picked by hand (either before the load finished,
-  // or afterwards). Set eagerly by _onDestinationSelected the moment any manual tap happens.
-  bool _hasAppliedInitialTab = false;
-
   @override
   void initState() {
     super.initState();
     // Proactive — the Bubbles bottom-nav dot needs trips loaded from a cold start, not just
-    // after the diver's first tap into the tab (see _onDestinationSelected's own load() call).
-    // Also decides the landing tab: no active Bubble to land on means Explore is more useful
-    // than an empty Bubbles list (new signup, or every joined trip since archived/left).
-    _myTripsViewModel.load().then((_) {
-      if (!mounted || _hasAppliedInitialTab) return;
-      _hasAppliedInitialTab = true;
-      if (_myTripsViewModel.trips.isNotEmpty) {
-        setState(() => _index = 1);
-      }
-    });
+    // after the diver's first tap into the tab.
+    _myTripsViewModel.load();
   }
 
   void _onDestinationSelected(int i) {
-    _hasAppliedInitialTab = true;
     setState(() => _index = i);
-    // MyTripsViewModel only loads once via IndexedStack's initState — a trip joined
-    // elsewhere (Explore -> Trip Page) wouldn't show up here otherwise until app resume.
-    if (i == 1) _myTripsViewModel.load();
+    // MyTripsViewModel only loads once via IndexedStack's initState — a trip joined or
+    // created elsewhere wouldn't show up here otherwise until app resume.
+    if (i == 0) _myTripsViewModel.load();
   }
 
   @override
@@ -116,20 +102,6 @@ class _RootShellState extends State<RootShell> {
       body: IndexedStack(
         index: _index,
         children: [
-          TripsListView(
-            viewModel: _exploreViewModel,
-            tripRepository: widget.tripRepository,
-            chatRepository: widget.chatRepository,
-            transportRepository: widget.transportRepository,
-            buddyRepository: widget.buddyRepository,
-            realtimeService: widget.realtimeService,
-            authRepository: widget.authRepository,
-            profileRepository: widget.profileRepository,
-            pushRepository: widget.pushRepository,
-            diveCenterRepository: widget.diveCenterRepository,
-            expenseRepository: widget.expenseRepository,
-            currentUserId: widget.currentUserId,
-          ),
           MyTripsView(
             viewModel: _myTripsViewModel,
             chatRepository: widget.chatRepository,
@@ -143,8 +115,7 @@ class _RootShellState extends State<RootShell> {
             diveCenterRepository: widget.diveCenterRepository,
             expenseRepository: widget.expenseRepository,
             currentUserId: widget.currentUserId,
-            onGoToExplore: () => setState(() => _index = 0),
-            isActive: _index == 1,
+            isActive: _index == 0,
           ),
           ProfileView(
             authRepository: widget.authRepository,
@@ -155,23 +126,18 @@ class _RootShellState extends State<RootShell> {
             tripRepository: widget.tripRepository,
             chatRepository: widget.chatRepository,
             pushRepository: widget.pushRepository,
-            isActive: _index == 2,
+            isActive: _index == 1,
           ),
         ],
       ),
       bottomNavigationBar: ListenableBuilder(
         listenable: _myTripsViewModel,
         builder: (context, _) {
-          final showDot = _index != 1 && _myTripsViewModel.hasAnyAttention;
+          final showDot = _index != 0 && _myTripsViewModel.hasAnyAttention;
           return NavigationBar(
             selectedIndex: _index,
             onDestinationSelected: _onDestinationSelected,
             destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.explore_outlined),
-                selectedIcon: Icon(Icons.explore),
-                label: 'Explore',
-              ),
               NavigationDestination(
                 icon: Badge(
                   isLabelVisible: showDot,
