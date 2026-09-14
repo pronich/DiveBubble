@@ -15,9 +15,6 @@ export function Footer() {
           <Link href="/terms" className="hover:text-white">
             Terms &amp; Conditions
           </Link>
-          <Link href="/business" className="hover:text-white">
-            Business
-          </Link>
         </nav>
         <span>&copy; {new Date().getFullYear()} DiveBubble</span>
       </div>

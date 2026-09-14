@@ -25,10 +25,6 @@ const FAQ_ITEMS = [
     a: "Yes. DiveBubble isn't tied to any one region or water temperature — trips range from tropical reef dives to cold-water wrecks.",
   },
   {
-    q: "How do dive centers get started?",
-    a: "Dive centers get their own dedicated workspace, DiveBubble Business, to publish trips and manage staff. Sign-up isn't open yet — leave your email on the Business page and we'll let you know when it is.",
-  },
-  {
     q: "Where is my data stored, and is it GDPR-compliant?",
     a: `Yes. We're a Danish company, and DiveBubble is built and operated to comply with the GDPR. Your data is stored on managed cloud infrastructure with encryption in transit, and we never sell it or use it for advertising. See our Privacy Policy for the full details, including your rights.`,
   },

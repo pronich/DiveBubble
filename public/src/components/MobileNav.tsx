@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 
-// Header's own nav links are hidden below sm: (no room for three text links next to the
-// logo and the Dive-in slot on a phone width) — without this, scrolling to the bottom CTA
-// was the only way to reach /business on mobile at all. A hamburger + dropdown, not a
-// full-screen drawer, since three short links don't need one.
+// Header's own nav links are hidden below sm: (no room for text links next to the logo and
+// the Dive-in slot on a phone width). A hamburger + dropdown, not a full-screen drawer, since
+// a couple of short links don't need one.
 export function MobileNav() {
   const [open, setOpen] = useState(false);
 
@@ -34,9 +33,6 @@ export function MobileNav() {
           <nav className="flex flex-col gap-4 text-sm text-white/85">
             <Link href="/" onClick={() => setOpen(false)} className="hover:text-white">
               Individuals
-            </Link>
-            <Link href="/business" onClick={() => setOpen(false)} className="hover:text-white">
-              Business
             </Link>
             <Link href="/faq" onClick={() => setOpen(false)} className="hover:text-white">
               FAQ

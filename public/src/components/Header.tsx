@@ -22,9 +22,6 @@ export function Header({ showDiveIn = false }: { showDiveIn?: boolean }) {
           <Link href="/" className="hover:text-white">
             Individuals
           </Link>
-          <Link href="/business" className="hover:text-white">
-            Business
-          </Link>
           <Link href="/faq" className="hover:text-white">
             FAQ
           </Link>

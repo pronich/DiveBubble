@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { BubbleBackground } from "@/components/BubbleBackground";
 import { DownloadSection } from "@/components/DownloadSection";
 import { Header } from "@/components/Header";
@@ -77,19 +76,6 @@ export default function IndividualsPage() {
                 <p className="mt-2 text-sm text-white/70">{f.body}</p>
               </div>
             ))}
-          </div>
-
-          <div className="mt-6 flex flex-col items-start justify-between gap-4 rounded-2xl bg-white p-6 text-brand-blue sm:flex-row sm:items-center">
-            <div>
-              <h3 className="font-serif text-xl font-semibold">Running a dive center?</h3>
-              <p className="mt-1 text-sm text-brand-blue/70">DiveBubble has a dedicated workspace for organizations.</p>
-            </div>
-            <Link
-              href="/business"
-              className="rounded-full bg-brand-blue px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-navy"
-            >
-              Explore Business
-            </Link>
           </div>
         </section>
       </main>
