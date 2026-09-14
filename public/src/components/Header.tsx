@@ -5,7 +5,8 @@ import { MobileNav } from "@/components/MobileNav";
 
 // "Dive in" only ever appears here on the Business page (see its own page.tsx) — every other
 // page has no login affordance at all, per product decision: individuals never sign in from
-// the marketing site, only from the app itself.
+// the marketing site, only from the app itself. The Business page itself is currently
+// unlinked (see git log for why) but kept as-is so it's a quick reactivation, not a rebuild.
 export function Header({ showDiveIn = false }: { showDiveIn?: boolean }) {
   return (
     // z-40: every page's <main> is also `position: relative` (for its own absolutely
