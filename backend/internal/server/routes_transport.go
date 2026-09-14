@@ -254,7 +254,7 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service, pro
 				}
 				pushSvc.SendToUsers(r.Context(), []uuid.UUID{offer.UserID}, push.Notification{
 					Title:    t.Title,
-					Subtitle: "Transport",
+					Subtitle: "Transport chat",
 					Body:     joinerName + " joined your ride.",
 					Data:     map[string]string{"tripId": t.ID.String(), "type": "transport_joined", "chatScope": "transport"},
 				})
@@ -526,7 +526,7 @@ func notifyNewOfferMessage(ctx context.Context, pushSvc *push.Service, profileSv
 	// what let the diver (and the tap handler) tell this apart from the trip's main chat.
 	pushSvc.SendToUsers(ctx, recipients, push.Notification{
 		Title:    t.Title,
-		Subtitle: "Transport",
+		Subtitle: "Transport chat",
 		Body:     senderName + ": " + pushBodyFor(m),
 		Data:     map[string]string{"tripId": t.ID.String(), "type": "message", "chatScope": "transport"},
 	})

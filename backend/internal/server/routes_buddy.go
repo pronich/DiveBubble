@@ -231,7 +231,7 @@ func handleJoinBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, profileSv
 				}
 				pushSvc.SendToUsers(r.Context(), []uuid.UUID{req.UserID}, push.Notification{
 					Title:    t.Title,
-					Subtitle: "Buddy",
+					Subtitle: "Buddy chat",
 					Body:     joinerName + " joined your buddy group.",
 					Data:     map[string]string{"tripId": t.ID.String(), "type": "buddy_joined", "chatScope": "buddy"},
 				})
@@ -495,7 +495,7 @@ func notifyNewBuddyMessage(ctx context.Context, pushSvc *push.Service, profileSv
 	// what let the diver (and the tap handler) tell this apart from the trip's main chat.
 	pushSvc.SendToUsers(ctx, recipients, push.Notification{
 		Title:    t.Title,
-		Subtitle: "Buddy",
+		Subtitle: "Buddy chat",
 		Body:     senderName + ": " + pushBodyFor(m),
 		Data:     map[string]string{"tripId": t.ID.String(), "type": "message", "chatScope": "buddy"},
 	})
