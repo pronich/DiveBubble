@@ -161,8 +161,8 @@ class _RootShellState extends State<RootShell> {
                 label: 'Bubbles',
               ),
               const NavigationDestination(
-                icon: Icon(Icons.menu_book_outlined),
-                selectedIcon: Icon(Icons.menu_book),
+                icon: Icon(Icons.scuba_diving_outlined),
+                selectedIcon: Icon(Icons.scuba_diving),
                 label: 'Dive Log',
               ),
               const NavigationDestination(
