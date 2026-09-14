@@ -42,6 +42,7 @@ func registerBuddyRoutes(
 	mux.HandleFunc("POST /trips/{id}/buddy/{requestId}/messages", withAuth(authIssuer, handleSendBuddyMessage(svc, tripSvc, diveCenterSvc, messageSvc, publisher)))
 	mux.HandleFunc("POST /trips/{id}/buddy/{requestId}/leave", withAuth(authIssuer, handleLeaveBuddyRequest(svc, tripSvc)))
 	mux.HandleFunc("POST /trips/{id}/buddy/{requestId}/dissolve", withAuth(authIssuer, handleDissolveBuddyRequest(svc, tripSvc, publisher)))
+	mux.HandleFunc("POST /trips/{id}/buddy/{requestId}/read", withAuth(authIssuer, handleMarkBuddyRequestRead(svc, tripSvc)))
 }
 
 // requireBuddyRequestAccess is requireParticipant (trip-level) plus a request-level check:
@@ -88,16 +89,17 @@ func requireBuddyRequestAccess(w http.ResponseWriter, r *http.Request, buddySvc 
 }
 
 type buddyRequestResponse struct {
-	ID               uuid.UUID `json:"id"`
-	TripID           uuid.UUID `json:"tripId"`
-	UserID           uuid.UUID `json:"userId"`
-	CreatedAt        time.Time `json:"createdAt"`
-	JoinedCount      int       `json:"joinedCount"`
-	Joined           bool      `json:"joined"`
-	MaxMembers       int       `json:"maxMembers"`
-	CreatorName      string    `json:"creatorName"`
-	CreatorLevel     *string   `json:"creatorLevel,omitempty"`
-	CreatorDiveCount int       `json:"creatorDiveCount"`
+	ID                uuid.UUID `json:"id"`
+	TripID            uuid.UUID `json:"tripId"`
+	UserID            uuid.UUID `json:"userId"`
+	CreatedAt         time.Time `json:"createdAt"`
+	JoinedCount       int       `json:"joinedCount"`
+	Joined            bool      `json:"joined"`
+	MaxMembers        int       `json:"maxMembers"`
+	CreatorName       string    `json:"creatorName"`
+	CreatorLevel      *string   `json:"creatorLevel,omitempty"`
+	CreatorDiveCount  int       `json:"creatorDiveCount"`
+	HasUnreadMessages bool      `json:"hasUnreadMessages"`
 }
 
 func toBuddyRequestResponse(req buddy.Request, creator profile.Profile) buddyRequestResponse {
@@ -106,16 +108,17 @@ func toBuddyRequestResponse(req buddy.Request, creator profile.Profile) buddyReq
 		creatorName = creator.DisplayName.String
 	}
 	return buddyRequestResponse{
-		ID:               req.ID,
-		TripID:           req.TripID,
-		UserID:           req.UserID,
-		CreatedAt:        req.CreatedAt,
-		JoinedCount:      req.JoinedCount,
-		Joined:           req.Joined,
-		MaxMembers:       buddy.MaxMembers,
-		CreatorName:      creatorName,
-		CreatorLevel:     nullStringPtr(creator.CertificationLevel),
-		CreatorDiveCount: creator.DiveCount,
+		ID:                req.ID,
+		TripID:            req.TripID,
+		UserID:            req.UserID,
+		CreatedAt:         req.CreatedAt,
+		JoinedCount:       req.JoinedCount,
+		Joined:            req.Joined,
+		MaxMembers:        buddy.MaxMembers,
+		CreatorName:       creatorName,
+		CreatorLevel:      nullStringPtr(creator.CertificationLevel),
+		CreatorDiveCount:  creator.DiveCount,
+		HasUnreadMessages: req.HasUnreadMessages,
 	}
 }
 
@@ -445,6 +448,23 @@ func handleDissolveBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, publi
 		}
 		if pubErr := publisher.Publish(r.Context(), "buddy_request:"+req.ID.String(), map[string]string{"event": "dissolved"}); pubErr != nil {
 			log.Printf("realtime publish failed for buddy_request:%s: %v", req.ID, pubErr)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleMarkBuddyRequestRead marks this one group's chat read up to now — called when the
+// diver actually opens it, same "viewing acknowledges it" idea as trip.MarkRead, but scoped
+// to a single request instead of clearing the whole Buddy tab's dissolved-alert dot.
+func handleMarkBuddyRequestRead(svc *buddy.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		req, ok := requireBuddyRequestAccess(w, r, svc, tripSvc, r.PathValue("id"), r.PathValue("requestId"), userID)
+		if !ok {
+			return
+		}
+		if err := svc.MarkRead(r.Context(), req.ID, userID); err != nil {
+			writeError(w, http.StatusInternalServerError, "could not mark request read")
+			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}

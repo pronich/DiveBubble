@@ -16,7 +16,10 @@ mixin _$TransportOffer {
 
  String get id; String get tripId; String get userId; String get type; int? get seats; String? get details; DateTime get createdAt; int get joinedCount; bool get joined;// True when the creator is a member of the trip's dive center — mirrors
 // ChatMessage.isDiveCenterStaff, same "Name | Dive Center" attribution precedent.
- bool get isDiveCenterStaff;
+ bool get isDiveCenterStaff;// True when this car's own chat has a message the caller hasn't seen yet — distinct
+// from TransportViewModel.hasAlert (a dissolved car you'd joined), this is about
+// ordinary new activity in a chat you're still part of.
+ bool get hasUnreadMessages;
 /// Create a copy of TransportOffer
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,16 +30,16 @@ $TransportOfferCopyWith<TransportOffer> get copyWith => _$TransportOfferCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransportOffer&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.type, type) || other.type == type)&&(identical(other.seats, seats) || other.seats == seats)&&(identical(other.details, details) || other.details == details)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TransportOffer&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.type, type) || other.type == type)&&(identical(other.seats, seats) || other.seats == seats)&&(identical(other.details, details) || other.details == details)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff)&&(identical(other.hasUnreadMessages, hasUnreadMessages) || other.hasUnreadMessages == hasUnreadMessages));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,type,seats,details,createdAt,joinedCount,joined,isDiveCenterStaff);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,type,seats,details,createdAt,joinedCount,joined,isDiveCenterStaff,hasUnreadMessages);
 
 @override
 String toString() {
-  return 'TransportOffer(id: $id, tripId: $tripId, userId: $userId, type: $type, seats: $seats, details: $details, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined, isDiveCenterStaff: $isDiveCenterStaff)';
+  return 'TransportOffer(id: $id, tripId: $tripId, userId: $userId, type: $type, seats: $seats, details: $details, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined, isDiveCenterStaff: $isDiveCenterStaff, hasUnreadMessages: $hasUnreadMessages)';
 }
 
 
@@ -47,7 +50,7 @@ abstract mixin class $TransportOfferCopyWith<$Res>  {
   factory $TransportOfferCopyWith(TransportOffer value, $Res Function(TransportOffer) _then) = _$TransportOfferCopyWithImpl;
 @useResult
 $Res call({
- String id, String tripId, String userId, String type, int? seats, String? details, DateTime createdAt, int joinedCount, bool joined, bool isDiveCenterStaff
+ String id, String tripId, String userId, String type, int? seats, String? details, DateTime createdAt, int joinedCount, bool joined, bool isDiveCenterStaff, bool hasUnreadMessages
 });
 
 
@@ -64,7 +67,7 @@ class _$TransportOfferCopyWithImpl<$Res>
 
 /// Create a copy of TransportOffer
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? type = null,Object? seats = freezed,Object? details = freezed,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,Object? isDiveCenterStaff = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? type = null,Object? seats = freezed,Object? details = freezed,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,Object? isDiveCenterStaff = null,Object? hasUnreadMessages = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
@@ -76,6 +79,7 @@ as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore:
 as DateTime,joinedCount: null == joinedCount ? _self.joinedCount : joinedCount // ignore: cast_nullable_to_non_nullable
 as int,joined: null == joined ? _self.joined : joined // ignore: cast_nullable_to_non_nullable
 as bool,isDiveCenterStaff: null == isDiveCenterStaff ? _self.isDiveCenterStaff : isDiveCenterStaff // ignore: cast_nullable_to_non_nullable
+as bool,hasUnreadMessages: null == hasUnreadMessages ? _self.hasUnreadMessages : hasUnreadMessages // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -161,10 +165,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined,  bool isDiveCenterStaff)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined,  bool isDiveCenterStaff,  bool hasUnreadMessages)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TransportOffer() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined,_that.isDiveCenterStaff);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined,_that.isDiveCenterStaff,_that.hasUnreadMessages);case _:
   return orElse();
 
 }
@@ -182,10 +186,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined,  bool isDiveCenterStaff)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined,  bool isDiveCenterStaff,  bool hasUnreadMessages)  $default,) {final _that = this;
 switch (_that) {
 case _TransportOffer():
-return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined,_that.isDiveCenterStaff);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined,_that.isDiveCenterStaff,_that.hasUnreadMessages);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -202,10 +206,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined,  bool isDiveCenterStaff)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  String type,  int? seats,  String? details,  DateTime createdAt,  int joinedCount,  bool joined,  bool isDiveCenterStaff,  bool hasUnreadMessages)?  $default,) {final _that = this;
 switch (_that) {
 case _TransportOffer() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined,_that.isDiveCenterStaff);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.details,_that.createdAt,_that.joinedCount,_that.joined,_that.isDiveCenterStaff,_that.hasUnreadMessages);case _:
   return null;
 
 }
@@ -217,7 +221,7 @@ return $default(_that.id,_that.tripId,_that.userId,_that.type,_that.seats,_that.
 
 
 class _TransportOffer implements TransportOffer {
-  const _TransportOffer({required this.id, required this.tripId, required this.userId, required this.type, this.seats, this.details, required this.createdAt, this.joinedCount = 0, this.joined = false, this.isDiveCenterStaff = false});
+  const _TransportOffer({required this.id, required this.tripId, required this.userId, required this.type, this.seats, this.details, required this.createdAt, this.joinedCount = 0, this.joined = false, this.isDiveCenterStaff = false, this.hasUnreadMessages = false});
   
 
 @override final  String id;
@@ -232,6 +236,10 @@ class _TransportOffer implements TransportOffer {
 // True when the creator is a member of the trip's dive center — mirrors
 // ChatMessage.isDiveCenterStaff, same "Name | Dive Center" attribution precedent.
 @override@JsonKey() final  bool isDiveCenterStaff;
+// True when this car's own chat has a message the caller hasn't seen yet — distinct
+// from TransportViewModel.hasAlert (a dissolved car you'd joined), this is about
+// ordinary new activity in a chat you're still part of.
+@override@JsonKey() final  bool hasUnreadMessages;
 
 /// Create a copy of TransportOffer
 /// with the given fields replaced by the non-null parameter values.
@@ -243,16 +251,16 @@ _$TransportOfferCopyWith<_TransportOffer> get copyWith => __$TransportOfferCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TransportOffer&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.type, type) || other.type == type)&&(identical(other.seats, seats) || other.seats == seats)&&(identical(other.details, details) || other.details == details)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TransportOffer&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.type, type) || other.type == type)&&(identical(other.seats, seats) || other.seats == seats)&&(identical(other.details, details) || other.details == details)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.isDiveCenterStaff, isDiveCenterStaff) || other.isDiveCenterStaff == isDiveCenterStaff)&&(identical(other.hasUnreadMessages, hasUnreadMessages) || other.hasUnreadMessages == hasUnreadMessages));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,type,seats,details,createdAt,joinedCount,joined,isDiveCenterStaff);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,type,seats,details,createdAt,joinedCount,joined,isDiveCenterStaff,hasUnreadMessages);
 
 @override
 String toString() {
-  return 'TransportOffer(id: $id, tripId: $tripId, userId: $userId, type: $type, seats: $seats, details: $details, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined, isDiveCenterStaff: $isDiveCenterStaff)';
+  return 'TransportOffer(id: $id, tripId: $tripId, userId: $userId, type: $type, seats: $seats, details: $details, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined, isDiveCenterStaff: $isDiveCenterStaff, hasUnreadMessages: $hasUnreadMessages)';
 }
 
 
@@ -263,7 +271,7 @@ abstract mixin class _$TransportOfferCopyWith<$Res> implements $TransportOfferCo
   factory _$TransportOfferCopyWith(_TransportOffer value, $Res Function(_TransportOffer) _then) = __$TransportOfferCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String tripId, String userId, String type, int? seats, String? details, DateTime createdAt, int joinedCount, bool joined, bool isDiveCenterStaff
+ String id, String tripId, String userId, String type, int? seats, String? details, DateTime createdAt, int joinedCount, bool joined, bool isDiveCenterStaff, bool hasUnreadMessages
 });
 
 
@@ -280,7 +288,7 @@ class __$TransportOfferCopyWithImpl<$Res>
 
 /// Create a copy of TransportOffer
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? type = null,Object? seats = freezed,Object? details = freezed,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,Object? isDiveCenterStaff = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? type = null,Object? seats = freezed,Object? details = freezed,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,Object? isDiveCenterStaff = null,Object? hasUnreadMessages = null,}) {
   return _then(_TransportOffer(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
@@ -292,6 +300,7 @@ as String?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore:
 as DateTime,joinedCount: null == joinedCount ? _self.joinedCount : joinedCount // ignore: cast_nullable_to_non_nullable
 as int,joined: null == joined ? _self.joined : joined // ignore: cast_nullable_to_non_nullable
 as bool,isDiveCenterStaff: null == isDiveCenterStaff ? _self.isDiveCenterStaff : isDiveCenterStaff // ignore: cast_nullable_to_non_nullable
+as bool,hasUnreadMessages: null == hasUnreadMessages ? _self.hasUnreadMessages : hasUnreadMessages // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

@@ -33,18 +33,25 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Request, error
 	return req, err
 }
 
-// ListByTrip computes JoinedCount/Joined in one query rather than N+1 per-request lookups.
+// ListByTrip computes JoinedCount/Joined/HasUnreadMessages in one query rather than N+1
+// per-request lookups. HasUnreadMessages follows trip.Repository.ListJoinedByUser's own
+// last_read_at COALESCE pattern, scoped to this one request's read-state row instead of the
+// trip's.
 func (r *Repository) ListByTrip(ctx context.Context, tripID, callerUserID uuid.UUID) ([]Request, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT b.id, b.trip_id, b.user_id, b.created_at,
 		       COALESCE(j.joined_count, 0),
-		       EXISTS(SELECT 1 FROM buddy_request_joins WHERE request_id = b.id AND user_id = $2)
+		       EXISTS(SELECT 1 FROM buddy_request_joins WHERE request_id = b.id AND user_id = $2),
+		       EXISTS(SELECT 1 FROM chat_messages cm
+		              WHERE cm.buddy_request_id = b.id AND cm.user_id != $2
+		                AND cm.created_at > COALESCE(rs.last_read_at, '-infinity'::timestamptz))
 		FROM trip_buddy_requests b
 		LEFT JOIN (
 			SELECT request_id, COUNT(*) AS joined_count
 			FROM buddy_request_joins
 			GROUP BY request_id
 		) j ON j.request_id = b.id
+		LEFT JOIN buddy_request_read_state rs ON rs.request_id = b.id AND rs.user_id = $2
 		WHERE b.trip_id = $1
 		ORDER BY b.created_at ASC
 	`, tripID, callerUserID)
@@ -56,7 +63,10 @@ func (r *Repository) ListByTrip(ctx context.Context, tripID, callerUserID uuid.U
 	requests := []Request{}
 	for rows.Next() {
 		var req Request
-		if err := rows.Scan(&req.ID, &req.TripID, &req.UserID, &req.CreatedAt, &req.JoinedCount, &req.Joined); err != nil {
+		if err := rows.Scan(
+			&req.ID, &req.TripID, &req.UserID, &req.CreatedAt,
+			&req.JoinedCount, &req.Joined, &req.HasUnreadMessages,
+		); err != nil {
 			return nil, err
 		}
 		requests = append(requests, req)
@@ -212,5 +222,16 @@ func (r *Repository) HasAlert(ctx context.Context, tripID, userID uuid.UUID) (bo
 
 func (r *Repository) ClearAlert(ctx context.Context, tripID, userID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `DELETE FROM buddy_alerts WHERE trip_id = $1 AND user_id = $2`, tripID, userID)
+	return err
+}
+
+// MarkRead marks this one group's chat read up to now — mirrors trip.Repository.MarkRead,
+// scoped to a single request instead of the whole trip.
+func (r *Repository) MarkRead(ctx context.Context, requestID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `
+		INSERT INTO buddy_request_read_state (request_id, user_id, last_read_at)
+		VALUES ($1, $2, now())
+		ON CONFLICT (request_id, user_id) DO UPDATE SET last_read_at = now()
+	`, requestID, userID)
 	return err
 }

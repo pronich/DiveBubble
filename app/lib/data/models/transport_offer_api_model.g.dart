@@ -19,6 +19,7 @@ _TransportOfferApiModel _$TransportOfferApiModelFromJson(
   joinedCount: (json['joinedCount'] as num?)?.toInt() ?? 0,
   joined: json['joined'] as bool? ?? false,
   isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
+  hasUnreadMessages: json['hasUnreadMessages'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$TransportOfferApiModelToJson(
@@ -34,4 +35,5 @@ Map<String, dynamic> _$TransportOfferApiModelToJson(
   'joinedCount': instance.joinedCount,
   'joined': instance.joined,
   'isDiveCenterStaff': instance.isDiveCenterStaff,
+  'hasUnreadMessages': instance.hasUnreadMessages,
 };

@@ -27,4 +27,6 @@ class BuddyRepository {
   Future<void> dissolveRequest(String tripId, String requestId) => _service.dissolveRequest(tripId, requestId);
 
   Future<bool> getHasAlert(String tripId) => _service.fetchHasAlert(tripId);
+
+  Future<void> markRequestRead(String tripId, String requestId) => _service.markRequestRead(tripId, requestId);
 }

@@ -19,6 +19,7 @@ _BuddyRequestApiModel _$BuddyRequestApiModelFromJson(
   creatorName: json['creatorName'] as String? ?? '',
   creatorLevel: json['creatorLevel'] as String?,
   creatorDiveCount: (json['creatorDiveCount'] as num?)?.toInt() ?? 0,
+  hasUnreadMessages: json['hasUnreadMessages'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$BuddyRequestApiModelToJson(
@@ -34,4 +35,5 @@ Map<String, dynamic> _$BuddyRequestApiModelToJson(
   'creatorName': instance.creatorName,
   'creatorLevel': instance.creatorLevel,
   'creatorDiveCount': instance.creatorDiveCount,
+  'hasUnreadMessages': instance.hasUnreadMessages,
 };

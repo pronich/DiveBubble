@@ -17,4 +17,9 @@ type Request struct {
 	CreatedAt   time.Time
 	JoinedCount int  // joiners only, excludes the creator — see Join's capacity check
 	Joined      bool // whether the calling user has joined this request (not counting being creator)
+	// HasUnreadMessages is true when this group's own chat has a message the caller hasn't
+	// seen yet — see buddy_request_read_state. Distinct from an alert (which fires when a
+	// *joined* group dissolves), this is about ordinary new activity in a chat you're
+	// already part of.
+	HasUnreadMessages bool
 }

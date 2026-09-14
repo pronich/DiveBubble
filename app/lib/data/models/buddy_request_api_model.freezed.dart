@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$BuddyRequestApiModel {
 
- String get id; String get tripId; String get userId; DateTime get createdAt; int get joinedCount; bool get joined; int get maxMembers; String get creatorName; String? get creatorLevel; int get creatorDiveCount;
+ String get id; String get tripId; String get userId; DateTime get createdAt; int get joinedCount; bool get joined; int get maxMembers; String get creatorName; String? get creatorLevel; int get creatorDiveCount; bool get hasUnreadMessages;
 /// Create a copy of BuddyRequestApiModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $BuddyRequestApiModelCopyWith<BuddyRequestApiModel> get copyWith => _$BuddyReque
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BuddyRequestApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.maxMembers, maxMembers) || other.maxMembers == maxMembers)&&(identical(other.creatorName, creatorName) || other.creatorName == creatorName)&&(identical(other.creatorLevel, creatorLevel) || other.creatorLevel == creatorLevel)&&(identical(other.creatorDiveCount, creatorDiveCount) || other.creatorDiveCount == creatorDiveCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BuddyRequestApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.maxMembers, maxMembers) || other.maxMembers == maxMembers)&&(identical(other.creatorName, creatorName) || other.creatorName == creatorName)&&(identical(other.creatorLevel, creatorLevel) || other.creatorLevel == creatorLevel)&&(identical(other.creatorDiveCount, creatorDiveCount) || other.creatorDiveCount == creatorDiveCount)&&(identical(other.hasUnreadMessages, hasUnreadMessages) || other.hasUnreadMessages == hasUnreadMessages));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,createdAt,joinedCount,joined,maxMembers,creatorName,creatorLevel,creatorDiveCount);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,createdAt,joinedCount,joined,maxMembers,creatorName,creatorLevel,creatorDiveCount,hasUnreadMessages);
 
 @override
 String toString() {
-  return 'BuddyRequestApiModel(id: $id, tripId: $tripId, userId: $userId, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined, maxMembers: $maxMembers, creatorName: $creatorName, creatorLevel: $creatorLevel, creatorDiveCount: $creatorDiveCount)';
+  return 'BuddyRequestApiModel(id: $id, tripId: $tripId, userId: $userId, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined, maxMembers: $maxMembers, creatorName: $creatorName, creatorLevel: $creatorLevel, creatorDiveCount: $creatorDiveCount, hasUnreadMessages: $hasUnreadMessages)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $BuddyRequestApiModelCopyWith<$Res>  {
   factory $BuddyRequestApiModelCopyWith(BuddyRequestApiModel value, $Res Function(BuddyRequestApiModel) _then) = _$BuddyRequestApiModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String tripId, String userId, DateTime createdAt, int joinedCount, bool joined, int maxMembers, String creatorName, String? creatorLevel, int creatorDiveCount
+ String id, String tripId, String userId, DateTime createdAt, int joinedCount, bool joined, int maxMembers, String creatorName, String? creatorLevel, int creatorDiveCount, bool hasUnreadMessages
 });
 
 
@@ -65,7 +65,7 @@ class _$BuddyRequestApiModelCopyWithImpl<$Res>
 
 /// Create a copy of BuddyRequestApiModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,Object? maxMembers = null,Object? creatorName = null,Object? creatorLevel = freezed,Object? creatorDiveCount = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,Object? maxMembers = null,Object? creatorName = null,Object? creatorLevel = freezed,Object? creatorDiveCount = null,Object? hasUnreadMessages = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
@@ -77,7 +77,8 @@ as bool,maxMembers: null == maxMembers ? _self.maxMembers : maxMembers // ignore
 as int,creatorName: null == creatorName ? _self.creatorName : creatorName // ignore: cast_nullable_to_non_nullable
 as String,creatorLevel: freezed == creatorLevel ? _self.creatorLevel : creatorLevel // ignore: cast_nullable_to_non_nullable
 as String?,creatorDiveCount: null == creatorDiveCount ? _self.creatorDiveCount : creatorDiveCount // ignore: cast_nullable_to_non_nullable
-as int,
+as int,hasUnreadMessages: null == hasUnreadMessages ? _self.hasUnreadMessages : hasUnreadMessages // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -162,10 +163,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  DateTime createdAt,  int joinedCount,  bool joined,  int maxMembers,  String creatorName,  String? creatorLevel,  int creatorDiveCount)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  DateTime createdAt,  int joinedCount,  bool joined,  int maxMembers,  String creatorName,  String? creatorLevel,  int creatorDiveCount,  bool hasUnreadMessages)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _BuddyRequestApiModel() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.createdAt,_that.joinedCount,_that.joined,_that.maxMembers,_that.creatorName,_that.creatorLevel,_that.creatorDiveCount);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.createdAt,_that.joinedCount,_that.joined,_that.maxMembers,_that.creatorName,_that.creatorLevel,_that.creatorDiveCount,_that.hasUnreadMessages);case _:
   return orElse();
 
 }
@@ -183,10 +184,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.createdAt,_that.joinedC
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  DateTime createdAt,  int joinedCount,  bool joined,  int maxMembers,  String creatorName,  String? creatorLevel,  int creatorDiveCount)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String tripId,  String userId,  DateTime createdAt,  int joinedCount,  bool joined,  int maxMembers,  String creatorName,  String? creatorLevel,  int creatorDiveCount,  bool hasUnreadMessages)  $default,) {final _that = this;
 switch (_that) {
 case _BuddyRequestApiModel():
-return $default(_that.id,_that.tripId,_that.userId,_that.createdAt,_that.joinedCount,_that.joined,_that.maxMembers,_that.creatorName,_that.creatorLevel,_that.creatorDiveCount);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.createdAt,_that.joinedCount,_that.joined,_that.maxMembers,_that.creatorName,_that.creatorLevel,_that.creatorDiveCount,_that.hasUnreadMessages);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +204,10 @@ return $default(_that.id,_that.tripId,_that.userId,_that.createdAt,_that.joinedC
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  DateTime createdAt,  int joinedCount,  bool joined,  int maxMembers,  String creatorName,  String? creatorLevel,  int creatorDiveCount)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String tripId,  String userId,  DateTime createdAt,  int joinedCount,  bool joined,  int maxMembers,  String creatorName,  String? creatorLevel,  int creatorDiveCount,  bool hasUnreadMessages)?  $default,) {final _that = this;
 switch (_that) {
 case _BuddyRequestApiModel() when $default != null:
-return $default(_that.id,_that.tripId,_that.userId,_that.createdAt,_that.joinedCount,_that.joined,_that.maxMembers,_that.creatorName,_that.creatorLevel,_that.creatorDiveCount);case _:
+return $default(_that.id,_that.tripId,_that.userId,_that.createdAt,_that.joinedCount,_that.joined,_that.maxMembers,_that.creatorName,_that.creatorLevel,_that.creatorDiveCount,_that.hasUnreadMessages);case _:
   return null;
 
 }
@@ -218,7 +219,7 @@ return $default(_that.id,_that.tripId,_that.userId,_that.createdAt,_that.joinedC
 @JsonSerializable()
 
 class _BuddyRequestApiModel implements BuddyRequestApiModel {
-  const _BuddyRequestApiModel({required this.id, required this.tripId, required this.userId, required this.createdAt, this.joinedCount = 0, this.joined = false, this.maxMembers = 3, this.creatorName = '', this.creatorLevel, this.creatorDiveCount = 0});
+  const _BuddyRequestApiModel({required this.id, required this.tripId, required this.userId, required this.createdAt, this.joinedCount = 0, this.joined = false, this.maxMembers = 3, this.creatorName = '', this.creatorLevel, this.creatorDiveCount = 0, this.hasUnreadMessages = false});
   factory _BuddyRequestApiModel.fromJson(Map<String, dynamic> json) => _$BuddyRequestApiModelFromJson(json);
 
 @override final  String id;
@@ -231,6 +232,7 @@ class _BuddyRequestApiModel implements BuddyRequestApiModel {
 @override@JsonKey() final  String creatorName;
 @override final  String? creatorLevel;
 @override@JsonKey() final  int creatorDiveCount;
+@override@JsonKey() final  bool hasUnreadMessages;
 
 /// Create a copy of BuddyRequestApiModel
 /// with the given fields replaced by the non-null parameter values.
@@ -245,16 +247,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BuddyRequestApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.maxMembers, maxMembers) || other.maxMembers == maxMembers)&&(identical(other.creatorName, creatorName) || other.creatorName == creatorName)&&(identical(other.creatorLevel, creatorLevel) || other.creatorLevel == creatorLevel)&&(identical(other.creatorDiveCount, creatorDiveCount) || other.creatorDiveCount == creatorDiveCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BuddyRequestApiModel&&(identical(other.id, id) || other.id == id)&&(identical(other.tripId, tripId) || other.tripId == tripId)&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.joinedCount, joinedCount) || other.joinedCount == joinedCount)&&(identical(other.joined, joined) || other.joined == joined)&&(identical(other.maxMembers, maxMembers) || other.maxMembers == maxMembers)&&(identical(other.creatorName, creatorName) || other.creatorName == creatorName)&&(identical(other.creatorLevel, creatorLevel) || other.creatorLevel == creatorLevel)&&(identical(other.creatorDiveCount, creatorDiveCount) || other.creatorDiveCount == creatorDiveCount)&&(identical(other.hasUnreadMessages, hasUnreadMessages) || other.hasUnreadMessages == hasUnreadMessages));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,tripId,userId,createdAt,joinedCount,joined,maxMembers,creatorName,creatorLevel,creatorDiveCount);
+int get hashCode => Object.hash(runtimeType,id,tripId,userId,createdAt,joinedCount,joined,maxMembers,creatorName,creatorLevel,creatorDiveCount,hasUnreadMessages);
 
 @override
 String toString() {
-  return 'BuddyRequestApiModel(id: $id, tripId: $tripId, userId: $userId, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined, maxMembers: $maxMembers, creatorName: $creatorName, creatorLevel: $creatorLevel, creatorDiveCount: $creatorDiveCount)';
+  return 'BuddyRequestApiModel(id: $id, tripId: $tripId, userId: $userId, createdAt: $createdAt, joinedCount: $joinedCount, joined: $joined, maxMembers: $maxMembers, creatorName: $creatorName, creatorLevel: $creatorLevel, creatorDiveCount: $creatorDiveCount, hasUnreadMessages: $hasUnreadMessages)';
 }
 
 
@@ -265,7 +267,7 @@ abstract mixin class _$BuddyRequestApiModelCopyWith<$Res> implements $BuddyReque
   factory _$BuddyRequestApiModelCopyWith(_BuddyRequestApiModel value, $Res Function(_BuddyRequestApiModel) _then) = __$BuddyRequestApiModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String tripId, String userId, DateTime createdAt, int joinedCount, bool joined, int maxMembers, String creatorName, String? creatorLevel, int creatorDiveCount
+ String id, String tripId, String userId, DateTime createdAt, int joinedCount, bool joined, int maxMembers, String creatorName, String? creatorLevel, int creatorDiveCount, bool hasUnreadMessages
 });
 
 
@@ -282,7 +284,7 @@ class __$BuddyRequestApiModelCopyWithImpl<$Res>
 
 /// Create a copy of BuddyRequestApiModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,Object? maxMembers = null,Object? creatorName = null,Object? creatorLevel = freezed,Object? creatorDiveCount = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? tripId = null,Object? userId = null,Object? createdAt = null,Object? joinedCount = null,Object? joined = null,Object? maxMembers = null,Object? creatorName = null,Object? creatorLevel = freezed,Object? creatorDiveCount = null,Object? hasUnreadMessages = null,}) {
   return _then(_BuddyRequestApiModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,tripId: null == tripId ? _self.tripId : tripId // ignore: cast_nullable_to_non_nullable
@@ -294,7 +296,8 @@ as bool,maxMembers: null == maxMembers ? _self.maxMembers : maxMembers // ignore
 as int,creatorName: null == creatorName ? _self.creatorName : creatorName // ignore: cast_nullable_to_non_nullable
 as String,creatorLevel: freezed == creatorLevel ? _self.creatorLevel : creatorLevel // ignore: cast_nullable_to_non_nullable
 as String?,creatorDiveCount: null == creatorDiveCount ? _self.creatorDiveCount : creatorDiveCount // ignore: cast_nullable_to_non_nullable
-as int,
+as int,hasUnreadMessages: null == hasUnreadMessages ? _self.hasUnreadMessages : hasUnreadMessages // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

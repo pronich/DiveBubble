@@ -26,4 +26,6 @@ class TransportRepository {
   Future<void> dissolveOffer(String tripId, String offerId) => _service.dissolveOffer(tripId, offerId);
 
   Future<bool> getHasAlert(String tripId) => _service.fetchHasAlert(tripId);
+
+  Future<void> markOfferRead(String tripId, String offerId) => _service.markOfferRead(tripId, offerId);
 }

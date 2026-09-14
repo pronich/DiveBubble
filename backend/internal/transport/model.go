@@ -33,4 +33,9 @@ type Offer struct {
 	CreatedAt   time.Time
 	JoinedCount int
 	Joined      bool // whether the calling user has joined this offer
+	// HasUnreadMessages is true when this offer's own car chat has a message the caller
+	// hasn't seen yet — see transport_offer_read_state. Distinct from an alert (which fires
+	// when a *joined* car dissolves), this is about ordinary new activity in a chat you're
+	// already part of.
+	HasUnreadMessages bool
 }

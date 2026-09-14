@@ -17,5 +17,9 @@ abstract class TransportOffer with _$TransportOffer {
     // True when the creator is a member of the trip's dive center — mirrors
     // ChatMessage.isDiveCenterStaff, same "Name | Dive Center" attribution precedent.
     @Default(false) bool isDiveCenterStaff,
+    // True when this car's own chat has a message the caller hasn't seen yet — distinct
+    // from TransportViewModel.hasAlert (a dissolved car you'd joined), this is about
+    // ordinary new activity in a chat you're still part of.
+    @Default(false) bool hasUnreadMessages,
   }) = _TransportOffer;
 }

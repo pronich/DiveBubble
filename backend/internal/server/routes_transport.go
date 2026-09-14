@@ -42,6 +42,7 @@ func registerTransportRoutes(
 	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/messages", withAuth(authIssuer, handleSendOfferMessage(svc, tripSvc, diveCenterSvc, messageSvc, publisher)))
 	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/leave", withAuth(authIssuer, handleLeaveTransportOffer(svc, tripSvc)))
 	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/dissolve", withAuth(authIssuer, handleDissolveTransportOffer(svc, tripSvc, publisher)))
+	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/read", withAuth(authIssuer, handleMarkTransportOfferRead(svc, tripSvc)))
 }
 
 // requireOfferAccess is requireParticipant (trip-level) plus an offer-level check: only the
@@ -98,6 +99,7 @@ type transportOfferResponse struct {
 	JoinedCount       int       `json:"joinedCount"`
 	Joined            bool      `json:"joined"`
 	IsDiveCenterStaff bool      `json:"isDiveCenterStaff"`
+	HasUnreadMessages bool      `json:"hasUnreadMessages"`
 }
 
 func toTransportOfferResponse(o transport.Offer, isDiveCenterStaff bool) transportOfferResponse {
@@ -112,6 +114,7 @@ func toTransportOfferResponse(o transport.Offer, isDiveCenterStaff bool) transpo
 		JoinedCount:       o.JoinedCount,
 		Joined:            o.Joined,
 		IsDiveCenterStaff: isDiveCenterStaff,
+		HasUnreadMessages: o.HasUnreadMessages,
 	}
 }
 
@@ -473,6 +476,23 @@ func handleDissolveTransportOffer(svc *transport.Service, tripSvc *trip.Service,
 		}
 		if pubErr := publisher.Publish(r.Context(), "transport_offer:"+offer.ID.String(), map[string]string{"event": "dissolved"}); pubErr != nil {
 			log.Printf("realtime publish failed for transport_offer:%s: %v", offer.ID, pubErr)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleMarkTransportOfferRead marks this one car's chat read up to now — called when the
+// diver actually opens it, same "viewing acknowledges it" idea as trip.MarkRead, but scoped
+// to a single offer instead of clearing the whole Transport tab's dissolved-alert dot.
+func handleMarkTransportOfferRead(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
+		offer, ok := requireOfferAccess(w, r, svc, tripSvc, r.PathValue("id"), r.PathValue("offerId"), userID)
+		if !ok {
+			return
+		}
+		if err := svc.MarkRead(r.Context(), offer.ID, userID); err != nil {
+			writeError(w, http.StatusInternalServerError, "could not mark offer read")
+			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}

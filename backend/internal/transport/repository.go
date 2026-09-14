@@ -38,18 +38,25 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Offer, error) 
 	return o, err
 }
 
-// ListByTrip computes JoinedCount/Joined in one query rather than N+1 per-offer lookups.
+// ListByTrip computes JoinedCount/Joined/HasUnreadMessages in one query rather than N+1
+// per-offer lookups. HasUnreadMessages follows trip.Repository.ListJoinedByUser's own
+// last_read_at COALESCE pattern, scoped to this one offer's read-state row instead of the
+// trip's.
 func (r *Repository) ListByTrip(ctx context.Context, tripID, callerUserID uuid.UUID) ([]Offer, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT o.id, o.trip_id, o.user_id, o.type, o.seats, o.details, o.created_at,
 		       COALESCE(j.joined_count, 0),
-		       EXISTS(SELECT 1 FROM transport_offer_joins WHERE offer_id = o.id AND user_id = $2)
+		       EXISTS(SELECT 1 FROM transport_offer_joins WHERE offer_id = o.id AND user_id = $2),
+		       EXISTS(SELECT 1 FROM chat_messages cm
+		              WHERE cm.offer_id = o.id AND cm.user_id != $2
+		                AND cm.created_at > COALESCE(rs.last_read_at, '-infinity'::timestamptz))
 		FROM trip_transport_offers o
 		LEFT JOIN (
 			SELECT offer_id, COUNT(*) AS joined_count
 			FROM transport_offer_joins
 			GROUP BY offer_id
 		) j ON j.offer_id = o.id
+		LEFT JOIN transport_offer_read_state rs ON rs.offer_id = o.id AND rs.user_id = $2
 		WHERE o.trip_id = $1
 		ORDER BY o.created_at ASC
 	`, tripID, callerUserID)
@@ -63,7 +70,7 @@ func (r *Repository) ListByTrip(ctx context.Context, tripID, callerUserID uuid.U
 		var o Offer
 		if err := rows.Scan(
 			&o.ID, &o.TripID, &o.UserID, &o.Type, &o.Seats, &o.Details, &o.CreatedAt,
-			&o.JoinedCount, &o.Joined,
+			&o.JoinedCount, &o.Joined, &o.HasUnreadMessages,
 		); err != nil {
 			return nil, err
 		}
@@ -220,5 +227,16 @@ func (r *Repository) HasAlert(ctx context.Context, tripID, userID uuid.UUID) (bo
 
 func (r *Repository) ClearAlert(ctx context.Context, tripID, userID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `DELETE FROM transport_alerts WHERE trip_id = $1 AND user_id = $2`, tripID, userID)
+	return err
+}
+
+// MarkRead marks this one car's chat read up to now — mirrors trip.Repository.MarkRead,
+// scoped to a single offer instead of the whole trip.
+func (r *Repository) MarkRead(ctx context.Context, offerID, userID uuid.UUID) error {
+	_, err := r.DB.ExecContext(ctx, `
+		INSERT INTO transport_offer_read_state (offer_id, user_id, last_read_at)
+		VALUES ($1, $2, now())
+		ON CONFLICT (offer_id, user_id) DO UPDATE SET last_read_at = now()
+	`, offerID, userID)
 	return err
 }

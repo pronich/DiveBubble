@@ -237,10 +237,12 @@ class _TripConversationPageState extends State<TripConversationPage>
       widget.transportViewModel.checkAlert().then(
         (_) => widget.onTransportAlertCleared?.call(),
       );
+      widget.transportViewModel.markMyOfferRead();
     } else if (_tabController.index == 2) {
       widget.buddyViewModel.checkAlert().then(
         (_) => widget.onBuddyAlertCleared?.call(),
       );
+      widget.buddyViewModel.markMyRequestRead();
     }
   }
 
@@ -435,7 +437,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                       outlinedIcon: Icons.directions_car_outlined,
                       filledIcon: Icons.directions_car,
                       label: 'Transport',
-                      hasAlert: transportViewModel.hasAlert,
+                      hasAlert: transportViewModel.hasAlert || (myOffer?.hasUnreadMessages ?? false),
                       onTap: () => tabController.animateTo(
                         1,
                         duration: _switchDuration,
@@ -462,7 +464,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                       outlinedIcon: Icons.emoji_people_outlined,
                       filledIcon: Icons.emoji_people,
                       label: 'Buddy',
-                      hasAlert: buddyViewModel.hasAlert,
+                      hasAlert: buddyViewModel.hasAlert || (myRequest?.hasUnreadMessages ?? false),
                       onTap: () => tabController.animateTo(
                         2,
                         duration: _switchDuration,
