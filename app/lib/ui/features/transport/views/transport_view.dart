@@ -72,15 +72,11 @@ class _TransportViewState extends State<TransportView>
   ChatViewModel? _carChatViewModel;
   String? _carChatOfferId;
 
-  @override
-  void initState() {
-    super.initState();
-    // Deferred a tick: TabBarView builds both tabs eagerly up front, so calling load()
-    // (whose first line is a synchronous notifyListeners()) straight from initState here
-    // fires while the *sibling* Chat tab's build is still in flight, tripping "setState
-    // called during build". A microtask lets the current build pass finish first.
-    Future.microtask(widget.viewModel.load);
-  }
+  // No load() call here anymore — TripConversationPage.initState loads this ViewModel
+  // eagerly (myOffer/hasUnreadMessages need to be ready before this tab is ever built, since
+  // TabBarView doesn't build an offscreen page). A second load from here used to be
+  // redundant at best; at worst its isLoading flash could unmount a live ChatView without
+  // resetting _carChatOfferId (see the isLoading-branch guard in build() below).
 
   ChatViewModel _ensureCarChatViewModel(TransportOffer offer) {
     if (_carChatOfferId != offer.id) {
@@ -119,7 +115,11 @@ class _TransportViewState extends State<TransportView>
     return ListenableBuilder(
       listenable: widget.viewModel,
       builder: (context, _) {
-        if (widget.viewModel.isLoading) {
+        // Only the very first load (no offers cached yet) shows the full-screen spinner — a
+        // background refresh while a car chat is already open must NOT swap it out for a
+        // spinner: that would unmount the live ChatView (disposing its ChatViewModel) without
+        // resetting _carChatOfferId, so the next build would hand ChatView a disposed instance.
+        if (widget.viewModel.isLoading && widget.viewModel.offers.isEmpty) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
