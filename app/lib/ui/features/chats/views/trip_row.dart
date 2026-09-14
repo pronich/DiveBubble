@@ -92,11 +92,11 @@ class TripRow extends StatelessWidget {
                         const SizedBox(width: 6),
                         _UnreadBadge(count: trip.unreadCount),
                       ],
-                      if (showBadges && trip.hasTransportAlert) ...[
+                      if (showBadges && (trip.hasTransportAlert || trip.hasUnreadTransportMessages)) ...[
                         const SizedBox(width: 6),
                         const _TransportAlertDot(),
                       ],
-                      if (showBadges && trip.hasBuddyAlert) ...[
+                      if (showBadges && (trip.hasBuddyAlert || trip.hasUnreadBuddyMessages)) ...[
                         const SizedBox(width: 6),
                         const _BuddyAlertDot(),
                       ],
@@ -166,8 +166,10 @@ class _UnreadBadge extends StatelessWidget {
   }
 }
 
-// Distinct from _UnreadBadge on purpose — a dissolved transport offer isn't an unread
-// message, so it gets its own visual language (info, not the error-red unread pill).
+// Distinct from _UnreadBadge on purpose — a dissolved offer/request or an unread car-chat
+// message aren't the trip's general unread count, so they get their own visual language
+// (info, not the error-red unread pill). Lit by either condition; the row doesn't need to
+// tell them apart.
 class _TransportAlertDot extends StatelessWidget {
   const _TransportAlertDot();
 

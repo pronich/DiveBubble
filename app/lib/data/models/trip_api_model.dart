@@ -17,6 +17,8 @@ abstract class TripApiModel with _$TripApiModel {
     @Default(0) int unreadCount,
     @Default(false) bool hasTransportAlert,
     @Default(false) bool hasBuddyAlert,
+    @Default(false) bool hasUnreadTransportMessages,
+    @Default(false) bool hasUnreadBuddyMessages,
     DateTime? endDate,
     String? description,
     String? meetingPoint,

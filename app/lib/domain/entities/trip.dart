@@ -19,6 +19,11 @@ abstract class Trip with _$Trip {
     // Same idea as hasTransportAlert, for a dissolved buddy group this diver had joined —
     // cleared by visiting the Buddy tab (see BuddyViewModel.checkAlert).
     @Default(false) bool hasBuddyAlert,
+    // True when the diver's own car/buddy-group chat has a message they haven't seen —
+    // distinct from the two Alert fields (a dissolved car/group). Survives just opening the
+    // Bubble (unlike unreadCount); only clears once they actually visit that tab.
+    @Default(false) bool hasUnreadTransportMessages,
+    @Default(false) bool hasUnreadBuddyMessages,
     DateTime? endDate,
     String? description,
     String? meetingPoint,

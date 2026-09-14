@@ -187,6 +187,12 @@ class _TripConversationPageState extends State<TripConversationPage>
     // what actually surfaces it before the diver ever switches to Transport/Buddy.
     widget.transportViewModel.seedAlert(widget.initialHasTransportAlert);
     widget.buddyViewModel.seedAlert(widget.initialHasBuddyAlert);
+    // Loaded here, not left to TransportView/BuddyView's own initState — the pill bar (built
+    // right away, regardless of which tab is selected) needs myOffer/myRequest.
+    // hasUnreadMessages immediately, but those tabs are TabBarView pages and Flutter doesn't
+    // build an offscreen page (or run its initState) until it's actually scrolled/switched to.
+    widget.transportViewModel.load();
+    widget.buddyViewModel.load();
     _refreshTripDerivedState();
   }
 

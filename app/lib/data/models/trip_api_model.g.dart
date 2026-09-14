@@ -19,6 +19,9 @@ _TripApiModel _$TripApiModelFromJson(Map<String, dynamic> json) =>
       unreadCount: (json['unreadCount'] as num?)?.toInt() ?? 0,
       hasTransportAlert: json['hasTransportAlert'] as bool? ?? false,
       hasBuddyAlert: json['hasBuddyAlert'] as bool? ?? false,
+      hasUnreadTransportMessages:
+          json['hasUnreadTransportMessages'] as bool? ?? false,
+      hasUnreadBuddyMessages: json['hasUnreadBuddyMessages'] as bool? ?? false,
       endDate: json['endDate'] == null
           ? null
           : DateTime.parse(json['endDate'] as String),
@@ -55,6 +58,8 @@ Map<String, dynamic> _$TripApiModelToJson(_TripApiModel instance) =>
       'unreadCount': instance.unreadCount,
       'hasTransportAlert': instance.hasTransportAlert,
       'hasBuddyAlert': instance.hasBuddyAlert,
+      'hasUnreadTransportMessages': instance.hasUnreadTransportMessages,
+      'hasUnreadBuddyMessages': instance.hasUnreadBuddyMessages,
       'endDate': instance.endDate?.toIso8601String(),
       'description': instance.description,
       'meetingPoint': instance.meetingPoint,

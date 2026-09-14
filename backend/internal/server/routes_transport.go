@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -39,7 +40,7 @@ func registerTransportRoutes(
 	mux.HandleFunc("GET /trips/{id}/transport/{offerId}/joins", withAuth(authIssuer, handleListTransportOfferJoins(svc, tripSvc)))
 	mux.HandleFunc("GET /trips/{id}/transport/alert", withAuth(authIssuer, handleGetTransportAlert(svc, tripSvc)))
 	mux.HandleFunc("GET /trips/{id}/transport/{offerId}/messages", withAuth(authIssuer, handleListOfferMessages(svc, tripSvc, diveCenterSvc, moderationSvc, messageSvc)))
-	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/messages", withAuth(authIssuer, handleSendOfferMessage(svc, tripSvc, diveCenterSvc, messageSvc, publisher)))
+	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/messages", withAuth(authIssuer, handleSendOfferMessage(svc, tripSvc, diveCenterSvc, profileSvc, pushSvc, messageSvc, publisher)))
 	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/leave", withAuth(authIssuer, handleLeaveTransportOffer(svc, tripSvc)))
 	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/dissolve", withAuth(authIssuer, handleDissolveTransportOffer(svc, tripSvc, publisher)))
 	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/read", withAuth(authIssuer, handleMarkTransportOfferRead(svc, tripSvc)))
@@ -266,6 +267,13 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service, pro
 					log.Printf("realtime publish failed for transport_offer:%s: %v", offerID, pubErr)
 				}
 			}
+
+			// The system join message is attributed to message.SystemUserID, not the joiner,
+			// so ListByTrip's unread check (cm.user_id != caller) can't tell it was their own
+			// action — without this, the joiner would see their own join flagged as unread.
+			if err := svc.MarkRead(r.Context(), offerID, userID); err != nil {
+				log.Printf("car chat: could not mark offer read for joiner:%s offer:%s: %v", userID, offerID, err)
+			}
 		}
 
 		writeJSON(w, http.StatusOK, map[string]bool{"joined": true})
@@ -390,7 +398,7 @@ type sendOfferMessageRequest struct {
 	attachmentRequest
 }
 
-func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, messageSvc *message.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
+func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, pushSvc *push.Service, messageSvc *message.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		offer, ok := requireOfferAccess(w, r, transportSvc, tripSvc, r.PathValue("id"), r.PathValue("offerId"), userID)
 		if !ok {
@@ -423,7 +431,8 @@ func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Servi
 		}
 
 		isDiveCenterStaff := false
-		if t, err := tripSvc.GetTrip(r.Context(), offer.TripID.String()); err == nil && t.DiveCenterID.Valid {
+		t, tErr := tripSvc.GetTrip(r.Context(), offer.TripID.String())
+		if tErr == nil && t.DiveCenterID.Valid {
 			isDiveCenterStaff, _ = diveCenterSvc.IsMember(r.Context(), t.DiveCenterID.UUID, userID)
 		}
 
@@ -431,6 +440,9 @@ func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Servi
 		// Best-effort — REST already persisted the message, realtime push is not required for correctness.
 		if pubErr := publisher.Publish(r.Context(), "transport_offer:"+offer.ID.String(), resp); pubErr != nil {
 			log.Printf("realtime publish failed for transport_offer:%s: %v", offer.ID, pubErr)
+		}
+		if tErr == nil {
+			notifyNewOfferMessage(r.Context(), pushSvc, profileSvc, transportSvc, t, offer, m, userID)
 		}
 		writeJSON(w, http.StatusCreated, resp)
 	}
@@ -479,6 +491,31 @@ func handleDissolveTransportOffer(svc *transport.Service, tripSvc *trip.Service,
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+// notifyNewOfferMessage pushes a car chat message to the offer's own members only (creator +
+// joiners) — narrower than notifyNewMessage's whole-trip-roster reach, since the rest of the
+// trip has no visibility into a car they haven't joined.
+func notifyNewOfferMessage(ctx context.Context, pushSvc *push.Service, profileSvc *profile.Service, transportSvc *transport.Service, t trip.Trip, offer transport.Offer, m message.Message, senderID uuid.UUID) {
+	joinedIDs, err := transportSvc.ListJoins(ctx, offer.ID)
+	if err != nil {
+		log.Printf("push: could not list joins for offer:%s: %v", offer.ID, err)
+		return
+	}
+	recipients := excludeUser(dedupeUsers(append(joinedIDs, offer.UserID)), senderID)
+	if len(recipients) == 0 {
+		return
+	}
+
+	senderName := "New message"
+	if sender, err := profileSvc.Get(ctx, senderID); err == nil && sender.DisplayName.Valid && sender.DisplayName.String != "" {
+		senderName = sender.DisplayName.String
+	}
+	pushSvc.SendToUsers(ctx, recipients, push.Notification{
+		Title: senderName + " · " + t.Title,
+		Body:  pushBodyFor(m),
+		Data:  map[string]string{"tripId": t.ID.String(), "type": "message"},
+	})
 }
 
 // handleMarkTransportOfferRead marks this one car's chat read up to now — called when the
