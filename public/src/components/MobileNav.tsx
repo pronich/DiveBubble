@@ -31,9 +31,6 @@ export function MobileNav() {
       {open && (
         <div className="absolute inset-x-0 top-full border-b border-white/10 bg-brand-blue px-6 py-4">
           <nav className="flex flex-col gap-4 text-sm text-white/85">
-            <Link href="/" onClick={() => setOpen(false)} className="hover:text-white">
-              Individuals
-            </Link>
             <Link href="/faq" onClick={() => setOpen(false)} className="hover:text-white">
               FAQ
             </Link>

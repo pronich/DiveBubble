@@ -19,15 +19,10 @@ export function Header({ showDiveIn = false }: { showDiveIn?: boolean }) {
           <Image src="/images/logo.png" alt="" width={32} height={32} className="rounded-lg" />
           <span className="font-serif text-lg font-semibold">DiveBubble</span>
         </Link>
-        <nav className="hidden items-center gap-8 text-sm text-white/85 sm:flex">
-          <Link href="/" className="hover:text-white">
-            Individuals
-          </Link>
-          <Link href="/faq" className="hover:text-white">
+        <div className="flex items-center gap-5">
+          <Link href="/faq" className="hidden text-sm text-white/85 hover:text-white sm:inline-block">
             FAQ
           </Link>
-        </nav>
-        <div className="flex items-center gap-3">
           <MobileNav />
           {showDiveIn ? (
             <a
