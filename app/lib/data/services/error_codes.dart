@@ -24,4 +24,41 @@ const _messages = <String, String>{
   'refresh_token_revoked': 'Your session is no longer valid. Please sign in again.',
   'refresh_token_reused': 'Your session was already refreshed elsewhere. Please sign in again.',
   'unauthenticated': 'Please sign in again.',
+
+  // Trip (backend/internal/server/routes_trip.go)
+  'trip_fields_required': 'Title, location, and date are required.',
+  'end_date_before_start': "End date can't be before the start date.",
+  'not_dive_center_member': 'You are not a member of that dive center.',
+  'business_trip_requires_pricing': 'Business trips require a price and a booking URL.',
+  'trip_not_found': 'This trip could not be found.',
+  'invalid_booking_code': 'That booking code is invalid.',
+  'trip_not_open_to_join': 'This trip is not open to join.',
+  'trip_requires_booking_code': 'This trip requires a booking code — use join by code instead.',
+  'booking_code_required': 'Enter a booking code.',
+  'only_organizer_can_cancel_trip': 'Only the organizer can cancel this trip.',
+  'only_organizer_can_edit_trip': 'Only the organizer can edit this trip.',
+  'organizer_cannot_leave_trip': 'As the organizer, cancel the trip instead of leaving it.',
+  'rating_out_of_range': 'Rating must be between 1 and 5.',
+  'photo_not_found': 'This photo could not be found.',
+
+  // Shared between Transport and Buddy
+  'trip_cancelled': 'This trip has been cancelled.',
+  'body_or_attachment_required': 'Write a message or attach something first.',
+
+  // Transport (backend/internal/server/routes_transport.go)
+  'transport_offer_not_found': 'This ride could not be found.',
+  'not_part_of_car': "You're not part of this car.",
+  'invalid_offer_type_or_seats': 'Check the ride type and number of seats.',
+  'no_seats_left': 'No seats left in this car.',
+  'already_joined_transport_offer': "You've already joined a ride on this trip.",
+  'creator_cannot_leave_car': 'Dissolve this car instead of leaving it — you created it.',
+  'only_creator_can_dissolve_car': 'Only the creator can dissolve this car.',
+
+  // Buddy (backend/internal/server/routes_buddy.go)
+  'buddy_request_not_found': 'This buddy group could not be found.',
+  'not_part_of_buddy_group': "You're not part of this buddy group.",
+  'buddy_group_full': 'This buddy group is full.',
+  'already_in_buddy_group': "You've already joined a buddy group on this trip.",
+  'creator_cannot_leave_buddy_group': 'Dissolve this group instead of leaving it — you created it.',
+  'only_creator_can_dissolve_buddy_group': 'Only the creator can dissolve this buddy group.',
 };

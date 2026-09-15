@@ -56,21 +56,21 @@ func requireBuddyRequestAccess(w http.ResponseWriter, r *http.Request, buddySvc 
 
 	requestID, err := uuid.Parse(requestIDStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid request id")
+		writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 		return buddy.Request{}, false
 	}
 
 	req, err := buddySvc.Repo.GetByID(r.Context(), requestID)
 	if err != nil {
 		if errors.Is(err, buddy.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "buddy request not found")
+			writeError(w, http.StatusNotFound, ErrCodeBuddyRequestNotFound)
 			return buddy.Request{}, false
 		}
-		writeError(w, http.StatusInternalServerError, "could not load buddy request")
+		writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 		return buddy.Request{}, false
 	}
 	if req.TripID != tripID {
-		writeError(w, http.StatusNotFound, "buddy request not found")
+		writeError(w, http.StatusNotFound, ErrCodeBuddyRequestNotFound)
 		return buddy.Request{}, false
 	}
 	if req.UserID == userID {
@@ -79,11 +79,11 @@ func requireBuddyRequestAccess(w http.ResponseWriter, r *http.Request, buddySvc 
 
 	isJoined, err := buddySvc.Repo.IsJoined(r.Context(), requestID, userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not verify buddy group membership")
+		writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 		return buddy.Request{}, false
 	}
 	if !isJoined {
-		writeError(w, http.StatusForbidden, "not part of this buddy group")
+		writeError(w, http.StatusForbidden, ErrCodeNotPartOfBuddyGroup)
 		return buddy.Request{}, false
 	}
 	return req, true
@@ -136,7 +136,7 @@ func handleListBuddyRequests(svc *buddy.Service, tripSvc *trip.Service, profileS
 
 		requests, err := svc.List(r.Context(), tripID, userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list buddy requests")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -161,16 +161,16 @@ func handleCreateBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, profile
 		// A cancelled trip is dead — no reason to keep arranging buddies for it.
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
-				writeError(w, http.StatusConflict, "trip has been cancelled")
+				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not create buddy request")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		req, err := svc.Create(r.Context(), tripID, userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not create buddy request")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -192,34 +192,34 @@ func handleJoinBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, profileSv
 		// is dead, so committing to a buddy group for it doesn't make sense either.
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
-				writeError(w, http.StatusConflict, "trip has been cancelled")
+				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not join buddy request")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		requestID, err := uuid.Parse(r.PathValue("requestId"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid request id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		req, err := svc.Join(r.Context(), requestID, userID)
 		if err != nil {
 			if errors.Is(err, buddy.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "buddy request not found")
+				writeError(w, http.StatusNotFound, ErrCodeBuddyRequestNotFound)
 				return
 			}
 			if errors.Is(err, buddy.ErrFull) {
-				writeError(w, http.StatusConflict, "buddy group is full")
+				writeError(w, http.StatusConflict, ErrCodeBuddyGroupFull)
 				return
 			}
 			if errors.Is(err, buddy.ErrAlreadyBooked) {
-				writeError(w, http.StatusConflict, "already in a buddy group on this trip")
+				writeError(w, http.StatusConflict, ErrCodeAlreadyInBuddyGroup)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not join buddy request")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -269,7 +269,7 @@ func handleGetBuddyAlert(svc *buddy.Service, tripSvc *trip.Service) func(http.Re
 
 		hasAlert, err := svc.HasAlert(r.Context(), tripID, userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not check buddy alert")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if hasAlert {
@@ -288,13 +288,13 @@ func handleListBuddyRequestJoins(svc *buddy.Service, tripSvc *trip.Service) func
 
 		requestID, err := uuid.Parse(r.PathValue("requestId"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid request id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		userIDs, err := svc.ListJoins(r.Context(), requestID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list buddy request joins")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -315,13 +315,13 @@ func handleListBuddyMessages(buddySvc *buddy.Service, tripSvc *trip.Service, div
 
 		t, err := tripSvc.GetTrip(r.Context(), req.TripID.String())
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list messages")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		messages, err := messageSvc.ListByBuddyRequest(r.Context(), req.ID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list messages")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -379,27 +379,27 @@ func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, dive
 		}
 		if err := tripSvc.EnsureNotCancelled(r.Context(), req.TripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
-				writeError(w, http.StatusConflict, "trip has been cancelled")
+				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not send message")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		var body sendBuddyMessageRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&body); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		m, err := messageSvc.Send(r.Context(), req.TripID, userID, message.Scope{BuddyRequestID: uuid.NullUUID{UUID: req.ID, Valid: true}}, body.Body, false, body.toAttachments(), uuid.NullUUID{})
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "body or attachment is required")
+				writeError(w, http.StatusBadRequest, ErrCodeBodyOrAttachmentRequired)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not send message")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -437,11 +437,11 @@ func handleLeaveBuddyRequest(svc *buddy.Service, tripSvc *trip.Service) func(htt
 			return
 		}
 		if req.UserID == userID {
-			writeError(w, http.StatusBadRequest, "creator cannot leave their own buddy group — dissolve it instead")
+			writeError(w, http.StatusBadRequest, ErrCodeCreatorCannotLeaveBuddyGroup)
 			return
 		}
 		if err := svc.Leave(r.Context(), req.ID, userID); err != nil {
-			writeError(w, http.StatusInternalServerError, "could not leave buddy request")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -460,10 +460,10 @@ func handleDissolveBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, publi
 		}
 		if err := svc.Dissolve(r.Context(), req.ID, userID); err != nil {
 			if errors.Is(err, buddy.ErrForbidden) {
-				writeError(w, http.StatusForbidden, "only the creator can dissolve this buddy group")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyCreatorCanDissolveBuddyGroup)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not dissolve buddy request")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if pubErr := publisher.Publish(r.Context(), "buddy_request:"+req.ID.String(), map[string]string{"event": "dissolved"}); pubErr != nil {
@@ -511,7 +511,7 @@ func handleMarkBuddyRequestRead(svc *buddy.Service, tripSvc *trip.Service) func(
 			return
 		}
 		if err := svc.MarkRead(r.Context(), req.ID, userID); err != nil {
-			writeError(w, http.StatusInternalServerError, "could not mark request read")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

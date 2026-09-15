@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/buddy_request_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'error_codes.dart';
 
 class BuddyApiService {
   BuddyApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
@@ -53,12 +54,13 @@ class BuddyApiService {
     }
   }
 
-  // Server errors come back as {"error": "..."} — surface that message directly instead of the raw body.
+  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
+  // message to show, or passes it through unchanged if it's not one this file knows about yet.
   String? _extractError(String body) {
     try {
       final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic> && decoded['error'] is String) {
-        return decoded['error'] as String;
+        return describeErrorCode(decoded['error'] as String);
       }
     } catch (_) {
       // fall through

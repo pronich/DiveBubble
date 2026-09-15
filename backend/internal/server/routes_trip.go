@@ -230,7 +230,7 @@ func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 		var req createTripRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -258,22 +258,22 @@ func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 		})
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "title, location and startTime are required")
+				writeError(w, http.StatusBadRequest, ErrCodeTripFieldsRequired)
 				return
 			}
 			if errors.Is(err, trip.ErrEndDateBeforeStart) {
-				writeError(w, http.StatusBadRequest, "end date is before the start date")
+				writeError(w, http.StatusBadRequest, ErrCodeEndDateBeforeStart)
 				return
 			}
 			if errors.Is(err, trip.ErrNotDiveCenterMember) {
-				writeError(w, http.StatusForbidden, "not a member of that dive center")
+				writeError(w, http.StatusForbidden, ErrCodeNotDiveCenterMember)
 				return
 			}
 			if errors.Is(err, trip.ErrBusinessTripRequiresPriceAndURL) {
-				writeError(w, http.StatusBadRequest, "business trips require a price and a booking URL")
+				writeError(w, http.StatusBadRequest, ErrCodeBusinessTripRequiresPricing)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not create trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -290,26 +290,26 @@ func handleGetTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, u
 		t, err := svc.GetTrip(r.Context(), id)
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
 			if errors.Is(err, trip.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "trip not found")
+				writeError(w, http.StatusNotFound, ErrCodeTripNotFound)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not get trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		joined, err := svc.IsJoined(r.Context(), id, userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not get trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		participantCount, err := svc.CountParticipants(r.Context(), t.ID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not get trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -327,26 +327,26 @@ func handleResolveTripByCode(svc *trip.Service) func(http.ResponseWriter, *http.
 		t, err := svc.ResolveByCode(r.Context(), code)
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid code")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
 			if errors.Is(err, trip.ErrInvalidBookingCode) {
-				writeError(w, http.StatusNotFound, "invalid booking code")
+				writeError(w, http.StatusNotFound, ErrCodeInvalidBookingCode)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not resolve trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		joined, err := svc.IsJoined(r.Context(), t.ID.String(), userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not resolve trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		participantCount, err := svc.CountParticipants(r.Context(), t.ID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not resolve trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -359,22 +359,22 @@ func handleJoinTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, profil
 		id := r.PathValue("id")
 		if err := svc.Join(r.Context(), id, userID); err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
 			if errors.Is(err, trip.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "trip not found")
+				writeError(w, http.StatusNotFound, ErrCodeTripNotFound)
 				return
 			}
 			if errors.Is(err, trip.ErrTripNotOpen) {
-				writeError(w, http.StatusConflict, "trip is not open to join")
+				writeError(w, http.StatusConflict, ErrCodeTripNotOpenToJoin)
 				return
 			}
 			if errors.Is(err, trip.ErrRequiresBookingCode) {
-				writeError(w, http.StatusConflict, "this trip requires a booking code — use join-by-code instead")
+				writeError(w, http.StatusConflict, ErrCodeTripRequiresBookingCode)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not join trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -453,25 +453,25 @@ func handleJoinTripByCode(svc *trip.Service, diveCenterSvc *divecenter.Service, 
 		var req joinByCodeRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		t, err := svc.JoinByCode(r.Context(), req.Code, userID)
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "code is required")
+				writeError(w, http.StatusBadRequest, ErrCodeBookingCodeRequired)
 				return
 			}
 			if errors.Is(err, trip.ErrInvalidBookingCode) {
-				writeError(w, http.StatusNotFound, "invalid booking code")
+				writeError(w, http.StatusNotFound, ErrCodeInvalidBookingCode)
 				return
 			}
 			if errors.Is(err, trip.ErrTripNotOpen) {
-				writeError(w, http.StatusConflict, "trip is not open to join")
+				writeError(w, http.StatusConflict, ErrCodeTripNotOpenToJoin)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not join trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -480,7 +480,7 @@ func handleJoinTripByCode(svc *trip.Service, diveCenterSvc *divecenter.Service, 
 
 		participantCount, err := svc.CountParticipants(r.Context(), t.ID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not join trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toTripResponse(t, true, participantCount))
@@ -525,18 +525,18 @@ func handleCancelTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 		id := r.PathValue("id")
 		if err := svc.Cancel(r.Context(), id, userID); err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
 			if errors.Is(err, trip.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "trip not found")
+				writeError(w, http.StatusNotFound, ErrCodeTripNotFound)
 				return
 			}
 			if errors.Is(err, trip.ErrOnlyOrganizerCanCancel) {
-				writeError(w, http.StatusForbidden, "only the organizer can cancel this trip")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyOrganizerCanCancelTrip)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not cancel trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -585,7 +585,7 @@ func handleUpdateTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 		var req updateTripRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -614,22 +614,22 @@ func handleUpdateTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 		})
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id or field value")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
 			if errors.Is(err, trip.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "trip not found")
+				writeError(w, http.StatusNotFound, ErrCodeTripNotFound)
 				return
 			}
 			if errors.Is(err, trip.ErrOnlyOrganizerCanEditTrip) {
-				writeError(w, http.StatusForbidden, "only the organizer can edit this trip")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyOrganizerCanEditTrip)
 				return
 			}
 			if errors.Is(err, trip.ErrBusinessTripRequiresPriceAndURL) {
-				writeError(w, http.StatusBadRequest, "business trips require a price and a booking URL")
+				writeError(w, http.StatusBadRequest, ErrCodeBusinessTripRequiresPricing)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not update trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -649,12 +649,12 @@ func handleUpdateTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 
 		joined, err := svc.IsJoined(r.Context(), id, userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not update trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		participantCount, err := svc.CountParticipants(r.Context(), t.ID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not update trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toTripResponse(t, joined, participantCount))
@@ -670,7 +670,7 @@ func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service, buddySv
 		id := r.PathValue("id")
 		tripID, err := uuid.Parse(id)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid trip id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -678,29 +678,29 @@ func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service, buddySv
 		// the transport cascade below must never fire for a rejected leave attempt.
 		if err := svc.Leave(r.Context(), id, userID); err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
 			if errors.Is(err, trip.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "trip not found")
+				writeError(w, http.StatusNotFound, ErrCodeTripNotFound)
 				return
 			}
 			if errors.Is(err, trip.ErrOrganizerCannotLeave) {
-				writeError(w, http.StatusForbidden, "organizer cannot leave their own trip — cancel it instead")
+				writeError(w, http.StatusForbidden, ErrCodeOrganizerCannotLeaveTrip)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not leave trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		alertedUserIDs, err := transportSvc.HandleUserLeavingTrip(r.Context(), tripID, userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not clean up transport offers")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		buddyAlertedUserIDs, err := buddySvc.HandleUserLeavingTrip(r.Context(), tripID, userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not clean up buddy requests")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if len(alertedUserIDs) > 0 || len(buddyAlertedUserIDs) > 0 {
@@ -738,7 +738,7 @@ func handleListParticipants(svc *trip.Service) func(http.ResponseWriter, *http.R
 		}
 		ids, err := svc.ListParticipantUserIDs(r.Context(), tripIDStr)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list participants")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, ids)
@@ -750,10 +750,10 @@ func handleMarkRead(svc *trip.Service) func(http.ResponseWriter, *http.Request, 
 		id := r.PathValue("id")
 		if err := svc.MarkRead(r.Context(), id, userID); err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not mark trip read")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -766,10 +766,10 @@ func handleGetTripMute(svc *trip.Service) func(http.ResponseWriter, *http.Reques
 		muted, err := svc.IsMuted(r.Context(), id, userID)
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not get mute state")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]bool{"muted": muted})
@@ -784,10 +784,10 @@ func handleMuteTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, 
 		id := r.PathValue("id")
 		if err := svc.Mute(r.Context(), id, userID); err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not mute trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -799,10 +799,10 @@ func handleUnmuteTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 		id := r.PathValue("id")
 		if err := svc.Unmute(r.Context(), id, userID); err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not unmute trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -815,10 +815,10 @@ func handleGetTripArchive(svc *trip.Service) func(http.ResponseWriter, *http.Req
 		archived, err := svc.IsArchived(r.Context(), id, userID)
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not get archive state")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]bool{"archived": archived})
@@ -832,10 +832,10 @@ func handleArchiveTrip(svc *trip.Service) func(http.ResponseWriter, *http.Reques
 		id := r.PathValue("id")
 		if err := svc.Archive(r.Context(), id, userID); err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not archive trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -847,10 +847,10 @@ func handleUnarchiveTrip(svc *trip.Service) func(http.ResponseWriter, *http.Requ
 		id := r.PathValue("id")
 		if err := svc.Unarchive(r.Context(), id, userID); err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not unarchive trip")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -876,7 +876,7 @@ func handleSubmitFeedback(svc *trip.Service) func(http.ResponseWriter, *http.Req
 		var req submitFeedbackRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -888,10 +888,10 @@ func handleSubmitFeedback(svc *trip.Service) func(http.ResponseWriter, *http.Req
 
 		if err := svc.SubmitFeedback(r.Context(), tripID.String(), userID, req.Rating, helpedWith, comment, req.ContactOk); err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "rating must be between 1 and 5")
+				writeError(w, http.StatusBadRequest, ErrCodeRatingOutOfRange)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not submit feedback")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -903,7 +903,7 @@ func handleListMyTrips(svc *trip.Service) func(http.ResponseWriter, *http.Reques
 		archived := r.URL.Query().Get("archived") == "true"
 		trips, err := svc.ListJoinedByUser(r.Context(), userID, archived)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list trips")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -921,14 +921,14 @@ func handleListTrips(svc *trip.Service, accountSvc *account.Service) func(http.R
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		viewerIsOwner, err := accountSvc.IsOwner(r.Context(), userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list trips")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		query := r.URL.Query().Get("q")
 		trips, err := svc.ListTrips(r.Context(), query, viewerIsOwner)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list trips")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -946,10 +946,10 @@ func handleListTripPhotos(svc *trip.Service) func(http.ResponseWriter, *http.Req
 		photos, err := svc.ListPhotos(r.Context(), id)
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not list trip photos")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -966,28 +966,28 @@ func handleDeleteTripPhoto(svc *trip.Service) func(http.ResponseWriter, *http.Re
 		id := r.PathValue("id")
 		photoID, err := uuid.Parse(r.PathValue("photoId"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid photo id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		if err := svc.RemovePhoto(r.Context(), id, userID, photoID); err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
 			if errors.Is(err, trip.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "trip not found")
+				writeError(w, http.StatusNotFound, ErrCodeTripNotFound)
 				return
 			}
 			if errors.Is(err, trip.ErrOnlyOrganizerCanEditTrip) {
-				writeError(w, http.StatusForbidden, "only the organizer can edit this trip")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyOrganizerCanEditTrip)
 				return
 			}
 			if errors.Is(err, trip.ErrPhotoNotFound) {
-				writeError(w, http.StatusNotFound, "photo not found")
+				writeError(w, http.StatusNotFound, ErrCodePhotoNotFound)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not remove trip photo")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

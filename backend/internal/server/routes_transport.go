@@ -56,21 +56,21 @@ func requireOfferAccess(w http.ResponseWriter, r *http.Request, transportSvc *tr
 
 	offerID, err := uuid.Parse(offerIDStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid offer id")
+		writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 		return transport.Offer{}, false
 	}
 
 	offer, err := transportSvc.Repo.GetByID(r.Context(), offerID)
 	if err != nil {
 		if errors.Is(err, transport.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "transport offer not found")
+			writeError(w, http.StatusNotFound, ErrCodeTransportOfferNotFound)
 			return transport.Offer{}, false
 		}
-		writeError(w, http.StatusInternalServerError, "could not load transport offer")
+		writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 		return transport.Offer{}, false
 	}
 	if offer.TripID != tripID {
-		writeError(w, http.StatusNotFound, "transport offer not found")
+		writeError(w, http.StatusNotFound, ErrCodeTransportOfferNotFound)
 		return transport.Offer{}, false
 	}
 	if offer.UserID == userID {
@@ -79,11 +79,11 @@ func requireOfferAccess(w http.ResponseWriter, r *http.Request, transportSvc *tr
 
 	isJoined, err := transportSvc.Repo.IsJoined(r.Context(), offerID, userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "could not verify offer membership")
+		writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 		return transport.Offer{}, false
 	}
 	if !isJoined {
-		writeError(w, http.StatusForbidden, "not part of this car")
+		writeError(w, http.StatusForbidden, ErrCodeNotPartOfCar)
 		return transport.Offer{}, false
 	}
 	return offer, true
@@ -128,13 +128,13 @@ func handleListTransportOffers(svc *transport.Service, tripSvc *trip.Service, di
 
 		t, err := tripSvc.GetTrip(r.Context(), tripID.String())
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list transport offers")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		offers, err := svc.List(r.Context(), tripID, userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list transport offers")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -164,33 +164,33 @@ func handleCreateTransportOffer(svc *transport.Service, tripSvc *trip.Service, d
 		// A cancelled trip is dead — no reason to keep arranging rides to it.
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
-				writeError(w, http.StatusConflict, "trip has been cancelled")
+				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not create transport offer")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		t, err := tripSvc.GetTrip(r.Context(), tripID.String())
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not create transport offer")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		var req createTransportOfferRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		o, err := svc.Create(r.Context(), tripID, userID, transport.OfferType(req.Type), req.Seats, req.Details)
 		if err != nil {
 			if errors.Is(err, transport.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid type or seats")
+				writeError(w, http.StatusBadRequest, ErrCodeInvalidOfferTypeOrSeats)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not create transport offer")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -215,34 +215,34 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service, pro
 		// is dead, so committing to a ride toward it doesn't make sense either.
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
-				writeError(w, http.StatusConflict, "trip has been cancelled")
+				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not join transport offer")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		offerID, err := uuid.Parse(r.PathValue("offerId"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid offer id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		offer, err := svc.Join(r.Context(), offerID, userID)
 		if err != nil {
 			if errors.Is(err, transport.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "transport offer not found")
+				writeError(w, http.StatusNotFound, ErrCodeTransportOfferNotFound)
 				return
 			}
 			if errors.Is(err, transport.ErrFull) {
-				writeError(w, http.StatusConflict, "no seats left")
+				writeError(w, http.StatusConflict, ErrCodeNoSeatsLeft)
 				return
 			}
 			if errors.Is(err, transport.ErrAlreadyBooked) {
-				writeError(w, http.StatusConflict, "already joined a transport offer on this trip")
+				writeError(w, http.StatusConflict, ErrCodeAlreadyJoinedOffer)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not join transport offer")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -297,7 +297,7 @@ func handleGetTransportAlert(svc *transport.Service, tripSvc *trip.Service) func
 
 		hasAlert, err := svc.HasAlert(r.Context(), tripID, userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not check transport alert")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if hasAlert {
@@ -316,13 +316,13 @@ func handleListTransportOfferJoins(svc *transport.Service, tripSvc *trip.Service
 
 		offerID, err := uuid.Parse(r.PathValue("offerId"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid offer id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		userIDs, err := svc.ListJoins(r.Context(), offerID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list transport offer joins")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -343,13 +343,13 @@ func handleListOfferMessages(transportSvc *transport.Service, tripSvc *trip.Serv
 
 		t, err := tripSvc.GetTrip(r.Context(), offer.TripID.String())
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list messages")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		messages, err := messageSvc.ListByOffer(r.Context(), offer.ID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list messages")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -407,27 +407,27 @@ func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Servi
 		}
 		if err := tripSvc.EnsureNotCancelled(r.Context(), offer.TripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
-				writeError(w, http.StatusConflict, "trip has been cancelled")
+				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not send message")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		var req sendOfferMessageRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		m, err := messageSvc.Send(r.Context(), offer.TripID, userID, message.Scope{OfferID: uuid.NullUUID{UUID: offer.ID, Valid: true}}, req.Body, false, req.toAttachments(), uuid.NullUUID{})
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "body or attachment is required")
+				writeError(w, http.StatusBadRequest, ErrCodeBodyOrAttachmentRequired)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not send message")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -468,11 +468,11 @@ func handleLeaveTransportOffer(svc *transport.Service, tripSvc *trip.Service) fu
 			return
 		}
 		if offer.UserID == userID {
-			writeError(w, http.StatusBadRequest, "creator cannot leave their own car — dissolve it instead")
+			writeError(w, http.StatusBadRequest, ErrCodeCreatorCannotLeaveCar)
 			return
 		}
 		if err := svc.Leave(r.Context(), offer.ID, userID); err != nil {
-			writeError(w, http.StatusInternalServerError, "could not leave transport offer")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -491,10 +491,10 @@ func handleDissolveTransportOffer(svc *transport.Service, tripSvc *trip.Service,
 		}
 		if err := svc.Dissolve(r.Context(), offer.ID, userID); err != nil {
 			if errors.Is(err, transport.ErrForbidden) {
-				writeError(w, http.StatusForbidden, "only the creator can dissolve this car")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyCreatorCanDissolveCar)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not dissolve transport offer")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if pubErr := publisher.Publish(r.Context(), "transport_offer:"+offer.ID.String(), map[string]string{"event": "dissolved"}); pubErr != nil {
@@ -542,7 +542,7 @@ func handleMarkTransportOfferRead(svc *transport.Service, tripSvc *trip.Service)
 			return
 		}
 		if err := svc.MarkRead(r.Context(), offer.ID, userID); err != nil {
-			writeError(w, http.StatusInternalServerError, "could not mark offer read")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
