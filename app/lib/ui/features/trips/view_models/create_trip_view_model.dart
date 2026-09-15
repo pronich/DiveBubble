@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
 
@@ -78,7 +80,7 @@ class CreateTripViewModel extends ChangeNotifier {
         isPrivate: isPrivate,
       );
     } catch (e) {
-      _error = e.toString().replaceFirst('Exception: ', '');
+      _error = friendlyError(e);
       return null;
     } finally {
       _isSubmitting = false;

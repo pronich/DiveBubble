@@ -27,13 +27,13 @@ func handleRegisterPushToken(svc *push.Service) func(http.ResponseWriter, *http.
 		var req registerPushTokenRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<16))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		req.Token = strings.TrimSpace(req.Token)
 		if req.Token == "" {
-			writeError(w, http.StatusBadRequest, "token is required")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if req.Platform != "android" && req.Platform != "web" {
@@ -43,7 +43,7 @@ func handleRegisterPushToken(svc *push.Service) func(http.ResponseWriter, *http.
 		}
 
 		if err := svc.RegisterToken(r.Context(), userID, req.Platform, req.Token); err != nil {
-			writeError(w, http.StatusInternalServerError, "could not register push token")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -56,11 +56,11 @@ func handleUnregisterPushToken(svc *push.Service) func(http.ResponseWriter, *htt
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		token := strings.TrimSpace(r.URL.Query().Get("token"))
 		if token == "" {
-			writeError(w, http.StatusBadRequest, "token is required")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if err := svc.UnregisterToken(r.Context(), userID, token); err != nil {
-			writeError(w, http.StatusInternalServerError, "could not unregister push token")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

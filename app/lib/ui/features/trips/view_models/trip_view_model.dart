@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
@@ -114,7 +116,7 @@ class TripViewModel extends ChangeNotifier {
         _isMuted = false;
       }
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -147,7 +149,7 @@ class TripViewModel extends ChangeNotifier {
       await _repository.joinTrip(_tripId);
       _trip = await _repository.getTrip(_tripId);
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isJoining = false;
       notifyListeners();
@@ -164,7 +166,7 @@ class TripViewModel extends ChangeNotifier {
     try {
       _trip = await _repository.joinTripByCode(code);
     } catch (e) {
-      _error = e.toString().replaceFirst('Exception: ', '');
+      _error = friendlyError(e);
     } finally {
       _isJoining = false;
       notifyListeners();
@@ -182,7 +184,7 @@ class TripViewModel extends ChangeNotifier {
       await _repository.leaveTrip(_tripId);
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     } finally {
       _isLeaving = false;
       notifyListeners();
@@ -201,7 +203,7 @@ class TripViewModel extends ChangeNotifier {
       _trip = await _repository.getTrip(_tripId);
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     } finally {
       _isCancelling = false;
       notifyListeners();
@@ -219,7 +221,7 @@ class TripViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     }
   }
 
@@ -237,7 +239,7 @@ class TripViewModel extends ChangeNotifier {
       _photos = _photos.where((p) => p.id != photoId).toList();
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     } finally {
       _removingPhotoIds.remove(photoId);
       notifyListeners();

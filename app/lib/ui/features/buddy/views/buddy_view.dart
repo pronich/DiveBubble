@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
@@ -344,7 +346,7 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
         _loadProfile(id);
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = friendlyError(e));
     }
   }
 

@@ -17,7 +17,7 @@ func handleRealtimeToken(realtimeIssuer *realtime.TokenIssuer) func(http.Respons
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		token, err := realtimeIssuer.ConnectionToken(userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not issue token")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"token": token})

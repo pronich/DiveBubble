@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/expense_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
@@ -73,7 +75,7 @@ class ExpenseViewModel extends ChangeNotifier {
       _expenses = await _repository.getExpenses(tripId);
       _balance = await _repository.getBalance(tripId);
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -119,7 +121,7 @@ class ExpenseViewModel extends ChangeNotifier {
       await _reloadExpensesAndBalance();
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -151,7 +153,7 @@ class ExpenseViewModel extends ChangeNotifier {
       await _reloadExpensesAndBalance();
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -167,7 +169,7 @@ class ExpenseViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     }
   }
 
@@ -185,7 +187,7 @@ class ExpenseViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     }
   }
 }

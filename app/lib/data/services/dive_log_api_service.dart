@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../domain/entities/dive_log_entry.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'error_codes.dart';
 import 'multipart_upload.dart';
 
 class DiveLogApiService {
@@ -21,11 +22,13 @@ class DiveLogApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
+  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
+  // message to show, or passes it through unchanged if it's not one this file knows about yet.
   String? _extractError(String body) {
     try {
       final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic> && decoded['error'] is String) {
-        return decoded['error'] as String;
+        return describeErrorCode(decoded['error'] as String);
       }
     } catch (_) {
       // fall through
@@ -36,7 +39,7 @@ class DiveLogApiService {
   Future<List<DiveLogEntry>> fetchEntries() async {
     final res = await _client.get(Uri.parse('$baseUrl/divelog'), headers: await _authHeaders());
     if (res.statusCode != 200) {
-      throw Exception('fetchEntries failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchEntries failed: ${res.statusCode}');
     }
     final decoded = jsonDecode(res.body) as List<dynamic>;
     return decoded.map((e) => DiveLogEntry.fromJson(e as Map<String, dynamic>)).toList();
@@ -101,28 +104,18 @@ class DiveLogApiService {
 
   /// Handles all three accepted formats (UDDF, CSV, a Diving Log 6 SQLite export) — the
   /// backend sniffs the actual bytes to tell them apart, this just uploads whatever file
-  /// the diver picked.
+  /// the diver picked. uploadFile (multipart_upload.dart) already extracts and describes the
+  /// error itself now, so whatever it throws is already a clean, ready-to-show message —
+  /// nothing to unwrap here.
   Future<DiveLogImportResult> importFile(String filePath) async {
     final token = await getAccessToken();
     if (token == null) throw const AuthRequiredException();
-    try {
-      final body = await uploadFile(
-        Uri.parse('$baseUrl/divelog/import'),
-        filePath: filePath,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      return DiveLogImportResult.fromJson(body);
-    } catch (e) {
-      // uploadFile's own exception message embeds the raw response body after "NNN " —
-      // pull the {"error": "..."} JSON back out of it for a readable message instead of
-      // surfacing the whole "Exception: upload failed: 400 {...}" wrapper string.
-      final message = e.toString();
-      final jsonStart = message.indexOf('{');
-      throw Exception(
-        (jsonStart != -1 ? _extractError(message.substring(jsonStart)) : null) ??
-            'Could not import dive log',
-      );
-    }
+    final body = await uploadFile(
+      Uri.parse('$baseUrl/divelog/import'),
+      filePath: filePath,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    return DiveLogImportResult.fromJson(body);
   }
 
   Future<void> deleteEntry(String id) async {

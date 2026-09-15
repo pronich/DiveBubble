@@ -72,7 +72,7 @@ func handleListDiveLog(svc *divelog.Service) func(http.ResponseWriter, *http.Req
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		entries, err := svc.ListByUser(r.Context(), userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list dive log")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		out := make([]diveLogEntryResponse, len(entries))
@@ -98,7 +98,7 @@ func handleCreateDiveLogEntry(svc *divelog.Service) func(http.ResponseWriter, *h
 		var req createDiveLogEntryRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -108,10 +108,10 @@ func handleCreateDiveLogEntry(svc *divelog.Service) func(http.ResponseWriter, *h
 		})
 		if err != nil {
 			if errors.Is(err, divelog.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "a dive date/time is required")
+				writeError(w, http.StatusBadRequest, ErrCodeDiveDateTimeRequired)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not save dive log entry")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusCreated, toDiveLogEntryResponse(e))
@@ -122,14 +122,14 @@ func handleUpdateDiveLogEntry(svc *divelog.Service) func(http.ResponseWriter, *h
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		var req createDiveLogEntryRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -139,18 +139,18 @@ func handleUpdateDiveLogEntry(svc *divelog.Service) func(http.ResponseWriter, *h
 		})
 		if err != nil {
 			if errors.Is(err, divelog.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "dive log entry not found")
+				writeError(w, http.StatusNotFound, ErrCodeDiveLogEntryNotFound)
 				return
 			}
 			if errors.Is(err, divelog.ErrForbidden) {
-				writeError(w, http.StatusForbidden, "not your dive log entry")
+				writeError(w, http.StatusForbidden, ErrCodeNotYourDiveLogEntry)
 				return
 			}
 			if errors.Is(err, divelog.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "a dive date/time is required")
+				writeError(w, http.StatusBadRequest, ErrCodeDiveDateTimeRequired)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not update dive log entry")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toDiveLogEntryResponse(e))
@@ -165,19 +165,19 @@ type importDiveLogResponse struct {
 func handleImportDiveLog(svc *divelog.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		if err := r.ParseMultipartForm(maxImportFileSize + 1<<20); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid upload")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		file, _, err := r.FormFile("file")
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "missing file")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		defer file.Close()
 
 		data, err := io.ReadAll(io.LimitReader(file, maxImportFileSize))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read file")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -185,15 +185,15 @@ func handleImportDiveLog(svc *divelog.Service) func(http.ResponseWriter, *http.R
 		if err != nil {
 			switch {
 			case errors.Is(err, divelog.ErrInvalidUDDF):
-				writeError(w, http.StatusBadRequest, "this doesn't look like a valid UDDF dive log file")
+				writeError(w, http.StatusBadRequest, ErrCodeInvalidUDDFFile)
 			case errors.Is(err, divelog.ErrInvalidCSV):
-				writeError(w, http.StatusBadRequest, "could not parse this CSV file — check the column headers")
+				writeError(w, http.StatusBadRequest, ErrCodeInvalidCSVFile)
 			case errors.Is(err, divelog.ErrInvalidSQLite):
-				writeError(w, http.StatusBadRequest, "could not read this file as a Diving Log 6 export")
+				writeError(w, http.StatusBadRequest, ErrCodeInvalidDivingLog6File)
 			case errors.Is(err, divelog.ErrUnrecognizedFormat):
-				writeError(w, http.StatusBadRequest, "unrecognized file format — expected UDDF, CSV, or a Diving Log 6 export")
+				writeError(w, http.StatusBadRequest, ErrCodeUnrecognizedDiveLogFormat)
 			default:
-				writeError(w, http.StatusInternalServerError, "could not import dive log")
+				writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			}
 			return
 		}
@@ -205,19 +205,19 @@ func handleDeleteDiveLogEntry(svc *divelog.Service) func(http.ResponseWriter, *h
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if err := svc.Delete(r.Context(), id, userID); err != nil {
 			if errors.Is(err, divelog.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "dive log entry not found")
+				writeError(w, http.StatusNotFound, ErrCodeDiveLogEntryNotFound)
 				return
 			}
 			if errors.Is(err, divelog.ErrForbidden) {
-				writeError(w, http.StatusForbidden, "not your dive log entry")
+				writeError(w, http.StatusForbidden, ErrCodeNotYourDiveLogEntry)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not delete dive log entry")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

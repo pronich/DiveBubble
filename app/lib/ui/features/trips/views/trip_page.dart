@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../../data/services/error_codes.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -775,7 +777,7 @@ class _PeopleTabState extends State<PeopleTab> {
             .catchError((_) {});
       }
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = friendlyError(e));
     }
   }
 

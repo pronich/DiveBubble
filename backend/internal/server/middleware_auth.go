@@ -27,12 +27,12 @@ func withAuth(issuer *auth.TokenIssuer, next func(http.ResponseWriter, *http.Req
 	return func(w http.ResponseWriter, r *http.Request) {
 		raw, ok := parseBearer(r.Header.Get("Authorization"))
 		if !ok {
-			writeError(w, http.StatusUnauthorized, "missing or invalid bearer token")
+			writeError(w, http.StatusUnauthorized, ErrCodeUnauthenticated)
 			return
 		}
 		userID, _, err := issuer.ParseAccessToken(raw)
 		if err != nil {
-			writeError(w, http.StatusUnauthorized, "invalid or expired token")
+			writeError(w, http.StatusUnauthorized, ErrCodeUnauthenticated)
 			return
 		}
 		next(w, r, userID)
@@ -53,12 +53,12 @@ func optionalAuth(issuer *auth.TokenIssuer, next func(http.ResponseWriter, *http
 		}
 		raw, ok := parseBearer(header)
 		if !ok {
-			writeError(w, http.StatusUnauthorized, "invalid bearer token")
+			writeError(w, http.StatusUnauthorized, ErrCodeUnauthenticated)
 			return
 		}
 		userID, _, err := issuer.ParseAccessToken(raw)
 		if err != nil {
-			writeError(w, http.StatusUnauthorized, "invalid or expired token")
+			writeError(w, http.StatusUnauthorized, ErrCodeUnauthenticated)
 			return
 		}
 		next(w, r, userID)

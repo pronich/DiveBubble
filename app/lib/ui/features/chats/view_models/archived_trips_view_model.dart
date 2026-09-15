@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
 
@@ -26,7 +28,7 @@ class ArchivedTripsViewModel extends ChangeNotifier {
     try {
       _trips = await _repository.getMyTrips(archived: true);
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isLoading = false;
       notifyListeners();

@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+
+import '../../../../data/services/error_codes.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../../data/repositories/trip_repository.dart';
@@ -68,7 +70,7 @@ class TripsListViewModel extends ChangeNotifier {
     try {
       _trips = await _repository.getTrips(query: _query);
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isLoading = false;
       notifyListeners();

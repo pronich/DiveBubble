@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../domain/entities/profile.dart';
 
@@ -29,7 +31,7 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
       final profiles = await Future.wait(ids.map((id) => widget.profileRepository.getPublicProfile(id)));
       if (mounted) setState(() => _profiles = profiles);
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = friendlyError(e));
     }
   }
 

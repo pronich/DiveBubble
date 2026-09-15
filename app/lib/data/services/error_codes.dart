@@ -1,3 +1,8 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+
 // Maps a backend error code (see backend/internal/server/errcodes.go) to a message to show
 // the diver. The backend is being converted to codes one area at a time — an unrecognized
 // code (an area not converted yet, or old-style prose slipping through) is returned as-is
@@ -7,6 +12,21 @@
 // Not yet localized (see the translations plan) — these are the English strings that will
 // become the base .arb entries once that infrastructure lands.
 String describeErrorCode(String code) => _messages[code] ?? code;
+
+// Turns any caught error into text safe to show a diver. A plain Exception thrown by one of
+// our own *_api_service.dart calls already carries a clean message (see describeErrorCode
+// above, and each service's own _extractError) — but that's only ever reached once an HTTP
+// response actually comes back. A request that never gets a response at all (no connection,
+// DNS failure, timeout) throws some other exception type instead (SocketException,
+// http.ClientException, TimeoutException), whose toString() is raw and technical — the
+// Connection-refused wall of text this exists to stop. Anything that isn't our own plain
+// Exception collapses to the same generic message ErrCodeGeneric already uses.
+String friendlyError(Object error) {
+  if (error is SocketException || error is http.ClientException || error is TimeoutException) {
+    return describeErrorCode('generic_error');
+  }
+  return error.toString().replaceFirst('Exception: ', '');
+}
 
 const _messages = <String, String>{
   'generic_error': 'Something went wrong. Please try again.',
@@ -24,4 +44,91 @@ const _messages = <String, String>{
   'refresh_token_revoked': 'Your session is no longer valid. Please sign in again.',
   'refresh_token_reused': 'Your session was already refreshed elsewhere. Please sign in again.',
   'unauthenticated': 'Please sign in again.',
+
+  // Trip (backend/internal/server/routes_trip.go)
+  'trip_fields_required': 'Title, location, and date are required.',
+  'end_date_before_start': "End date can't be before the start date.",
+  'not_dive_center_member': 'You are not a member of that dive center.',
+  'business_trip_requires_pricing': 'Business trips require a price and a booking URL.',
+  'trip_not_found': 'This trip could not be found.',
+  'invalid_booking_code': 'That booking code is invalid.',
+  'trip_not_open_to_join': 'This trip is not open to join.',
+  'trip_requires_booking_code': 'This trip requires a booking code — use join by code instead.',
+  'booking_code_required': 'Enter a booking code.',
+  'only_organizer_can_cancel_trip': 'Only the organizer can cancel this trip.',
+  'only_organizer_can_edit_trip': 'Only the organizer can edit this trip.',
+  'organizer_cannot_leave_trip': 'As the organizer, cancel the trip instead of leaving it.',
+  'rating_out_of_range': 'Rating must be between 1 and 5.',
+  'photo_not_found': 'This photo could not be found.',
+
+  // Shared between Transport and Buddy
+  'trip_cancelled': 'This trip has been cancelled.',
+  'body_or_attachment_required': 'Write a message or attach something first.',
+
+  // Transport (backend/internal/server/routes_transport.go)
+  'transport_offer_not_found': 'This ride could not be found.',
+  'not_part_of_car': "You're not part of this car.",
+  'invalid_offer_type_or_seats': 'Check the ride type and number of seats.',
+  'no_seats_left': 'No seats left in this car.',
+  'already_joined_transport_offer': "You've already joined a ride on this trip.",
+  'creator_cannot_leave_car': 'Dissolve this car instead of leaving it — you created it.',
+  'only_creator_can_dissolve_car': 'Only the creator can dissolve this car.',
+
+  // Buddy (backend/internal/server/routes_buddy.go)
+  'buddy_request_not_found': 'This buddy group could not be found.',
+  'not_part_of_buddy_group': "You're not part of this buddy group.",
+  'buddy_group_full': 'This buddy group is full.',
+  'already_in_buddy_group': "You've already joined a buddy group on this trip.",
+  'creator_cannot_leave_buddy_group': 'Dissolve this group instead of leaving it — you created it.',
+  'only_creator_can_dissolve_buddy_group': 'Only the creator can dissolve this buddy group.',
+
+  // Message/Chat (backend/internal/server/routes_message.go)
+  'not_participant': "You're not a participant of this trip.",
+  'message_body_or_attachment_required': 'Write a message or attach a file first.',
+  'message_not_found_or_not_yours': "This message can't be deleted.",
+  'invalid_reaction_emoji': "That reaction isn't supported.",
+  'message_not_found': 'This message could not be found.',
+  'invalid_attachment_type': 'That file type is not supported here.',
+
+  // Profile (backend/internal/server/routes_profile.go)
+  'user_not_found': 'This diver could not be found.',
+
+  // DiveCenter (backend/internal/server/routes_divecenter.go) — only the codes app/ can
+  // actually see (it only views a dive center, never manages one — see
+  // DiveCenterApiService's own doc comment). The rest are admin/-only for now; admin/ isn't
+  // in scope for translated messages yet, so those codes have no entry here.
+  'dive_center_not_found': 'This dive center could not be found.',
+
+  // Gear (backend/internal/server/routes_gear.go)
+  'gear_item_not_found': 'This gear item could not be found.',
+
+  // Certification/Specialty (backend/internal/server/routes_certification.go)
+  'specialty_required': 'Choose a specialty.',
+  'specialty_not_found': 'This specialty could not be found.',
+
+  // Expense (backend/internal/server/routes_expense.go)
+  'expense_not_found': 'This expense could not be found.',
+  'split_amounts_mismatch': "The split amounts don't add up to the total.",
+  'only_creator_can_delete_expense': 'Only the person who added this expense can delete it.',
+  'invalid_settlement': 'Check the settlement amount and try again.',
+
+  // DiveLog (backend/internal/server/routes_divelog.go)
+  'dive_date_time_required': 'Enter a date and time for this dive.',
+  'dive_log_entry_not_found': 'This dive could not be found.',
+  'not_your_dive_log_entry': "This dive isn't yours to edit.",
+  'invalid_uddf_file': "This doesn't look like a valid UDDF dive log file.",
+  'invalid_csv_file': 'Could not read this CSV file — check the column headers.',
+  'invalid_divinglog6_file': 'Could not read this file as a Diving Log 6 export.',
+  'unrecognized_dive_log_format': 'Unrecognized file format — expected UDDF, CSV, or a Diving Log 6 export.',
+
+  // Upload (backend/internal/server/routes_upload.go) — shared by every photo/attachment
+  // upload in the app (avatar, specialty/trip photos, chat attachments).
+  'trip_photo_limit_reached': 'This trip already has the maximum number of photos.',
+  'invalid_image': 'Choose a JPEG, PNG, or WebP image.',
+  'file_too_large': "That file is too large — try a smaller one.",
+  'invalid_attachment_file': 'Choose an image, PDF, or video file.',
+
+  // Moderation (backend/internal/server/routes_moderation.go)
+  'reason_required': 'Choose a reason.',
+  'cannot_block_yourself': "You can't block yourself.",
 };

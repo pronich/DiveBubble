@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import '../../../../data/services/error_codes.dart';
 import 'dart:convert';
 
 import 'package:centrifuge/centrifuge.dart' as centrifuge;
@@ -99,7 +101,7 @@ class MyTripsViewModel extends ChangeNotifier {
     } on AuthRequiredException {
       _needsSignIn = true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isLoading = false;
       notifyListeners();

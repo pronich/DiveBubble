@@ -47,7 +47,7 @@ func handleListSpecialties(svc *certification.Service) func(http.ResponseWriter,
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		specialties, err := svc.ListSpecialties(r.Context(), userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list specialties")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		out := make([]specialtyResponse, 0, len(specialties))
@@ -70,7 +70,7 @@ func handleAddSpecialty(svc *certification.Service) func(http.ResponseWriter, *h
 		var req addSpecialtyRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -82,10 +82,10 @@ func handleAddSpecialty(svc *certification.Service) func(http.ResponseWriter, *h
 		})
 		if err != nil {
 			if errors.Is(err, certification.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "specialty is required")
+				writeError(w, http.StatusBadRequest, ErrCodeSpecialtyRequired)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not add specialty")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusCreated, toSpecialtyResponse(s))
@@ -96,16 +96,16 @@ func handleRemoveSpecialty(svc *certification.Service) func(http.ResponseWriter,
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid specialty id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		found, err := svc.RemoveSpecialty(r.Context(), userID, id)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not remove specialty")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if !found {
-			writeError(w, http.StatusNotFound, "specialty not found")
+			writeError(w, http.StatusNotFound, ErrCodeSpecialtyNotFound)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

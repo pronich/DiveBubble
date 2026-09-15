@@ -24,16 +24,16 @@ func handleWaitlistSignup(svc *waitlist.Service) http.HandlerFunc {
 		var req waitlistSignupRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<12))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		if err := svc.Signup(r.Context(), req.Email); err != nil {
 			if errors.Is(err, waitlist.ErrInvalidEmail) {
-				writeError(w, http.StatusBadRequest, "invalid email")
+				writeError(w, http.StatusBadRequest, ErrCodeInvalidEmail)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not save signup")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 

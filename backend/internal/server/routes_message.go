@@ -185,14 +185,14 @@ func requireParticipant(w http.ResponseWriter, r *http.Request, tripSvc *trip.Se
 	parsed, hasAccess, err := tripSvc.HasAccess(r.Context(), tripID, userID)
 	if err != nil {
 		if errors.Is(err, trip.ErrInvalidArgument) {
-			writeError(w, http.StatusBadRequest, "invalid trip id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return uuid.Nil, false
 		}
-		writeError(w, http.StatusInternalServerError, "could not verify trip membership")
+		writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 		return uuid.Nil, false
 	}
 	if !hasAccess {
-		writeError(w, http.StatusForbidden, "not a participant of this trip")
+		writeError(w, http.StatusForbidden, ErrCodeNotParticipant)
 		return uuid.Nil, false
 	}
 	return parsed, true
@@ -234,13 +234,13 @@ func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterS
 
 		t, err := tripSvc.GetTrip(r.Context(), tripID.String())
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list messages")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		messages, err := svc.List(r.Context(), tripID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list messages")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -326,24 +326,24 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 
 		t, err := tripSvc.GetTrip(r.Context(), tripID.String())
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not send message")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		// Cancelled trips are read-only — history stays visible (handleListMessages is
 		// untouched), but the input is effectively closed server-side too, not just in the UI.
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
-				writeError(w, http.StatusConflict, "trip has been cancelled")
+				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not send message")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		var req sendMessageRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -353,10 +353,10 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 		m, err := svc.Send(r.Context(), tripID, userID, message.Scope{}, req.Body, mentionsDiveCenter, toAttachments(req.Attachments), req.replyToID())
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "body or at least one attachment is required (max 9), or replyToId is invalid")
+				writeError(w, http.StatusBadRequest, ErrCodeMessageBodyOrAttachment)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not send message")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -390,17 +390,17 @@ func handleDeleteMessage(svc *message.Service, publisher *realtime.Publisher) fu
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		messageID, err := uuid.Parse(r.PathValue("messageId"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid message id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		m, err := svc.Delete(r.Context(), messageID, userID)
 		if err != nil {
 			if errors.Is(err, message.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "message not found, already deleted, or not yours to delete")
+				writeError(w, http.StatusNotFound, ErrCodeMessageNotFoundOrNotYours)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not delete message")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -436,28 +436,28 @@ func handleSetReaction(svc *message.Service, tripSvc *trip.Service, publisher *r
 		}
 		messageID, err := uuid.Parse(r.PathValue("messageId"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid message id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		var req reactionRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<10))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		m, reactions, err := svc.SetReaction(r.Context(), tripID, messageID, userID, req.Emoji)
 		if err != nil {
 			if errors.Is(err, message.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "emoji must be one of the supported reactions")
+				writeError(w, http.StatusBadRequest, ErrCodeInvalidReactionEmoji)
 				return
 			}
 			if errors.Is(err, message.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "message not found")
+				writeError(w, http.StatusNotFound, ErrCodeMessageNotFound)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not set reaction")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		publishReactionUpdate(r.Context(), publisher, m, reactions)
@@ -475,17 +475,17 @@ func handleRemoveReaction(svc *message.Service, tripSvc *trip.Service, publisher
 		}
 		messageID, err := uuid.Parse(r.PathValue("messageId"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid message id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		m, reactions, err := svc.RemoveReaction(r.Context(), tripID, messageID, userID)
 		if err != nil {
 			if errors.Is(err, message.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "message not found")
+				writeError(w, http.StatusNotFound, ErrCodeMessageNotFound)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not remove reaction")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		publishReactionUpdate(r.Context(), publisher, m, reactions)
@@ -678,19 +678,19 @@ func handleListMessageAttachments(svc *message.Service, tripSvc *trip.Service) f
 
 		attachmentTypes, ok := attachmentTypesForQuery(r.URL.Query().Get("type"))
 		if !ok {
-			writeError(w, http.StatusBadRequest, "type must be 'media' or 'pdf'")
+			writeError(w, http.StatusBadRequest, ErrCodeInvalidAttachmentType)
 			return
 		}
 		before, err := parseBeforeParam(r)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid before cursor")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		limit := parseLimitParam(r, 50, 100)
 
 		items, err := svc.ListAttachments(r.Context(), tripID, attachmentTypes, before, limit)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list attachments")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -726,14 +726,14 @@ func handleListMessageLinks(svc *message.Service, tripSvc *trip.Service) func(ht
 
 		before, err := parseBeforeParam(r)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid before cursor")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		limit := parseLimitParam(r, 50, 100)
 
 		rows, err := svc.ListLinks(r.Context(), tripID, before, limit)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list links")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 

@@ -45,18 +45,21 @@ func parseUploadFile(r *http.Request) (multipart.File, *multipart.FileHeader, er
 }
 
 func writeUploadError(w http.ResponseWriter, err error) {
-	if errors.Is(err, upload.ErrInvalidImage) || errors.Is(err, upload.ErrTooLarge) {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
+	switch {
+	case errors.Is(err, upload.ErrInvalidImage):
+		writeError(w, http.StatusBadRequest, ErrCodeInvalidImage)
+	case errors.Is(err, upload.ErrTooLarge):
+		writeError(w, http.StatusBadRequest, ErrCodeFileTooLarge)
+	default:
+		writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 	}
-	writeError(w, http.StatusInternalServerError, "could not save file")
 }
 
 func handleUploadAvatar(uploadSvc *upload.Service, profileSvc *profile.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		file, header, err := parseUploadFile(r)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		defer file.Close()
@@ -69,7 +72,7 @@ func handleUploadAvatar(uploadSvc *upload.Service, profileSvc *profile.Service) 
 
 		p, err := profileSvc.Update(r.Context(), userID, profile.UpdateParams{AvatarURL: &url})
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not update profile")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toProfileResponse(p))
@@ -80,7 +83,7 @@ func handleDeleteAvatar(profileSvc *profile.Service) func(http.ResponseWriter, *
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		p, err := profileSvc.ClearAvatar(r.Context(), userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not remove avatar")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toProfileResponse(p))
@@ -94,7 +97,7 @@ func handleUploadCertificationPhoto(uploadSvc *upload.Service, profileSvc *profi
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		file, header, err := parseUploadFile(r)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		defer file.Close()
@@ -107,7 +110,7 @@ func handleUploadCertificationPhoto(uploadSvc *upload.Service, profileSvc *profi
 
 		p, err := profileSvc.Update(r.Context(), userID, profile.UpdateParams{CertificationPhotoURL: &url})
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not update profile")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toProfileResponse(p))
@@ -118,13 +121,13 @@ func handleUploadSpecialtyPhoto(uploadSvc *upload.Service, certificationSvc *cer
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid specialty id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		file, header, err := parseUploadFile(r)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		defer file.Close()
@@ -137,11 +140,11 @@ func handleUploadSpecialtyPhoto(uploadSvc *upload.Service, certificationSvc *cer
 
 		found, err := certificationSvc.SetSpecialtyPhoto(r.Context(), userID, id, url)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not update specialty photo")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if !found {
-			writeError(w, http.StatusNotFound, "specialty not found")
+			writeError(w, http.StatusNotFound, ErrCodeSpecialtyNotFound)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"photoUrl": url})
@@ -152,13 +155,13 @@ func handleUploadDiveCenterLogo(uploadSvc *upload.Service, diveCenterSvc *divece
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		file, header, err := parseUploadFile(r)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		defer file.Close()
@@ -171,10 +174,10 @@ func handleUploadDiveCenterLogo(uploadSvc *upload.Service, diveCenterSvc *divece
 
 		if err := diveCenterSvc.SetLogoURL(r.Context(), id, userID, url); err != nil {
 			if errors.Is(err, divecenter.ErrOnlyOwner) {
-				writeError(w, http.StatusForbidden, "only an owner can edit this dive center")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyOwnerCanEditCompany)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not update dive center logo")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"logoUrl": url})
@@ -187,7 +190,7 @@ func handleUploadTripPhoto(uploadSvc *upload.Service, tripSvc *trip.Service) fun
 
 		file, header, err := parseUploadFile(r)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		defer file.Close()
@@ -201,22 +204,22 @@ func handleUploadTripPhoto(uploadSvc *upload.Service, tripSvc *trip.Service) fun
 		photo, err := tripSvc.AddPhoto(r.Context(), id, userID, url)
 		if err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid trip id")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
 			if errors.Is(err, trip.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "trip not found")
+				writeError(w, http.StatusNotFound, ErrCodeTripNotFound)
 				return
 			}
 			if errors.Is(err, trip.ErrOnlyOrganizerCanEditTrip) {
-				writeError(w, http.StatusForbidden, "only the organizer can edit this trip")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyOrganizerCanEditTrip)
 				return
 			}
 			if errors.Is(err, trip.ErrTooManyPhotos) {
-				writeError(w, http.StatusConflict, "trip already has the maximum number of photos")
+				writeError(w, http.StatusConflict, ErrCodeTripPhotoLimitReached)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not add trip photo")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		// 200, not 201 — every other upload endpoint in this file (avatar, certification
@@ -238,11 +241,14 @@ func parseUploadAttachmentFile(r *http.Request) (multipart.File, *multipart.File
 }
 
 func writeAttachmentUploadError(w http.ResponseWriter, err error) {
-	if errors.Is(err, upload.ErrInvalidAttachment) || errors.Is(err, upload.ErrAttachmentTooLarge) {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
+	switch {
+	case errors.Is(err, upload.ErrInvalidAttachment):
+		writeError(w, http.StatusBadRequest, ErrCodeInvalidAttachmentFile)
+	case errors.Is(err, upload.ErrAttachmentTooLarge):
+		writeError(w, http.StatusBadRequest, ErrCodeFileTooLarge)
+	default:
+		writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 	}
-	writeError(w, http.StatusInternalServerError, "could not save file")
 }
 
 type attachmentUploadResponse struct {
@@ -267,16 +273,16 @@ func handleUploadMessageAttachment(uploadSvc *upload.Service, tripSvc *trip.Serv
 		// never be attached to a message once the trip's chat is closed.
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
-				writeError(w, http.StatusConflict, "trip has been cancelled")
+				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not upload attachment")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		file, header, err := parseUploadAttachmentFile(r)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read uploaded file")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		defer file.Close()
