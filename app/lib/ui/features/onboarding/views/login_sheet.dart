@@ -6,16 +6,14 @@ import 'package:flutter/services.dart';
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
-import '../../../../data/services/location_service.dart';
 import '../../profile/view_models/profile_view_model.dart';
 import '../../profile/views/edit_profile_page.dart';
-import 'location_permission_page.dart';
 import 'push_permission_page.dart';
 
 // What LoginSheet's own modal route resolves with — decided once, up front, so the
 // permission-chain screens (pushed after the sheet is already gone, see `show()`) never
 // need to re-check anything or fall back on a standalone/isNewUser split of their own.
-typedef _SignInOutcome = ({bool isNewUser, bool needsLocation, bool needsPush});
+typedef _SignInOutcome = ({bool isNewUser, bool needsPush});
 
 /// Google/Apple/email sign-in choice sheet, opened from anywhere a gated action needs a
 /// signed-in user.
@@ -55,18 +53,7 @@ class LoginSheet extends StatefulWidget {
     );
     if (outcome == null) return false;
 
-    if (outcome.needsLocation) {
-      await navigator.push(
-        MaterialPageRoute(
-          builder: (_) => LocationPermissionPage(
-            profileRepository: profileRepository,
-            pushRepository: pushRepository,
-            needsPush: outcome.needsPush,
-            isNewUser: outcome.isNewUser,
-          ),
-        ),
-      );
-    } else if (outcome.needsPush) {
+    if (outcome.needsPush) {
       await navigator.push(
         MaterialPageRoute(
           builder: (_) => PushPermissionPage(
@@ -146,15 +133,14 @@ class _LoginSheetState extends State<LoginSheet> {
 
   Future<void> _onSignedIn(SignInResult result) async {
     // Checked for every sign-in, new account or returning — a returning diver's device can
-    // still have undecided permissions (new phone, reinstall), and a brand-new account isn't
+    // still have push undecided (new phone, reinstall), and a brand-new account isn't
     // guaranteed to be undecided either (e.g. this device previously ran the app under a
     // different account). The sign-in button's own spinner (_loading) stays up through this
     // — it's a plain status read, no OS dialog involved, so there's nothing to show yet.
-    final needsLocation = await LocationService().permissionUndecided();
     final pushSettings = await FirebaseMessaging.instance.getNotificationSettings();
     final needsPush = pushSettings.authorizationStatus == AuthorizationStatus.notDetermined;
     if (!mounted) return;
-    Navigator.of(context).pop((isNewUser: result.isNewUser, needsLocation: needsLocation, needsPush: needsPush));
+    Navigator.of(context).pop((isNewUser: result.isNewUser, needsPush: needsPush));
   }
 
   Future<void> _sendEmailCode() async {

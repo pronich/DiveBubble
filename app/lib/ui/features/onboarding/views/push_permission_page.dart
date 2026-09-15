@@ -7,29 +7,22 @@ import '../../../../data/repositories/push_repository.dart';
 import '../../profile/view_models/profile_view_model.dart';
 import '../../profile/views/edit_profile_page.dart';
 
-/// Same "explain before asking" reasoning as LocationPermissionPage. This is the one place
-/// in the app that ever calls FirebaseMessaging.requestPermission() from onboarding;
-/// everywhere else (main.dart's auto-sync on sign-in/token-refresh, NotificationsSettingsPage)
-/// either only checks an already-decided status or is a settings toggle the diver tapped
-/// themselves. Shown by [LoginSheet] only when the device hasn't decided this permission yet.
+/// This is the one place in the app that ever calls
+/// FirebaseMessaging.requestPermission() from onboarding; everywhere else (main.dart's
+/// auto-sync on sign-in/token-refresh, NotificationsSettingsPage) either only checks an
+/// already-decided status or is a settings toggle the diver tapped themselves. Shown by
+/// [LoginSheet] only when the device hasn't decided this permission yet.
 class PushPermissionPage extends StatefulWidget {
   const PushPermissionPage({
     super.key,
     required this.profileRepository,
     required this.pushRepository,
     required this.isNewUser,
-    this.initialLocation,
   });
 
   final ProfileRepository profileRepository;
   final PushRepository pushRepository;
   final bool isNewUser;
-  // Resolved on the previous step (LocationPermissionPage) if the diver granted location and
-  // this screen was reached via that chain — prefilled into Edit Profile here rather than
-  // letting it auto-detect again, since that auto-detect is skipped during onboarding (see
-  // EditProfilePage.initState). Null when this screen is reached directly (location was
-  // already decided on this device, so there was nothing to chain from).
-  final String? initialLocation;
 
   @override
   State<PushPermissionPage> createState() => _PushPermissionPageState();
@@ -40,10 +33,7 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
 
   Future<void> _finish() async {
     if (widget.isNewUser) {
-      var profile = await widget.profileRepository.getProfile();
-      if (widget.initialLocation != null && widget.initialLocation!.isNotEmpty) {
-        profile = profile.copyWith(location: widget.initialLocation);
-      }
+      final profile = await widget.profileRepository.getProfile();
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
