@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/dive_log_entry.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Two stacked charts (depth, then temperature) sharing one time axis, with a drag-to-inspect
 /// crosshair — dragging a finger along either chart snaps to the nearest sample and shows its
@@ -65,7 +66,7 @@ class _DiveProfileChartState extends State<DiveProfileChart> {
               _ReadoutRow(samples: samples, touchIndex: _touchIndex),
               const SizedBox(height: 8),
               Text(
-                'Depth',
+                AppLocalizations.of(context).depthLabel,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -91,7 +92,7 @@ class _DiveProfileChartState extends State<DiveProfileChart> {
               if (temps.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Text(
-                  'Temperature',
+                  AppLocalizations.of(context).temperatureLabel,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -136,7 +137,7 @@ class _ReadoutRow extends StatelessWidget {
 
     if (touchIndex == null) {
       return Text(
-        'Drag along the chart to inspect a point',
+        AppLocalizations.of(context).dragToInspectHint,
         style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
       );
     }

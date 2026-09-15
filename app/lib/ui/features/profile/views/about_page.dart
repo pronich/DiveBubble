@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
 
@@ -22,9 +24,10 @@ class _AboutPageState extends State<AboutPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('About')),
+      appBar: AppBar(title: Text(l10n.about)),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -35,13 +38,13 @@ class _AboutPageState extends State<AboutPage> {
             Text('DiveBubble', style: theme.textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text(
-              'Find dive trips, meet your buddies, and plan the logistics together.',
+              l10n.introSubtitle,
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
             if (_version != null) ...[
               const SizedBox(height: 16),
               Text(
-                'Version $_version',
+                l10n.versionLabel(_version!),
                 style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
             ],

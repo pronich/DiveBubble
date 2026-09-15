@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/services/location_service.dart';
 import '../../../../domain/entities/profile.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../onboarding/views/certifications_onboarding_page.dart';
 import '../view_models/profile_view_model.dart';
 import 'language_picker_page.dart';
@@ -81,16 +82,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   Future<void> _onToggleAllDivesLogged(bool value) async {
     if (value && int.tryParse(_diveCountController.text.trim()) != 0) {
+      final l10n = AppLocalizations.of(context);
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Zero out unlogged dives?'),
-          content: const Text(
-            'This clears the number above to 0. Your Dive Log entries are untouched — this only affects the manually-entered count.',
-          ),
+          title: Text(l10n.zeroOutUnloggedDivesTitle),
+          content: Text(l10n.zeroOutUnloggedDivesBody),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Zero out')),
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.cancel)),
+            TextButton(onPressed: () => Navigator.of(context).pop(true), child: Text(l10n.zeroOut)),
           ],
         ),
       );
@@ -132,9 +132,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit profile')),
+      appBar: AppBar(title: Text(l10n.editProfileTitle)),
       body: ListenableBuilder(
         listenable: widget.viewModel,
         builder: (context, _) {
@@ -145,9 +146,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 controller: _nameController,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  labelText: 'Display name',
-                  helperText: 'Shown to other divers instead of your real name',
-                  errorText: _showNameError ? 'Please enter a display name' : null,
+                  labelText: l10n.displayNameLabel,
+                  helperText: l10n.displayNameHelper,
+                  errorText: _showNameError ? l10n.pleaseEnterDisplayName : null,
                 ),
                 onChanged: (value) {
                   if (_showNameError && value.trim().isNotEmpty) setState(() => _showNameError = false);
@@ -158,7 +159,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 controller: _locationController,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  labelText: 'Location',
+                  labelText: l10n.locationLabel,
                   suffixIcon: _locating
                       ? const Padding(
                           padding: EdgeInsets.all(12),
@@ -166,7 +167,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         )
                       : IconButton(
                           icon: const Icon(Icons.my_location, size: 20),
-                          tooltip: 'Use current location',
+                          tooltip: l10n.useCurrentLocationTooltip,
                           onPressed: _detectLocation,
                         ),
                 ),
@@ -175,22 +176,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
               TextField(
                 controller: _bioController,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(labelText: 'Bio'),
+                decoration: InputDecoration(labelText: l10n.bioLabel),
                 maxLines: 3,
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _diveCountController,
                 enabled: !_allDivesLogged,
-                decoration: const InputDecoration(
-                  labelText: 'Unlogged dives',
-                  helperText: 'Dives you haven\'t added to your Dive Log — shown together with it as your total',
+                decoration: InputDecoration(
+                  labelText: l10n.unloggedDivesLabel,
+                  helperText: l10n.unloggedDivesHelper,
                 ),
                 keyboardType: TextInputType.number,
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('All my dives are logged'),
+                title: Text(l10n.allDivesAreLogged),
                 value: _allDivesLogged,
                 onChanged: _onToggleAllDivesLogged,
               ),
@@ -198,9 +199,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
               InkWell(
                 onTap: _pickLanguages,
                 child: InputDecorator(
-                  decoration: const InputDecoration(labelText: 'Languages'),
+                  decoration: InputDecoration(labelText: l10n.languagesLabel),
                   child: Text(
-                    _languages.isEmpty ? 'Select languages' : _languages.join(', '),
+                    _languages.isEmpty ? l10n.selectLanguages : _languages.join(', '),
                     style: _languages.isEmpty
                         ? theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)
                         : theme.textTheme.bodyMedium,
@@ -209,14 +210,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               const SizedBox(height: 24),
               if (widget.viewModel.error != null) ...[
-                Text('Error: ${widget.viewModel.error}', style: TextStyle(color: theme.colorScheme.error)),
+                Text(l10n.errorWithMessage(widget.viewModel.error!), style: TextStyle(color: theme.colorScheme.error)),
                 const SizedBox(height: 12),
               ],
               ElevatedButton(
                 onPressed: widget.viewModel.isSubmitting ? null : _save,
                 child: widget.viewModel.isSubmitting
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(widget.isOnboarding ? 'Continue' : 'Save'),
+                    : Text(widget.isOnboarding ? l10n.continueLabel : l10n.save),
               ),
             ],
           );

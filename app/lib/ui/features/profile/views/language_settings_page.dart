@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../../data/services/locale_controller.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// null represents "System default" — following the device's own locale rather than
-/// overriding it (see LocaleController's own doc comment on this convention).
-const _supportedLocaleNames = <String?, String>{
-  null: 'System default',
+/// Native names, deliberately never translated — a diver needs to recognize their own
+/// language's name even when the current UI language isn't it. Keyed by locale code, unlike
+/// [null]'s "System default" (see LocaleController's own doc comment on this convention),
+/// which does follow the current UI language.
+const _nativeLocaleNames = <String, String>{
   'en': 'English',
   'ru': 'Русский',
   'es': 'Español',
@@ -23,7 +24,9 @@ class LanguageSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Language', style: Theme.of(context).textTheme.headlineSmall)),
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context).languageSettingsTitle, style: Theme.of(context).textTheme.headlineSmall),
+      ),
       body: ListenableBuilder(
         listenable: localeController,
         builder: (context, _) {
@@ -31,13 +34,13 @@ class LanguageSettingsPage extends StatelessWidget {
           return ListView(
             children: [
               _LanguageTile(
-                label: _supportedLocaleNames[null]!,
+                label: AppLocalizations.of(context).systemDefault,
                 selected: selected == null,
                 onTap: () => localeController.setLocale(null),
               ),
               for (final locale in AppLocalizations.supportedLocales)
                 _LanguageTile(
-                  label: _supportedLocaleNames[locale.languageCode] ?? locale.languageCode,
+                  label: _nativeLocaleNames[locale.languageCode] ?? locale.languageCode,
                   selected: selected == locale.languageCode,
                   onTap: () => localeController.setLocale(locale),
                 ),

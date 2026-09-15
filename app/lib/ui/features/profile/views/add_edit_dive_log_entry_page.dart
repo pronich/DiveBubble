@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/dive_log_entry.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/calendar_picker_sheet.dart';
 import '../view_models/profile_view_model.dart';
@@ -62,11 +63,12 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final locked = widget.measuredFieldsLocked;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEdit ? 'Edit Dive' : 'Add Dive'),
+        title: Text(widget.isEdit ? l10n.editDiveTitle : l10n.addDiveTitle),
         actions: [
           if (widget.isEdit)
             IconButton(icon: const Icon(Icons.delete_outline), onPressed: _confirmDelete),
@@ -79,7 +81,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Text(
-                'This dive was imported from your dive computer — only the country, dive site, and notes can be edited.',
+                l10n.importedDiveLockedNotice,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -91,7 +93,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
                 child: InkWell(
                   onTap: locked ? null : _pickDate,
                   child: InputDecorator(
-                    decoration: const InputDecoration(labelText: 'Date'),
+                    decoration: InputDecoration(labelText: l10n.dateLabel),
                     child: Text(formatShortDateWithYear(_date)),
                   ),
                 ),
@@ -101,7 +103,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
                 child: InkWell(
                   onTap: locked ? null : _pickTime,
                   child: InputDecorator(
-                    decoration: const InputDecoration(labelText: 'Time'),
+                    decoration: InputDecoration(labelText: l10n.timeLabel),
                     child: Text(_time.format(context)),
                   ),
                 ),
@@ -113,39 +115,39 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
             controller: _depthController,
             enabled: !locked,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Max depth', suffixText: 'm'),
+            decoration: InputDecoration(labelText: l10n.maxDepthLabel, suffixText: 'm'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _durationController,
             enabled: !locked,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Duration', suffixText: 'min'),
+            decoration: InputDecoration(labelText: l10n.durationLabel, suffixText: 'min'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _tempController,
             enabled: !locked,
             keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-            decoration: const InputDecoration(labelText: 'Min temperature', suffixText: '°C'),
+            decoration: InputDecoration(labelText: l10n.minTemperatureLabel, suffixText: '°C'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _countryController,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(labelText: 'Country'),
+            decoration: InputDecoration(labelText: l10n.countryLabel),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _siteController,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(labelText: 'Dive site'),
+            decoration: InputDecoration(labelText: l10n.diveSiteLabel),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _notesController,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(labelText: 'Notes'),
+            decoration: InputDecoration(labelText: l10n.notesLabel),
             maxLines: 3,
           ),
           const SizedBox(height: 24),
@@ -161,7 +163,7 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(widget.isEdit ? 'Save changes' : 'Add Dive'),
+                : Text(widget.isEdit ? l10n.saveChanges : l10n.addDiveTitle),
           ),
         ],
       ),
@@ -220,19 +222,20 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
   }
 
   Future<void> _confirmDelete() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete this dive?'),
-        content: const Text("This can't be undone."),
+        title: Text(l10n.deleteThisDiveTitle),
+        content: Text(l10n.cantBeUndone),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(l10n.delete, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),

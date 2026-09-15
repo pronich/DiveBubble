@@ -5,6 +5,7 @@ import '../../../../data/services/error_codes.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/dive_log_entry.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/formatting/date_format.dart';
 import '../view_models/profile_view_model.dart';
 import 'add_edit_dive_log_entry_page.dart';
@@ -27,6 +28,7 @@ class DiveLogDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -34,7 +36,7 @@ class DiveLogDetailPage extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.ios_share_outlined),
-            tooltip: 'Share to Bubble',
+            tooltip: l10n.shareToBubble,
             onPressed: () => _openShareSheet(context),
           ),
           IconButton(
@@ -57,13 +59,13 @@ class DiveLogDetailPage extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _StatTile(label: 'Max depth', value: _depthText(entry.maxDepthM)),
+                child: _StatTile(label: l10n.maxDepthLabel, value: _depthText(entry.maxDepthM)),
               ),
               Expanded(
-                child: _StatTile(label: 'Avg depth', value: _depthText(entry.avgDepthM)),
+                child: _StatTile(label: l10n.avgDepthLabel, value: _depthText(entry.avgDepthM)),
               ),
               Expanded(
-                child: _StatTile(label: 'Duration', value: _durationText(entry.durationMinutes)),
+                child: _StatTile(label: l10n.durationLabel, value: _durationText(entry.durationMinutes)),
               ),
             ],
           ),
@@ -71,10 +73,10 @@ class DiveLogDetailPage extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _StatTile(label: 'Min temp', value: _tempText(entry.minTemperatureC)),
+                child: _StatTile(label: l10n.minTempLabel, value: _tempText(entry.minTemperatureC)),
               ),
               Expanded(
-                child: _StatTile(label: 'Max temp', value: _tempText(entry.maxTemperatureC)),
+                child: _StatTile(label: l10n.maxTempLabel, value: _tempText(entry.maxTemperatureC)),
               ),
               const Expanded(child: SizedBox.shrink()),
             ],
@@ -87,15 +89,15 @@ class DiveLogDetailPage extends StatelessWidget {
             ),
             child: Column(
               children: [
-                _InfoRow(label: 'Location', value: entry.locationText ?? '—'),
+                _InfoRow(label: l10n.locationLabel, value: entry.locationText ?? '—'),
                 const Divider(height: 1),
-                _InfoRow(label: 'Source', value: entry.isImported ? 'Imported' : 'Manual'),
+                _InfoRow(label: l10n.sourceLabel, value: entry.isImported ? l10n.importedValue : l10n.manualValue),
               ],
             ),
           ),
           if (entry.notes?.isNotEmpty ?? false) ...[
             const SizedBox(height: 20),
-            Text('Notes', style: theme.textTheme.titleSmall),
+            Text(l10n.notesLabel, style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             Text(entry.notes!, style: theme.textTheme.bodyMedium),
           ],
@@ -225,28 +227,32 @@ class _ShareToBubbleSheetState extends State<_ShareToBubbleSheet> {
 
   Future<void> _shareTo(String tripId) async {
     setState(() => _sendingTripId = tripId);
+    final l10n = AppLocalizations.of(context);
     final e = widget.entry;
     final parts = <String>[
-      'Dive on ${formatShortDateWithYear(e.divedAt)}',
+      l10n.diveOnDate(formatShortDateWithYear(e.divedAt)),
       if (e.locationText != null) e.locationText!,
-      if (e.maxDepthM != null) 'Max depth: ${_depthText(e.maxDepthM)}',
-      if (e.durationMinutes != null) 'Duration: ${_durationText(e.durationMinutes)}',
-      if (e.minTemperatureC != null) 'Min temp: ${_tempText(e.minTemperatureC)}',
+      if (e.maxDepthM != null) l10n.labelColonValue(l10n.maxDepthLabel, _depthText(e.maxDepthM)),
+      if (e.durationMinutes != null) l10n.labelColonValue(l10n.durationLabel, _durationText(e.durationMinutes)),
+      if (e.minTemperatureC != null) l10n.labelColonValue(l10n.minTempLabel, _tempText(e.minTemperatureC)),
     ];
     try {
       await widget.chatRepository.sendMessage(tripId, parts.join('\n'));
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Shared to Bubble')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.sharedToBubble)));
     } catch (e) {
       if (!mounted) return;
       setState(() => _sendingTripId = null);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not share: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.couldNotShare(friendlyError(e)))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: SizedBox(
         height: 360,
@@ -254,15 +260,15 @@ class _ShareToBubbleSheetState extends State<_ShareToBubbleSheet> {
           children: [
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Text('Share to Bubble', style: Theme.of(context).textTheme.titleLarge),
+              child: Text(l10n.shareToBubble, style: Theme.of(context).textTheme.titleLarge),
             ),
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                  ? Center(child: Text('Error: $_error'))
+                  ? Center(child: Text(l10n.errorWithMessage(_error!)))
                   : _trips.isEmpty
-                  ? const Center(child: Text('You haven\'t joined any Bubbles yet.'))
+                  ? Center(child: Text(l10n.haventJoinedAnyBubblesYet))
                   : ListView.builder(
                       itemCount: _trips.length,
                       itemBuilder: (context, index) {

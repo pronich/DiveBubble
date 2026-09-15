@@ -567,4 +567,511 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get request => 'Senden';
+
+  @override
+  String get about => 'Über die App';
+
+  @override
+  String versionLabel(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get gearLockerTitle => 'Ausrüstung';
+
+  @override
+  String ownedOfTotalInLocker(int owned, int total) {
+    return '$owned/$total vorhanden';
+  }
+
+  @override
+  String get clearCacheTitle => 'Cache leeren?';
+
+  @override
+  String get clearCacheBody =>
+      'Dies entfernt heruntergeladene Fotos und Dateien von diesem Gerät. In den Trip-Chats selbst wird nichts gelöscht — Dateien werden beim nächsten Öffnen einfach erneut heruntergeladen.';
+
+  @override
+  String get clear => 'Leeren';
+
+  @override
+  String get cacheCleared => 'Cache geleert.';
+
+  @override
+  String couldNotClearCache(String error) {
+    return 'Cache konnte nicht geleert werden: $error';
+  }
+
+  @override
+  String get storageTitle => 'Speicher';
+
+  @override
+  String get clearCacheRow => 'Cache leeren';
+
+  @override
+  String get clearCacheSubtitle =>
+      'Entfernt heruntergeladene Chat-Fotos und -Dateien von diesem Gerät';
+
+  @override
+  String couldNotUnblock(String error) {
+    return 'Entsperren fehlgeschlagen: $error';
+  }
+
+  @override
+  String get blockedUsersTitle => 'Blockierte Nutzer';
+
+  @override
+  String get noBlockedUsers => 'Keine blockierten Nutzer.';
+
+  @override
+  String get unblock => 'Entsperren';
+
+  @override
+  String get copyEmailAddress => 'E-Mail-Adresse kopieren';
+
+  @override
+  String get emailAddressCopied => 'E-Mail-Adresse kopiert';
+
+  @override
+  String get legalTitle => 'Rechtliches';
+
+  @override
+  String get termsOfService => 'Nutzungsbedingungen';
+
+  @override
+  String get privacyPolicy => 'Datenschutzerklärung';
+
+  @override
+  String get contactSupport => 'Support kontaktieren';
+
+  @override
+  String get addADive => 'Tauchgang hinzufügen';
+
+  @override
+  String get updateLevelTitle => 'Level aktualisieren';
+
+  @override
+  String get save => 'Speichern';
+
+  @override
+  String get addSpeciality => 'Spezialisierung hinzufügen';
+
+  @override
+  String get specialityName => 'Name der Spezialisierung';
+
+  @override
+  String get notificationsTitle => 'Benachrichtigungen';
+
+  @override
+  String get pushNotificationsLabel => 'Push-Benachrichtigungen';
+
+  @override
+  String get pushDisabledInSystemSettings =>
+      'In den Systemeinstellungen deaktiviert — aktiviere dort zuerst DiveBubble-Benachrichtigungen';
+
+  @override
+  String get tapToEnableNotifications =>
+      'Tippen, um Benachrichtigungen zu aktivieren';
+
+  @override
+  String get newMessagesTripUpdatesEtc =>
+      'Neue Nachrichten, Trip-Änderungen und mehr';
+
+  @override
+  String get verified => 'Verifiziert';
+
+  @override
+  String get addCertificate => 'Zertifikat hinzufügen';
+
+  @override
+  String get blockThisUserTitle => 'Diesen Nutzer blockieren?';
+
+  @override
+  String get blockUserBody =>
+      'Du siehst seine Nachrichten in gemeinsamen Trip-Chats nicht mehr. Das kannst du unter Profil → Blockierte Nutzer rückgängig machen.';
+
+  @override
+  String get block => 'Blockieren';
+
+  @override
+  String get blockUserTooltip => 'Nutzer blockieren';
+
+  @override
+  String get blockedManageBody =>
+      'Blockiert. Verwalten unter Profil → Blockierte Nutzer.';
+
+  @override
+  String couldNotBlockUser(String error) {
+    return 'Nutzer konnte nicht blockiert werden: $error';
+  }
+
+  @override
+  String get bioLabel => 'Bio';
+
+  @override
+  String get divesLabel => 'Tauchgänge';
+
+  @override
+  String get languagesLabel => 'Sprachen';
+
+  @override
+  String get memberSinceLabel => 'Mitglied seit';
+
+  @override
+  String get editProfileTitle => 'Profil bearbeiten';
+
+  @override
+  String get displayNameLabel => 'Anzeigename';
+
+  @override
+  String get displayNameHelper =>
+      'Wird anderen Tauchern statt deines echten Namens angezeigt';
+
+  @override
+  String get pleaseEnterDisplayName => 'Bitte gib einen Anzeigenamen ein';
+
+  @override
+  String get locationLabel => 'Standort';
+
+  @override
+  String get useCurrentLocationTooltip => 'Aktuellen Standort verwenden';
+
+  @override
+  String get unloggedDivesLabel => 'Nicht geloggte Tauchgänge';
+
+  @override
+  String get unloggedDivesHelper =>
+      'Tauchgänge, die du nicht in dein Logbuch eingetragen hast — werden zusammen mit ihm als Gesamtzahl angezeigt';
+
+  @override
+  String get allDivesAreLogged => 'Alle meine Tauchgänge sind geloggt';
+
+  @override
+  String get selectLanguages => 'Sprachen auswählen';
+
+  @override
+  String get zeroOutUnloggedDivesTitle =>
+      'Nicht geloggte Tauchgänge auf null setzen?';
+
+  @override
+  String get zeroOutUnloggedDivesBody =>
+      'Dies setzt die Zahl oben auf 0. Deine Logbucheinträge bleiben unberührt — nur die manuell eingegebene Zahl ändert sich.';
+
+  @override
+  String get zeroOut => 'Auf null setzen';
+
+  @override
+  String get editDiveTitle => 'Tauchgang bearbeiten';
+
+  @override
+  String get addDiveTitle => 'Tauchgang hinzufügen';
+
+  @override
+  String get importedDiveLockedNotice =>
+      'Dieser Tauchgang wurde von deinem Tauchcomputer importiert — nur Land, Tauchplatz und Notizen können bearbeitet werden.';
+
+  @override
+  String get dateLabel => 'Datum';
+
+  @override
+  String get timeLabel => 'Uhrzeit';
+
+  @override
+  String get maxDepthLabel => 'Max. Tiefe';
+
+  @override
+  String get avgDepthLabel => 'Ø Tiefe';
+
+  @override
+  String get durationLabel => 'Dauer';
+
+  @override
+  String get minTemperatureLabel => 'Min. Temperatur';
+
+  @override
+  String get minTempLabel => 'Min. Temp.';
+
+  @override
+  String get maxTempLabel => 'Max. Temp.';
+
+  @override
+  String get countryLabel => 'Land';
+
+  @override
+  String get diveSiteLabel => 'Tauchplatz';
+
+  @override
+  String get notesLabel => 'Notizen';
+
+  @override
+  String get saveChanges => 'Änderungen speichern';
+
+  @override
+  String get deleteThisDiveTitle => 'Diesen Tauchgang löschen?';
+
+  @override
+  String get cantBeUndone => 'Das kann nicht rückgängig gemacht werden.';
+
+  @override
+  String get gearEssentialSection => 'ESSENZIELL';
+
+  @override
+  String get gearAdditionalSection => 'ZUSÄTZLICH';
+
+  @override
+  String get addItem => 'Gegenstand hinzufügen';
+
+  @override
+  String get gearOwned => 'Vorhanden';
+
+  @override
+  String get gearMissing => 'Fehlt';
+
+  @override
+  String get gearUsuallyRent => 'Meist geliehen';
+
+  @override
+  String get addItemSheetBody =>
+      'Für alles über das Wesentliche hinaus — Lampe, Actionkamera, Boje...';
+
+  @override
+  String get itemNameLabel => 'Name des Gegenstands';
+
+  @override
+  String get gearItemBoots => 'Füßlinge';
+
+  @override
+  String get gearItemFins => 'Flossen';
+
+  @override
+  String get gearItemBcd => 'BCD';
+
+  @override
+  String get gearItemWetsuitShorty5mm => 'Shorty-Neoprenanzug 5mm';
+
+  @override
+  String get gearItemWetsuit5mm => 'Neoprenanzug 5mm';
+
+  @override
+  String get gearItemWetsuit7mm => 'Neoprenanzug 7mm';
+
+  @override
+  String get gearItemWetsuit9mm => 'Neoprenanzug 9mm';
+
+  @override
+  String get gearItemSemidrySuit => 'Halbtrockenanzug';
+
+  @override
+  String get gearItemDrySuit => 'Trockenanzug';
+
+  @override
+  String get gearItemHelmet => 'Helm';
+
+  @override
+  String get gearItemGloves => 'Handschuhe';
+
+  @override
+  String get gearItemRegulator => 'Atemregler';
+
+  @override
+  String get gearItemComputer => 'Tauchcomputer';
+
+  @override
+  String get gearItemMask => 'Maske';
+
+  @override
+  String get shareToBubble => 'In Bubble teilen';
+
+  @override
+  String get sourceLabel => 'Quelle';
+
+  @override
+  String get importedValue => 'Importiert';
+
+  @override
+  String get manualValue => 'Manuell';
+
+  @override
+  String diveOnDate(String date) {
+    return 'Tauchgang am $date';
+  }
+
+  @override
+  String labelColonValue(String label, String value) {
+    return '$label: $value';
+  }
+
+  @override
+  String get sharedToBubble => 'In Bubble geteilt';
+
+  @override
+  String couldNotShare(String error) {
+    return 'Teilen fehlgeschlagen: $error';
+  }
+
+  @override
+  String get haventJoinedAnyBubblesYet =>
+      'Du bist noch keinem Bubble beigetreten.';
+
+  @override
+  String selectedCountLabel(int count) {
+    return '$count ausgewählt';
+  }
+
+  @override
+  String get noDivesLoggedYet => 'Noch keine Tauchgänge geloggt';
+
+  @override
+  String get addDiveOrImportBody =>
+      'Füge einen Tauchgang manuell hinzu oder importiere eine Logbuchdatei.';
+
+  @override
+  String deleteDivesConfirmTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tauchgänge löschen?',
+      one: '$count Tauchgang löschen?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotDeleteDivesError(int count, String error) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tauchgänge konnten nicht gelöscht werden: $error',
+      one: '$count Tauchgang konnte nicht gelöscht werden: $error',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotDeleteWithError(String error) {
+    return 'Löschen fehlgeschlagen: $error';
+  }
+
+  @override
+  String get addADiveManually => 'Tauchgang manuell hinzufügen';
+
+  @override
+  String get importADiveLogFile => 'Logbuchdatei importieren';
+
+  @override
+  String get importFormatsSubtitle => 'UDDF, CSV oder ein Diving-Log-6-Export';
+
+  @override
+  String get csvColumnFormatTitle => 'CSV-Spaltenformat';
+
+  @override
+  String get csvColumnFormatBody =>
+      'Die erste Zeile muss eine Kopfzeile mit diesen Spaltennamen sein (beliebige Reihenfolge, nur \"date\" ist erforderlich):\n\ndate (JJJJ-MM-TT)\ntime (HH:MM)\ncountry\nsite\nmax_depth_m\navg_depth_m\nduration_min\nmin_temp_c\nnotes';
+
+  @override
+  String get gotIt => 'Verstanden';
+
+  @override
+  String diveImportedSimple(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tauchgänge importiert',
+      one: '$count Tauchgang importiert',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String diveImportedWithSkipped(int count, int skipped) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count neue Tauchgänge importiert, $skipped bereits geloggt',
+      one: '$count neuer Tauchgang importiert, $skipped bereits geloggt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotImport(String error) {
+    return 'Import fehlgeschlagen: $error';
+  }
+
+  @override
+  String get unknownError => 'unbekannter Fehler';
+
+  @override
+  String get updateUnloggedCountPromptBody =>
+      'Falls einige davon schon in deinem Profil gezählt wurden, aktualisiere es unter Profil bearbeiten.';
+
+  @override
+  String get editProfileAction => 'Profil bearbeiten';
+
+  @override
+  String get depthLabel => 'Tiefe';
+
+  @override
+  String get temperatureLabel => 'Temperatur';
+
+  @override
+  String get dragToInspectHint =>
+      'Über die Grafik ziehen, um einen Punkt zu untersuchen';
+
+  @override
+  String get done => 'Fertig';
+
+  @override
+  String get searchLanguages => 'Sprachen suchen';
+
+  @override
+  String get languageSettingsTitle => 'Sprache';
+
+  @override
+  String get systemDefault => 'Systemstandard';
+
+  @override
+  String get guest => 'Gast';
+
+  @override
+  String get certificationsSectionTitle => 'Zertifizierungen';
+
+  @override
+  String get update => 'Aktualisieren';
+
+  @override
+  String get specialtiesSectionTitle => 'Spezialisierungen';
+
+  @override
+  String get gearSectionTitle => 'Ausrüstung';
+
+  @override
+  String get couldNotUploadPhoto => 'Foto konnte nicht hochgeladen werden';
+
+  @override
+  String get couldNotRemovePhoto => 'Foto konnte nicht entfernt werden';
+
+  @override
+  String get changePhoto => 'Foto ändern';
+
+  @override
+  String get removePhoto => 'Foto entfernen';
+
+  @override
+  String get diveOut => 'Abmelden';
+
+  @override
+  String get deleteAccountTitle => 'Konto löschen?';
+
+  @override
+  String get deleteAccountBody =>
+      'Dies anonymisiert dein Konto dauerhaft und storniert alle von dir organisierten Trips. Das kann nicht rückgängig gemacht werden.';
+
+  @override
+  String couldNotDeleteAccount(String error) {
+    return 'Konto konnte nicht gelöscht werden: $error';
+  }
+
+  @override
+  String get deleteAccountRow => 'Konto löschen';
 }

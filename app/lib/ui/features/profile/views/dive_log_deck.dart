@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/dive_log_entry.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import 'dive_log_card.dart';
 
@@ -120,7 +121,7 @@ class _AddDiveLogCard extends StatelessWidget {
             Icon(Icons.scuba_diving_outlined, color: theme.colorScheme.primary),
             const SizedBox(height: 8),
             Text(
-              'Add a dive',
+              AppLocalizations.of(context).addADive,
               style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary),
             ),
           ],

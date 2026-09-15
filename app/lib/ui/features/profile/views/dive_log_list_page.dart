@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/dive_log_entry.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import '../view_models/profile_view_model.dart';
@@ -57,12 +58,13 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
     return ListenableBuilder(
       listenable: widget.viewModel,
       builder: (context, _) {
+        final l10n = AppLocalizations.of(context);
         final entries = widget.viewModel.diveLog;
         return Scaffold(
           appBar: _multiSelect
               ? AppBar(
                   leading: IconButton(icon: const Icon(Icons.close), onPressed: _exitMultiSelect),
-                  title: Text('${_selectedIds.length} selected'),
+                  title: Text(l10n.selectedCountLabel(_selectedIds.length)),
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.delete_outline),
@@ -70,13 +72,13 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
                     ),
                   ],
                 )
-              : AppBar(title: const Text('Dive Log')),
+              : AppBar(title: Text(l10n.diveLogTabTitle)),
           body: entries.isEmpty
               ? EmptyStateView(
                   icon: Icons.scuba_diving_outlined,
-                  title: 'No dives logged yet',
-                  subtitle: 'Add a dive by hand, or import a dive log file.',
-                  ctaLabel: 'Add a dive',
+                  title: l10n.noDivesLoggedYet,
+                  subtitle: l10n.addDiveOrImportBody,
+                  ctaLabel: l10n.addADive,
                   onCtaPressed: () => _openAdd(context),
                 )
               : ListView.separated(
@@ -115,20 +117,21 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
   }
 
   Future<void> _confirmDeleteSelected() async {
+    final l10n = AppLocalizations.of(context);
     final count = _selectedIds.length;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Delete $count dive${count == 1 ? '' : 's'}?'),
-        content: const Text("This can't be undone."),
+        title: Text(l10n.deleteDivesConfirmTitle(count)),
+        content: Text(l10n.cantBeUndone),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(l10n.delete, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
@@ -143,7 +146,7 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Could not delete ${ids.length - deleted.length} dive(s): ${widget.viewModel.error}',
+            l10n.couldNotDeleteDivesError(ids.length - deleted.length, widget.viewModel.error ?? l10n.unknownError),
           ),
         ),
       );
@@ -153,19 +156,20 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
   /// Backs the swipe-left gesture — confirms before deleting since a swipe is easy to
   /// trigger by accident, same as the detail page's own delete confirmation.
   Future<bool> _confirmDeleteOne(BuildContext context, DiveLogEntry entry) async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete this dive?'),
-        content: const Text("This can't be undone."),
+        title: Text(l10n.deleteThisDiveTitle),
+        content: Text(l10n.cantBeUndone),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(l10n.delete, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
@@ -173,14 +177,15 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
     if (confirmed != true) return false;
     final ok = await widget.viewModel.deleteDiveLogEntry(entry.id);
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not delete: ${widget.viewModel.error}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.couldNotDeleteWithError(widget.viewModel.error ?? l10n.unknownError))),
+      );
     }
     return ok;
   }
 
   Future<void> _openAddChoices(BuildContext context) async {
+    final l10n = AppLocalizations.of(context);
     final choice = await showModalBottomSheet<_AddChoice>(
       context: context,
       builder: (context) => SafeArea(
@@ -189,18 +194,18 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
           children: [
             ListTile(
               leading: const Icon(Icons.edit_outlined),
-              title: const Text('Add a dive manually'),
+              title: Text(l10n.addADiveManually),
               onTap: () => Navigator.of(context).pop(_AddChoice.manual),
             ),
             ListTile(
               leading: const Icon(Icons.upload_file_outlined),
-              title: const Text('Import a dive log file'),
-              subtitle: const Text('UDDF, CSV, or a Diving Log 6 export'),
+              title: Text(l10n.importADiveLogFile),
+              subtitle: Text(l10n.importFormatsSubtitle),
               onTap: () => Navigator.of(context).pop(_AddChoice.import),
             ),
             ListTile(
               leading: const Icon(Icons.info_outline),
-              title: const Text('CSV column format'),
+              title: Text(l10n.csvColumnFormatTitle),
               onTap: () {
                 Navigator.of(context).pop();
                 _showCSVFormatInfo(context);
@@ -221,25 +226,14 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
   }
 
   void _showCSVFormatInfo(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('CSV column format'),
-        content: const Text(
-          'First row must be a header with these column names (any order, only "date" is '
-          'required):\n\n'
-          'date (YYYY-MM-DD)\n'
-          'time (HH:MM)\n'
-          'country\n'
-          'site\n'
-          'max_depth_m\n'
-          'avg_depth_m\n'
-          'duration_min\n'
-          'min_temp_c\n'
-          'notes',
-        ),
+        title: Text(l10n.csvColumnFormatTitle),
+        content: Text(l10n.csvColumnFormatBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Got it')),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.gotIt)),
         ],
       ),
     );
@@ -276,17 +270,18 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
 
     final result = await widget.viewModel.importDiveLog(picked!.path!);
     if (!context.mounted) return;
+    final l10n = AppLocalizations.of(context);
 
     if (result == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not import: ${widget.viewModel.error ?? 'unknown error'}')),
+        SnackBar(content: Text(l10n.couldNotImport(widget.viewModel.error ?? l10n.unknownError))),
       );
       return;
     }
 
     final message = result.skipped > 0
-        ? '${result.imported} new dive${result.imported == 1 ? '' : 's'} imported, ${result.skipped} already logged'
-        : '${result.imported} dive${result.imported == 1 ? '' : 's'} imported';
+        ? l10n.diveImportedWithSkipped(result.imported, result.skipped)
+        : l10n.diveImportedSimple(result.imported);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 
     if (widget.viewModel.consumeJustLoggedFirstEntry()) {
@@ -295,16 +290,15 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
   }
 
   void _showUpdateUnloggedCountPrompt(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final profile = widget.viewModel.profile;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text(
-          'If some of these were already counted in your profile, update it in Edit Profile.',
-        ),
+        content: Text(l10n.updateUnloggedCountPromptBody),
         action: profile == null
             ? null
             : SnackBarAction(
-                label: 'Edit Profile',
+                label: l10n.editProfileAction,
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => EditProfilePage(viewModel: widget.viewModel, profile: profile),

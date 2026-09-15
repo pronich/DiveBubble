@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 class LegalPage extends StatelessWidget {
   const LegalPage({super.key});
 
@@ -26,6 +28,7 @@ class LegalPage extends StatelessWidget {
       Uri.parse('googlegmail://co?to=$_supportEmail'),
     );
     if (!context.mounted) return;
+    final l10n = AppLocalizations.of(context);
     await showModalBottomSheet<void>(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -50,7 +53,7 @@ class LegalPage extends StatelessWidget {
               ),
             ListTile(
               leading: const Icon(Icons.copy_outlined),
-              title: const Text('Copy email address'),
+              title: Text(l10n.copyEmailAddress),
               onTap: () async {
                 Navigator.pop(sheetContext);
                 await Clipboard.setData(
@@ -58,7 +61,7 @@ class LegalPage extends StatelessWidget {
                 );
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Email address copied')),
+                    SnackBar(content: Text(l10n.emailAddressCopied)),
                   );
                 }
               },
@@ -71,24 +74,25 @@ class LegalPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Legal')),
+      appBar: AppBar(title: Text(l10n.legalTitle)),
       body: ListView(
         children: [
           ListTile(
-            title: const Text('Terms of Service'),
+            title: Text(l10n.termsOfService),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _open(_termsUrl),
           ),
           const Divider(height: 1),
           ListTile(
-            title: const Text('Privacy Policy'),
+            title: Text(l10n.privacyPolicy),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _open(_privacyUrl),
           ),
           const Divider(height: 1),
           ListTile(
-            title: const Text('Contact support'),
+            title: Text(l10n.contactSupport),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _contactSupport(context),
           ),

@@ -566,4 +566,518 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get request => 'Отправить';
+
+  @override
+  String get about => 'О приложении';
+
+  @override
+  String versionLabel(String version) {
+    return 'Версия $version';
+  }
+
+  @override
+  String get gearLockerTitle => 'Снаряжение';
+
+  @override
+  String ownedOfTotalInLocker(int owned, int total) {
+    return '$owned/$total в наличии';
+  }
+
+  @override
+  String get clearCacheTitle => 'Очистить кэш?';
+
+  @override
+  String get clearCacheBody =>
+      'Это удалит скачанные фото и файлы с этого устройства. В самих чатах трипов ничего не удаляется — файлы просто скачаются заново при следующем открытии.';
+
+  @override
+  String get clear => 'Очистить';
+
+  @override
+  String get cacheCleared => 'Кэш очищен.';
+
+  @override
+  String couldNotClearCache(String error) {
+    return 'Не удалось очистить кэш: $error';
+  }
+
+  @override
+  String get storageTitle => 'Хранилище';
+
+  @override
+  String get clearCacheRow => 'Очистить кэш';
+
+  @override
+  String get clearCacheSubtitle =>
+      'Удаляет скачанные фото и файлы чатов с этого устройства';
+
+  @override
+  String couldNotUnblock(String error) {
+    return 'Не удалось разблокировать: $error';
+  }
+
+  @override
+  String get blockedUsersTitle => 'Заблокированные';
+
+  @override
+  String get noBlockedUsers => 'Нет заблокированных пользователей.';
+
+  @override
+  String get unblock => 'Разблокировать';
+
+  @override
+  String get copyEmailAddress => 'Скопировать адрес почты';
+
+  @override
+  String get emailAddressCopied => 'Адрес почты скопирован';
+
+  @override
+  String get legalTitle => 'Правовая информация';
+
+  @override
+  String get termsOfService => 'Условия использования';
+
+  @override
+  String get privacyPolicy => 'Политика конфиденциальности';
+
+  @override
+  String get contactSupport => 'Связаться с поддержкой';
+
+  @override
+  String get addADive => 'Добавить дайв';
+
+  @override
+  String get updateLevelTitle => 'Изменить уровень';
+
+  @override
+  String get save => 'Сохранить';
+
+  @override
+  String get addSpeciality => 'Добавить специализацию';
+
+  @override
+  String get specialityName => 'Название специализации';
+
+  @override
+  String get notificationsTitle => 'Уведомления';
+
+  @override
+  String get pushNotificationsLabel => 'Push-уведомления';
+
+  @override
+  String get pushDisabledInSystemSettings =>
+      'Отключены в системных настройках — сначала включите уведомления DiveBubble там';
+
+  @override
+  String get tapToEnableNotifications => 'Нажмите, чтобы включить уведомления';
+
+  @override
+  String get newMessagesTripUpdatesEtc =>
+      'Новые сообщения, изменения в трипах и многое другое';
+
+  @override
+  String get verified => 'Подтверждено';
+
+  @override
+  String get addCertificate => 'Добавить сертификат';
+
+  @override
+  String get blockThisUserTitle => 'Заблокировать этого пользователя?';
+
+  @override
+  String get blockUserBody =>
+      'Вы больше не будете видеть его сообщения в общих чатах трипов. Отменить это можно в Профиль → Заблокированные.';
+
+  @override
+  String get block => 'Заблокировать';
+
+  @override
+  String get blockUserTooltip => 'Заблокировать пользователя';
+
+  @override
+  String get blockedManageBody =>
+      'Заблокирован. Управление — в Профиль → Заблокированные.';
+
+  @override
+  String couldNotBlockUser(String error) {
+    return 'Не удалось заблокировать пользователя: $error';
+  }
+
+  @override
+  String get bioLabel => 'О себе';
+
+  @override
+  String get divesLabel => 'Погружения';
+
+  @override
+  String get languagesLabel => 'Языки';
+
+  @override
+  String get memberSinceLabel => 'В приложении с';
+
+  @override
+  String get editProfileTitle => 'Редактировать профиль';
+
+  @override
+  String get displayNameLabel => 'Отображаемое имя';
+
+  @override
+  String get displayNameHelper =>
+      'Показывается другим дайверам вместо настоящего имени';
+
+  @override
+  String get pleaseEnterDisplayName => 'Пожалуйста, введите отображаемое имя';
+
+  @override
+  String get locationLabel => 'Местоположение';
+
+  @override
+  String get useCurrentLocationTooltip => 'Использовать текущее местоположение';
+
+  @override
+  String get unloggedDivesLabel => 'Незалогированные погружения';
+
+  @override
+  String get unloggedDivesHelper =>
+      'Погружения, которых нет в вашем дневнике — учитываются вместе с ним в общем счёте';
+
+  @override
+  String get allDivesAreLogged => 'Все мои погружения в дневнике';
+
+  @override
+  String get selectLanguages => 'Выберите языки';
+
+  @override
+  String get zeroOutUnloggedDivesTitle =>
+      'Обнулить незалогированные погружения?';
+
+  @override
+  String get zeroOutUnloggedDivesBody =>
+      'Это обнулит число выше. Записи в дневнике не затрагиваются — меняется только вручную введённое число.';
+
+  @override
+  String get zeroOut => 'Обнулить';
+
+  @override
+  String get editDiveTitle => 'Изменить дайв';
+
+  @override
+  String get addDiveTitle => 'Добавить дайв';
+
+  @override
+  String get importedDiveLockedNotice =>
+      'Этот дайв импортирован с компьютера для дайвинга — редактировать можно только страну, место и заметки.';
+
+  @override
+  String get dateLabel => 'Дата';
+
+  @override
+  String get timeLabel => 'Время';
+
+  @override
+  String get maxDepthLabel => 'Макс. глубина';
+
+  @override
+  String get avgDepthLabel => 'Средняя глубина';
+
+  @override
+  String get durationLabel => 'Продолжительность';
+
+  @override
+  String get minTemperatureLabel => 'Мин. температура';
+
+  @override
+  String get minTempLabel => 'Мин. темп.';
+
+  @override
+  String get maxTempLabel => 'Макс. темп.';
+
+  @override
+  String get countryLabel => 'Страна';
+
+  @override
+  String get diveSiteLabel => 'Место погружения';
+
+  @override
+  String get notesLabel => 'Заметки';
+
+  @override
+  String get saveChanges => 'Сохранить изменения';
+
+  @override
+  String get deleteThisDiveTitle => 'Удалить этот дайв?';
+
+  @override
+  String get cantBeUndone => 'Это необратимо.';
+
+  @override
+  String get gearEssentialSection => 'ОСНОВНОЕ';
+
+  @override
+  String get gearAdditionalSection => 'ДОПОЛНИТЕЛЬНОЕ';
+
+  @override
+  String get addItem => 'Добавить предмет';
+
+  @override
+  String get gearOwned => 'Есть';
+
+  @override
+  String get gearMissing => 'Нет';
+
+  @override
+  String get gearUsuallyRent => 'Обычно в аренду';
+
+  @override
+  String get addItemSheetBody =>
+      'Для всего, что не входит в основной список — фонарь, экшн-камера, буй...';
+
+  @override
+  String get itemNameLabel => 'Название предмета';
+
+  @override
+  String get gearItemBoots => 'Ботинки';
+
+  @override
+  String get gearItemFins => 'Ласты';
+
+  @override
+  String get gearItemBcd => 'BCD';
+
+  @override
+  String get gearItemWetsuitShorty5mm => 'Гидрокостюм shorty 5мм';
+
+  @override
+  String get gearItemWetsuit5mm => 'Гидрокостюм 5мм';
+
+  @override
+  String get gearItemWetsuit7mm => 'Гидрокостюм 7мм';
+
+  @override
+  String get gearItemWetsuit9mm => 'Гидрокостюм 9мм';
+
+  @override
+  String get gearItemSemidrySuit => 'Полусухой костюм';
+
+  @override
+  String get gearItemDrySuit => 'Сухой костюм';
+
+  @override
+  String get gearItemHelmet => 'Шлем';
+
+  @override
+  String get gearItemGloves => 'Перчатки';
+
+  @override
+  String get gearItemRegulator => 'Регулятор';
+
+  @override
+  String get gearItemComputer => 'Компьютер';
+
+  @override
+  String get gearItemMask => 'Маска';
+
+  @override
+  String get shareToBubble => 'Поделиться в Bubble';
+
+  @override
+  String get sourceLabel => 'Источник';
+
+  @override
+  String get importedValue => 'Импортировано';
+
+  @override
+  String get manualValue => 'Вручную';
+
+  @override
+  String diveOnDate(String date) {
+    return 'Дайв $date';
+  }
+
+  @override
+  String labelColonValue(String label, String value) {
+    return '$label: $value';
+  }
+
+  @override
+  String get sharedToBubble => 'Отправлено в Bubble';
+
+  @override
+  String couldNotShare(String error) {
+    return 'Не удалось поделиться: $error';
+  }
+
+  @override
+  String get haventJoinedAnyBubblesYet =>
+      'Вы пока не присоединились ни к одному Bubble.';
+
+  @override
+  String selectedCountLabel(int count) {
+    return 'Выбрано: $count';
+  }
+
+  @override
+  String get noDivesLoggedYet => 'Пока нет записей о погружениях';
+
+  @override
+  String get addDiveOrImportBody =>
+      'Добавьте дайв вручную или импортируйте файл дневника.';
+
+  @override
+  String deleteDivesConfirmTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Удалить $count дайва?',
+      many: 'Удалить $count дайвов?',
+      few: 'Удалить $count дайва?',
+      one: 'Удалить $count дайв?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotDeleteDivesError(int count, String error) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Не удалось удалить $count дайва: $error',
+      many: 'Не удалось удалить $count дайвов: $error',
+      few: 'Не удалось удалить $count дайва: $error',
+      one: 'Не удалось удалить $count дайв: $error',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotDeleteWithError(String error) {
+    return 'Не удалось удалить: $error';
+  }
+
+  @override
+  String get addADiveManually => 'Добавить дайв вручную';
+
+  @override
+  String get importADiveLogFile => 'Импортировать файл дневника';
+
+  @override
+  String get importFormatsSubtitle => 'UDDF, CSV или экспорт из Diving Log 6';
+
+  @override
+  String get csvColumnFormatTitle => 'Формат столбцов CSV';
+
+  @override
+  String get csvColumnFormatBody =>
+      'Первая строка должна быть заголовком с этими названиями столбцов (в любом порядке, обязательна только \"date\"):\n\ndate (ГГГГ-ММ-ДД)\ntime (ЧЧ:ММ)\ncountry\nsite\nmax_depth_m\navg_depth_m\nduration_min\nmin_temp_c\nnotes';
+
+  @override
+  String get gotIt => 'Понятно';
+
+  @override
+  String diveImportedSimple(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Импортировано $count дайва',
+      many: 'Импортировано $count дайвов',
+      few: 'Импортировано $count дайва',
+      one: 'Импортирован $count дайв',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String diveImportedWithSkipped(int count, int skipped) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Импортировано $count новых дайва, $skipped уже в дневнике',
+      many: 'Импортировано $count новых дайвов, $skipped уже в дневнике',
+      few: 'Импортировано $count новых дайва, $skipped уже в дневнике',
+      one: 'Импортирован $count новый дайв, $skipped уже в дневнике',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotImport(String error) {
+    return 'Не удалось импортировать: $error';
+  }
+
+  @override
+  String get unknownError => 'неизвестная ошибка';
+
+  @override
+  String get updateUnloggedCountPromptBody =>
+      'Если часть из этого уже учтена в вашем профиле, обновите его в разделе Редактировать профиль.';
+
+  @override
+  String get editProfileAction => 'Редактировать профиль';
+
+  @override
+  String get depthLabel => 'Глубина';
+
+  @override
+  String get temperatureLabel => 'Температура';
+
+  @override
+  String get dragToInspectHint =>
+      'Проведите по графику, чтобы посмотреть точку';
+
+  @override
+  String get done => 'Готово';
+
+  @override
+  String get searchLanguages => 'Поиск языков';
+
+  @override
+  String get languageSettingsTitle => 'Язык';
+
+  @override
+  String get systemDefault => 'Как в системе';
+
+  @override
+  String get guest => 'Гость';
+
+  @override
+  String get certificationsSectionTitle => 'Сертификации';
+
+  @override
+  String get update => 'Изменить';
+
+  @override
+  String get specialtiesSectionTitle => 'Специализации';
+
+  @override
+  String get gearSectionTitle => 'Снаряжение';
+
+  @override
+  String get couldNotUploadPhoto => 'Не удалось загрузить фото';
+
+  @override
+  String get couldNotRemovePhoto => 'Не удалось удалить фото';
+
+  @override
+  String get changePhoto => 'Изменить фото';
+
+  @override
+  String get removePhoto => 'Удалить фото';
+
+  @override
+  String get diveOut => 'Выйти';
+
+  @override
+  String get deleteAccountTitle => 'Удалить аккаунт?';
+
+  @override
+  String get deleteAccountBody =>
+      'Это необратимо анонимизирует ваш аккаунт и отменит все организованные вами трипы. Это необратимо.';
+
+  @override
+  String couldNotDeleteAccount(String error) {
+    return 'Не удалось удалить аккаунт: $error';
+  }
+
+  @override
+  String get deleteAccountRow => 'Удалить аккаунт';
 }

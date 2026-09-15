@@ -4,6 +4,7 @@ import '../../../../data/services/error_codes.dart';
 
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../domain/entities/profile.dart';
+import '../../../../l10n/app_localizations.dart';
 import 'profile_overview_card.dart';
 
 /// Tap an organizer or participant anywhere in the app and this pops up as a sheet — same
@@ -60,16 +61,17 @@ class _DiverIdCardSheetState extends State<_DiverIdCardSheet> {
   // already-blocked user is a harmless no-op server-side, so this stays a single always-visible
   // action rather than a toggle with its own extra round trip.
   Future<void> _confirmBlock() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Block this user?'),
-        content: const Text("You won't see their messages in shared trip chats anymore. You can undo this from Profile → Blocked users."),
+        title: Text(l10n.blockThisUserTitle),
+        content: Text(l10n.blockUserBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.cancel)),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Block', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(l10n.block, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
@@ -82,16 +84,17 @@ class _DiverIdCardSheetState extends State<_DiverIdCardSheet> {
       await widget.profileRepository.blockUser(widget.userId);
       if (!mounted) return;
       Navigator.of(context).pop();
-      messenger.showSnackBar(const SnackBar(content: Text('Blocked. Manage in Profile → Blocked users.')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.blockedManageBody)));
     } catch (e) {
       if (!mounted) return;
       setState(() => _isBlocking = false);
-      messenger.showSnackBar(SnackBar(content: Text('Could not block user: $e')));
+      messenger.showSnackBar(SnackBar(content: Text(l10n.couldNotBlockUser(friendlyError(e)))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -109,7 +112,7 @@ class _DiverIdCardSheetState extends State<_DiverIdCardSheet> {
                         )
                       : IconButton(
                           icon: const Icon(Icons.block),
-                          tooltip: 'Block user',
+                          tooltip: l10n.blockUserTooltip,
                           onPressed: _confirmBlock,
                         ),
                 ],
@@ -122,7 +125,7 @@ class _DiverIdCardSheetState extends State<_DiverIdCardSheet> {
                 : _error != null
                     ? Padding(
                         padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Text('Error: $_error', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                        child: Text(l10n.errorWithMessage(_error!), style: TextStyle(color: Theme.of(context).colorScheme.error)),
                       )
                     : SingleChildScrollView(
                         child: ProfileOverviewCard(profile: _profile!),

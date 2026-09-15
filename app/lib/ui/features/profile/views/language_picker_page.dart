@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/languages.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Search + multi-select list of languages, replacing free-text entry (which we couldn't
 /// reliably parse or compare later — "Russian" vs "russian" vs "Rus.").
@@ -26,15 +27,16 @@ class _LanguagePickerPageState extends State<LanguagePickerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final filtered = kLanguages.where((l) => l.toLowerCase().contains(_query.toLowerCase())).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Languages'),
+        title: Text(l10n.languagesLabel),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(_selected.toList()),
-            child: const Text('Done'),
+            child: Text(l10n.done),
           ),
         ],
       ),
@@ -44,9 +46,9 @@ class _LanguagePickerPageState extends State<LanguagePickerPage> {
             padding: const EdgeInsets.all(16),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Search languages',
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search),
+                hintText: l10n.searchLanguages,
               ),
               onChanged: (value) => setState(() => _query = value),
             ),
