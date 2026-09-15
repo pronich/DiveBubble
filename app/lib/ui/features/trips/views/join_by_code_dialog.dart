@@ -36,7 +36,6 @@ class _JoinByCodeDialogState extends State<_JoinByCodeDialog> {
 
   Future<void> _submit() async {
     final code = _controller.text.trim();
-    if (code.isEmpty) return;
     setState(() {
       _isSubmitting = true;
       _error = null;
