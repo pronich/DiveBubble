@@ -1,0 +1,7 @@
+{
+  "@@locale": "en",
+  "appTitle": "DiveBubble",
+  "@appTitle": {
+    "description": "The application's name, shown as the OS task-switcher/home-screen label. Not user-visible in-app UI — kept here mainly to prove the gen-l10n pipeline end to end before the real string-extraction pass (see the translations plan)."
+  }
+}
