@@ -36,40 +36,40 @@ func handleReportMessage(svc *moderation.Service, messageSvc *message.Service, t
 
 		messageID, err := uuid.Parse(r.PathValue("messageId"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid message id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		msg, err := messageSvc.GetByID(r.Context(), messageID)
 		if err != nil {
 			if errors.Is(err, message.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "message not found")
+				writeError(w, http.StatusNotFound, ErrCodeMessageNotFound)
 				return
 			}
 			log.Printf("report message: could not load message %s: %v", messageID, err)
-			writeError(w, http.StatusInternalServerError, "could not report message")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if msg.TripID != tripID {
-			writeError(w, http.StatusNotFound, "message not found")
+			writeError(w, http.StatusNotFound, ErrCodeMessageNotFound)
 			return
 		}
 
 		var req reportMessageRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		report, err := svc.ReportMessage(r.Context(), userID, messageID, tripID, req.Reason, req.Details)
 		if err != nil {
 			if errors.Is(err, moderation.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "reason is required")
+				writeError(w, http.StatusBadRequest, ErrCodeReasonRequired)
 				return
 			}
 			log.Printf("report message: could not create report: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not report message")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -85,16 +85,16 @@ func handleBlockUser(svc *moderation.Service) func(http.ResponseWriter, *http.Re
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		targetID, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid user id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if err := svc.BlockUser(r.Context(), userID, targetID); err != nil {
 			if errors.Is(err, moderation.ErrCannotBlockSelf) {
-				writeError(w, http.StatusBadRequest, "cannot block yourself")
+				writeError(w, http.StatusBadRequest, ErrCodeCannotBlockYourself)
 				return
 			}
 			log.Printf("block user: could not block %s for %s: %v", targetID, userID, err)
-			writeError(w, http.StatusInternalServerError, "could not block user")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -105,12 +105,12 @@ func handleUnblockUser(svc *moderation.Service) func(http.ResponseWriter, *http.
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		targetID, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid user id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if err := svc.UnblockUser(r.Context(), userID, targetID); err != nil {
 			log.Printf("unblock user: could not unblock %s for %s: %v", targetID, userID, err)
-			writeError(w, http.StatusInternalServerError, "could not unblock user")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -122,7 +122,7 @@ func handleListBlockedUsers(svc *moderation.Service) func(http.ResponseWriter, *
 		ids, err := svc.ListBlockedUserIDs(r.Context(), userID)
 		if err != nil {
 			log.Printf("list blocked users: could not list for %s: %v", userID, err)
-			writeError(w, http.StatusInternalServerError, "could not list blocked users")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		out := make([]string, 0, len(ids))

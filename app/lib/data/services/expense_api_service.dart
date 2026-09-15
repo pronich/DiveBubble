@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../domain/entities/expense.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'error_codes.dart';
 
 class ExpenseApiService {
   ExpenseApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
@@ -20,13 +21,13 @@ class ExpenseApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
-  // Server errors come back as {"error": "..."} — surface that message directly instead of
-  // the raw body, same convention as every other *ApiService in this app.
+  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
+  // message to show, or passes it through unchanged if it's not one this file knows about yet.
   String? _extractError(String body) {
     try {
       final decoded = jsonDecode(body);
       if (decoded is Map<String, dynamic> && decoded['error'] is String) {
-        return decoded['error'] as String;
+        return describeErrorCode(decoded['error'] as String);
       }
     } catch (_) {
       // fall through
@@ -40,7 +41,7 @@ class ExpenseApiService {
       headers: await _authHeaders(),
     );
     if (res.statusCode != 200) {
-      throw Exception('fetchExpenses failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchExpenses failed: ${res.statusCode}');
     }
     final decoded = jsonDecode(res.body) as List<dynamic>;
     return decoded.map((e) => Expense.fromJson(e as Map<String, dynamic>)).toList();
@@ -123,7 +124,7 @@ class ExpenseApiService {
       headers: await _authHeaders(),
     );
     if (res.statusCode != 200) {
-      throw Exception('fetchBalance failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchBalance failed: ${res.statusCode}');
     }
     return ExpenseBalanceSummary.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }

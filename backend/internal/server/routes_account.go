@@ -20,7 +20,7 @@ func handleDeleteAccount(svc *account.Service) func(http.ResponseWriter, *http.R
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		if err := svc.DeleteAccount(r.Context(), userID); err != nil {
 			log.Printf("delete account failed for %s: %v", userID, err)
-			writeError(w, http.StatusInternalServerError, "could not delete account")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusOK)

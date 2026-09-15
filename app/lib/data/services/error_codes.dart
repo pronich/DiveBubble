@@ -85,4 +85,30 @@ const _messages = <String, String>{
   // Certification/Specialty (backend/internal/server/routes_certification.go)
   'specialty_required': 'Choose a specialty.',
   'specialty_not_found': 'This specialty could not be found.',
+
+  // Expense (backend/internal/server/routes_expense.go)
+  'expense_not_found': 'This expense could not be found.',
+  'split_amounts_mismatch': "The split amounts don't add up to the total.",
+  'only_creator_can_delete_expense': 'Only the person who added this expense can delete it.',
+  'invalid_settlement': 'Check the settlement amount and try again.',
+
+  // DiveLog (backend/internal/server/routes_divelog.go)
+  'dive_date_time_required': 'Enter a date and time for this dive.',
+  'dive_log_entry_not_found': 'This dive could not be found.',
+  'not_your_dive_log_entry': "This dive isn't yours to edit.",
+  'invalid_uddf_file': "This doesn't look like a valid UDDF dive log file.",
+  'invalid_csv_file': 'Could not read this CSV file — check the column headers.',
+  'invalid_divinglog6_file': 'Could not read this file as a Diving Log 6 export.',
+  'unrecognized_dive_log_format': 'Unrecognized file format — expected UDDF, CSV, or a Diving Log 6 export.',
+
+  // Upload (backend/internal/server/routes_upload.go) — shared by every photo/attachment
+  // upload in the app (avatar, specialty/trip photos, chat attachments).
+  'trip_photo_limit_reached': 'This trip already has the maximum number of photos.',
+  'invalid_image': 'Choose a JPEG, PNG, or WebP image.',
+  'file_too_large': "That file is too large — try a smaller one.",
+  'invalid_attachment_file': 'Choose an image, PDF, or video file.',
+
+  // Moderation (backend/internal/server/routes_moderation.go)
+  'reason_required': 'Choose a reason.',
+  'cannot_block_yourself': "You can't block yourself.",
 };

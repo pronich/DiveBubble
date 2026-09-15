@@ -121,3 +121,36 @@ const (
 	ErrCodeSpecialtyRequired = "specialty_required"
 	ErrCodeSpecialtyNotFound = "specialty_not_found"
 )
+
+// Expense (routes_expense.go)
+const (
+	ErrCodeExpenseNotFound             = "expense_not_found"
+	ErrCodeSplitAmountsMismatch        = "split_amounts_mismatch"
+	ErrCodeOnlyCreatorCanDeleteExpense = "only_creator_can_delete_expense"
+	ErrCodeInvalidSettlement           = "invalid_settlement"
+)
+
+// DiveLog (routes_divelog.go)
+const (
+	ErrCodeDiveDateTimeRequired      = "dive_date_time_required"
+	ErrCodeDiveLogEntryNotFound      = "dive_log_entry_not_found"
+	ErrCodeNotYourDiveLogEntry       = "not_your_dive_log_entry"
+	ErrCodeInvalidUDDFFile           = "invalid_uddf_file"
+	ErrCodeInvalidCSVFile            = "invalid_csv_file"
+	ErrCodeInvalidDivingLog6File     = "invalid_divinglog6_file"
+	ErrCodeUnrecognizedDiveLogFormat = "unrecognized_dive_log_format"
+)
+
+// Upload (routes_upload.go)
+const (
+	ErrCodeTripPhotoLimitReached = "trip_photo_limit_reached"
+	ErrCodeInvalidImage          = "invalid_image"
+	ErrCodeFileTooLarge          = "file_too_large"
+	ErrCodeInvalidAttachmentFile = "invalid_attachment_file"
+)
+
+// Moderation (routes_moderation.go)
+const (
+	ErrCodeReasonRequired      = "reason_required"
+	ErrCodeCannotBlockYourself = "cannot_block_yourself"
+)

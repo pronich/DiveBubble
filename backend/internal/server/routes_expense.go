@@ -31,20 +31,20 @@ func registerExpenseRoutes(mux *http.ServeMux, svc *expense.Service, tripSvc *tr
 func requireExpenseInTrip(w http.ResponseWriter, r *http.Request, svc *expense.Service, tripID uuid.UUID, expenseIDStr string) (expense.Expense, bool) {
 	expenseID, err := uuid.Parse(expenseIDStr)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid expense id")
+		writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 		return expense.Expense{}, false
 	}
 	e, err := svc.GetByID(r.Context(), expenseID)
 	if err != nil {
 		if errors.Is(err, expense.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "expense not found")
+			writeError(w, http.StatusNotFound, ErrCodeExpenseNotFound)
 			return expense.Expense{}, false
 		}
-		writeError(w, http.StatusInternalServerError, "could not load expense")
+		writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 		return expense.Expense{}, false
 	}
 	if e.TripID != tripID {
-		writeError(w, http.StatusNotFound, "expense not found")
+		writeError(w, http.StatusNotFound, ErrCodeExpenseNotFound)
 		return expense.Expense{}, false
 	}
 	return e, true
@@ -130,7 +130,7 @@ func handleListExpenses(svc *expense.Service, tripSvc *trip.Service) func(http.R
 		}
 		expenses, err := svc.ListByTrip(r.Context(), tripID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list expenses")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		out := make([]expenseResponse, len(expenses))
@@ -158,38 +158,38 @@ func handleCreateExpense(svc *expense.Service, tripSvc *trip.Service) func(http.
 		}
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
-				writeError(w, http.StatusConflict, "trip has been cancelled")
+				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not create expense")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		var req createExpenseRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		splitType := expense.SplitType(req.SplitType)
 		input, err := toSplitInput(splitType, req.Shares)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		e, err := svc.Create(r.Context(), tripID, req.PayerUserID, userID, req.Title, req.AmountMinor, splitType, req.OccurredAt, input)
 		if err != nil {
 			if errors.Is(err, expense.ErrSplitMismatch) {
-				writeError(w, http.StatusBadRequest, "split amounts do not add up to the total")
+				writeError(w, http.StatusBadRequest, ErrCodeSplitAmountsMismatch)
 				return
 			}
 			if errors.Is(err, expense.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid expense")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not create expense")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusCreated, toExpenseResponse(e))
@@ -218,10 +218,10 @@ func handleUpdateExpense(svc *expense.Service, tripSvc *trip.Service) func(http.
 		}
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
-				writeError(w, http.StatusConflict, "trip has been cancelled")
+				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not update expense")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		e, ok := requireExpenseInTrip(w, r, svc, tripID, r.PathValue("expenseId"))
@@ -232,28 +232,28 @@ func handleUpdateExpense(svc *expense.Service, tripSvc *trip.Service) func(http.
 		var req createExpenseRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		splitType := expense.SplitType(req.SplitType)
 		input, err := toSplitInput(splitType, req.Shares)
 		if err != nil {
-			writeError(w, http.StatusBadRequest, err.Error())
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		updated, err := svc.Update(r.Context(), e.ID, req.PayerUserID, req.Title, req.AmountMinor, splitType, req.OccurredAt, input)
 		if err != nil {
 			if errors.Is(err, expense.ErrSplitMismatch) {
-				writeError(w, http.StatusBadRequest, "split amounts do not add up to the total")
+				writeError(w, http.StatusBadRequest, ErrCodeSplitAmountsMismatch)
 				return
 			}
 			if errors.Is(err, expense.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid expense")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not update expense")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toExpenseResponse(updated))
@@ -274,10 +274,10 @@ func handleDeleteExpense(svc *expense.Service, tripSvc *trip.Service) func(http.
 		}
 		if err := svc.Delete(r.Context(), e.ID, userID); err != nil {
 			if errors.Is(err, expense.ErrForbidden) {
-				writeError(w, http.StatusForbidden, "only the creator can delete this expense")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyCreatorCanDeleteExpense)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not delete expense")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -308,7 +308,7 @@ func handleGetExpenseBalance(svc *expense.Service, tripSvc *trip.Service) func(h
 		}
 		balances, settlements, err := svc.GetBalance(r.Context(), tripID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not compute balance")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		balanceOut := make([]balanceResponse, len(balances))
@@ -342,17 +342,17 @@ func handleCreateSettlement(svc *expense.Service, tripSvc *trip.Service) func(ht
 		var req createSettlementRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		s, err := svc.CreateSettlement(r.Context(), tripID, req.FromUserID, req.ToUserID, req.AmountMinor)
 		if err != nil {
 			if errors.Is(err, expense.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "invalid settlement")
+				writeError(w, http.StatusBadRequest, ErrCodeInvalidSettlement)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not record settlement")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusCreated, settlementResponse{FromUserID: s.FromUserID, ToUserID: s.ToUserID, AmountMinor: s.AmountMinor})
