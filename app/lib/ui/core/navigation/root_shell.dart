@@ -12,6 +12,7 @@ import '../../../data/repositories/push_repository.dart';
 import '../../../data/repositories/specialty_repository.dart';
 import '../../../data/repositories/transport_repository.dart';
 import '../../../data/repositories/trip_repository.dart';
+import '../../../data/services/locale_controller.dart';
 import '../../../data/services/realtime_service.dart';
 import '../../features/chats/view_models/my_trips_view_model.dart';
 import '../../features/chats/views/my_trips_view.dart';
@@ -39,6 +40,7 @@ class RootShell extends StatefulWidget {
     required this.expenseRepository,
     required this.diveLogRepository,
     required this.pushRepository,
+    required this.localeController,
     required this.currentUserId,
   });
 
@@ -55,6 +57,7 @@ class RootShell extends StatefulWidget {
   final ExpenseRepository expenseRepository;
   final DiveLogRepository diveLogRepository;
   final PushRepository pushRepository;
+  final LocaleController localeController;
   final String currentUserId;
 
   @override
@@ -140,6 +143,7 @@ class _RootShellState extends State<RootShell> {
             tripRepository: widget.tripRepository,
             chatRepository: widget.chatRepository,
             pushRepository: widget.pushRepository,
+            localeController: widget.localeController,
             isActive: _index == 2,
           ),
         ],
