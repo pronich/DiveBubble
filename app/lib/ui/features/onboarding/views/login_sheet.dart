@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../profile/view_models/profile_view_model.dart';
 import '../../profile/views/edit_profile_page.dart';
 import 'push_permission_page.dart';
@@ -148,7 +149,7 @@ class _LoginSheetState extends State<LoginSheet> {
   Future<void> _sendEmailCode() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      setState(() => _error = 'Enter your email');
+      setState(() => _error = AppLocalizations.of(context).enterYourEmail);
       return;
     }
 
@@ -169,7 +170,7 @@ class _LoginSheetState extends State<LoginSheet> {
   Future<void> _verifyEmailCode() async {
     final code = _codeController.text.trim();
     if (code.isEmpty) {
-      setState(() => _error = 'Enter the code we sent you');
+      setState(() => _error = AppLocalizations.of(context).enterCodeSentToYou);
       return;
     }
 
@@ -205,9 +206,9 @@ class _LoginSheetState extends State<LoginSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Sign in', style: theme.textTheme.titleLarge, textAlign: TextAlign.center),
+            Text(AppLocalizations.of(context).signIn, style: theme.textTheme.titleLarge, textAlign: TextAlign.center),
             const SizedBox(height: 20),
-            if (_showEmailForm) ..._buildEmailForm(theme) else ..._buildProviderButtons(theme),
+            if (_showEmailForm) ..._buildEmailForm(context, theme) else ..._buildProviderButtons(context, theme),
             if (_error != null) ...[
               const SizedBox(height: 8),
               Text(
@@ -222,14 +223,15 @@ class _LoginSheetState extends State<LoginSheet> {
     );
   }
 
-  List<Widget> _buildProviderButtons(ThemeData theme) {
+  List<Widget> _buildProviderButtons(BuildContext context, ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     return [
       ElevatedButton.icon(
         onPressed: _loading ? null : _signInWithGoogle,
         icon: _pendingProvider == _AuthProvider.google
             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
             : const Icon(Icons.g_mobiledata, size: 26),
-        label: const Text('Continue with Google'),
+        label: Text(l10n.continueWithGoogle),
       ),
       // Apple's native credential requires webAuthenticationOptions (Services ID + redirect
       // URI) on Android, which we don't configure — Google Play has no equivalent-to-Apple's
@@ -241,23 +243,24 @@ class _LoginSheetState extends State<LoginSheet> {
           icon: _pendingProvider == _AuthProvider.apple
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.apple, size: 20),
-          label: const Text('Continue with Apple'),
+          label: Text(l10n.continueWithApple),
         ),
       ],
       const SizedBox(height: 12),
       OutlinedButton.icon(
         onPressed: _loading ? null : () => setState(() => _showEmailForm = true),
         icon: const Icon(Icons.email_outlined, size: 20),
-        label: const Text('Continue with email'),
+        label: Text(l10n.continueWithEmail),
       ),
     ];
   }
 
-  List<Widget> _buildEmailForm(ThemeData theme) {
+  List<Widget> _buildEmailForm(BuildContext context, ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     if (_emailCodeSent) {
       return [
         Text(
-          'Enter the code we sent to ${_emailController.text.trim()}',
+          l10n.enterCodeSentTo(_emailController.text.trim()),
           style: theme.textTheme.bodyMedium,
           textAlign: TextAlign.center,
         ),
@@ -283,12 +286,12 @@ class _LoginSheetState extends State<LoginSheet> {
           onPressed: _loading ? null : _verifyEmailCode,
           child: _loading
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Verify'),
+              : Text(l10n.verify),
         ),
         const SizedBox(height: 8),
         TextButton(
           onPressed: _loading ? null : () => setState(() => _emailCodeSent = false),
-          child: const Text('Use a different email'),
+          child: Text(l10n.useADifferentEmail),
         ),
       ];
     }
@@ -298,7 +301,7 @@ class _LoginSheetState extends State<LoginSheet> {
         controller: _emailController,
         keyboardType: TextInputType.emailAddress,
         autofillHints: const [AutofillHints.email],
-        decoration: const InputDecoration(labelText: 'Email'),
+        decoration: InputDecoration(labelText: l10n.email),
         onSubmitted: (_) => _sendEmailCode(),
       ),
       const SizedBox(height: 12),
@@ -306,12 +309,12 @@ class _LoginSheetState extends State<LoginSheet> {
         onPressed: _loading ? null : _sendEmailCode,
         child: _loading
             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Text('Send code'),
+            : Text(l10n.sendCode),
       ),
       const SizedBox(height: 8),
       TextButton(
         onPressed: _loading ? null : () => setState(() => _showEmailForm = false),
-        child: const Text('Use a different sign-in method'),
+        child: Text(l10n.useADifferentSignInMethod),
       ),
     ];
   }

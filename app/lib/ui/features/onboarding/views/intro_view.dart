@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/branding/bubble_logo_painter.dart';
 import '../../../core/branding/logo_bubbles.dart';
 import '../../../core/branding/logo_layout.dart';
@@ -161,7 +162,7 @@ class _IntroContent extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          'Find dive trips, meet your buddies, and plan the logistics together.',
+          AppLocalizations.of(context).introSubtitle,
           style: theme.textTheme.titleMedium?.copyWith(
             color: Colors.white.withValues(alpha: 0.85),
             fontWeight: FontWeight.w400,
@@ -179,7 +180,7 @@ class _IntroContent extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 16),
               textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
-            child: const Text('Dive in'),
+            child: Text(AppLocalizations.of(context).diveIn),
           ),
         ),
         const SizedBox(height: 12),
@@ -189,7 +190,7 @@ class _IntroContent extends StatelessWidget {
             foregroundColor: Colors.white,
             textStyle: theme.textTheme.bodyLarge,
           ),
-          child: const Text('Skip for now'),
+          child: Text(AppLocalizations.of(context).skipForNow),
         ),
       ],
     );

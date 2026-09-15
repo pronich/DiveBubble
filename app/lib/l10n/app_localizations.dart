@@ -111,6 +111,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'DiveBubble'**
   String get appTitle;
+
+  /// Subtitle under the DiveBubble wordmark on the animated first-run intro screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Find dive trips, meet your buddies, and plan the logistics together.'**
+  String get introSubtitle;
+
+  /// Primary CTA button that opens the sign-in sheet — used on the intro screen and the guest Profile tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Dive in'**
+  String get diveIn;
+
+  /// Secondary button to skip an optional onboarding step (intro screen, certifications onboarding).
+  ///
+  /// In en, this message translates to:
+  /// **'Skip for now'**
+  String get skipForNow;
+
+  /// Title of the sign-in bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get signIn;
+
+  /// Validation error shown when the diver taps 'Send code' with an empty email field.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email'**
+  String get enterYourEmail;
+
+  /// Validation error shown when the diver taps 'Verify' with an empty code field.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code we sent you'**
+  String get enterCodeSentToYou;
+
+  /// Sign-in button.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get continueWithGoogle;
+
+  /// Sign-in button, iOS only.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Apple'**
+  String get continueWithApple;
+
+  /// Sign-in button that reveals the email/OTP form.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with email'**
+  String get continueWithEmail;
+
+  /// Prompt shown above the OTP code field, naming the address the code was sent to.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the code we sent to {email}'**
+  String enterCodeSentTo(String email);
+
+  /// Button that submits the email OTP code.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get verify;
+
+  /// Button that backs out of the OTP-code step to re-enter the email address.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a different email'**
+  String get useADifferentEmail;
+
+  /// Label of the email text field in the sign-in sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get email;
+
+  /// Button that requests an email OTP code.
+  ///
+  /// In en, this message translates to:
+  /// **'Send code'**
+  String get sendCode;
+
+  /// Button that backs out of the email form to the Google/Apple/email choice.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a different sign-in method'**
+  String get useADifferentSignInMethod;
+
+  /// Headline on the push-notification permission onboarding screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay in the loop'**
+  String get stayInTheLoop;
+
+  /// Body copy on the push-notification permission onboarding screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Get notified about new messages, trip changes, and who\'s joining your rides. You can turn this off anytime in Profile settings.'**
+  String get pushPermissionBody;
+
+  /// Generic 'Continue' button, e.g. on the push-permission onboarding screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get continueLabel;
+
+  /// Button to decline an optional permission request during onboarding (push notifications).
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get notNow;
+
+  /// Headline on the certifications onboarding screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your certifications'**
+  String get addYourCertifications;
+
+  /// Body copy on the certifications onboarding screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Your level shows other divers you\'re ready for a trip, and some trips require a minimum level to join. You can add or change this anytime from your profile.'**
+  String get certificationsOnboardingBody;
+
+  /// Label of the certification level dropdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Level'**
+  String get level;
+
+  /// Validation error shown when saving certifications without picking a level.
+  ///
+  /// In en, this message translates to:
+  /// **'Please select a level'**
+  String get pleaseSelectALevel;
+
+  /// Placeholder hint text in the certification level dropdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Select level'**
+  String get selectLevel;
+
+  /// Label of the certification agency dropdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Agency (optional)'**
+  String get agencyOptional;
+
+  /// Placeholder value meaning no certification agency was chosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get notSet;
+
+  /// Label of the certification number text field.
+  ///
+  /// In en, this message translates to:
+  /// **'Certification number (optional)'**
+  String get certificationNumberOptional;
+
+  /// Button that saves the certifications onboarding step.
+  ///
+  /// In en, this message translates to:
+  /// **'Save and continue'**
+  String get saveAndContinue;
 }
 
 class _AppLocalizationsDelegate

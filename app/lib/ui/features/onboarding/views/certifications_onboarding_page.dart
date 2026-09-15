@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../domain/certification_agency.dart';
 import '../../../../domain/certification_level.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../profile/view_models/profile_view_model.dart';
 
 /// Last step of new-account onboarding (see LoginSheet, EditProfilePage) — a full screen
@@ -45,6 +46,7 @@ class _CertificationsOnboardingPageState extends State<CertificationsOnboardingP
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
@@ -54,11 +56,10 @@ class _CertificationsOnboardingPageState extends State<CertificationsOnboardingP
             children: [
               Icon(Icons.verified_outlined, size: 56, color: theme.colorScheme.primary),
               const SizedBox(height: 24),
-              Text('Add your certifications', style: theme.textTheme.headlineSmall, textAlign: TextAlign.center),
+              Text(l10n.addYourCertifications, style: theme.textTheme.headlineSmall, textAlign: TextAlign.center),
               const SizedBox(height: 12),
               Text(
-                "Your level shows other divers you're ready for a trip, and some trips require a "
-                'minimum level to join. You can add or change this anytime from your profile.',
+                l10n.certificationsOnboardingBody,
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
@@ -66,10 +67,10 @@ class _CertificationsOnboardingPageState extends State<CertificationsOnboardingP
               DropdownButtonFormField<String?>(
                 initialValue: _level,
                 decoration: InputDecoration(
-                  labelText: 'Level',
-                  errorText: _showLevelError ? 'Please select a level' : null,
+                  labelText: l10n.level,
+                  errorText: _showLevelError ? l10n.pleaseSelectALevel : null,
                 ),
-                hint: const Text('Select level'),
+                hint: Text(l10n.selectLevel),
                 items: kCertificationLevels
                     .map((level) => DropdownMenuItem<String?>(value: level, child: Text(level)))
                     .toList(),
@@ -81,10 +82,10 @@ class _CertificationsOnboardingPageState extends State<CertificationsOnboardingP
               const SizedBox(height: 12),
               DropdownButtonFormField<String?>(
                 initialValue: _agency,
-                decoration: const InputDecoration(labelText: 'Agency (optional)'),
-                hint: const Text('Not set'),
+                decoration: InputDecoration(labelText: l10n.agencyOptional),
+                hint: Text(l10n.notSet),
                 items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('Not set')),
+                  DropdownMenuItem<String?>(value: null, child: Text(l10n.notSet)),
                   ...kCertificationAgencies.map((a) => DropdownMenuItem<String?>(value: a, child: Text(a))),
                 ],
                 onChanged: (value) => setState(() => _agency = value),
@@ -93,17 +94,17 @@ class _CertificationsOnboardingPageState extends State<CertificationsOnboardingP
               TextField(
                 controller: _numberController,
                 textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(labelText: 'Certification number (optional)'),
+                decoration: InputDecoration(labelText: l10n.certificationNumberOptional),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: widget.viewModel.isSubmitting ? null : _save,
-                child: const Text('Save and continue'),
+                child: Text(l10n.saveAndContinue),
               ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: widget.viewModel.isSubmitting ? null : () => Navigator.of(context).pop(),
-                child: const Text('Skip for now'),
+                child: Text(l10n.skipForNow),
               ),
             ],
           ),
