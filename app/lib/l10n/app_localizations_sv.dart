@@ -368,7 +368,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get createTrip => 'Skapa resa';
 
   @override
-  String get joinTrip => 'Gå med i resa';
+  String get joinTrip => 'Gå med';
 
   @override
   String get chatTabLabel => 'Chatt';

@@ -369,7 +369,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get createTrip => 'Создать трип';
 
   @override
-  String get joinTrip => 'Присоединиться по коду';
+  String get joinTrip => 'Присоединиться';
 
   @override
   String get chatTabLabel => 'Чат';

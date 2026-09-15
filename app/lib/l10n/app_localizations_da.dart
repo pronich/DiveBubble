@@ -367,7 +367,7 @@ class AppLocalizationsDa extends AppLocalizations {
   String get createTrip => 'Opret tur';
 
   @override
-  String get joinTrip => 'Tilmeld dig tur';
+  String get joinTrip => 'Deltag';
 
   @override
   String get chatTabLabel => 'Chat';

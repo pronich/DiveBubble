@@ -372,7 +372,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get createTrip => 'Crear viaje';
 
   @override
-  String get joinTrip => 'Unirse a un viaje';
+  String get joinTrip => 'Unirse';
 
   @override
   String get chatTabLabel => 'Chat';
