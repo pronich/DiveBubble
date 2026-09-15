@@ -109,7 +109,7 @@ func handleCreateDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *
 		var req createDiveCenterRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -126,11 +126,11 @@ func handleCreateDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *
 		}, userID)
 		if err != nil {
 			if errors.Is(err, divecenter.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "name is required")
+				writeError(w, http.StatusBadRequest, ErrCodeNameRequired)
 				return
 			}
 			log.Printf("create dive center failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not create dive center")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -145,7 +145,7 @@ func handleListMyDiveCenters(svc *divecenter.Service) func(http.ResponseWriter, 
 		views, err := svc.ListMine(r.Context(), userID)
 		if err != nil {
 			log.Printf("list my dive centers failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not list dive centers")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		out := make([]diveCenterResponse, 0, len(views))
@@ -167,17 +167,17 @@ func handleGetDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *htt
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		dc, err := svc.Get(r.Context(), id)
 		if err != nil {
 			if errors.Is(err, divecenter.ErrNotFound) {
-				writeError(w, http.StatusNotFound, "dive center not found")
+				writeError(w, http.StatusNotFound, ErrCodeDiveCenterNotFound)
 				return
 			}
 			log.Printf("get dive center failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not get dive center")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toDiveCenterResponse(dc))
@@ -200,13 +200,13 @@ func handleGetDiveCenterMembership(svc *divecenter.Service) func(http.ResponseWr
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		isMember, err := svc.IsMember(r.Context(), id, userID)
 		if err != nil {
 			log.Printf("check dive center membership failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not check membership")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if !isMember {
@@ -216,7 +216,7 @@ func handleGetDiveCenterMembership(svc *divecenter.Service) func(http.ResponseWr
 		isOwner, err := svc.IsOwner(r.Context(), id, userID)
 		if err != nil {
 			log.Printf("check dive center ownership failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not check membership")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		role := "staff"
@@ -247,13 +247,13 @@ func handleUpdateDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		var req updateDiveCenterRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -270,15 +270,15 @@ func handleUpdateDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *
 		})
 		if err != nil {
 			if errors.Is(err, divecenter.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "name cannot be blank")
+				writeError(w, http.StatusBadRequest, ErrCodeNameRequired)
 				return
 			}
 			if errors.Is(err, divecenter.ErrOnlyOwner) {
-				writeError(w, http.StatusForbidden, "only an owner can edit the company profile")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyOwnerCanEditCompany)
 				return
 			}
 			log.Printf("update dive center failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not update dive center")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toDiveCenterResponse(dc))
@@ -291,17 +291,17 @@ func handleListDiveCenterMembers(svc *divecenter.Service) func(http.ResponseWrit
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		members, err := svc.ListMembers(r.Context(), id, userID)
 		if err != nil {
 			if errors.Is(err, divecenter.ErrNotAMember) {
-				writeError(w, http.StatusForbidden, "not a member of this dive center")
+				writeError(w, http.StatusForbidden, ErrCodeNotMemberOfDiveCenter)
 				return
 			}
 			log.Printf("list dive center members failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not list members")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		out := make([]memberResponse, 0, len(members))
@@ -326,45 +326,45 @@ func handleSearchDiveCenterMember(svc *divecenter.Service, identityRepo *auth.Id
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		isOwner, err := svc.IsOwner(r.Context(), id, userID)
 		if err != nil {
 			log.Printf("verify dive center ownership failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not verify membership")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if !isOwner {
-			writeError(w, http.StatusForbidden, "only an owner can search for members")
+			writeError(w, http.StatusForbidden, ErrCodeOnlyOwnerCanSearchMembers)
 			return
 		}
 
 		email := strings.TrimSpace(r.URL.Query().Get("email"))
 		if email == "" {
-			writeError(w, http.StatusBadRequest, "email query parameter is required")
+			writeError(w, http.StatusBadRequest, ErrCodeEmailRequired)
 			return
 		}
 
 		targetID, err := identityRepo.FindUserIDByEmail(r.Context(), email)
 		if err != nil {
 			if errors.Is(err, auth.ErrIdentityNotFound) {
-				writeError(w, http.StatusNotFound, "no account found for that email")
+				writeError(w, http.StatusNotFound, ErrCodeNoAccountForEmail)
 				return
 			}
 			if errors.Is(err, auth.ErrIdentityAmbiguous) {
-				writeError(w, http.StatusConflict, "more than one account matches that email — type more of it")
+				writeError(w, http.StatusConflict, ErrCodeAmbiguousEmailMatch)
 				return
 			}
 			log.Printf("search dive center member failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not search for member")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		p, err := profileSvc.Get(r.Context(), targetID)
 		if err != nil {
 			log.Printf("load profile for dive center member search failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not load profile")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, memberPreviewResponse{
@@ -384,28 +384,28 @@ func handleAddDiveCenterMember(svc *divecenter.Service) func(http.ResponseWriter
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		var req addMemberRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if req.UserID == uuid.Nil {
-			writeError(w, http.StatusBadRequest, "userId is required")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		m, err := svc.AddMember(r.Context(), id, userID, req.UserID, req.Role)
 		if err != nil {
 			if errors.Is(err, divecenter.ErrOnlyOwner) {
-				writeError(w, http.StatusForbidden, "only an owner can add members")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyOwnerCanAddMembers)
 				return
 			}
 			log.Printf("add dive center member failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not add member")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		// Bare Member, not the enriched MemberView ListMembers returns — admin/ reloads the
@@ -419,30 +419,30 @@ func handleRemoveDiveCenterMember(svc *divecenter.Service) func(http.ResponseWri
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		targetID, err := uuid.Parse(r.PathValue("userId"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid user id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		if err := svc.RemoveMember(r.Context(), id, userID, targetID); err != nil {
 			if errors.Is(err, divecenter.ErrOnlyOwner) {
-				writeError(w, http.StatusForbidden, "only an owner can remove members")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyOwnerCanRemoveMembers)
 				return
 			}
 			if errors.Is(err, divecenter.ErrCannotRemoveLastOwner) {
-				writeError(w, http.StatusConflict, "cannot remove the last owner")
+				writeError(w, http.StatusConflict, ErrCodeCannotRemoveLastOwner)
 				return
 			}
 			if errors.Is(err, divecenter.ErrNotAMember) {
-				writeError(w, http.StatusNotFound, "member not found")
+				writeError(w, http.StatusNotFound, ErrCodeMemberNotFound)
 				return
 			}
 			log.Printf("remove dive center member failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not remove member")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -470,46 +470,46 @@ func handleInviteDiveCenterMember(svc *divecenter.Service, emailSvc *email.Servi
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid dive center id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		var req inviteMemberRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if strings.TrimSpace(req.Email) == "" {
-			writeError(w, http.StatusBadRequest, "email is required")
+			writeError(w, http.StatusBadRequest, ErrCodeEmailRequired)
 			return
 		}
 
 		inv, err := svc.InviteMember(r.Context(), id, userID, req.Email, req.Role)
 		if err != nil {
 			if errors.Is(err, divecenter.ErrOnlyOwner) {
-				writeError(w, http.StatusForbidden, "only an owner can invite members")
+				writeError(w, http.StatusForbidden, ErrCodeOnlyOwnerCanInviteMembers)
 				return
 			}
 			if errors.Is(err, divecenter.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "email is required")
+				writeError(w, http.StatusBadRequest, ErrCodeEmailRequired)
 				return
 			}
 			log.Printf("invite dive center member failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not create invitation")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		dc, err := svc.Get(r.Context(), id)
 		if err != nil {
 			log.Printf("load dive center for invitation email failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not send invitation")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if err := emailSvc.SendTemplate(r.Context(), inv.Email, email.TemplateInvitation, map[string]string{
 			email.VarDiveCenterName: dc.Name,
 		}); err != nil {
 			log.Printf("send invitation email failed: %v", err)
-			writeError(w, http.StatusInternalServerError, "could not send invitation email")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 

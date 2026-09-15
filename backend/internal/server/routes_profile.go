@@ -57,7 +57,7 @@ func handleGetProfile(svc *profile.Service) func(http.ResponseWriter, *http.Requ
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		p, err := svc.Get(r.Context(), userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not load profile")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toProfileResponse(p))
@@ -100,12 +100,12 @@ func handleGetPublicProfile(svc *profile.Service) func(http.ResponseWriter, *htt
 	return func(w http.ResponseWriter, r *http.Request, _ uuid.UUID) {
 		targetID, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "invalid user id")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		p, err := svc.Get(r.Context(), targetID)
 		if err != nil {
-			writeError(w, http.StatusNotFound, "user not found")
+			writeError(w, http.StatusNotFound, ErrCodeUserNotFound)
 			return
 		}
 		writeJSON(w, http.StatusOK, toPublicProfileResponse(p))
@@ -130,12 +130,12 @@ func handleUpdateProfile(svc *profile.Service) func(http.ResponseWriter, *http.R
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		var req updateProfileRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -166,7 +166,7 @@ func handleUpdateProfile(svc *profile.Service) func(http.ResponseWriter, *http.R
 			Languages:             req.Languages,
 		})
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not update profile")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toProfileResponse(p))

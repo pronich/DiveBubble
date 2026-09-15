@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/specialty_certification_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'error_codes.dart';
 import 'multipart_upload.dart';
 
 class SpecialtyApiService {
@@ -21,10 +22,24 @@ class SpecialtyApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
+  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
+  // message to show, or passes it through unchanged if it's not one this file knows about yet.
+  String? _extractError(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic> && decoded['error'] is String) {
+        return describeErrorCode(decoded['error'] as String);
+      }
+    } catch (_) {
+      // fall through
+    }
+    return null;
+  }
+
   Future<List<SpecialtyCertificationApiModel>> fetchSpecialties() async {
     final res = await _client.get(Uri.parse('$baseUrl/me/specialties'), headers: await _authHeaders());
     if (res.statusCode != 200) {
-      throw Exception('fetchSpecialties failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchSpecialties failed: ${res.statusCode}');
     }
     final list = jsonDecode(res.body) as List<dynamic>;
     return list
@@ -50,7 +65,7 @@ class SpecialtyApiService {
       body: jsonEncode(body),
     );
     if (res.statusCode != 201) {
-      throw Exception('addSpecialty failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'addSpecialty failed: ${res.statusCode}');
     }
     return SpecialtyCertificationApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
@@ -61,7 +76,7 @@ class SpecialtyApiService {
       headers: await _authHeaders(),
     );
     if (res.statusCode != 204) {
-      throw Exception('removeSpecialty failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'removeSpecialty failed: ${res.statusCode}');
     }
   }
 

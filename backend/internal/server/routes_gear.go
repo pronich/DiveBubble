@@ -35,7 +35,7 @@ func handleListGear(svc *gear.Service) func(http.ResponseWriter, *http.Request, 
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		items, err := svc.List(r.Context(), userID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not list gear")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		out := make([]gearOwnershipResponse, 0, len(items))
@@ -57,17 +57,17 @@ func handleSetGearStatus(svc *gear.Service) func(http.ResponseWriter, *http.Requ
 		var req setGearStatusRequest
 		dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 		if err := dec.Decode(&req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		o, err := svc.SetStatus(r.Context(), userID, itemKey, req.Status)
 		if err != nil {
 			if errors.Is(err, gear.ErrInvalidArgument) {
-				writeError(w, http.StatusBadRequest, "itemKey and status are required")
+				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 				return
 			}
-			writeError(w, http.StatusInternalServerError, "could not update gear status")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		writeJSON(w, http.StatusOK, toGearOwnershipResponse(o))
@@ -78,11 +78,11 @@ func handleRemoveGear(svc *gear.Service) func(http.ResponseWriter, *http.Request
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		found, err := svc.Remove(r.Context(), userID, r.PathValue("itemKey"))
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not remove gear item")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if !found {
-			writeError(w, http.StatusNotFound, "gear item not found")
+			writeError(w, http.StatusNotFound, ErrCodeGearItemNotFound)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

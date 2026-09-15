@@ -89,3 +89,35 @@ const (
 	ErrCodeMessageNotFound           = "message_not_found"
 	ErrCodeInvalidAttachmentType     = "invalid_attachment_type"
 )
+
+// Profile (routes_profile.go)
+const ErrCodeUserNotFound = "user_not_found"
+
+// DiveCenter (routes_divecenter.go) — mostly admin/-only screens (company profile, staff
+// management, invitations); admin/ isn't in scope for translated error messages yet (see the
+// translations plan), so only ErrCodeDiveCenterNotFound has a client-side message today — the
+// rest are still real, distinct codes for contract consistency, just not yet localized.
+const (
+	ErrCodeDiveCenterNotFound        = "dive_center_not_found"
+	ErrCodeNameRequired              = "name_required"
+	ErrCodeOnlyOwnerCanEditCompany   = "only_owner_can_edit_company"
+	ErrCodeNotMemberOfDiveCenter     = "not_member_of_dive_center"
+	ErrCodeOnlyOwnerCanSearchMembers = "only_owner_can_search_members"
+	ErrCodeEmailRequired             = "email_required"
+	ErrCodeNoAccountForEmail         = "no_account_for_email"
+	ErrCodeAmbiguousEmailMatch       = "ambiguous_email_match"
+	ErrCodeOnlyOwnerCanAddMembers    = "only_owner_can_add_members"
+	ErrCodeOnlyOwnerCanRemoveMembers = "only_owner_can_remove_members"
+	ErrCodeCannotRemoveLastOwner     = "cannot_remove_last_owner"
+	ErrCodeMemberNotFound            = "member_not_found"
+	ErrCodeOnlyOwnerCanInviteMembers = "only_owner_can_invite_members"
+)
+
+// Gear (routes_gear.go)
+const ErrCodeGearItemNotFound = "gear_item_not_found"
+
+// Certification/Specialty (routes_certification.go)
+const (
+	ErrCodeSpecialtyRequired = "specialty_required"
+	ErrCodeSpecialtyNotFound = "specialty_not_found"
+)

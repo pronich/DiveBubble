@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/profile_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'error_codes.dart';
 import 'multipart_upload.dart';
 
 class ProfileApiService {
@@ -21,10 +22,24 @@ class ProfileApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
+  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
+  // message to show, or passes it through unchanged if it's not one this file knows about yet.
+  String? _extractError(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic> && decoded['error'] is String) {
+        return describeErrorCode(decoded['error'] as String);
+      }
+    } catch (_) {
+      // fall through
+    }
+    return null;
+  }
+
   Future<ProfileApiModel> fetchProfile() async {
     final res = await _client.get(Uri.parse('$baseUrl/me'), headers: await _authHeaders());
     if (res.statusCode != 200) {
-      throw Exception('fetchProfile failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchProfile failed: ${res.statusCode}');
     }
     return ProfileApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
@@ -35,7 +50,7 @@ class ProfileApiService {
   Future<ProfileApiModel> fetchPublicProfile(String userId) async {
     final res = await _client.get(Uri.parse('$baseUrl/users/$userId'), headers: await _authHeaders());
     if (res.statusCode != 200) {
-      throw Exception('fetchPublicProfile failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchPublicProfile failed: ${res.statusCode}');
     }
     return ProfileApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
@@ -68,7 +83,7 @@ class ProfileApiService {
       body: jsonEncode(body),
     );
     if (res.statusCode != 200) {
-      throw Exception('updateProfile failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'updateProfile failed: ${res.statusCode}');
     }
     return ProfileApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
@@ -81,7 +96,7 @@ class ProfileApiService {
   Future<ProfileApiModel> removeAvatar() async {
     final res = await _client.delete(Uri.parse('$baseUrl/me/avatar'), headers: await _authHeaders());
     if (res.statusCode != 200) {
-      throw Exception('removeAvatar failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'removeAvatar failed: ${res.statusCode}');
     }
     return ProfileApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
@@ -96,21 +111,21 @@ class ProfileApiService {
   Future<void> blockUser(String userId) async {
     final res = await _client.post(Uri.parse('$baseUrl/users/$userId/block'), headers: await _authHeaders());
     if (res.statusCode != 204) {
-      throw Exception('blockUser failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'blockUser failed: ${res.statusCode}');
     }
   }
 
   Future<void> unblockUser(String userId) async {
     final res = await _client.delete(Uri.parse('$baseUrl/users/$userId/block'), headers: await _authHeaders());
     if (res.statusCode != 204) {
-      throw Exception('unblockUser failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'unblockUser failed: ${res.statusCode}');
     }
   }
 
   Future<List<String>> fetchBlockedUserIds() async {
     final res = await _client.get(Uri.parse('$baseUrl/users/blocked'), headers: await _authHeaders());
     if (res.statusCode != 200) {
-      throw Exception('fetchBlockedUserIds failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchBlockedUserIds failed: ${res.statusCode}');
     }
     return (jsonDecode(res.body) as List<dynamic>).cast<String>();
   }

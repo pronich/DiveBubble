@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/dive_center_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'error_codes.dart';
 
 /// app/'s trimmed counterpart to admin/'s DiveCenterApiService — divers only ever need to
 /// *view* a dive center's public profile (organizer attribution on a business trip), never
@@ -23,10 +24,24 @@ class DiveCenterApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
+  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
+  // message to show, or passes it through unchanged if it's not one this file knows about yet.
+  String? _extractError(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic> && decoded['error'] is String) {
+        return describeErrorCode(decoded['error'] as String);
+      }
+    } catch (_) {
+      // fall through
+    }
+    return null;
+  }
+
   Future<DiveCenterApiModel> fetchById(String id) async {
     final res = await _client.get(Uri.parse('$baseUrl/dive-centers/$id'), headers: await _authHeaders());
     if (res.statusCode != 200) {
-      throw Exception('fetchById failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchById failed: ${res.statusCode}');
     }
     return DiveCenterApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
@@ -37,7 +52,7 @@ class DiveCenterApiService {
   Future<bool> fetchIsMember(String id) async {
     final res = await _client.get(Uri.parse('$baseUrl/dive-centers/$id/membership'), headers: await _authHeaders());
     if (res.statusCode != 200) {
-      throw Exception('fetchIsMember failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchIsMember failed: ${res.statusCode}');
     }
     final json = jsonDecode(res.body) as Map<String, dynamic>;
     return json['isMember'] as bool;
