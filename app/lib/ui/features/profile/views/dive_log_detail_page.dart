@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/dive_log_entry.dart';
@@ -215,7 +217,7 @@ class _ShareToBubbleSheetState extends State<_ShareToBubbleSheet> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString();
+        _error = friendlyError(e);
         _isLoading = false;
       });
     }

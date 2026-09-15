@@ -8,6 +8,7 @@ import 'package:video_compress/video_compress.dart';
 import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
+import '../../../../data/services/error_codes.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/attachment_upload_result.dart';
 import '../../../../domain/entities/chat_attachment.dart';
@@ -92,7 +93,7 @@ class ChatViewModel extends ChangeNotifier {
       }
       await _subscribeToRealtime();
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -238,7 +239,7 @@ class ChatViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyError(e);
     }
   }
 
@@ -247,7 +248,7 @@ class ChatViewModel extends ChangeNotifier {
       await _repository.reportMessage(tripId, messageId, reason, details: details);
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyError(e);
     }
   }
 
@@ -259,7 +260,7 @@ class ChatViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyError(e);
     }
   }
 
@@ -279,7 +280,7 @@ class ChatViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyError(e);
     }
   }
 
@@ -357,7 +358,7 @@ class ChatViewModel extends ChangeNotifier {
       _reconcilePending(sent);
     } catch (e) {
       _messages = _messages.where((m) => m.id != tempId).toList();
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isSending = false;
       notifyListeners();
@@ -481,7 +482,7 @@ class ChatViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString();
+      return friendlyError(e);
     }
   }
 

@@ -1,4 +1,6 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+
+import '../../../../data/services/error_codes.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -124,7 +126,7 @@ class _LoginSheetState extends State<LoginSheet> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
+        _error = friendlyError(e);
         _loading = false;
         _pendingProvider = null;
       });
@@ -158,7 +160,7 @@ class _LoginSheetState extends State<LoginSheet> {
       await widget.authRepository.startEmailLogin(email);
       if (mounted) setState(() => _emailCodeSent = true);
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) setState(() => _error = friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -181,7 +183,7 @@ class _LoginSheetState extends State<LoginSheet> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
+          _error = friendlyError(e);
           _loading = false;
         });
       }

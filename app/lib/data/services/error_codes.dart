@@ -1,3 +1,8 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
+
 // Maps a backend error code (see backend/internal/server/errcodes.go) to a message to show
 // the diver. The backend is being converted to codes one area at a time — an unrecognized
 // code (an area not converted yet, or old-style prose slipping through) is returned as-is
@@ -7,6 +12,21 @@
 // Not yet localized (see the translations plan) — these are the English strings that will
 // become the base .arb entries once that infrastructure lands.
 String describeErrorCode(String code) => _messages[code] ?? code;
+
+// Turns any caught error into text safe to show a diver. A plain Exception thrown by one of
+// our own *_api_service.dart calls already carries a clean message (see describeErrorCode
+// above, and each service's own _extractError) — but that's only ever reached once an HTTP
+// response actually comes back. A request that never gets a response at all (no connection,
+// DNS failure, timeout) throws some other exception type instead (SocketException,
+// http.ClientException, TimeoutException), whose toString() is raw and technical — the
+// Connection-refused wall of text this exists to stop. Anything that isn't our own plain
+// Exception collapses to the same generic message ErrCodeGeneric already uses.
+String friendlyError(Object error) {
+  if (error is SocketException || error is http.ClientException || error is TimeoutException) {
+    return describeErrorCode('generic_error');
+  }
+  return error.toString().replaceFirst('Exception: ', '');
+}
 
 const _messages = <String, String>{
   'generic_error': 'Something went wrong. Please try again.',

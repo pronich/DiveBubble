@@ -104,28 +104,18 @@ class DiveLogApiService {
 
   /// Handles all three accepted formats (UDDF, CSV, a Diving Log 6 SQLite export) — the
   /// backend sniffs the actual bytes to tell them apart, this just uploads whatever file
-  /// the diver picked.
+  /// the diver picked. uploadFile (multipart_upload.dart) already extracts and describes the
+  /// error itself now, so whatever it throws is already a clean, ready-to-show message —
+  /// nothing to unwrap here.
   Future<DiveLogImportResult> importFile(String filePath) async {
     final token = await getAccessToken();
     if (token == null) throw const AuthRequiredException();
-    try {
-      final body = await uploadFile(
-        Uri.parse('$baseUrl/divelog/import'),
-        filePath: filePath,
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      return DiveLogImportResult.fromJson(body);
-    } catch (e) {
-      // uploadFile's own exception message embeds the raw response body after "NNN " —
-      // pull the {"error": "..."} JSON back out of it for a readable message instead of
-      // surfacing the whole "Exception: upload failed: 400 {...}" wrapper string.
-      final message = e.toString();
-      final jsonStart = message.indexOf('{');
-      throw Exception(
-        (jsonStart != -1 ? _extractError(message.substring(jsonStart)) : null) ??
-            'Could not import dive log',
-      );
-    }
+    final body = await uploadFile(
+      Uri.parse('$baseUrl/divelog/import'),
+      filePath: filePath,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    return DiveLogImportResult.fromJson(body);
   }
 
   Future<void> deleteEntry(String id) async {

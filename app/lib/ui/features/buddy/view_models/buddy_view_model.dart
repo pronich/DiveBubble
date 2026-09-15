@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/buddy_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
@@ -60,7 +62,7 @@ class BuddyViewModel extends ChangeNotifier {
     try {
       _requests = await _repository.getRequests(tripId);
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -116,7 +118,7 @@ class BuddyViewModel extends ChangeNotifier {
       _requests = await _repository.getRequests(tripId);
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       return false;
     } finally {
       _isSubmitting = false;
@@ -136,7 +138,7 @@ class BuddyViewModel extends ChangeNotifier {
       _requests = await _repository.getRequests(tripId);
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     } finally {
       _joiningRequestIds.remove(requestId);
       notifyListeners();
@@ -153,7 +155,7 @@ class BuddyViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     }
   }
 
@@ -166,7 +168,7 @@ class BuddyViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     }
   }
 }

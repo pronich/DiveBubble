@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
 
@@ -44,7 +46,7 @@ class _JoinByCodeDialogState extends State<_JoinByCodeDialog> {
       final trip = await widget.tripRepository.joinTripByCode(code);
       if (mounted) Navigator.of(context).pop(trip);
     } catch (e) {
-      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = friendlyError(e));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

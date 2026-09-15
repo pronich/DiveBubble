@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../domain/entities/profile.dart';
 import 'profile_overview_card.dart';
@@ -48,7 +50,7 @@ class _DiverIdCardSheetState extends State<_DiverIdCardSheet> {
       final profile = await widget.profileRepository.getPublicProfile(widget.userId);
       if (mounted) setState(() => _profile = profile);
     } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = friendlyError(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

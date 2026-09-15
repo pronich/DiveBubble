@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/dive_log_repository.dart';
 import '../../../../data/repositories/gear_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
@@ -91,7 +93,7 @@ class ProfileViewModel extends ChangeNotifier {
     } on AuthRequiredException {
       _needsSignIn = true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -117,7 +119,7 @@ class ProfileViewModel extends ChangeNotifier {
       _specialties = [..._specialties, added];
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       return false;
     } finally {
       _isSubmitting = false;
@@ -132,7 +134,7 @@ class ProfileViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       notifyListeners();
       return false;
     }
@@ -145,7 +147,7 @@ class ProfileViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       notifyListeners();
       return false;
     }
@@ -158,7 +160,7 @@ class ProfileViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       notifyListeners();
       return false;
     }
@@ -180,7 +182,7 @@ class ProfileViewModel extends ChangeNotifier {
       );
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       return false;
     } finally {
       _isSubmitting = false;
@@ -196,7 +198,7 @@ class ProfileViewModel extends ChangeNotifier {
       _profile = await _repository.uploadAvatar(filePath);
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       return false;
     } finally {
       _isUploadingPhoto = false;
@@ -212,7 +214,7 @@ class ProfileViewModel extends ChangeNotifier {
       _profile = await _repository.removeAvatar();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       return false;
     } finally {
       _isUploadingPhoto = false;
@@ -228,7 +230,7 @@ class ProfileViewModel extends ChangeNotifier {
       _profile = await _repository.uploadCertificationPhoto(filePath);
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       return false;
     } finally {
       _isUploadingPhoto = false;
@@ -248,7 +250,7 @@ class ProfileViewModel extends ChangeNotifier {
       ];
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       return false;
     } finally {
       _uploadingSpecialtyId = null;
@@ -293,7 +295,7 @@ class ProfileViewModel extends ChangeNotifier {
       if (wasEmpty) _justLoggedFirstEntry = true;
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     } finally {
       _isSubmittingDiveLog = false;
       notifyListeners();
@@ -314,7 +316,7 @@ class ProfileViewModel extends ChangeNotifier {
       if (wasEmpty && result.imported > 0) _justLoggedFirstEntry = true;
       return result;
     } catch (e) {
-      _error = e.toString().replaceFirst('Exception: ', '');
+      _error = friendlyError(e);
       return null;
     } finally {
       _isSubmittingDiveLog = false;
@@ -351,7 +353,7 @@ class ProfileViewModel extends ChangeNotifier {
       ]..sort((a, b) => b.divedAt.compareTo(a.divedAt));
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     } finally {
       _isSubmittingDiveLog = false;
       notifyListeners();
@@ -365,7 +367,7 @@ class ProfileViewModel extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       notifyListeners();
       return false;
     }
@@ -381,7 +383,7 @@ class ProfileViewModel extends ChangeNotifier {
         await _diveLogRepository!.deleteEntry(id);
         deleted.add(id);
       } catch (e) {
-        _error = e.toString();
+        _error = friendlyError(e);
       }
     }
     _diveLog = _diveLog.where((e) => !deleted.contains(e.id)).toList();
@@ -409,7 +411,7 @@ class ProfileViewModel extends ChangeNotifier {
       );
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
       return false;
     } finally {
       _isSubmitting = false;

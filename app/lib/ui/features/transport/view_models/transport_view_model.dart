@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../data/services/error_codes.dart';
+
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
@@ -60,7 +62,7 @@ class TransportViewModel extends ChangeNotifier {
     try {
       _offers = await _repository.getOffers(tripId);
     } catch (e) {
-      _error = e.toString();
+      _error = friendlyError(e);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -118,7 +120,7 @@ class TransportViewModel extends ChangeNotifier {
       _offers = await _repository.getOffers(tripId);
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     } finally {
       _isSubmitting = false;
       notifyListeners();
@@ -137,7 +139,7 @@ class TransportViewModel extends ChangeNotifier {
       _offers = await _repository.getOffers(tripId);
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     } finally {
       _joiningOfferIds.remove(offerId);
       notifyListeners();
@@ -154,7 +156,7 @@ class TransportViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     }
   }
 
@@ -167,7 +169,7 @@ class TransportViewModel extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      return e.toString().replaceFirst('Exception: ', '');
+      return friendlyError(e);
     }
   }
 }
