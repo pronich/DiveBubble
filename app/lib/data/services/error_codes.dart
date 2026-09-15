@@ -61,4 +61,12 @@ const _messages = <String, String>{
   'already_in_buddy_group': "You've already joined a buddy group on this trip.",
   'creator_cannot_leave_buddy_group': 'Dissolve this group instead of leaving it — you created it.',
   'only_creator_can_dissolve_buddy_group': 'Only the creator can dissolve this buddy group.',
+
+  // Message/Chat (backend/internal/server/routes_message.go)
+  'not_participant': "You're not a participant of this trip.",
+  'message_body_or_attachment_required': 'Write a message or attach a file first.',
+  'message_not_found_or_not_yours': "This message can't be deleted.",
+  'invalid_reaction_emoji': "That reaction isn't supported.",
+  'message_not_found': 'This message could not be found.',
+  'invalid_attachment_type': 'That file type is not supported here.',
 };

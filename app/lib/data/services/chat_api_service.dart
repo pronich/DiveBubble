@@ -9,6 +9,7 @@ import '../models/chat_reaction_api_model.dart';
 import '../models/media_item_api_model.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
+import 'error_codes.dart';
 import 'multipart_upload.dart';
 
 class ChatApiService {
@@ -25,13 +26,27 @@ class ChatApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
+  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
+  // message to show, or passes it through unchanged if it's not one this file knows about yet.
+  String? _extractError(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic> && decoded['error'] is String) {
+        return describeErrorCode(decoded['error'] as String);
+      }
+    } catch (_) {
+      // fall through
+    }
+    return null;
+  }
+
   Future<List<ChatMessageApiModel>> fetchMessages(String tripId, {String? offerId, String? buddyRequestId}) async {
     final res = await _client.get(
       Uri.parse('$baseUrl${_messagesPath(tripId, offerId, buddyRequestId)}'),
       headers: await _authHeaders(),
     );
     if (res.statusCode != 200) {
-      throw Exception('fetchMessages failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchMessages failed: ${res.statusCode}');
     }
     final decoded = jsonDecode(res.body) as List<dynamic>;
     return decoded
@@ -50,7 +65,7 @@ class ChatApiService {
   Future<String> fetchRealtimeToken() async {
     final res = await _client.get(Uri.parse('$baseUrl/realtime/token'), headers: await _authHeaders());
     if (res.statusCode != 200) {
-      throw Exception('fetchRealtimeToken failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchRealtimeToken failed: ${res.statusCode}');
     }
     return (jsonDecode(res.body) as Map<String, dynamic>)['token'] as String;
   }
@@ -85,7 +100,7 @@ class ChatApiService {
       }),
     );
     if (res.statusCode != 201) {
-      throw Exception('sendMessage failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'sendMessage failed: ${res.statusCode}');
     }
     return ChatMessageApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
@@ -101,7 +116,7 @@ class ChatApiService {
       headers: await _authHeaders(),
     );
     if (res.statusCode != 200) {
-      throw Exception('deleteMessage failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'deleteMessage failed: ${res.statusCode}');
     }
     return ChatMessageApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
@@ -117,7 +132,7 @@ class ChatApiService {
       body: jsonEncode({'emoji': emoji}),
     );
     if (res.statusCode != 200) {
-      throw Exception('setReaction failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'setReaction failed: ${res.statusCode}');
     }
     return _decodeReactions(res.body);
   }
@@ -128,7 +143,7 @@ class ChatApiService {
       headers: await _authHeaders(),
     );
     if (res.statusCode != 200) {
-      throw Exception('removeReaction failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'removeReaction failed: ${res.statusCode}');
     }
     return _decodeReactions(res.body);
   }
@@ -161,7 +176,7 @@ class ChatApiService {
     final uri = Uri.parse('$baseUrl/trips/$tripId/messages/attachments').replace(queryParameters: query);
     final res = await _client.get(uri, headers: await _authHeaders());
     if (res.statusCode != 200) {
-      throw Exception('fetchAttachments failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchAttachments failed: ${res.statusCode}');
     }
     final decoded = jsonDecode(res.body) as List<dynamic>;
     return decoded.map((e) => MediaItemApiModel.fromJson(e as Map<String, dynamic>)).toList();
@@ -176,7 +191,7 @@ class ChatApiService {
     final uri = Uri.parse('$baseUrl/trips/$tripId/messages/links').replace(queryParameters: query);
     final res = await _client.get(uri, headers: await _authHeaders());
     if (res.statusCode != 200) {
-      throw Exception('fetchLinks failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'fetchLinks failed: ${res.statusCode}');
     }
     final decoded = jsonDecode(res.body) as List<dynamic>;
     return decoded.map((e) => ChatLink.fromJson(e as Map<String, dynamic>)).toList();
@@ -189,7 +204,7 @@ class ChatApiService {
       body: jsonEncode({'reason': reason, 'details': details ?? ''}),
     );
     if (res.statusCode != 201) {
-      throw Exception('reportMessage failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'reportMessage failed: ${res.statusCode}');
     }
   }
 
@@ -211,7 +226,7 @@ class ChatApiService {
       }),
     );
     if (res.statusCode != 204) {
-      throw Exception('submitFeedback failed: ${res.statusCode} ${res.body}');
+      throw Exception(_extractError(res.body) ?? 'submitFeedback failed: ${res.statusCode}');
     }
   }
 }

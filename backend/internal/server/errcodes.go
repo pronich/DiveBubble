@@ -79,3 +79,13 @@ const (
 	ErrCodeCreatorCannotLeaveBuddyGroup     = "creator_cannot_leave_buddy_group"
 	ErrCodeOnlyCreatorCanDissolveBuddyGroup = "only_creator_can_dissolve_buddy_group"
 )
+
+// Message/Chat (routes_message.go)
+const (
+	ErrCodeNotParticipant            = "not_participant"
+	ErrCodeMessageBodyOrAttachment   = "message_body_or_attachment_required"
+	ErrCodeMessageNotFoundOrNotYours = "message_not_found_or_not_yours"
+	ErrCodeInvalidReactionEmoji      = "invalid_reaction_emoji"
+	ErrCodeMessageNotFound           = "message_not_found"
+	ErrCodeInvalidAttachmentType     = "invalid_attachment_type"
+)
