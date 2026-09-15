@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/trip_repository.dart';
+import '../../../../data/services/error_codes.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 
 enum TripRowAction { archive, unarchive, leave, cancel }
@@ -27,36 +29,39 @@ Future<void> showTripRowActionsSheet(
 
   final action = await showModalBottomSheet<TripRowAction>(
     context: context,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined),
-            title: Text(isArchived ? 'Unarchive' : 'Archive'),
-            onTap: () => Navigator.of(
-              context,
-            ).pop(isArchived ? TripRowAction.unarchive : TripRowAction.archive),
-          ),
-          if (canLeaveOrCancel)
-            if (isOrganizer && trip.bookingStatus != 'cancelled')
-              ListTile(
-                leading: Icon(Icons.cancel_outlined, color: Theme.of(context).colorScheme.error),
-                title: Text(
-                  'Cancel trip',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+    builder: (context) {
+      final l10n = AppLocalizations.of(context);
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(isArchived ? Icons.unarchive_outlined : Icons.archive_outlined),
+              title: Text(isArchived ? l10n.unarchive : l10n.archive),
+              onTap: () => Navigator.of(
+                context,
+              ).pop(isArchived ? TripRowAction.unarchive : TripRowAction.archive),
+            ),
+            if (canLeaveOrCancel)
+              if (isOrganizer && trip.bookingStatus != 'cancelled')
+                ListTile(
+                  leading: Icon(Icons.cancel_outlined, color: Theme.of(context).colorScheme.error),
+                  title: Text(
+                    l10n.cancelTrip,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                  onTap: () => Navigator.of(context).pop(TripRowAction.cancel),
+                )
+              else if (!isOrganizer)
+                ListTile(
+                  leading: Icon(Icons.logout, color: Theme.of(context).colorScheme.error),
+                  title: Text(l10n.leave, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  onTap: () => Navigator.of(context).pop(TripRowAction.leave),
                 ),
-                onTap: () => Navigator.of(context).pop(TripRowAction.cancel),
-              )
-            else if (!isOrganizer)
-              ListTile(
-                leading: Icon(Icons.logout, color: Theme.of(context).colorScheme.error),
-                title: Text('Leave', style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                onTap: () => Navigator.of(context).pop(TripRowAction.leave),
-              ),
-        ],
-      ),
-    ),
+          ],
+        ),
+      );
+    },
   );
   if (action == null || !context.mounted) return;
 
@@ -67,8 +72,10 @@ Future<void> showTripRowActionsSheet(
         await onArchiveToggled();
       } catch (e) {
         if (!context.mounted) return;
-        final verb = action == TripRowAction.archive ? 'archive' : 'unarchive';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not $verb: $e')));
+        final message = action == TripRowAction.archive
+            ? AppLocalizations.of(context).couldNotArchive(friendlyError(e))
+            : AppLocalizations.of(context).couldNotUnarchive(friendlyError(e));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       }
     case TripRowAction.leave:
       await _confirmAndLeave(context, tripRepository, trip, onLeftOrCancelled);
@@ -85,20 +92,23 @@ Future<void> _confirmAndLeave(
 ) async {
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Leave this Bubble?'),
-      content: const Text("You'll lose your spot and can rejoin later if there's room."),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-        TextButton(
-          style: AppButtonStyles.ghost.copyWith(
-            foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.error),
+    builder: (context) {
+      final l10n = AppLocalizations.of(context);
+      return AlertDialog(
+        title: Text(l10n.leaveBubbleTitle),
+        content: Text(l10n.leaveBubbleBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.cancel)),
+          TextButton(
+            style: AppButtonStyles.ghost.copyWith(
+              foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.error),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.leave),
           ),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Leave'),
-        ),
-      ],
-    ),
+        ],
+      );
+    },
   );
   if (confirmed != true || !context.mounted) return;
 
@@ -107,7 +117,9 @@ Future<void> _confirmAndLeave(
     onDone();
   } catch (e) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not leave: $e')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).couldNotLeave(friendlyError(e)))));
   }
 }
 
@@ -119,26 +131,26 @@ Future<void> _confirmAndCancel(
 ) async {
   final confirmed = await showDialog<bool>(
     context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Cancel this trip?'),
-      content: const Text(
-        "Every participant keeps the Bubble to see the chat history, but no one — including you — "
-        "can send messages, join, or arrange transport anymore. This can't be undone.",
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Never mind'),
-        ),
-        TextButton(
-          style: AppButtonStyles.ghost.copyWith(
-            foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.error),
+    builder: (context) {
+      final l10n = AppLocalizations.of(context);
+      return AlertDialog(
+        title: Text(l10n.cancelTripTitle),
+        content: Text(l10n.cancelTripBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.neverMind),
           ),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Cancel trip'),
-        ),
-      ],
-    ),
+          TextButton(
+            style: AppButtonStyles.ghost.copyWith(
+              foregroundColor: WidgetStatePropertyAll(Theme.of(context).colorScheme.error),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.cancelTrip),
+          ),
+        ],
+      );
+    },
   );
   if (confirmed != true || !context.mounted) return;
 
@@ -147,6 +159,8 @@ Future<void> _confirmAndCancel(
     onDone();
   } catch (e) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not cancel: $e')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).couldNotCancel(friendlyError(e)))));
   }
 }

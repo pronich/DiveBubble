@@ -3,6 +3,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../../data/services/attachment_cache_service.dart';
+import '../../../../data/services/error_codes.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Full-screen video playback for a chat attachment — pushed from the bubble thumbnail/grid or
 /// the Media tab. Deliberately minimal (no chewie/scrubber-with-thumbnails): a single
@@ -69,7 +71,9 @@ class _AttachmentVideoPreviewPageState extends State<AttachmentVideoPreviewPage>
       await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], sharePositionOrigin: origin));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not share video: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).couldNotShareVideo(friendlyError(e)))));
     } finally {
       if (mounted) setState(() => _sharing = false);
     }
@@ -99,18 +103,18 @@ class _AttachmentVideoPreviewPageState extends State<AttachmentVideoPreviewPage>
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
                 : const Icon(Icons.ios_share),
-            tooltip: 'Share',
+            tooltip: AppLocalizations.of(context).share,
             onPressed: _sharing ? null : _share,
           ),
         ],
       ),
-      body: Center(child: _body()),
+      body: Center(child: _body(context)),
     );
   }
 
-  Widget _body() {
+  Widget _body(BuildContext context) {
     if (_loadError != null) {
-      return const Text('Could not load video', style: TextStyle(color: Colors.white70));
+      return Text(AppLocalizations.of(context).couldNotLoadVideo, style: const TextStyle(color: Colors.white70));
     }
     final controller = _controller;
     if (controller == null) {

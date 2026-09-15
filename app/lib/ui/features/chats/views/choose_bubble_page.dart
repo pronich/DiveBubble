@@ -14,6 +14,7 @@ import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/picked_attachment.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import 'trip_conversation_page.dart';
 import 'trip_row.dart';
@@ -94,17 +95,18 @@ class _ChooseBubblePageState extends State<ChooseBubblePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Share to a Bubble')),
+      appBar: AppBar(title: Text(l10n.shareToABubble)),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-          ? Center(child: Text('Error: $_error'))
+          ? Center(child: Text(l10n.errorWithMessage(_error!)))
           : _trips.isEmpty
-          ? const EmptyStateView(
+          ? EmptyStateView(
               icon: Icons.luggage_outlined,
-              title: 'No Bubbles yet',
-              subtitle: 'Join a trip to get a Bubble you can share into.',
+              title: l10n.noBubblesYet,
+              subtitle: l10n.joinATripToShareInto,
             )
           : Builder(
               builder: (context) {
@@ -120,9 +122,9 @@ class _ChooseBubblePageState extends State<ChooseBubblePage> {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                         child: TextField(
-                          decoration: const InputDecoration(
-                            hintText: 'Search Bubbles',
-                            prefixIcon: Icon(Icons.search),
+                          decoration: InputDecoration(
+                            hintText: l10n.searchBubbles,
+                            prefixIcon: const Icon(Icons.search),
                             isDense: true,
                           ),
                           onChanged: (value) => setState(() => _search = value),
@@ -132,7 +134,7 @@ class _ChooseBubblePageState extends State<ChooseBubblePage> {
                       child: trips.isEmpty
                           ? Center(
                               child: Text(
-                                'No matches.',
+                                l10n.noMatches,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),

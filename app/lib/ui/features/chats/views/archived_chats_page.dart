@@ -11,6 +11,7 @@ import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import '../view_models/archived_trips_view_model.dart';
@@ -70,23 +71,24 @@ class _ArchivedChatsPageState extends State<ArchivedChatsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Archived Chats')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).archivedChats)),
       body: ListenableBuilder(
         listenable: _viewModel,
         builder: (context, _) {
+          final l10n = AppLocalizations.of(context);
           if (_viewModel.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
           final error = _viewModel.error;
           if (error != null) {
-            return Center(child: Text('Error: $error'));
+            return Center(child: Text(l10n.errorWithMessage(error)));
           }
           final trips = _viewModel.trips;
           if (trips.isEmpty) {
-            return const EmptyStateView(
+            return EmptyStateView(
               icon: Icons.archive_outlined,
-              title: 'No archived chats',
-              subtitle: 'Bubbles you archive show up here — swipe or unarchive to bring one back.',
+              title: l10n.noArchivedChats,
+              subtitle: l10n.archivedChatsEmptyBody,
             );
           }
 

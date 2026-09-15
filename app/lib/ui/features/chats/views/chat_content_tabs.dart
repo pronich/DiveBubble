@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/chat_link.dart';
 import '../../../../domain/entities/media_item.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/cached_attachment_image.dart';
 import '../../../core/widgets/open_attachment.dart';
@@ -28,11 +29,11 @@ class MediaTab extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return Center(child: Text('Could not load media: ${snapshot.error}'));
+          return Center(child: Text(AppLocalizations.of(context).couldNotLoadMedia('${snapshot.error}')));
         }
         final items = snapshot.data ?? const [];
         if (items.isEmpty) {
-          return const Center(child: Text('No photos or videos shared yet'));
+          return Center(child: Text(AppLocalizations.of(context).noPhotosOrVideosSharedYet));
         }
         return GridView.builder(
           padding: const EdgeInsets.all(4),
@@ -85,11 +86,11 @@ class FilesTab extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return Center(child: Text('Could not load files: ${snapshot.error}'));
+          return Center(child: Text(AppLocalizations.of(context).couldNotLoadFiles('${snapshot.error}')));
         }
         final items = snapshot.data ?? const [];
         if (items.isEmpty) {
-          return const Center(child: Text('No files shared yet'));
+          return Center(child: Text(AppLocalizations.of(context).noFilesSharedYet));
         }
         return ListView.separated(
           // Explicit, even though zero — ListView auto-inserts MediaQuery.padding (status bar
@@ -105,7 +106,11 @@ class FilesTab extends StatelessWidget {
             final sizeLabel = formatAttachmentFileSize(item.attachment.sizeBytes);
             return ListTile(
               leading: const Icon(Icons.picture_as_pdf_outlined),
-              title: Text(item.attachment.filename ?? 'Document.pdf', maxLines: 1, overflow: TextOverflow.ellipsis),
+              title: Text(
+                item.attachment.filename ?? AppLocalizations.of(context).documentFallbackName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               subtitle: Text([?sizeLabel, formatChatDateSeparator(item.createdAt.toLocal())].join(' · ')),
               onTap: () => openAttachmentInApp(context, item.attachment.url!),
             );
@@ -130,11 +135,11 @@ class LinksTab extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return Center(child: Text('Could not load links: ${snapshot.error}'));
+          return Center(child: Text(AppLocalizations.of(context).couldNotLoadLinks('${snapshot.error}')));
         }
         final items = snapshot.data ?? const [];
         if (items.isEmpty) {
-          return const Center(child: Text('No links shared yet'));
+          return Center(child: Text(AppLocalizations.of(context).noLinksSharedYet));
         }
         return ListView.separated(
           // See FilesTab's own comment — same fix, same reason (ListView auto-inserts

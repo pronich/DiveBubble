@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/trip.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/semantic_colors.dart';
@@ -218,15 +219,15 @@ class _StatusPill extends StatelessWidget {
     final Color foreground;
     // Cancelled outranks Active/Past — same priority call as Trip Page's status pill.
     if (isCancelled) {
-      label = 'Cancelled';
+      label = AppLocalizations.of(context).cancelledStatus;
       background = theme.colorScheme.surfaceContainerHighest;
       foreground = theme.colorScheme.onSurfaceVariant;
     } else if (isPast) {
-      label = 'Past';
+      label = AppLocalizations.of(context).pastStatus;
       background = semantic.neutralContainer;
       foreground = semantic.onNeutralContainer;
     } else {
-      label = 'Active';
+      label = AppLocalizations.of(context).activeStatus;
       background = semantic.infoContainer;
       foreground = semantic.onInfoContainer;
     }
