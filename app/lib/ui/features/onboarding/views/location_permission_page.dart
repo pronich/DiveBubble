@@ -8,9 +8,12 @@ import '../../profile/views/edit_profile_page.dart';
 import 'push_permission_page.dart';
 
 /// Explains why DiveBubble wants location before the OS permission dialog appears, rather
-/// than firing it silently later. Shown by [LoginSheet] only when the device hasn't decided
-/// this permission yet — for a brand-new account or a reinstall/new-device returning diver
-/// alike, never unconditionally.
+/// than firing it silently later.
+///
+/// Unwired as of the B2C pivot (2026-09-15) — its "show nearby trips" pitch was Explore's,
+/// which is no longer reachable. [LoginSheet] no longer pushes this; [EditProfilePage]'s own
+/// auto-detect-on-first-open is now the only place location is ever requested. Left in place
+/// (not deleted) in case a location-driven feature returns and this is worth reactivating.
 class LocationPermissionPage extends StatefulWidget {
   const LocationPermissionPage({
     super.key,
@@ -43,7 +46,6 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
           builder: (_) => PushPermissionPage(
             profileRepository: widget.profileRepository,
             pushRepository: widget.pushRepository,
-            initialLocation: resolvedLocation,
             isNewUser: widget.isNewUser,
           ),
         ),

@@ -51,11 +51,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void initState() {
     super.initState();
     // Best-effort auto-fill on first open, for anyone who never set a location — never
-    // overwrites a value the diver already typed. Skipped when isOnboarding: the new-account
-    // flow already ran this exact request (with its own explanation) a screen earlier via
-    // LocationPermissionPage; re-running it here would silently re-prompt even after the
-    // diver explicitly tapped "Not now" there, undoing the point of asking first.
-    if (_locationController.text.isEmpty && !widget.isOnboarding) {
+    // overwrites a value the diver already typed. This is the only place location is ever
+    // requested now (no separate onboarding "why we want location" screen — see
+    // LocationPermissionPage, unwired but kept for easy reactivation), so it runs during
+    // onboarding too; the manual "detect" button below covers anyone who dismissed the OS
+    // prompt and wants to try again.
+    if (_locationController.text.isEmpty) {
       _detectLocation();
     }
   }
