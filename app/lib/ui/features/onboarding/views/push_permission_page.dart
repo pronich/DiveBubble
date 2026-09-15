@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../profile/view_models/profile_view_model.dart';
 import '../../profile/views/edit_profile_page.dart';
 
@@ -89,6 +90,7 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -99,11 +101,10 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
               const Spacer(),
               Icon(Icons.notifications_none, size: 56, color: theme.colorScheme.primary),
               const SizedBox(height: 24),
-              Text('Stay in the loop', style: theme.textTheme.headlineSmall, textAlign: TextAlign.center),
+              Text(l10n.stayInTheLoop, style: theme.textTheme.headlineSmall, textAlign: TextAlign.center),
               const SizedBox(height: 12),
               Text(
-                "Get notified about new messages, trip changes, and who's joining your rides. "
-                'You can turn this off anytime in Profile settings.',
+                l10n.pushPermissionBody,
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
@@ -112,12 +113,12 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
                 onPressed: _requesting ? null : _enableNotifications,
                 child: _requesting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Continue'),
+                    : Text(l10n.continueLabel),
               ),
               const SizedBox(height: 8),
               // Stays tappable even mid-request — push permission must stay optional and
               // never block onboarding (see App Store Guideline 4.5.4 rejection).
-              TextButton(onPressed: _finish, child: const Text('Not now')),
+              TextButton(onPressed: _finish, child: Text(l10n.notNow)),
               const SizedBox(height: 24),
             ],
           ),

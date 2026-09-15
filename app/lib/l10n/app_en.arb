@@ -3,5 +3,123 @@
   "appTitle": "DiveBubble",
   "@appTitle": {
     "description": "The application's name, shown as the OS task-switcher/home-screen label. Not user-visible in-app UI — kept here mainly to prove the gen-l10n pipeline end to end before the real string-extraction pass (see the translations plan)."
+  },
+
+  "introSubtitle": "Find dive trips, meet your buddies, and plan the logistics together.",
+  "@introSubtitle": {
+    "description": "Subtitle under the DiveBubble wordmark on the animated first-run intro screen."
+  },
+  "diveIn": "Dive in",
+  "@diveIn": {
+    "description": "Primary CTA button that opens the sign-in sheet — used on the intro screen and the guest Profile tab."
+  },
+  "skipForNow": "Skip for now",
+  "@skipForNow": {
+    "description": "Secondary button to skip an optional onboarding step (intro screen, certifications onboarding)."
+  },
+  "signIn": "Sign in",
+  "@signIn": {
+    "description": "Title of the sign-in bottom sheet."
+  },
+  "enterYourEmail": "Enter your email",
+  "@enterYourEmail": {
+    "description": "Validation error shown when the diver taps 'Send code' with an empty email field."
+  },
+  "enterCodeSentToYou": "Enter the code we sent you",
+  "@enterCodeSentToYou": {
+    "description": "Validation error shown when the diver taps 'Verify' with an empty code field."
+  },
+  "continueWithGoogle": "Continue with Google",
+  "@continueWithGoogle": {
+    "description": "Sign-in button."
+  },
+  "continueWithApple": "Continue with Apple",
+  "@continueWithApple": {
+    "description": "Sign-in button, iOS only."
+  },
+  "continueWithEmail": "Continue with email",
+  "@continueWithEmail": {
+    "description": "Sign-in button that reveals the email/OTP form."
+  },
+  "enterCodeSentTo": "Enter the code we sent to {email}",
+  "@enterCodeSentTo": {
+    "description": "Prompt shown above the OTP code field, naming the address the code was sent to.",
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  },
+  "verify": "Verify",
+  "@verify": {
+    "description": "Button that submits the email OTP code."
+  },
+  "useADifferentEmail": "Use a different email",
+  "@useADifferentEmail": {
+    "description": "Button that backs out of the OTP-code step to re-enter the email address."
+  },
+  "email": "Email",
+  "@email": {
+    "description": "Label of the email text field in the sign-in sheet."
+  },
+  "sendCode": "Send code",
+  "@sendCode": {
+    "description": "Button that requests an email OTP code."
+  },
+  "useADifferentSignInMethod": "Use a different sign-in method",
+  "@useADifferentSignInMethod": {
+    "description": "Button that backs out of the email form to the Google/Apple/email choice."
+  },
+  "stayInTheLoop": "Stay in the loop",
+  "@stayInTheLoop": {
+    "description": "Headline on the push-notification permission onboarding screen."
+  },
+  "pushPermissionBody": "Get notified about new messages, trip changes, and who's joining your rides. You can turn this off anytime in Profile settings.",
+  "@pushPermissionBody": {
+    "description": "Body copy on the push-notification permission onboarding screen."
+  },
+  "continueLabel": "Continue",
+  "@continueLabel": {
+    "description": "Generic 'Continue' button, e.g. on the push-permission onboarding screen."
+  },
+  "notNow": "Not now",
+  "@notNow": {
+    "description": "Button to decline an optional permission request during onboarding (push notifications)."
+  },
+  "addYourCertifications": "Add your certifications",
+  "@addYourCertifications": {
+    "description": "Headline on the certifications onboarding screen."
+  },
+  "certificationsOnboardingBody": "Your level shows other divers you're ready for a trip, and some trips require a minimum level to join. You can add or change this anytime from your profile.",
+  "@certificationsOnboardingBody": {
+    "description": "Body copy on the certifications onboarding screen."
+  },
+  "level": "Level",
+  "@level": {
+    "description": "Label of the certification level dropdown."
+  },
+  "pleaseSelectALevel": "Please select a level",
+  "@pleaseSelectALevel": {
+    "description": "Validation error shown when saving certifications without picking a level."
+  },
+  "selectLevel": "Select level",
+  "@selectLevel": {
+    "description": "Placeholder hint text in the certification level dropdown."
+  },
+  "agencyOptional": "Agency (optional)",
+  "@agencyOptional": {
+    "description": "Label of the certification agency dropdown."
+  },
+  "notSet": "Not set",
+  "@notSet": {
+    "description": "Placeholder value meaning no certification agency was chosen."
+  },
+  "certificationNumberOptional": "Certification number (optional)",
+  "@certificationNumberOptional": {
+    "description": "Label of the certification number text field."
+  },
+  "saveAndContinue": "Save and continue",
+  "@saveAndContinue": {
+    "description": "Button that saves the certifications onboarding step."
   }
 }
