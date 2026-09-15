@@ -136,9 +136,15 @@ class _StatTile extends StatelessWidget {
       children: [
         Text(value, style: theme.textTheme.titleMedium),
         const SizedBox(height: 2),
-        Text(
-          label,
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        // A longer translated label (e.g. Russian "Продолжительность") can outgrow this
+        // tile's third-of-a-row width — shrink to fit on one line instead of wrapping.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
         ),
       ],
     );

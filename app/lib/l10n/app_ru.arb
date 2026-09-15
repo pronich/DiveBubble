@@ -2,7 +2,7 @@
   "@@locale": "ru",
   "appTitle": "DiveBubble",
   "introSubtitle": "Находите дайв-трипы, знакомьтесь с бадди и планируйте логистику вместе.",
-  "diveIn": "Погрузиться",
+  "diveIn": "Погнали",
   "skipForNow": "Пропустить",
   "signIn": "Войти",
   "enterYourEmail": "Введите вашу почту",
@@ -105,7 +105,7 @@
   "joinATripToShareInto": "Присоединитесь к трипу, чтобы получить Bubble, в который можно поделиться.",
 
   "bubblesTabTitle": "Bubbles",
-  "diveLogTabTitle": "Дневник",
+  "diveLogTabTitle": "Дайвлог",
   "profileTabTitle": "Профиль",
   "signInToSeeYourTrips": "Войдите, чтобы увидеть свои трипы",
   "logInToViewTripsBody": "Войдите, чтобы увидеть трипы, к которым вы присоединились, и их групповые чаты.",

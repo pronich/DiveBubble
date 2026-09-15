@@ -16,7 +16,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'Находите дайв-трипы, знакомьтесь с бадди и планируйте логистику вместе.';
 
   @override
-  String get diveIn => 'Погрузиться';
+  String get diveIn => 'Погнали';
 
   @override
   String get skipForNow => 'Пропустить';
@@ -346,7 +346,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get bubblesTabTitle => 'Bubbles';
 
   @override
-  String get diveLogTabTitle => 'Дневник';
+  String get diveLogTabTitle => 'Дайвлог';
 
   @override
   String get profileTabTitle => 'Профиль';
