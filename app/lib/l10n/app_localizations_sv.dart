@@ -449,4 +449,119 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String get archivedChatsEmptyBody =>
       'Bubbles du arkiverar visas här — svep eller återställ för att få tillbaka en.';
+
+  @override
+  String get typeOfferRide => 'Erbjuder skjuts';
+
+  @override
+  String get typeShareRental => 'Delar en hyrbil';
+
+  @override
+  String get carCancelledByOrganizer =>
+      'Den här bilen ställdes in av arrangören.';
+
+  @override
+  String get noTransportWasArranged => 'Ingen transport ordnades';
+
+  @override
+  String get beFirstToShareTransport => 'Bli först med att dela transport';
+
+  @override
+  String get tripCancelledSimple => 'Den här resan har ställts in.';
+
+  @override
+  String get offerRideOrShareRental =>
+      'Erbjud skjuts eller dela en hyrbil så att andra kan haka på.';
+
+  @override
+  String get addTransportInfo => 'Lägg till transport';
+
+  @override
+  String seatsTakenLabel(int joined, int total) {
+    return '$joined av $total platser upptagna';
+  }
+
+  @override
+  String get joinedStatus => 'Med';
+
+  @override
+  String get fullStatus => 'Fullt';
+
+  @override
+  String get organizerLabel => 'Arrangör';
+
+  @override
+  String get organizerYou => 'Arrangör · Du';
+
+  @override
+  String get joinedDivers => 'Anslutna dykare';
+
+  @override
+  String get noOneHasJoinedYet => 'Ingen har anslutit sig än';
+
+  @override
+  String get cancelCarOffer => 'Ställ in bil';
+
+  @override
+  String get leaveCar => 'Lämna bilen';
+
+  @override
+  String get join => 'Gå med';
+
+  @override
+  String get seatsOptional => 'Platser (valfritt)';
+
+  @override
+  String get detailsTimePickupOptional =>
+      'Detaljer — tid, upphämtningsplats (valfritt)';
+
+  @override
+  String get add => 'Lägg till';
+
+  @override
+  String get buddyGroupCancelledByOrganizer =>
+      'Den här buddygruppen ställdes in av arrangören.';
+
+  @override
+  String get noBuddyRequestsWereMade => 'Inga buddyförfrågningar gjordes';
+
+  @override
+  String get beFirstToLookForBuddy => 'Bli först med att leta efter en buddy';
+
+  @override
+  String get requestBuddySoOthersCanJoin =>
+      'Efterlys en buddy så att andra kan följa med dig på det här dyket.';
+
+  @override
+  String get requestABuddy => 'Hitta buddy';
+
+  @override
+  String get buddyRequestTitle => 'Buddyförfrågan';
+
+  @override
+  String divesCountLabel(int count) {
+    return '$count dyk';
+  }
+
+  @override
+  String get creatorLabel => 'Skapare';
+
+  @override
+  String get creatorYou => 'Skapare · Du';
+
+  @override
+  String get groupLabel => 'Grupp';
+
+  @override
+  String get cancelBuddyRequest => 'Ställ in förfrågan';
+
+  @override
+  String get leaveBuddyGroup => 'Lämna gruppen';
+
+  @override
+  String get otherDiversWillSeeRequest =>
+      'Andra dykare på den här resan ser din förfrågan och kan ansluta sig.';
+
+  @override
+  String get request => 'Skicka';
 }

@@ -447,4 +447,119 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get archivedChatsEmptyBody =>
       'Bubbles you archive show up here — swipe or unarchive to bring one back.';
+
+  @override
+  String get typeOfferRide => 'Offering a ride';
+
+  @override
+  String get typeShareRental => 'Sharing a rental';
+
+  @override
+  String get carCancelledByOrganizer =>
+      'This car was cancelled by the organizer.';
+
+  @override
+  String get noTransportWasArranged => 'No transport was arranged';
+
+  @override
+  String get beFirstToShareTransport => 'Be the first to share transport';
+
+  @override
+  String get tripCancelledSimple => 'This trip has been cancelled.';
+
+  @override
+  String get offerRideOrShareRental =>
+      'Offer a ride or share a rental so others can join you.';
+
+  @override
+  String get addTransportInfo => 'Add transport info';
+
+  @override
+  String seatsTakenLabel(int joined, int total) {
+    return '$joined of $total seats taken';
+  }
+
+  @override
+  String get joinedStatus => 'Joined';
+
+  @override
+  String get fullStatus => 'Full';
+
+  @override
+  String get organizerLabel => 'Organizer';
+
+  @override
+  String get organizerYou => 'Organizer · You';
+
+  @override
+  String get joinedDivers => 'Joined divers';
+
+  @override
+  String get noOneHasJoinedYet => 'No one has joined yet';
+
+  @override
+  String get cancelCarOffer => 'Cancel car offer';
+
+  @override
+  String get leaveCar => 'Leave car';
+
+  @override
+  String get join => 'Join';
+
+  @override
+  String get seatsOptional => 'Seats (optional)';
+
+  @override
+  String get detailsTimePickupOptional =>
+      'Details — time, pickup point (optional)';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String get buddyGroupCancelledByOrganizer =>
+      'This buddy group was cancelled by the organizer.';
+
+  @override
+  String get noBuddyRequestsWereMade => 'No buddy requests were made';
+
+  @override
+  String get beFirstToLookForBuddy => 'Be the first to look for a buddy';
+
+  @override
+  String get requestBuddySoOthersCanJoin =>
+      'Request a buddy so others can join you for this dive.';
+
+  @override
+  String get requestABuddy => 'Request a buddy';
+
+  @override
+  String get buddyRequestTitle => 'Buddy request';
+
+  @override
+  String divesCountLabel(int count) {
+    return '$count dives';
+  }
+
+  @override
+  String get creatorLabel => 'Creator';
+
+  @override
+  String get creatorYou => 'Creator · You';
+
+  @override
+  String get groupLabel => 'Group';
+
+  @override
+  String get cancelBuddyRequest => 'Cancel buddy request';
+
+  @override
+  String get leaveBuddyGroup => 'Leave buddy group';
+
+  @override
+  String get otherDiversWillSeeRequest =>
+      'Other divers on this trip will see your request and can join you.';
+
+  @override
+  String get request => 'Request';
 }

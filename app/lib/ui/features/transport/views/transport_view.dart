@@ -7,6 +7,7 @@ import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/transport_offer.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
@@ -15,14 +16,19 @@ import '../../chats/views/chat_view.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../view_models/transport_view_model.dart';
 
-const _typeLabels = {
-  'offer_ride': 'Offering a ride',
-  'share_rental': 'Sharing a rental',
-};
+// Canonical backend values — never translated. Only the displayed label goes through
+// _typeLabel below.
+const _transportTypes = ['offer_ride', 'share_rental'];
 
 const _typeIcons = {
   'offer_ride': Icons.directions_car,
   'share_rental': Icons.car_rental,
+};
+
+String _typeLabel(AppLocalizations l10n, String type) => switch (type) {
+  'offer_ride' => l10n.typeOfferRide,
+  'share_rental' => l10n.typeShareRental,
+  _ => type,
 };
 
 class TransportView extends StatefulWidget {
@@ -104,8 +110,8 @@ class _TransportViewState extends State<TransportView>
     widget.viewModel.load();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This car was cancelled by the organizer.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).carCancelledByOrganizer),
         ),
       );
     }
@@ -117,6 +123,7 @@ class _TransportViewState extends State<TransportView>
     return ListenableBuilder(
       listenable: widget.viewModel,
       builder: (context, _) {
+        final l10n = AppLocalizations.of(context);
         // Only the very first load (no offers cached yet) shows the full-screen spinner — a
         // background refresh while a car chat is already open must NOT swap it out for a
         // spinner: that would unmount the live ChatView (disposing its ChatViewModel) without
@@ -129,7 +136,7 @@ class _TransportViewState extends State<TransportView>
 
         final error = widget.viewModel.error;
         if (error != null) {
-          return Scaffold(body: Center(child: Text('Error: $error')));
+          return Scaffold(body: Center(child: Text(l10n.errorWithMessage(error))));
         }
 
         final myOffer = widget.viewModel.myOffer;
@@ -159,12 +166,12 @@ class _TransportViewState extends State<TransportView>
               ? EmptyStateView(
                   icon: Icons.directions_car_outlined,
                   title: widget.isCancelled
-                      ? 'No transport was arranged'
-                      : 'Be the first to share transport',
+                      ? l10n.noTransportWasArranged
+                      : l10n.beFirstToShareTransport,
                   subtitle: widget.isCancelled
-                      ? 'This trip has been cancelled.'
-                      : 'Offer a ride or share a rental so others can join you.',
-                  ctaLabel: widget.isCancelled ? null : 'Add transport info',
+                      ? l10n.tripCancelledSimple
+                      : l10n.offerRideOrShareRental,
+                  ctaLabel: widget.isCancelled ? null : l10n.addTransportInfo,
                   onCtaPressed: widget.isCancelled
                       ? null
                       : () => _openAddSheet(context),
@@ -240,6 +247,7 @@ class _OfferTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isFull = offer.seats != null && offer.joinedCount >= offer.seats!;
 
     return InkWell(
@@ -264,7 +272,7 @@ class _OfferTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _typeLabels[offer.type] ?? offer.type,
+                    _typeLabel(l10n, offer.type),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -272,7 +280,7 @@ class _OfferTile extends StatelessWidget {
                   if (offer.seats != null) ...[
                     const SizedBox(height: 2),
                     Text(
-                      '${offer.joinedCount} of ${offer.seats} seats taken',
+                      l10n.seatsTakenLabel(offer.joinedCount, offer.seats!),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -292,10 +300,10 @@ class _OfferTile extends StatelessWidget {
             ),
             if (offer.joined) ...[
               const SizedBox(width: 12),
-              const _StatusPill(label: 'Joined', kind: _StatusKind.success),
+              _StatusPill(label: l10n.joinedStatus, kind: _StatusKind.success),
             ] else if (isFull) ...[
               const SizedBox(width: 12),
-              const _StatusPill(label: 'Full', kind: _StatusKind.info),
+              _StatusPill(label: l10n.fullStatus, kind: _StatusKind.info),
             ],
           ],
         ),
@@ -415,6 +423,7 @@ class _TransportOfferDetailSheetState
         child: ListenableBuilder(
           listenable: widget.viewModel,
           builder: (context, _) {
+            final l10n = AppLocalizations.of(context);
             final offer = _offer;
             if (offer == null) {
               // Gone (dissolved, or we just left it) while this sheet was open — close it
@@ -443,17 +452,17 @@ class _TransportOfferDetailSheetState
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        _typeLabels[offer.type] ?? offer.type,
+                        _typeLabel(l10n, offer.type),
                         style: theme.textTheme.titleMedium,
                       ),
                     ),
                     if (offer.joined)
-                      const _StatusPill(
-                        label: 'Joined',
+                      _StatusPill(
+                        label: l10n.joinedStatus,
                         kind: _StatusKind.success,
                       )
                     else if (isFull)
-                      const _StatusPill(label: 'Full', kind: _StatusKind.info),
+                      _StatusPill(label: l10n.fullStatus, kind: _StatusKind.info),
                   ],
                 ),
                 if (offer.details != null) ...[
@@ -467,7 +476,7 @@ class _TransportOfferDetailSheetState
                     final baseOrganizerName =
                         (organizerProfile?.displayName?.isNotEmpty ?? false)
                         ? organizerProfile!.displayName!
-                        : 'Organizer';
+                        : l10n.organizerLabel;
                     final organizerName =
                         (offer.isDiveCenterStaff &&
                             (widget.businessName?.isNotEmpty ?? false))
@@ -507,7 +516,7 @@ class _TransportOfferDetailSheetState
                                 ),
                               ),
                               Text(
-                                isOrganizer ? 'Organizer · You' : 'Organizer',
+                                isOrganizer ? l10n.organizerYou : l10n.organizerLabel,
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
@@ -520,18 +529,18 @@ class _TransportOfferDetailSheetState
                   },
                 ),
                 const SizedBox(height: 16),
-                Text('Joined divers', style: theme.textTheme.labelLarge),
+                Text(l10n.joinedDivers, style: theme.textTheme.labelLarge),
                 const SizedBox(height: 8),
                 if (_error != null)
                   Text(
-                    'Error: $_error',
+                    l10n.errorWithMessage(_error!),
                     style: TextStyle(color: theme.colorScheme.error),
                   )
                 else if (_joinedUserIds == null)
                   const Center(child: CircularProgressIndicator())
                 else if (_joinedUserIds!.isEmpty)
                   Text(
-                    'No one has joined yet',
+                    l10n.noOneHasJoinedYet,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -543,7 +552,7 @@ class _TransportOfferDetailSheetState
                     final name =
                         (diverProfile?.displayName?.isNotEmpty ?? false)
                         ? diverProfile!.displayName!
-                        : (isMe ? 'You' : 'Diver');
+                        : (isMe ? l10n.you : l10n.diver);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: InkWell(
@@ -619,7 +628,7 @@ class _TransportOfferDetailSheetState
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Text(
-                              isOrganizer ? 'Cancel car offer' : 'Leave car',
+                              isOrganizer ? l10n.cancelCarOffer : l10n.leaveCar,
                             ),
                     ),
                   ),
@@ -732,7 +741,7 @@ class _JoinButton extends StatelessWidget {
               height: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Text('Join'),
+          : Text(AppLocalizations.of(context).join),
     );
   }
 }
@@ -763,6 +772,7 @@ class _AddTransportOfferSheetState extends State<_AddTransportOfferSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -776,33 +786,33 @@ class _AddTransportOfferSheetState extends State<_AddTransportOfferSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Add transport info',
+              l10n.addTransportInfo,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _typeLabels.entries.map((entry) {
+              children: _transportTypes.map((type) {
                 return ChoiceChip(
-                  label: Text(entry.value),
-                  selected: _type == entry.key,
-                  onSelected: (_) => setState(() => _type = entry.key),
+                  label: Text(_typeLabel(l10n, type)),
+                  selected: _type == type,
+                  onSelected: (_) => setState(() => _type = type),
                 );
               }).toList(),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _seatsController,
-              decoration: const InputDecoration(labelText: 'Seats (optional)'),
+              decoration: InputDecoration(labelText: l10n.seatsOptional),
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _detailsController,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Details — time, pickup point (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.detailsTimePickupOptional,
               ),
               maxLines: 2,
             ),
@@ -821,7 +831,7 @@ class _AddTransportOfferSheetState extends State<_AddTransportOfferSheet> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Add'),
+                    : Text(l10n.add),
               ),
             ),
           ],

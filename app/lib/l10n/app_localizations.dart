@@ -885,6 +885,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Bubbles you archive show up here — swipe or unarchive to bring one back.'**
   String get archivedChatsEmptyBody;
+
+  /// Transport offer type label/choice-chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Offering a ride'**
+  String get typeOfferRide;
+
+  /// Transport offer type label/choice-chip.
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing a rental'**
+  String get typeShareRental;
+
+  /// Snackbar shown when the car you were viewing/in gets dissolved by its organizer.
+  ///
+  /// In en, this message translates to:
+  /// **'This car was cancelled by the organizer.'**
+  String get carCancelledByOrganizer;
+
+  /// Empty-state title on the Transport tab of a cancelled trip.
+  ///
+  /// In en, this message translates to:
+  /// **'No transport was arranged'**
+  String get noTransportWasArranged;
+
+  /// Empty-state title on the Transport tab with no offers yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Be the first to share transport'**
+  String get beFirstToShareTransport;
+
+  /// Empty-state subtitle on the Transport/Buddy tabs of a cancelled trip.
+  ///
+  /// In en, this message translates to:
+  /// **'This trip has been cancelled.'**
+  String get tripCancelledSimple;
+
+  /// Empty-state subtitle on the Transport tab with no offers yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Offer a ride or share a rental so others can join you.'**
+  String get offerRideOrShareRental;
+
+  /// CTA button and add-offer sheet title on the Transport tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Add transport info'**
+  String get addTransportInfo;
+
+  /// Shown on a transport offer row when it specifies a seat count.
+  ///
+  /// In en, this message translates to:
+  /// **'{joined} of {total} seats taken'**
+  String seatsTakenLabel(int joined, int total);
+
+  /// Status pill on a transport offer/buddy request row once the diver has joined it.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined'**
+  String get joinedStatus;
+
+  /// Status pill on a transport offer/buddy request row once it has no room left.
+  ///
+  /// In en, this message translates to:
+  /// **'Full'**
+  String get fullStatus;
+
+  /// Fallback name and role label for a transport offer's creator.
+  ///
+  /// In en, this message translates to:
+  /// **'Organizer'**
+  String get organizerLabel;
+
+  /// Role label for a transport offer's creator when it's the current user.
+  ///
+  /// In en, this message translates to:
+  /// **'Organizer · You'**
+  String get organizerYou;
+
+  /// Heading above the list of divers who joined a transport offer.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined divers'**
+  String get joinedDivers;
+
+  /// Empty state under a transport offer's or buddy request's joined-divers list.
+  ///
+  /// In en, this message translates to:
+  /// **'No one has joined yet'**
+  String get noOneHasJoinedYet;
+
+  /// Button an organizer uses to dissolve their own transport offer.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel car offer'**
+  String get cancelCarOffer;
+
+  /// Button a joiner uses to leave a transport offer.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave car'**
+  String get leaveCar;
+
+  /// Short join button on a transport offer/buddy request tile and detail sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Join'**
+  String get join;
+
+  /// Label of the seat-count field when adding a transport offer.
+  ///
+  /// In en, this message translates to:
+  /// **'Seats (optional)'**
+  String get seatsOptional;
+
+  /// Label of the free-text details field when adding a transport offer.
+  ///
+  /// In en, this message translates to:
+  /// **'Details — time, pickup point (optional)'**
+  String get detailsTimePickupOptional;
+
+  /// Submit button when adding a transport offer.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// Snackbar shown when the buddy group you were viewing/in gets dissolved by its organizer.
+  ///
+  /// In en, this message translates to:
+  /// **'This buddy group was cancelled by the organizer.'**
+  String get buddyGroupCancelledByOrganizer;
+
+  /// Empty-state title on the Buddy tab of a cancelled trip.
+  ///
+  /// In en, this message translates to:
+  /// **'No buddy requests were made'**
+  String get noBuddyRequestsWereMade;
+
+  /// Empty-state title on the Buddy tab with no requests yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Be the first to look for a buddy'**
+  String get beFirstToLookForBuddy;
+
+  /// Empty-state subtitle on the Buddy tab with no requests yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Request a buddy so others can join you for this dive.'**
+  String get requestBuddySoOthersCanJoin;
+
+  /// CTA button and add-request sheet title on the Buddy tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Request a buddy'**
+  String get requestABuddy;
+
+  /// Header text on the buddy-request detail sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Buddy request'**
+  String get buddyRequestTitle;
+
+  /// Shown next to a buddy request creator's certification level.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} dives'**
+  String divesCountLabel(int count);
+
+  /// Role label for a buddy request's creator.
+  ///
+  /// In en, this message translates to:
+  /// **'Creator'**
+  String get creatorLabel;
+
+  /// Role label for a buddy request's creator when it's the current user.
+  ///
+  /// In en, this message translates to:
+  /// **'Creator · You'**
+  String get creatorYou;
+
+  /// Heading above the list of divers who joined a buddy request.
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get groupLabel;
+
+  /// Button a creator uses to dissolve their own buddy request.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel buddy request'**
+  String get cancelBuddyRequest;
+
+  /// Button a joiner uses to leave a buddy group.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave buddy group'**
+  String get leaveBuddyGroup;
+
+  /// Body text on the add-buddy-request confirmation sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Other divers on this trip will see your request and can join you.'**
+  String get otherDiversWillSeeRequest;
+
+  /// Submit button when creating a buddy request.
+  ///
+  /// In en, this message translates to:
+  /// **'Request'**
+  String get request;
 }
 
 class _AppLocalizationsDelegate

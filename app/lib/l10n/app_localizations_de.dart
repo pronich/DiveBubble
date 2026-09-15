@@ -451,4 +451,120 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get archivedChatsEmptyBody =>
       'Bubbles, die du archivierst, erscheinen hier — wische oder hole sie aus dem Archiv, um sie zurückzuholen.';
+
+  @override
+  String get typeOfferRide => 'Biete eine Mitfahrgelegenheit an';
+
+  @override
+  String get typeShareRental => 'Teile einen Mietwagen';
+
+  @override
+  String get carCancelledByOrganizer =>
+      'Dieses Auto wurde vom Organisator storniert.';
+
+  @override
+  String get noTransportWasArranged => 'Es wurde kein Transport organisiert';
+
+  @override
+  String get beFirstToShareTransport => 'Sei der Erste, der Transport teilt';
+
+  @override
+  String get tripCancelledSimple => 'Dieser Trip wurde storniert.';
+
+  @override
+  String get offerRideOrShareRental =>
+      'Biete eine Mitfahrgelegenheit an oder teile einen Mietwagen, damit andere sich anschließen können.';
+
+  @override
+  String get addTransportInfo => 'Transport hinzufügen';
+
+  @override
+  String seatsTakenLabel(int joined, int total) {
+    return '$joined von $total Plätzen belegt';
+  }
+
+  @override
+  String get joinedStatus => 'Beigetreten';
+
+  @override
+  String get fullStatus => 'Voll';
+
+  @override
+  String get organizerLabel => 'Organisator';
+
+  @override
+  String get organizerYou => 'Organisator · Du';
+
+  @override
+  String get joinedDivers => 'Beigetretene Taucher';
+
+  @override
+  String get noOneHasJoinedYet => 'Noch niemand beigetreten';
+
+  @override
+  String get cancelCarOffer => 'Auto stornieren';
+
+  @override
+  String get leaveCar => 'Auto verlassen';
+
+  @override
+  String get join => 'Beitreten';
+
+  @override
+  String get seatsOptional => 'Plätze (optional)';
+
+  @override
+  String get detailsTimePickupOptional =>
+      'Details — Uhrzeit, Abholort (optional)';
+
+  @override
+  String get add => 'Hinzufügen';
+
+  @override
+  String get buddyGroupCancelledByOrganizer =>
+      'Diese Buddy-Gruppe wurde vom Organisator storniert.';
+
+  @override
+  String get noBuddyRequestsWereMade =>
+      'Es wurden keine Buddy-Anfragen gestellt';
+
+  @override
+  String get beFirstToLookForBuddy => 'Sei der Erste, der einen Buddy sucht';
+
+  @override
+  String get requestBuddySoOthersCanJoin =>
+      'Suche einen Buddy, damit andere sich dir für diesen Tauchgang anschließen können.';
+
+  @override
+  String get requestABuddy => 'Buddy suchen';
+
+  @override
+  String get buddyRequestTitle => 'Buddy-Anfrage';
+
+  @override
+  String divesCountLabel(int count) {
+    return '$count Tauchgänge';
+  }
+
+  @override
+  String get creatorLabel => 'Ersteller';
+
+  @override
+  String get creatorYou => 'Ersteller · Du';
+
+  @override
+  String get groupLabel => 'Gruppe';
+
+  @override
+  String get cancelBuddyRequest => 'Anfrage stornieren';
+
+  @override
+  String get leaveBuddyGroup => 'Gruppe verlassen';
+
+  @override
+  String get otherDiversWillSeeRequest =>
+      'Andere Taucher auf diesem Trip sehen deine Anfrage und können sich anschließen.';
+
+  @override
+  String get request => 'Senden';
 }

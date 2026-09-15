@@ -7,6 +7,7 @@ import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/buddy_request.dart';
 import '../../../../domain/entities/profile.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
@@ -91,8 +92,8 @@ class _BuddyViewState extends State<BuddyView>
     widget.viewModel.load();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('This buddy group was cancelled by the organizer.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).buddyGroupCancelledByOrganizer),
         ),
       );
     }
@@ -104,6 +105,7 @@ class _BuddyViewState extends State<BuddyView>
     return ListenableBuilder(
       listenable: widget.viewModel,
       builder: (context, _) {
+        final l10n = AppLocalizations.of(context);
         // Only the very first load (no requests cached yet) shows the full-screen spinner —
         // a background refresh while a group chat is already open must NOT swap it out for a
         // spinner: that would unmount the live ChatView (disposing its ChatViewModel) without
@@ -117,7 +119,7 @@ class _BuddyViewState extends State<BuddyView>
 
         final error = widget.viewModel.error;
         if (error != null) {
-          return Scaffold(body: Center(child: Text('Error: $error')));
+          return Scaffold(body: Center(child: Text(l10n.errorWithMessage(error))));
         }
 
         final myRequest = widget.viewModel.myRequest;
@@ -148,12 +150,12 @@ class _BuddyViewState extends State<BuddyView>
               ? EmptyStateView(
                   icon: Icons.people_outline,
                   title: widget.isCancelled
-                      ? 'No buddy requests were made'
-                      : 'Be the first to look for a buddy',
+                      ? l10n.noBuddyRequestsWereMade
+                      : l10n.beFirstToLookForBuddy,
                   subtitle: widget.isCancelled
-                      ? 'This trip has been cancelled.'
-                      : 'Request a buddy so others can join you for this dive.',
-                  ctaLabel: widget.isCancelled ? null : 'Request a buddy',
+                      ? l10n.tripCancelledSimple
+                      : l10n.requestBuddySoOthersCanJoin,
+                  ctaLabel: widget.isCancelled ? null : l10n.requestABuddy,
                   onCtaPressed: widget.isCancelled
                       ? null
                       : () => _openAddSheet(context),
@@ -226,6 +228,7 @@ class _RequestTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     // +1 for the creator — maxMembers is the whole group's size, not just joiners.
     final isFull = 1 + request.joinedCount >= request.maxMembers;
 
@@ -261,7 +264,7 @@ class _RequestTile extends StatelessWidget {
                     [
                       if (request.creatorLevel?.isNotEmpty ?? false)
                         request.creatorLevel!,
-                      '${request.creatorDiveCount} dives',
+                      l10n.divesCountLabel(request.creatorDiveCount),
                     ].join(' · '),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -272,10 +275,10 @@ class _RequestTile extends StatelessWidget {
             ),
             if (request.joined) ...[
               const SizedBox(width: 12),
-              const _StatusPill(label: 'Joined', kind: _StatusKind.success),
+              _StatusPill(label: l10n.joinedStatus, kind: _StatusKind.success),
             ] else if (isFull) ...[
               const SizedBox(width: 12),
-              const _StatusPill(label: 'Full', kind: _StatusKind.info),
+              _StatusPill(label: l10n.fullStatus, kind: _StatusKind.info),
             ],
           ],
         ),
@@ -391,6 +394,7 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
         child: ListenableBuilder(
           listenable: widget.viewModel,
           builder: (context, _) {
+            final l10n = AppLocalizations.of(context);
             final request = _request;
             if (request == null) {
               // Gone (dissolved, or we just left it) while this sheet was open — close it
@@ -420,17 +424,17 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Buddy request',
+                        l10n.buddyRequestTitle,
                         style: theme.textTheme.titleMedium,
                       ),
                     ),
                     if (request.joined)
-                      const _StatusPill(
-                        label: 'Joined',
+                      _StatusPill(
+                        label: l10n.joinedStatus,
                         kind: _StatusKind.success,
                       )
                     else if (isFull)
-                      const _StatusPill(label: 'Full', kind: _StatusKind.info),
+                      _StatusPill(label: l10n.fullStatus, kind: _StatusKind.info),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -473,7 +477,7 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
                                 ),
                               ),
                               Text(
-                                isCreator ? 'Creator · You' : 'Creator',
+                                isCreator ? l10n.creatorYou : l10n.creatorLabel,
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
@@ -486,18 +490,18 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
                   },
                 ),
                 const SizedBox(height: 16),
-                Text('Group', style: theme.textTheme.labelLarge),
+                Text(l10n.groupLabel, style: theme.textTheme.labelLarge),
                 const SizedBox(height: 8),
                 if (_error != null)
                   Text(
-                    'Error: $_error',
+                    l10n.errorWithMessage(_error!),
                     style: TextStyle(color: theme.colorScheme.error),
                   )
                 else if (_joinedUserIds == null)
                   const Center(child: CircularProgressIndicator())
                 else if (_joinedUserIds!.isEmpty)
                   Text(
-                    'No one has joined yet',
+                    l10n.noOneHasJoinedYet,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -509,7 +513,7 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
                     final name =
                         (diverProfile?.displayName?.isNotEmpty ?? false)
                         ? diverProfile!.displayName!
-                        : (isMe ? 'You' : 'Diver');
+                        : (isMe ? l10n.you : l10n.diver);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: InkWell(
@@ -586,8 +590,8 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
                             )
                           : Text(
                               isCreator
-                                  ? 'Cancel buddy request'
-                                  : 'Leave buddy group',
+                                  ? l10n.cancelBuddyRequest
+                                  : l10n.leaveBuddyGroup,
                             ),
                     ),
                   ),
@@ -700,7 +704,7 @@ class _JoinButton extends StatelessWidget {
               height: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : const Text('Join'),
+          : Text(AppLocalizations.of(context).join),
     );
   }
 }
@@ -720,6 +724,7 @@ class _AddBuddyRequestSheet extends StatefulWidget {
 class _AddBuddyRequestSheetState extends State<_AddBuddyRequestSheet> {
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -733,12 +738,12 @@ class _AddBuddyRequestSheetState extends State<_AddBuddyRequestSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Request a buddy',
+              l10n.requestABuddy,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              'Other divers on this trip will see your request and can join you.',
+              l10n.otherDiversWillSeeRequest,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -754,7 +759,7 @@ class _AddBuddyRequestSheetState extends State<_AddBuddyRequestSheet> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Request'),
+                    : Text(l10n.request),
               ),
             ),
           ],

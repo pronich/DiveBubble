@@ -625,5 +625,160 @@
   "archivedChatsEmptyBody": "Bubbles you archive show up here — swipe or unarchive to bring one back.",
   "@archivedChatsEmptyBody": {
     "description": "Empty-state subtitle on the Archived Chats screen."
+  },
+
+  "typeOfferRide": "Offering a ride",
+  "@typeOfferRide": {
+    "description": "Transport offer type label/choice-chip."
+  },
+  "typeShareRental": "Sharing a rental",
+  "@typeShareRental": {
+    "description": "Transport offer type label/choice-chip."
+  },
+  "carCancelledByOrganizer": "This car was cancelled by the organizer.",
+  "@carCancelledByOrganizer": {
+    "description": "Snackbar shown when the car you were viewing/in gets dissolved by its organizer."
+  },
+  "noTransportWasArranged": "No transport was arranged",
+  "@noTransportWasArranged": {
+    "description": "Empty-state title on the Transport tab of a cancelled trip."
+  },
+  "beFirstToShareTransport": "Be the first to share transport",
+  "@beFirstToShareTransport": {
+    "description": "Empty-state title on the Transport tab with no offers yet."
+  },
+  "tripCancelledSimple": "This trip has been cancelled.",
+  "@tripCancelledSimple": {
+    "description": "Empty-state subtitle on the Transport/Buddy tabs of a cancelled trip."
+  },
+  "offerRideOrShareRental": "Offer a ride or share a rental so others can join you.",
+  "@offerRideOrShareRental": {
+    "description": "Empty-state subtitle on the Transport tab with no offers yet."
+  },
+  "addTransportInfo": "Add transport info",
+  "@addTransportInfo": {
+    "description": "CTA button and add-offer sheet title on the Transport tab."
+  },
+  "seatsTakenLabel": "{joined} of {total} seats taken",
+  "@seatsTakenLabel": {
+    "description": "Shown on a transport offer row when it specifies a seat count.",
+    "placeholders": {
+      "joined": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "joinedStatus": "Joined",
+  "@joinedStatus": {
+    "description": "Status pill on a transport offer/buddy request row once the diver has joined it."
+  },
+  "fullStatus": "Full",
+  "@fullStatus": {
+    "description": "Status pill on a transport offer/buddy request row once it has no room left."
+  },
+  "organizerLabel": "Organizer",
+  "@organizerLabel": {
+    "description": "Fallback name and role label for a transport offer's creator."
+  },
+  "organizerYou": "Organizer · You",
+  "@organizerYou": {
+    "description": "Role label for a transport offer's creator when it's the current user."
+  },
+  "joinedDivers": "Joined divers",
+  "@joinedDivers": {
+    "description": "Heading above the list of divers who joined a transport offer."
+  },
+  "noOneHasJoinedYet": "No one has joined yet",
+  "@noOneHasJoinedYet": {
+    "description": "Empty state under a transport offer's or buddy request's joined-divers list."
+  },
+  "cancelCarOffer": "Cancel car offer",
+  "@cancelCarOffer": {
+    "description": "Button an organizer uses to dissolve their own transport offer."
+  },
+  "leaveCar": "Leave car",
+  "@leaveCar": {
+    "description": "Button a joiner uses to leave a transport offer."
+  },
+  "join": "Join",
+  "@join": {
+    "description": "Short join button on a transport offer/buddy request tile and detail sheet."
+  },
+  "seatsOptional": "Seats (optional)",
+  "@seatsOptional": {
+    "description": "Label of the seat-count field when adding a transport offer."
+  },
+  "detailsTimePickupOptional": "Details — time, pickup point (optional)",
+  "@detailsTimePickupOptional": {
+    "description": "Label of the free-text details field when adding a transport offer."
+  },
+  "add": "Add",
+  "@add": {
+    "description": "Submit button when adding a transport offer."
+  },
+
+  "buddyGroupCancelledByOrganizer": "This buddy group was cancelled by the organizer.",
+  "@buddyGroupCancelledByOrganizer": {
+    "description": "Snackbar shown when the buddy group you were viewing/in gets dissolved by its organizer."
+  },
+  "noBuddyRequestsWereMade": "No buddy requests were made",
+  "@noBuddyRequestsWereMade": {
+    "description": "Empty-state title on the Buddy tab of a cancelled trip."
+  },
+  "beFirstToLookForBuddy": "Be the first to look for a buddy",
+  "@beFirstToLookForBuddy": {
+    "description": "Empty-state title on the Buddy tab with no requests yet."
+  },
+  "requestBuddySoOthersCanJoin": "Request a buddy so others can join you for this dive.",
+  "@requestBuddySoOthersCanJoin": {
+    "description": "Empty-state subtitle on the Buddy tab with no requests yet."
+  },
+  "requestABuddy": "Request a buddy",
+  "@requestABuddy": {
+    "description": "CTA button and add-request sheet title on the Buddy tab."
+  },
+  "buddyRequestTitle": "Buddy request",
+  "@buddyRequestTitle": {
+    "description": "Header text on the buddy-request detail sheet."
+  },
+  "divesCountLabel": "{count} dives",
+  "@divesCountLabel": {
+    "description": "Shown next to a buddy request creator's certification level.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "creatorLabel": "Creator",
+  "@creatorLabel": {
+    "description": "Role label for a buddy request's creator."
+  },
+  "creatorYou": "Creator · You",
+  "@creatorYou": {
+    "description": "Role label for a buddy request's creator when it's the current user."
+  },
+  "groupLabel": "Group",
+  "@groupLabel": {
+    "description": "Heading above the list of divers who joined a buddy request."
+  },
+  "cancelBuddyRequest": "Cancel buddy request",
+  "@cancelBuddyRequest": {
+    "description": "Button a creator uses to dissolve their own buddy request."
+  },
+  "leaveBuddyGroup": "Leave buddy group",
+  "@leaveBuddyGroup": {
+    "description": "Button a joiner uses to leave a buddy group."
+  },
+  "otherDiversWillSeeRequest": "Other divers on this trip will see your request and can join you.",
+  "@otherDiversWillSeeRequest": {
+    "description": "Body text on the add-buddy-request confirmation sheet."
+  },
+  "request": "Request",
+  "@request": {
+    "description": "Submit button when creating a buddy request."
   }
 }
