@@ -106,28 +106,28 @@ func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, se
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		var req googleAuthRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if strings.TrimSpace(req.IDToken) == "" {
-			writeError(w, http.StatusBadRequest, "idToken is required")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		identity, err := auth.VerifyGoogleIDToken(r.Context(), req.IDToken, cfg.GoogleServerClientIDs)
 		if err != nil {
-			writeError(w, http.StatusUnauthorized, "Google ID token verification failed")
+			writeError(w, http.StatusUnauthorized, ErrCodeGoogleTokenInvalid)
 			return
 		}
 
 		userID, isNewUser, err := identities.LoginOrRegister(r.Context(), "google", identity.Sub, identity.Email, identity.Name, identity.Picture)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not resolve user")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if isNewUser {
@@ -137,20 +137,20 @@ func handleAuthGoogle(cfg config.Config, identities *auth.IdentityRepository, se
 
 		rawRefresh, refreshHash, err := auth.GenerateRefreshToken()
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not create session")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		now := time.Now().UTC()
 		sessionID, err := sessions.InsertSession(r.Context(), userID, "google", refreshHash, now.Add(cfg.RefreshSessionTTL))
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not create session")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		access, accessExp, err := issuer.IssueAccessToken(userID, sessionID)
 		if err != nil {
 			_ = sessions.DeleteSession(r.Context(), sessionID)
-			writeError(w, http.StatusInternalServerError, "could not issue access token")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -168,22 +168,22 @@ func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, ses
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		var req appleAuthRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if strings.TrimSpace(req.IdentityToken) == "" {
-			writeError(w, http.StatusBadRequest, "identityToken is required")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		identity, err := appleKeys.VerifyAppleIdentityToken(r.Context(), req.IdentityToken, cfg.AppleAudience, req.Nonce)
 		if err != nil {
-			writeError(w, http.StatusUnauthorized, "Apple ID token verification failed")
+			writeError(w, http.StatusUnauthorized, ErrCodeAppleTokenInvalid)
 			return
 		}
 
@@ -196,7 +196,7 @@ func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, ses
 
 		userID, isNewUser, err := identities.LoginOrRegister(r.Context(), "apple", identity.Sub, email, req.FullName, "")
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not resolve user")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if isNewUser {
@@ -219,20 +219,20 @@ func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, ses
 
 		rawRefresh, refreshHash, err := auth.GenerateRefreshToken()
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not create session")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		now := time.Now().UTC()
 		sessionID, err := sessions.InsertSession(r.Context(), userID, "apple", refreshHash, now.Add(cfg.RefreshSessionTTL))
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not create session")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		access, accessExp, err := issuer.IssueAccessToken(userID, sessionID)
 		if err != nil {
 			_ = sessions.DeleteSession(r.Context(), sessionID)
-			writeError(w, http.StatusInternalServerError, "could not issue access token")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -265,16 +265,16 @@ func handleAuthEmailStart(cfg config.Config, emailCodes *auth.EmailCodeRepositor
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		var req emailStartRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if !auth.IsValidEmail(req.Email) {
-			writeError(w, http.StatusBadRequest, "a valid email is required")
+			writeError(w, http.StatusBadRequest, ErrCodeInvalidEmail)
 			return
 		}
 
@@ -285,17 +285,17 @@ func handleAuthEmailStart(cfg config.Config, emailCodes *auth.EmailCodeRepositor
 		case string(auth.EmailCodeKindOTP):
 			kind = auth.EmailCodeKindOTP
 		default:
-			writeError(w, http.StatusBadRequest, `kind must be "magic_link" or "otp"`)
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
 		lastSent, err := emailCodes.LastSentAt(r.Context(), req.Email)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not check send rate")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if !lastSent.IsZero() && time.Now().UTC().Before(lastSent.Add(cfg.EmailCodeCooldown)) {
-			writeError(w, http.StatusTooManyRequests, "a code was already sent — check your inbox")
+			writeError(w, http.StatusTooManyRequests, ErrCodeEmailCodeCooldown)
 			return
 		}
 
@@ -305,7 +305,7 @@ func handleAuthEmailStart(cfg config.Config, emailCodes *auth.EmailCodeRepositor
 		}
 		rawCode, err := emailCodes.GenerateAndStore(r.Context(), req.Email, kind, ttl)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not create login code")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -318,7 +318,7 @@ func handleAuthEmailStart(cfg config.Config, emailCodes *auth.EmailCodeRepositor
 			sendErr = emailSvc.SendTemplate(r.Context(), normalizedEmail, email.TemplateOTP, map[string]string{email.VarOTPCode: rawCode})
 		}
 		if sendErr != nil {
-			writeError(w, http.StatusInternalServerError, "could not send email")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -330,16 +330,16 @@ func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepositor
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		var req emailVerifyRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if strings.TrimSpace(req.Email) == "" || strings.TrimSpace(req.Code) == "" {
-			writeError(w, http.StatusBadRequest, "email and code are required")
+			writeError(w, http.StatusBadRequest, ErrCodeEmailAndCodeRequired)
 			return
 		}
 
@@ -356,7 +356,7 @@ func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepositor
 		// comment in internal/auth/identity.go.
 		userID, isNewUser, err := identities.LoginOrRegisterByEmail(r.Context(), normalizedEmail)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not resolve user")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		if isNewUser {
@@ -366,20 +366,20 @@ func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepositor
 
 		rawRefresh, refreshHash, err := auth.GenerateRefreshToken()
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not create session")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		now := time.Now().UTC()
 		sessionID, err := sessions.InsertSession(r.Context(), userID, "email", refreshHash, now.Add(cfg.RefreshSessionTTL))
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not create session")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
 		access, accessExp, err := issuer.IssueAccessToken(userID, sessionID)
 		if err != nil {
 			_ = sessions.DeleteSession(r.Context(), sessionID)
-			writeError(w, http.StatusInternalServerError, "could not issue access token")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -396,11 +396,11 @@ func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepositor
 func emailCodeErrorResponse(err error) (int, string) {
 	switch {
 	case errors.Is(err, auth.ErrEmailCodeInvalid):
-		return http.StatusUnauthorized, "invalid or expired code"
+		return http.StatusUnauthorized, ErrCodeEmailCodeInvalid
 	case errors.Is(err, auth.ErrEmailCodeTooManyTries):
-		return http.StatusTooManyRequests, "too many incorrect attempts — request a new code"
+		return http.StatusTooManyRequests, ErrCodeEmailCodeTooManyTries
 	default:
-		return http.StatusInternalServerError, "could not verify code"
+		return http.StatusInternalServerError, ErrCodeGeneric
 	}
 }
 
@@ -408,16 +408,16 @@ func handleAuthRefresh(cfg config.Config, sessions *auth.SessionRepository, issu
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "could not read body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		var req refreshRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			writeError(w, http.StatusBadRequest, "invalid JSON body")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 		if strings.TrimSpace(req.RefreshToken) == "" {
-			writeError(w, http.StatusBadRequest, "refreshToken is required")
+			writeError(w, http.StatusBadRequest, ErrCodeGeneric)
 			return
 		}
 
@@ -430,7 +430,7 @@ func handleAuthRefresh(cfg config.Config, sessions *auth.SessionRepository, issu
 
 		access, accessExp, err := issuer.IssueAccessToken(result.UserID, result.SessionID)
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not issue access token")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 
@@ -445,22 +445,22 @@ func handleAuthRefresh(cfg config.Config, sessions *auth.SessionRepository, issu
 func refreshErrorResponse(err error) (int, string) {
 	switch {
 	case errors.Is(err, auth.ErrRefreshInvalid):
-		return http.StatusUnauthorized, "invalid refresh token"
+		return http.StatusUnauthorized, ErrCodeRefreshTokenInvalid
 	case errors.Is(err, auth.ErrRefreshExpired):
-		return http.StatusUnauthorized, "refresh session has expired"
+		return http.StatusUnauthorized, ErrCodeRefreshTokenExpired
 	case errors.Is(err, auth.ErrRefreshRevoked):
-		return http.StatusUnauthorized, "refresh session is no longer valid"
+		return http.StatusUnauthorized, ErrCodeRefreshTokenRevoked
 	case errors.Is(err, auth.ErrRefreshReused):
-		return http.StatusUnauthorized, "refresh token was already rotated; sign in again"
+		return http.StatusUnauthorized, ErrCodeRefreshTokenReused
 	default:
-		return http.StatusInternalServerError, "could not refresh session"
+		return http.StatusInternalServerError, ErrCodeGeneric
 	}
 }
 
 func handleAuthLogout(sessions *auth.SessionRepository) func(http.ResponseWriter, *http.Request, uuid.UUID, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID, sessionID uuid.UUID) {
 		if err := sessions.RevokeSession(r.Context(), userID, sessionID); err != nil {
-			writeError(w, http.StatusInternalServerError, "could not log out")
+			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -473,12 +473,12 @@ func bearerAuth(issuer *auth.TokenIssuer, next func(http.ResponseWriter, *http.R
 	return func(w http.ResponseWriter, r *http.Request) {
 		raw, ok := parseBearer(r.Header.Get("Authorization"))
 		if !ok {
-			writeError(w, http.StatusUnauthorized, "missing or invalid bearer token")
+			writeError(w, http.StatusUnauthorized, ErrCodeUnauthenticated)
 			return
 		}
 		userID, sessionID, err := issuer.ParseAccessToken(raw)
 		if err != nil {
-			writeError(w, http.StatusUnauthorized, "invalid or expired token")
+			writeError(w, http.StatusUnauthorized, ErrCodeUnauthenticated)
 			return
 		}
 		next(w, r, userID, sessionID)
