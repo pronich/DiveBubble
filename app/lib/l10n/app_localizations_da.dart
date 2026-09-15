@@ -448,4 +448,119 @@ class AppLocalizationsDa extends AppLocalizations {
   @override
   String get archivedChatsEmptyBody =>
       'Bubbles, du arkiverer, vises her — swipe eller fjern fra arkiv for at hente en tilbage.';
+
+  @override
+  String get typeOfferRide => 'Tilbyder et lift';
+
+  @override
+  String get typeShareRental => 'Deler en lejebil';
+
+  @override
+  String get carCancelledByOrganizer => 'Denne bil blev aflyst af arrangøren.';
+
+  @override
+  String get noTransportWasArranged => 'Der blev ikke arrangeret transport';
+
+  @override
+  String get beFirstToShareTransport => 'Vær den første til at dele transport';
+
+  @override
+  String get tripCancelledSimple => 'Denne tur er blevet aflyst.';
+
+  @override
+  String get offerRideOrShareRental =>
+      'Tilbyd et lift eller del en lejebil, så andre kan tilslutte sig.';
+
+  @override
+  String get addTransportInfo => 'Tilføj transport';
+
+  @override
+  String seatsTakenLabel(int joined, int total) {
+    return '$joined af $total pladser optaget';
+  }
+
+  @override
+  String get joinedStatus => 'Tilmeldt';
+
+  @override
+  String get fullStatus => 'Fuld';
+
+  @override
+  String get organizerLabel => 'Arrangør';
+
+  @override
+  String get organizerYou => 'Arrangør · Dig';
+
+  @override
+  String get joinedDivers => 'Tilmeldte dykkere';
+
+  @override
+  String get noOneHasJoinedYet => 'Ingen har tilmeldt sig endnu';
+
+  @override
+  String get cancelCarOffer => 'Aflys bil';
+
+  @override
+  String get leaveCar => 'Forlad bil';
+
+  @override
+  String get join => 'Tilslut';
+
+  @override
+  String get seatsOptional => 'Pladser (valgfrit)';
+
+  @override
+  String get detailsTimePickupOptional =>
+      'Detaljer — tidspunkt, afhentningssted (valgfrit)';
+
+  @override
+  String get add => 'Tilføj';
+
+  @override
+  String get buddyGroupCancelledByOrganizer =>
+      'Denne buddy-gruppe blev aflyst af arrangøren.';
+
+  @override
+  String get noBuddyRequestsWereMade => 'Der blev ikke lavet buddy-anmodninger';
+
+  @override
+  String get beFirstToLookForBuddy =>
+      'Vær den første til at lede efter en buddy';
+
+  @override
+  String get requestBuddySoOthersCanJoin =>
+      'Anmod om en buddy, så andre kan tilslutte sig dig til dette dyk.';
+
+  @override
+  String get requestABuddy => 'Find buddy';
+
+  @override
+  String get buddyRequestTitle => 'Buddy-anmodning';
+
+  @override
+  String divesCountLabel(int count) {
+    return '$count dyk';
+  }
+
+  @override
+  String get creatorLabel => 'Opretter';
+
+  @override
+  String get creatorYou => 'Opretter · Dig';
+
+  @override
+  String get groupLabel => 'Gruppe';
+
+  @override
+  String get cancelBuddyRequest => 'Aflys anmodning';
+
+  @override
+  String get leaveBuddyGroup => 'Forlad gruppe';
+
+  @override
+  String get otherDiversWillSeeRequest =>
+      'Andre dykkere på denne tur ser din anmodning og kan tilslutte sig.';
+
+  @override
+  String get request => 'Send';
 }

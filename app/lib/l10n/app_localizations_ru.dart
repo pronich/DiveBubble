@@ -450,4 +450,120 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get archivedChatsEmptyBody =>
       'Bubbles, которые вы архивируете, появятся здесь — смахните или разархивируйте, чтобы вернуть обратно.';
+
+  @override
+  String get typeOfferRide => 'Предлагаю место в машине';
+
+  @override
+  String get typeShareRental => 'Делюсь арендой';
+
+  @override
+  String get carCancelledByOrganizer =>
+      'Эта машина была отменена организатором.';
+
+  @override
+  String get noTransportWasArranged => 'Транспорт не был организован';
+
+  @override
+  String get beFirstToShareTransport =>
+      'Будьте первым, кто поделится транспортом';
+
+  @override
+  String get tripCancelledSimple => 'Этот трип отменён.';
+
+  @override
+  String get offerRideOrShareRental =>
+      'Предложите место в машине или поделитесь арендой, чтобы к вам могли присоединиться.';
+
+  @override
+  String get addTransportInfo => 'Добавить транспорт';
+
+  @override
+  String seatsTakenLabel(int joined, int total) {
+    return 'Занято $joined из $total мест';
+  }
+
+  @override
+  String get joinedStatus => 'Участвую';
+
+  @override
+  String get fullStatus => 'Мест нет';
+
+  @override
+  String get organizerLabel => 'Организатор';
+
+  @override
+  String get organizerYou => 'Организатор · Вы';
+
+  @override
+  String get joinedDivers => 'Участники';
+
+  @override
+  String get noOneHasJoinedYet => 'Пока никто не присоединился';
+
+  @override
+  String get cancelCarOffer => 'Отменить машину';
+
+  @override
+  String get leaveCar => 'Покинуть машину';
+
+  @override
+  String get join => 'Присоединиться';
+
+  @override
+  String get seatsOptional => 'Мест (необязательно)';
+
+  @override
+  String get detailsTimePickupOptional =>
+      'Детали — время, место встречи (необязательно)';
+
+  @override
+  String get add => 'Добавить';
+
+  @override
+  String get buddyGroupCancelledByOrganizer =>
+      'Эта группа бадди была отменена организатором.';
+
+  @override
+  String get noBuddyRequestsWereMade => 'Запросов на бадди не было';
+
+  @override
+  String get beFirstToLookForBuddy => 'Будьте первым, кто ищет бадди';
+
+  @override
+  String get requestBuddySoOthersCanJoin =>
+      'Оставьте запрос на бадди, чтобы другие могли присоединиться к вам для этого дайва.';
+
+  @override
+  String get requestABuddy => 'Найти бадди';
+
+  @override
+  String get buddyRequestTitle => 'Запрос на бадди';
+
+  @override
+  String divesCountLabel(int count) {
+    return '$count погружений';
+  }
+
+  @override
+  String get creatorLabel => 'Создатель';
+
+  @override
+  String get creatorYou => 'Создатель · Вы';
+
+  @override
+  String get groupLabel => 'Группа';
+
+  @override
+  String get cancelBuddyRequest => 'Отменить запрос';
+
+  @override
+  String get leaveBuddyGroup => 'Покинуть группу';
+
+  @override
+  String get otherDiversWillSeeRequest =>
+      'Другие дайверы на этом трипе увидят ваш запрос и смогут присоединиться.';
+
+  @override
+  String get request => 'Отправить';
 }
