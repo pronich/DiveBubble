@@ -5,6 +5,7 @@ import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
+import '../../../../data/services/locale_controller.dart';
 import '../../../../data/services/location_service.dart';
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/profile.dart';
@@ -20,6 +21,7 @@ import 'dive_log_list_page.dart';
 import 'edit_profile_page.dart';
 import 'gear_locker_page.dart';
 import 'gear_summary_card.dart';
+import 'language_settings_page.dart';
 import 'legal_page.dart';
 import 'level_card.dart';
 import 'notifications_settings_page.dart';
@@ -37,6 +39,7 @@ class ProfileView extends StatefulWidget {
     required this.tripRepository,
     required this.chatRepository,
     required this.pushRepository,
+    required this.localeController,
     required this.isActive,
   });
 
@@ -48,6 +51,7 @@ class ProfileView extends StatefulWidget {
   final TripRepository tripRepository;
   final ChatRepository chatRepository;
   final PushRepository pushRepository;
+  final LocaleController localeController;
 
   /// Whether this is the currently-selected bottom-nav tab. RootShell's IndexedStack keeps
   /// ProfileView alive when another tab is selected, so this is how it notices tab switches.
@@ -125,6 +129,7 @@ class _ProfileViewState extends State<ProfileView> {
       body: !_signedIn
           ? _GuestBody(
               location: _guestLocation,
+              localeController: widget.localeController,
               onDiveIn: () async {
                 // notifyListeners() (and thus _refresh, via the authRepository listener
                 // above) fires the moment sign-in itself completes — before LoginSheet's
@@ -172,6 +177,7 @@ class _ProfileViewState extends State<ProfileView> {
                   profileRepository: widget.profileRepository,
                   tripRepository: widget.tripRepository,
                   chatRepository: widget.chatRepository,
+                  localeController: widget.localeController,
                 );
               },
             ),
@@ -180,9 +186,10 @@ class _ProfileViewState extends State<ProfileView> {
 }
 
 class _GuestBody extends StatelessWidget {
-  const _GuestBody({required this.location, required this.onDiveIn});
+  const _GuestBody({required this.location, required this.localeController, required this.onDiveIn});
 
   final String? location;
+  final LocaleController localeController;
   final VoidCallback onDiveIn;
 
   @override
@@ -239,6 +246,11 @@ class _GuestBody extends StatelessWidget {
           ),
         ),
         const _SettingsDivider(),
+        _SettingsRow(
+          icon: Icons.language,
+          label: 'Language',
+          page: LanguageSettingsPage(localeController: localeController),
+        ),
         const _SettingsRow(icon: Icons.info_outline, label: 'About', page: AboutPage()),
         const _SettingsRow(icon: Icons.description_outlined, label: 'Legal', page: LegalPage()),
       ],
@@ -261,6 +273,7 @@ class _SignedInBody extends StatelessWidget {
     required this.profileRepository,
     required this.tripRepository,
     required this.chatRepository,
+    required this.localeController,
   });
 
   final Profile profile;
@@ -276,6 +289,7 @@ class _SignedInBody extends StatelessWidget {
   final ProfileRepository profileRepository;
   final TripRepository tripRepository;
   final ChatRepository chatRepository;
+  final LocaleController localeController;
 
   bool get _hasLevel => profile.certificationLevel?.isNotEmpty ?? false;
 
@@ -473,6 +487,11 @@ class _SignedInBody extends StatelessWidget {
         ),
         _SettingsRow(icon: Icons.block, label: 'Blocked users', page: BlockedUsersPage(profileRepository: profileRepository)),
         const _SettingsRow(icon: Icons.storage_outlined, label: 'Storage', page: StorageSettingsPage()),
+        _SettingsRow(
+          icon: Icons.language,
+          label: 'Language',
+          page: LanguageSettingsPage(localeController: localeController),
+        ),
         const _SettingsRow(icon: Icons.info_outline, label: 'About', page: AboutPage()),
         const _SettingsRow(icon: Icons.description_outlined, label: 'Legal', page: LegalPage()),
         const Divider(height: 32),

@@ -26,6 +26,7 @@ import 'data/services/dive_center_api_service.dart';
 import 'data/services/dive_log_api_service.dart';
 import 'data/services/expense_api_service.dart';
 import 'data/services/gear_api_service.dart';
+import 'data/services/locale_controller.dart';
 import 'data/services/profile_api_service.dart';
 import 'data/services/push_api_service.dart';
 import 'data/services/push_preferences.dart';
@@ -173,6 +174,7 @@ class _MyAppState extends State<MyApp> {
       getAccessToken: _authRepository.getValidAccessToken,
     ),
   );
+  final _localeController = LocaleController();
 
   @override
   void initState() {
@@ -181,6 +183,7 @@ class _MyAppState extends State<MyApp> {
     _setUpPushNotifications();
     _setUpDeepLinks();
     _setUpShareToApp();
+    _localeController.load();
   }
 
   @override
@@ -188,6 +191,7 @@ class _MyAppState extends State<MyApp> {
     _authRepository.removeListener(_onAuthChanged);
     _linkSubscription?.cancel();
     _shareSubscription?.cancel();
+    _localeController.dispose();
     super.dispose();
   }
 
@@ -430,32 +434,37 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: _navigatorKey,
-      title: 'DiveBubble',
-      theme: AppTheme.light,
-      debugShowCheckedModeBanner: false,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: AppEntryGate(
-        authRepository: _authRepository,
-        profileRepository: _profileRepository,
-        pushRepository: _pushRepository,
-        rootShellBuilder: (context, currentUserId) => RootShell(
-          tripRepository: _tripRepository,
-          chatRepository: _chatRepository,
-          transportRepository: _transportRepository,
-          buddyRepository: _buddyRepository,
-          realtimeService: _realtimeService,
+    return ListenableBuilder(
+      listenable: _localeController,
+      builder: (context, _) => MaterialApp(
+        navigatorKey: _navigatorKey,
+        title: 'DiveBubble',
+        theme: AppTheme.light,
+        debugShowCheckedModeBanner: false,
+        locale: _localeController.value,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppEntryGate(
           authRepository: _authRepository,
           profileRepository: _profileRepository,
-          specialtyRepository: _specialtyRepository,
-          gearRepository: _gearRepository,
-          diveCenterRepository: _diveCenterRepository,
-          expenseRepository: _expenseRepository,
-          diveLogRepository: _diveLogRepository,
           pushRepository: _pushRepository,
-          currentUserId: currentUserId,
+          rootShellBuilder: (context, currentUserId) => RootShell(
+            tripRepository: _tripRepository,
+            chatRepository: _chatRepository,
+            transportRepository: _transportRepository,
+            buddyRepository: _buddyRepository,
+            realtimeService: _realtimeService,
+            authRepository: _authRepository,
+            profileRepository: _profileRepository,
+            specialtyRepository: _specialtyRepository,
+            gearRepository: _gearRepository,
+            diveCenterRepository: _diveCenterRepository,
+            expenseRepository: _expenseRepository,
+            diveLogRepository: _diveLogRepository,
+            pushRepository: _pushRepository,
+            localeController: _localeController,
+            currentUserId: currentUserId,
+          ),
         ),
       ),
     );
