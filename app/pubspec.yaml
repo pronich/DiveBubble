@@ -62,6 +62,8 @@ dependencies:
   video_compress: ^3.1.4
   app_links: ^6.4.1
   receive_sharing_intent: ^1.9.0
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
@@ -96,6 +98,10 @@ flutter_launcher_icons:
 
 # The following section is specific to Flutter packages.
 flutter:
+
+  # Turns on flutter gen-l10n, driven by l10n.yaml — generates AppLocalizations from
+  # lib/l10n/app_en.arb (the template) and each other locale's .arb file there.
+  generate: true
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

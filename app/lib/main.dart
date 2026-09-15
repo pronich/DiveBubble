@@ -34,6 +34,7 @@ import 'data/services/specialty_api_service.dart';
 import 'data/services/token_storage_service.dart';
 import 'data/services/transport_api_service.dart';
 import 'data/services/trip_api_service.dart';
+import 'l10n/app_localizations.dart';
 import 'ui/core/auth/ensure_signed_in.dart';
 import 'ui/core/navigation/root_shell.dart';
 import 'ui/core/theme/app_theme.dart';
@@ -434,6 +435,8 @@ class _MyAppState extends State<MyApp> {
       title: 'DiveBubble',
       theme: AppTheme.light,
       debugShowCheckedModeBanner: false,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: AppEntryGate(
         authRepository: _authRepository,
         profileRepository: _profileRepository,
