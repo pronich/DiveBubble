@@ -16,6 +16,7 @@ import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/picked_attachment.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../buddy/view_models/buddy_view_model.dart';
 import '../../buddy/views/buddy_view.dart';
 import '../../expenses/view_models/expense_view_model.dart';
@@ -462,6 +463,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
         buddyViewModel,
       ]),
       builder: (context, _) {
+        final l10n = AppLocalizations.of(context);
         final activeIndex = tabController.index;
         final myOffer = transportViewModel.myOffer;
         final myRequest = buddyViewModel.myRequest;
@@ -480,7 +482,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                       width: activeIndex == 0 ? activeWidth : _compactWidth,
                       outlinedIcon: Icons.chat_bubble_outline,
                       filledIcon: Icons.chat_bubble,
-                      label: 'Chat',
+                      label: l10n.chatTabLabel,
                       hasAlert: false,
                       onTap: () => tabController.animateTo(
                         0,
@@ -494,7 +496,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                       width: activeIndex == 1 ? activeWidth : _compactWidth,
                       outlinedIcon: Icons.directions_car_outlined,
                       filledIcon: Icons.directions_car,
-                      label: 'Transport',
+                      label: l10n.transportTabLabel,
                       hasAlert: transportViewModel.hasAlert || (myOffer?.hasUnreadMessages ?? false),
                       onTap: () => tabController.animateTo(
                         1,
@@ -521,7 +523,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                       width: activeIndex == 2 ? activeWidth : _compactWidth,
                       outlinedIcon: Icons.emoji_people_outlined,
                       filledIcon: Icons.emoji_people,
-                      label: 'Buddy',
+                      label: l10n.buddyTabLabel,
                       hasAlert: buddyViewModel.hasAlert || (myRequest?.hasUnreadMessages ?? false),
                       onTap: () => tabController.animateTo(
                         2,
@@ -543,7 +545,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                       width: activeIndex == 3 ? activeWidth : _compactWidth,
                       outlinedIcon: Icons.receipt_long_outlined,
                       filledIcon: Icons.receipt_long,
-                      label: 'Expenses',
+                      label: l10n.expensesTabLabel,
                       hasAlert: false,
                       onTap: () => tabController.animateTo(
                         3,

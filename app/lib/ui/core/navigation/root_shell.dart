@@ -14,6 +14,7 @@ import '../../../data/repositories/transport_repository.dart';
 import '../../../data/repositories/trip_repository.dart';
 import '../../../data/services/locale_controller.dart';
 import '../../../data/services/realtime_service.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../features/chats/view_models/my_trips_view_model.dart';
 import '../../features/chats/views/my_trips_view.dart';
 import '../../features/profile/view_models/profile_view_model.dart';
@@ -112,6 +113,7 @@ class _RootShellState extends State<RootShell> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: IndexedStack(
         index: _index,
@@ -162,17 +164,17 @@ class _RootShellState extends State<RootShell> {
                   child: const Icon(Icons.bubble_chart_outlined),
                 ),
                 selectedIcon: Badge(isLabelVisible: showDot, child: const Icon(Icons.bubble_chart)),
-                label: 'Bubbles',
+                label: l10n.bubblesTabTitle,
               ),
-              const NavigationDestination(
-                icon: Icon(Icons.scuba_diving_outlined),
-                selectedIcon: Icon(Icons.scuba_diving),
-                label: 'Dive Log',
+              NavigationDestination(
+                icon: const Icon(Icons.scuba_diving_outlined),
+                selectedIcon: const Icon(Icons.scuba_diving),
+                label: l10n.diveLogTabTitle,
               ),
-              const NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                selectedIcon: Icon(Icons.person),
-                label: 'Profile',
+              NavigationDestination(
+                icon: const Icon(Icons.person_outline),
+                selectedIcon: const Icon(Icons.person),
+                label: l10n.profileTabTitle,
               ),
             ],
           );

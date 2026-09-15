@@ -11,6 +11,7 @@ import '../../../../data/repositories/transport_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../data/services/realtime_service.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/theme/semantic_colors.dart';
 import '../../../core/widgets/empty_state_view.dart';
@@ -106,8 +107,9 @@ class _MyTripsViewState extends State<MyTripsView> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text('Bubbles', style: Theme.of(context).textTheme.headlineSmall)),
+      appBar: AppBar(title: Text(l10n.bubblesTabTitle, style: Theme.of(context).textTheme.headlineSmall)),
       body: Column(
         children: [
           _BubblesActionsHeader(onCreateTrip: () => _openCreateTrip(context), onJoinByCode: () => _openJoinByCode(context)),
@@ -115,6 +117,7 @@ class _MyTripsViewState extends State<MyTripsView> {
             child: ListenableBuilder(
               listenable: widget.viewModel,
               builder: (context, _) {
+                final l10n = AppLocalizations.of(context);
                 if (widget.viewModel.isLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -122,9 +125,9 @@ class _MyTripsViewState extends State<MyTripsView> {
                 if (widget.viewModel.needsSignIn) {
                   return EmptyStateView(
                     icon: Icons.login,
-                    title: 'Sign in to see your trips',
-                    subtitle: 'Log in to view the trips you\'ve joined and their group chats.',
-                    ctaLabel: 'Dive in',
+                    title: l10n.signInToSeeYourTrips,
+                    subtitle: l10n.logInToViewTripsBody,
+                    ctaLabel: l10n.diveIn,
                     onCtaPressed: () async {
                       final signedIn = await LoginSheet.show(
                         context,
@@ -139,15 +142,15 @@ class _MyTripsViewState extends State<MyTripsView> {
 
                 final error = widget.viewModel.error;
                 if (error != null) {
-                  return Center(child: Text('Error: $error'));
+                  return Center(child: Text(l10n.errorWithMessage(error)));
                 }
 
                 final allTrips = widget.viewModel.trips;
                 if (allTrips.isEmpty) {
-                  return const EmptyStateView(
+                  return EmptyStateView(
                     icon: Icons.bubble_chart_outlined,
-                    title: 'Start your first Bubble',
-                    subtitle: 'Create a trip or join one with a code — chat, transport, and trip details all in one place.',
+                    title: l10n.startYourFirstBubble,
+                    subtitle: l10n.startYourFirstBubbleBody,
                   );
                 }
 
@@ -164,9 +167,9 @@ class _MyTripsViewState extends State<MyTripsView> {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                         child: TextField(
-                          decoration: const InputDecoration(
-                            hintText: 'Search Bubbles',
-                            prefixIcon: Icon(Icons.search),
+                          decoration: InputDecoration(
+                            hintText: l10n.searchBubbles,
+                            prefixIcon: const Icon(Icons.search),
                             isDense: true,
                           ),
                           onChanged: (value) => setState(() => _search = value),
@@ -176,7 +179,7 @@ class _MyTripsViewState extends State<MyTripsView> {
                       child: trips.isEmpty
                           ? Center(
                               child: Text(
-                                'No matches.',
+                                l10n.noMatches,
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
@@ -379,6 +382,7 @@ class _BubblesActionsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Row(
@@ -387,7 +391,7 @@ class _BubblesActionsHeader extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onCreateTrip,
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Create trip'),
+              label: Text(l10n.createTrip),
               style: FilledButton.styleFrom(
                 shape: const StadiumBorder(),
                 padding: const EdgeInsets.symmetric(vertical: 10),
@@ -400,7 +404,7 @@ class _BubblesActionsHeader extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onJoinByCode,
               icon: const Icon(Icons.confirmation_number_outlined, size: 18),
-              label: const Text('Join trip'),
+              label: Text(l10n.joinTrip),
               style: FilledButton.styleFrom(
                 shape: const StadiumBorder(),
                 padding: const EdgeInsets.symmetric(vertical: 10),

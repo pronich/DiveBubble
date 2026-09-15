@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../data/services/attachment_cache_service.dart';
+import '../../../../data/services/error_codes.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/widgets/cached_attachment_image.dart';
 
 /// Full-screen, pinch-to-zoom view of a chat photo attachment — pushed from the bubble
@@ -66,7 +68,9 @@ class _AttachmentImagePreviewPageState extends State<AttachmentImagePreviewPage>
       await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], sharePositionOrigin: origin));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not share photo: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).couldNotSharePhoto(friendlyError(e)))));
     } finally {
       if (mounted) setState(() => _sharing = false);
     }
@@ -91,7 +95,7 @@ class _AttachmentImagePreviewPageState extends State<AttachmentImagePreviewPage>
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
                 : const Icon(Icons.ios_share),
-            tooltip: 'Share',
+            tooltip: AppLocalizations.of(context).share,
             onPressed: _sharing ? null : _share,
           ),
         ],

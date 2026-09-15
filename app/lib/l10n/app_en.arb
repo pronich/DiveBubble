@@ -121,5 +121,509 @@
   "saveAndContinue": "Save and continue",
   "@saveAndContinue": {
     "description": "Button that saves the certifications onboarding step."
+  },
+
+  "errorWithMessage": "Error: {error}",
+  "@errorWithMessage": {
+    "description": "Generic inline error display, reused across many screens.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cancel": "Cancel",
+  "@cancel": {
+    "description": "Generic Cancel button/action, reused across confirmation dialogs."
+  },
+  "delete": "Delete",
+  "@delete": {
+    "description": "Generic Delete action, reused for the message context-menu item and its confirmation dialog button."
+  },
+  "you": "You",
+  "@you": {
+    "description": "Fallback sender name used when referring to the current user themselves (e.g. 'Replying to You')."
+  },
+  "diver": "Diver",
+  "@diver": {
+    "description": "Fallback display name for a participant with no profile name set."
+  },
+  "searchBubbles": "Search Bubbles",
+  "@searchBubbles": {
+    "description": "Search field hint text on My Trips and Choose Bubble screens."
+  },
+  "noMatches": "No matches.",
+  "@noMatches": {
+    "description": "Shown when a Bubbles search query has no results."
+  },
+  "share": "Share",
+  "@share": {
+    "description": "Tooltip on the share button in the photo/video attachment preview screens."
+  },
+  "documentFallbackName": "Document.pdf",
+  "@documentFallbackName": {
+    "description": "Placeholder filename shown when a PDF attachment has no filename of its own."
+  },
+
+  "copiedToClipboard": "Copied",
+  "@copiedToClipboard": {
+    "description": "Snackbar shown after copying a message's text."
+  },
+  "deleteThisMessageTitle": "Delete this message?",
+  "@deleteThisMessageTitle": {
+    "description": "Title of the delete-message confirmation dialog."
+  },
+  "deleteThisMessageBody": "This cannot be undone — it will be removed for everyone in this Bubble.",
+  "@deleteThisMessageBody": {
+    "description": "Body of the delete-message confirmation dialog."
+  },
+  "couldNotDeleteMessage": "Could not delete message: {error}",
+  "@couldNotDeleteMessage": {
+    "description": "Snackbar shown when deleting a message fails.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "couldNotReact": "Could not react: {error}",
+  "@couldNotReact": {
+    "description": "Snackbar shown when adding/removing a reaction fails.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "reply": "Reply",
+  "@reply": {
+    "description": "Message context-menu action."
+  },
+  "copyText": "Copy text",
+  "@copyText": {
+    "description": "Message context-menu action."
+  },
+  "report": "Report",
+  "@report": {
+    "description": "Message context-menu action that opens the report sheet."
+  },
+  "removeDocumentFirst": "Remove the document first to add photos.",
+  "@removeDocumentFirst": {
+    "description": "Snackbar shown when trying to add a photo while a PDF is already staged in the composer."
+  },
+  "onlyNAttachmentsAllowed": "Only {max} attachments allowed per message.",
+  "@onlyNAttachmentsAllowed": {
+    "description": "Snackbar shown when trying to attach more than the per-message attachment limit.",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "documentOnlyOnItsOwn": "A document can only be sent on its own.",
+  "@documentOnlyOnItsOwn": {
+    "description": "Snackbar shown when trying to add a PDF alongside other pending attachments."
+  },
+  "someFilesTooLarge": "Some files are too large.",
+  "@someFilesTooLarge": {
+    "description": "Snackbar shown when one or more picked attachments exceed the size cap."
+  },
+  "couldNotSendAttachment": "Could not send attachment: {error}",
+  "@couldNotSendAttachment": {
+    "description": "Snackbar shown when uploading/sending an attachment fails.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noMessagesYet": "No messages yet",
+  "@noMessagesYet": {
+    "description": "Empty state for a Bubble's chat with no messages yet."
+  },
+  "tripCancelledReadOnly": "This trip has been cancelled — the chat is read-only.",
+  "@tripCancelledReadOnly": {
+    "description": "Banner shown above a disabled composer once the trip is cancelled."
+  },
+  "replyingTo": "Replying to {name}",
+  "@replyingTo": {
+    "description": "Label above the composer's reply preview chip, naming who's being replied to.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "captionOptional": "Caption (optional)",
+  "@captionOptional": {
+    "description": "Composer hint text when attachments are staged (the text field becomes a caption)."
+  },
+  "messageHint": "Message",
+  "@messageHint": {
+    "description": "Composer hint text for a plain text message (no attachments staged)."
+  },
+  "messageDeleted": "Message deleted",
+  "@messageDeleted": {
+    "description": "Shown in place of a deleted message's body, and as its reply-preview text."
+  },
+  "attachmentsCountLabel": "📎 {count} attachments",
+  "@attachmentsCountLabel": {
+    "description": "Reply-preview text for a message with multiple attachments and no text body.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "photoLabel": "📷 Photo",
+  "@photoLabel": {
+    "description": "Reply-preview text for a message that's a single photo with no text body."
+  },
+  "videoLabel": "🎬 Video",
+  "@videoLabel": {
+    "description": "Reply-preview text for a message that's a single video with no text body."
+  },
+  "pdfLabel": "📄 PDF",
+  "@pdfLabel": {
+    "description": "Reply-preview text for a message that's a single PDF with no text body."
+  },
+  "newMessages": "New messages",
+  "@newMessages": {
+    "description": "Pill button that appears when new messages arrived below the current scroll position."
+  },
+  "productObserver": "Product Observer",
+  "@productObserver": {
+    "description": "Suffix appended to a sender's name when they're a product observer (e.g. 'Nikolai | Product Observer')."
+  },
+  "reportMessageTitle": "Report message",
+  "@reportMessageTitle": {
+    "description": "Title of the report-message sheet."
+  },
+  "detailsOptional": "Details (optional)",
+  "@detailsOptional": {
+    "description": "Label of the free-text details field on the report-message sheet."
+  },
+  "sendReport": "Send report",
+  "@sendReport": {
+    "description": "Button that submits the report-message sheet."
+  },
+  "reportSentThankYou": "Report sent — thank you.",
+  "@reportSentThankYou": {
+    "description": "Snackbar shown after successfully reporting a message."
+  },
+  "couldNotSendReport": "Could not send report: {error}",
+  "@couldNotSendReport": {
+    "description": "Snackbar shown when reporting a message fails.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "thankYou": "Thank you!",
+  "@thankYou": {
+    "description": "Shown after feedback is submitted, both as a chip on the prompt and a snackbar."
+  },
+  "giveFeedback": "Give feedback",
+  "@giveFeedback": {
+    "description": "Button on a trip-feedback prompt system message."
+  },
+  "howUsefulQuestion": "How useful was DiveBubble for this trip?",
+  "@howUsefulQuestion": {
+    "description": "Star-rating question on the feedback sheet."
+  },
+  "whatDidHelpQuestion": "What did DiveBubble help you with?",
+  "@whatDidHelpQuestion": {
+    "description": "Checklist question on the feedback sheet."
+  },
+  "whatShouldImproveQuestion": "What should we improve?",
+  "@whatShouldImproveQuestion": {
+    "description": "Free-text question on the feedback sheet."
+  },
+  "optionalHintText": "Optional",
+  "@optionalHintText": {
+    "description": "Hint text of the feedback sheet's free-text comment field."
+  },
+  "canContactAboutFeedback": "Can we contact you about your feedback?",
+  "@canContactAboutFeedback": {
+    "description": "Checkbox label on the feedback sheet."
+  },
+  "submitFeedback": "Submit feedback",
+  "@submitFeedback": {
+    "description": "Button that submits the feedback sheet."
+  },
+  "couldNotSendFeedback": "Could not send feedback: {error}",
+  "@couldNotSendFeedback": {
+    "description": "Snackbar shown when submitting feedback fails.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "reportReasonSpam": "Spam",
+  "@reportReasonSpam": {
+    "description": "Report-message reason choice label (the value sent to the backend stays the fixed English canonical string)."
+  },
+  "reportReasonHarassment": "Harassment",
+  "@reportReasonHarassment": {
+    "description": "Report-message reason choice label (the value sent to the backend stays the fixed English canonical string)."
+  },
+  "reportReasonInappropriateContent": "Inappropriate content",
+  "@reportReasonInappropriateContent": {
+    "description": "Report-message reason choice label (the value sent to the backend stays the fixed English canonical string)."
+  },
+  "reportReasonOther": "Other",
+  "@reportReasonOther": {
+    "description": "Report-message reason choice label (the value sent to the backend stays the fixed English canonical string)."
+  },
+  "helpedWithTripInformation": "Trip information",
+  "@helpedWithTripInformation": {
+    "description": "Feedback 'what helped' checklist option label (the value sent to the backend stays the fixed English canonical string)."
+  },
+  "helpedWithChattingWithParticipants": "Chatting with participants",
+  "@helpedWithChattingWithParticipants": {
+    "description": "Feedback 'what helped' checklist option label (the value sent to the backend stays the fixed English canonical string)."
+  },
+  "helpedWithFindingTransport": "Finding transport",
+  "@helpedWithFindingTransport": {
+    "description": "Feedback 'what helped' checklist option label (the value sent to the backend stays the fixed English canonical string)."
+  },
+  "helpedWithFindingBuddy": "Finding Buddy",
+  "@helpedWithFindingBuddy": {
+    "description": "Feedback 'what helped' checklist option label (the value sent to the backend stays the fixed English canonical string)."
+  },
+  "helpedWithNothingYet": "Nothing yet",
+  "@helpedWithNothingYet": {
+    "description": "Feedback 'what helped' checklist option label, exclusive with the others (the value sent to the backend stays the fixed English canonical string)."
+  },
+
+  "couldNotSharePhoto": "Could not share photo: {error}",
+  "@couldNotSharePhoto": {
+    "description": "Snackbar shown when sharing a photo attachment fails.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "couldNotShareVideo": "Could not share video: {error}",
+  "@couldNotShareVideo": {
+    "description": "Snackbar shown when sharing a video attachment fails.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "couldNotLoadVideo": "Could not load video",
+  "@couldNotLoadVideo": {
+    "description": "Shown in place of a video attachment that failed to load."
+  },
+
+  "couldNotLoadMedia": "Could not load media: {error}",
+  "@couldNotLoadMedia": {
+    "description": "Shown when Bubble Info's Media tab fails to load.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noPhotosOrVideosSharedYet": "No photos or videos shared yet",
+  "@noPhotosOrVideosSharedYet": {
+    "description": "Empty state for Bubble Info's Media tab."
+  },
+  "couldNotLoadFiles": "Could not load files: {error}",
+  "@couldNotLoadFiles": {
+    "description": "Shown when Bubble Info's Files tab fails to load.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noFilesSharedYet": "No files shared yet",
+  "@noFilesSharedYet": {
+    "description": "Empty state for Bubble Info's Files tab."
+  },
+  "couldNotLoadLinks": "Could not load links: {error}",
+  "@couldNotLoadLinks": {
+    "description": "Shown when Bubble Info's Links tab fails to load.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noLinksSharedYet": "No links shared yet",
+  "@noLinksSharedYet": {
+    "description": "Empty state for Bubble Info's Links tab."
+  },
+
+  "shareToABubble": "Share to a Bubble",
+  "@shareToABubble": {
+    "description": "Title of the Share-to-DiveBubble Bubble picker screen."
+  },
+  "noBubblesYet": "No Bubbles yet",
+  "@noBubblesYet": {
+    "description": "Empty state on the Bubble picker when the diver has no joined trips."
+  },
+  "joinATripToShareInto": "Join a trip to get a Bubble you can share into.",
+  "@joinATripToShareInto": {
+    "description": "Empty state subtitle on the Bubble picker."
+  },
+
+  "bubblesTabTitle": "Bubbles",
+  "@bubblesTabTitle": {
+    "description": "Bubbles bottom-nav tab label and My Trips screen title."
+  },
+  "diveLogTabTitle": "Dive Log",
+  "@diveLogTabTitle": {
+    "description": "Dive Log bottom-nav tab label."
+  },
+  "profileTabTitle": "Profile",
+  "@profileTabTitle": {
+    "description": "Profile bottom-nav tab label."
+  },
+  "signInToSeeYourTrips": "Sign in to see your trips",
+  "@signInToSeeYourTrips": {
+    "description": "Empty-state title on My Trips when signed out."
+  },
+  "logInToViewTripsBody": "Log in to view the trips you've joined and their group chats.",
+  "@logInToViewTripsBody": {
+    "description": "Empty-state subtitle on My Trips when signed out."
+  },
+  "startYourFirstBubble": "Start your first Bubble",
+  "@startYourFirstBubble": {
+    "description": "Empty-state title on My Trips when signed in with no trips yet."
+  },
+  "startYourFirstBubbleBody": "Create a trip or join one with a code — chat, transport, and trip details all in one place.",
+  "@startYourFirstBubbleBody": {
+    "description": "Empty-state subtitle on My Trips when signed in with no trips yet."
+  },
+  "createTrip": "Create trip",
+  "@createTrip": {
+    "description": "Button on the My Trips header that opens trip creation."
+  },
+  "joinTrip": "Join trip",
+  "@joinTrip": {
+    "description": "Button on the My Trips header that opens the join-by-code dialog."
+  },
+
+  "chatTabLabel": "Chat",
+  "@chatTabLabel": {
+    "description": "Pill tab label inside a Bubble."
+  },
+  "transportTabLabel": "Transport",
+  "@transportTabLabel": {
+    "description": "Pill tab label inside a Bubble."
+  },
+  "buddyTabLabel": "Buddy",
+  "@buddyTabLabel": {
+    "description": "Pill tab label inside a Bubble."
+  },
+  "expensesTabLabel": "Expenses",
+  "@expensesTabLabel": {
+    "description": "Pill tab label inside a Bubble."
+  },
+
+  "archive": "Archive",
+  "@archive": {
+    "description": "Long-press menu action on a Bubbles-list row."
+  },
+  "unarchive": "Unarchive",
+  "@unarchive": {
+    "description": "Long-press menu action on an archived Bubbles-list row."
+  },
+  "cancelTrip": "Cancel trip",
+  "@cancelTrip": {
+    "description": "Long-press menu action and confirmation-dialog button for cancelling a trip."
+  },
+  "leave": "Leave",
+  "@leave": {
+    "description": "Long-press menu action and confirmation-dialog button for leaving a trip."
+  },
+  "couldNotArchive": "Could not archive: {error}",
+  "@couldNotArchive": {
+    "description": "Snackbar shown when archiving a trip fails.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "couldNotUnarchive": "Could not unarchive: {error}",
+  "@couldNotUnarchive": {
+    "description": "Snackbar shown when unarchiving a trip fails.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "leaveBubbleTitle": "Leave this Bubble?",
+  "@leaveBubbleTitle": {
+    "description": "Title of the leave-trip confirmation dialog."
+  },
+  "leaveBubbleBody": "You'll lose your spot and can rejoin later if there's room.",
+  "@leaveBubbleBody": {
+    "description": "Body of the leave-trip confirmation dialog."
+  },
+  "couldNotLeave": "Could not leave: {error}",
+  "@couldNotLeave": {
+    "description": "Snackbar shown when leaving a trip fails.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cancelTripTitle": "Cancel this trip?",
+  "@cancelTripTitle": {
+    "description": "Title of the cancel-trip confirmation dialog."
+  },
+  "cancelTripBody": "Every participant keeps the Bubble to see the chat history, but no one — including you — can send messages, join, or arrange transport anymore. This can't be undone.",
+  "@cancelTripBody": {
+    "description": "Body of the cancel-trip confirmation dialog."
+  },
+  "neverMind": "Never mind",
+  "@neverMind": {
+    "description": "Dismiss button on the cancel-trip confirmation dialog."
+  },
+  "couldNotCancel": "Could not cancel: {error}",
+  "@couldNotCancel": {
+    "description": "Snackbar shown when cancelling a trip fails.",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+
+  "cancelledStatus": "Cancelled",
+  "@cancelledStatus": {
+    "description": "Trip-row status pill."
+  },
+  "pastStatus": "Past",
+  "@pastStatus": {
+    "description": "Trip-row status pill."
+  },
+  "activeStatus": "Active",
+  "@activeStatus": {
+    "description": "Trip-row status pill."
+  },
+
+  "archivedChats": "Archived Chats",
+  "@archivedChats": {
+    "description": "Title of the Archived Chats screen, also shown on its pinned/reveal row in My Trips."
+  },
+  "noArchivedChats": "No archived chats",
+  "@noArchivedChats": {
+    "description": "Empty-state title on the Archived Chats screen."
+  },
+  "archivedChatsEmptyBody": "Bubbles you archive show up here — swipe or unarchive to bring one back.",
+  "@archivedChatsEmptyBody": {
+    "description": "Empty-state subtitle on the Archived Chats screen."
   }
 }

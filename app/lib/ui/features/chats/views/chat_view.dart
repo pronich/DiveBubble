@@ -11,10 +11,12 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../../../../data/services/attachment_cache_service.dart';
+import '../../../../data/services/error_codes.dart';
 import '../../../../domain/entities/chat_attachment.dart';
 import '../../../../domain/entities/chat_message.dart';
 import '../../../../domain/entities/chat_reaction.dart';
 import '../../../../domain/entities/profile.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/cached_attachment_image.dart';
 import '../../../core/widgets/open_attachment.dart';
@@ -354,39 +356,40 @@ class _ChatViewState extends State<ChatView>
     _settleFocus(focusComposer: false);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Copied')));
+    ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).copiedToClipboard)));
   }
 
   Future<void> _confirmDeleteMessage(ChatMessage message) async {
     _settleFocus(focusComposer: false);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete this message?'),
-        content: const Text(
-          'This cannot be undone — it will be removed for everyone in this Bubble.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(
-              'Delete',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+      builder: (context) {
+        final l10n = AppLocalizations.of(context);
+        return AlertDialog(
+          title: Text(l10n.deleteThisMessageTitle),
+          content: Text(l10n.deleteThisMessageBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.cancel),
             ),
-          ),
-        ],
-      ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                l10n.delete,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          ],
+        );
+      },
     );
     if (confirmed != true || !mounted) return;
     final error = await widget.viewModel.deleteMessage(message.id);
     if (!mounted || error == null) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Could not delete message: $error')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context).couldNotDeleteMessage(error))),
+    );
   }
 
   Future<void> _reactToMessage(String messageId, String emoji) async {
@@ -395,7 +398,7 @@ class _ChatViewState extends State<ChatView>
     if (!mounted || error == null) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(SnackBar(content: Text('Could not react: $error')));
+    ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).couldNotReact(error))));
   }
 
   // Long-press menu — iOS/Telegram-style: background dims+blurs, the pressed bubble stays put
@@ -411,6 +414,7 @@ class _ChatViewState extends State<ChatView>
     ui.Image bubbleImage,
   ) {
     final isMine = message.userId == widget.viewModel.currentUserId;
+    final l10n = AppLocalizations.of(context);
     Navigator.of(context).push(
       PageRouteBuilder<void>(
         opaque: false,
@@ -431,25 +435,25 @@ class _ChatViewState extends State<ChatView>
             actions: [
               _ContextMenuAction(
                 icon: Icons.reply_outlined,
-                label: 'Reply',
+                label: l10n.reply,
                 onTap: () => _startReply(message),
               ),
               _ContextMenuAction(
                 icon: Icons.copy_outlined,
-                label: 'Copy text',
+                label: l10n.copyText,
                 onTap: () => _copyMessageText(message),
               ),
               if (isMine)
                 _ContextMenuAction(
                   icon: Icons.delete_outline,
-                  label: 'Delete',
+                  label: l10n.delete,
                   isDestructive: true,
                   onTap: () => _confirmDeleteMessage(message),
                 )
               else
                 _ContextMenuAction(
                   icon: Icons.flag_outlined,
-                  label: 'Report',
+                  label: l10n.report,
                   onTap: () => _showReportSheet(message),
                 ),
             ],
@@ -464,8 +468,8 @@ class _ChatViewState extends State<ChatView>
   Future<void> _pickAttachment() async {
     if (_pendingAttachments.any((a) => a.type == 'pdf')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Remove the document first to add photos.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).removeDocumentFirst),
         ),
       );
       return;
@@ -475,7 +479,7 @@ class _ChatViewState extends State<ChatView>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Only $_maxAttachmentsPerMessage attachments allowed per message',
+            AppLocalizations.of(context).onlyNAttachmentsAllowed(_maxAttachmentsPerMessage),
           ),
         ),
       );
@@ -486,8 +490,8 @@ class _ChatViewState extends State<ChatView>
     if (!mounted) return;
     if (picked.any((p) => p.type == 'pdf') && _pendingAttachments.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('A document can only be sent on its own.'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).documentOnlyOnItsOwn),
         ),
       );
       return;
@@ -507,12 +511,11 @@ class _ChatViewState extends State<ChatView>
         () => _pendingAttachments = [..._pendingAttachments, ...accepted],
       );
     if (tooLarge || picked.length > room) {
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            tooLarge
-                ? 'Some files are too large.'
-                : 'Only $_maxAttachmentsPerMessage attachments allowed per message.',
+            tooLarge ? l10n.someFilesTooLarge : l10n.onlyNAttachmentsAllowed(_maxAttachmentsPerMessage),
           ),
         ),
       );
@@ -569,9 +572,9 @@ class _ChatViewState extends State<ChatView>
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not send attachment: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).couldNotSendAttachment(friendlyError(e)))),
+      );
     }
   }
 
@@ -599,18 +602,19 @@ class _ChatViewState extends State<ChatView>
             child: ListenableBuilder(
               listenable: widget.viewModel,
               builder: (context, _) {
+                final l10n = AppLocalizations.of(context);
                 if (widget.viewModel.isLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
                 final error = widget.viewModel.error;
                 if (error != null) {
-                  return Center(child: Text('Error: $error'));
+                  return Center(child: Text(l10n.errorWithMessage(error)));
                 }
 
                 final messages = widget.viewModel.messages;
                 if (messages.isEmpty) {
-                  return const Center(child: Text('No messages yet'));
+                  return Center(child: Text(l10n.noMessagesYet));
                 }
 
                 final items = _buildDisplayItems(messages);
@@ -683,13 +687,13 @@ class _ChatViewState extends State<ChatView>
                         final repliedToSenderName = repliedTo == null
                             ? null
                             : repliedTo.userId == widget.viewModel.currentUserId
-                            ? 'You'
+                            ? l10n.you
                             : (_profiles[repliedTo.userId]
                                       ?.displayName
                                       ?.isNotEmpty ??
                                   false)
                             ? _profiles[repliedTo.userId]!.displayName!
-                            : 'Diver';
+                            : l10n.diver;
                         return _MessageRow(
                           key: ValueKey(message.id),
                           message: message,
@@ -747,7 +751,7 @@ class _ChatViewState extends State<ChatView>
               ? Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
-                    'This trip has been cancelled — the chat is read-only.',
+                    AppLocalizations.of(context).tripCancelledReadOnly,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -802,15 +806,15 @@ class _ChatViewState extends State<ChatView>
                           senderName:
                               _replyingTo!.userId ==
                                   widget.viewModel.currentUserId
-                              ? 'You'
+                              ? AppLocalizations.of(context).you
                               : ((_profiles[_replyingTo!.userId]
                                             ?.displayName
                                             ?.isNotEmpty ??
                                         false)
                                     ? _profiles[_replyingTo!.userId]!
                                           .displayName!
-                                    : 'Diver'),
-                          previewText: _replyPreviewText(_replyingTo!),
+                                    : AppLocalizations.of(context).diver),
+                          previewText: _replyPreviewText(context, _replyingTo!),
                           onCancel: _cancelReply,
                         ),
                       ),
@@ -868,8 +872,8 @@ class _ChatViewState extends State<ChatView>
                               textCapitalization: TextCapitalization.sentences,
                               decoration: InputDecoration(
                                 hintText: _pendingAttachments.isNotEmpty
-                                    ? 'Caption (optional)'
-                                    : 'Message',
+                                    ? AppLocalizations.of(context).captionOptional
+                                    : AppLocalizations.of(context).messageHint,
                               ),
                             ),
                           ),
@@ -920,7 +924,7 @@ class _ReplyPreviewChip extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Replying to $senderName',
+                  AppLocalizations.of(context).replyingTo(senderName),
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -1350,7 +1354,7 @@ class _PdfAttachmentRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = attachment.url;
-    final filename = attachment.filename ?? 'Document.pdf';
+    final filename = attachment.filename ?? AppLocalizations.of(context).documentFallbackName;
     final sizeLabel = formatAttachmentFileSize(attachment.sizeBytes);
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -1449,7 +1453,7 @@ class _NewMessagesPill extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Text(
-                'New messages',
+                AppLocalizations.of(context).newMessages,
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: theme.colorScheme.onPrimary,
                   fontWeight: FontWeight.w600,
@@ -1523,14 +1527,15 @@ ChatMessage? _findMessageById(List<ChatMessage> messages, String id) {
 // Shown in both the reply-quote strip inside a bubble and the composer's _ReplyPreviewChip —
 // same fallback a deleted push notification body needs, mirrored from the backend's own
 // pushBodyFor (routes_message.go), since text-vs-attachment-only is the same ambiguity here.
-String _replyPreviewText(ChatMessage m) {
-  if (m.deletedAt != null) return 'Message deleted';
+String _replyPreviewText(BuildContext context, ChatMessage m) {
+  final l10n = AppLocalizations.of(context);
+  if (m.deletedAt != null) return l10n.messageDeleted;
   if (m.body.isNotEmpty) return m.body;
-  if (m.attachments.length > 1) return '📎 ${m.attachments.length} attachments';
+  if (m.attachments.length > 1) return l10n.attachmentsCountLabel(m.attachments.length);
   return switch (m.attachments.isEmpty ? null : m.attachments.first.type) {
-    'image' => '📷 Photo',
-    'video' => '🎬 Video',
-    'pdf' => '📄 PDF',
+    'image' => l10n.photoLabel,
+    'video' => l10n.videoLabel,
+    'pdf' => l10n.pdfLabel,
     _ => '',
   };
 }
@@ -1653,7 +1658,7 @@ class _FeedbackButton extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.only(top: 8),
         child: Chip(
-          label: const Text('Thank you!'),
+          label: Text(AppLocalizations.of(context).thankYou),
           avatar: const Icon(Icons.check, size: 16),
         ),
       );
@@ -1662,7 +1667,7 @@ class _FeedbackButton extends StatelessWidget {
       padding: const EdgeInsets.only(top: 8),
       child: FilledButton(
         onPressed: onPressed,
-        child: const Text('Give feedback'),
+        child: Text(AppLocalizations.of(context).giveFeedback),
       ),
     );
   }
@@ -1784,7 +1789,7 @@ class _MessageRowState extends State<_MessageRow> {
 
     final baseName = (profile?.displayName?.isNotEmpty ?? false)
         ? profile!.displayName!
-        : 'Diver';
+        : AppLocalizations.of(context).diver;
     // Staff display always wins over the Observer label — in his own dive center's Bubbles
     // the founder shows up as staff, not as an observer (see users.is_product_observer).
     final isObserver =
@@ -1793,7 +1798,7 @@ class _MessageRowState extends State<_MessageRow> {
         (message.isDiveCenterStaff && (businessName?.isNotEmpty ?? false))
         ? '$baseName | $businessName'
         : isObserver
-        ? '$baseName | Product Observer'
+        ? '$baseName | ${AppLocalizations.of(context).productObserver}'
         : baseName;
     // Staff/Observer messages always carry a name, even mid-cluster — a trip's chat is
     // effectively a group conversation (organizer + every diver) even though it's framed as
@@ -1815,7 +1820,7 @@ class _MessageRowState extends State<_MessageRow> {
       ),
       child: isDeleted
           ? Text(
-              'Message deleted',
+              AppLocalizations.of(context).messageDeleted,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: onBubbleColor.withValues(alpha: 0.7),
                 fontStyle: FontStyle.italic,
@@ -1855,8 +1860,8 @@ class _MessageRowState extends State<_MessageRow> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: _ReplyQuoteStrip(
-                      senderName: widget.repliedToSenderName ?? 'Diver',
-                      previewText: _replyPreviewText(widget.repliedToMessage!),
+                      senderName: widget.repliedToSenderName ?? AppLocalizations.of(context).diver,
+                      previewText: _replyPreviewText(context, widget.repliedToMessage!),
                       color: onBubbleColor,
                       onTap: widget.onTapReplyPreview,
                     ),
@@ -2306,7 +2311,17 @@ class _MessageContextMenu extends StatelessWidget {
   }
 }
 
+// Canonical English values sent to the backend/moderation queue — never translated. Only the
+// displayed chip label goes through _reportReasonLabel below.
 const _reportReasons = ['Spam', 'Harassment', 'Inappropriate content', 'Other'];
+
+String _reportReasonLabel(AppLocalizations l10n, String reason) => switch (reason) {
+  'Spam' => l10n.reportReasonSpam,
+  'Harassment' => l10n.reportReasonHarassment,
+  'Inappropriate content' => l10n.reportReasonInappropriateContent,
+  'Other' => l10n.reportReasonOther,
+  _ => reason,
+};
 
 class _ReportMessageSheet extends StatefulWidget {
   const _ReportMessageSheet({required this.viewModel, required this.messageId});
@@ -2343,17 +2358,18 @@ class _ReportMessageSheetState extends State<_ReportMessageSheet> {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Report sent — thank you.')));
+      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).reportSentThankYou)));
     } else {
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not send report: $error')));
+      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).couldNotSendReport(error))));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -2367,7 +2383,7 @@ class _ReportMessageSheetState extends State<_ReportMessageSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Report message',
+              l10n.reportMessageTitle,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
@@ -2377,7 +2393,7 @@ class _ReportMessageSheetState extends State<_ReportMessageSheet> {
               children: _reportReasons
                   .map(
                     (reason) => ChoiceChip(
-                      label: Text(reason),
+                      label: Text(_reportReasonLabel(l10n, reason)),
                       selected: _reason == reason,
                       onSelected: (_) => setState(() => _reason = reason),
                     ),
@@ -2387,8 +2403,8 @@ class _ReportMessageSheetState extends State<_ReportMessageSheet> {
             const SizedBox(height: 16),
             TextField(
               controller: _detailsController,
-              decoration: const InputDecoration(
-                labelText: 'Details (optional)',
+              decoration: InputDecoration(
+                labelText: l10n.detailsOptional,
               ),
               maxLines: 2,
             ),
@@ -2403,7 +2419,7 @@ class _ReportMessageSheetState extends State<_ReportMessageSheet> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Send report'),
+                    : Text(l10n.sendReport),
               ),
             ),
           ],
@@ -2416,6 +2432,8 @@ class _ReportMessageSheetState extends State<_ReportMessageSheet> {
 // Fixed checklist for "what did DiveBubble help you with" — 'Nothing yet' is exclusive with
 // the rest (see _FeedbackSheetState._toggleHelpedWith), so it's never combined with a real
 // answer in the stored comma-joined string.
+// Canonical English values sent to the backend — never translated. Only the displayed chip
+// label goes through _helpedWithLabel below.
 const _helpedWithOptions = [
   'Trip information',
   'Chatting with participants',
@@ -2423,6 +2441,15 @@ const _helpedWithOptions = [
   'Finding Buddy',
   'Nothing yet',
 ];
+
+String _helpedWithLabel(AppLocalizations l10n, String option) => switch (option) {
+  'Trip information' => l10n.helpedWithTripInformation,
+  'Chatting with participants' => l10n.helpedWithChattingWithParticipants,
+  'Finding transport' => l10n.helpedWithFindingTransport,
+  'Finding Buddy' => l10n.helpedWithFindingBuddy,
+  'Nothing yet' => l10n.helpedWithNothingYet,
+  _ => option,
+};
 
 class _FeedbackSheet extends StatefulWidget {
   const _FeedbackSheet({required this.viewModel, required this.messageId});
@@ -2481,11 +2508,11 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Thank you!')));
+      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).thankYou)));
     } else {
       setState(() => _isSubmitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not send feedback: $error')),
+        SnackBar(content: Text(AppLocalizations.of(context).couldNotSendFeedback(error))),
       );
     }
   }
@@ -2493,6 +2520,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: SingleChildScrollView(
         padding: EdgeInsets.only(
@@ -2506,7 +2534,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'How useful was DiveBubble for this trip?',
+              l10n.howUsefulQuestion,
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -2526,7 +2554,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
             ),
             const SizedBox(height: 16),
             Text(
-              'What did DiveBubble help you with?',
+              l10n.whatDidHelpQuestion,
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
@@ -2552,24 +2580,24 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                           )
                         : null,
                   ),
-                  label: Text(option),
+                  label: Text(_helpedWithLabel(l10n, option)),
                   selected: selected,
                   onSelected: (value) => _toggleHelpedWith(option, value),
                 );
               }).toList(),
             ),
             const SizedBox(height: 16),
-            Text('What should we improve?', style: theme.textTheme.titleMedium),
+            Text(l10n.whatShouldImproveQuestion, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             TextField(
               controller: _commentController,
-              decoration: const InputDecoration(hintText: 'Optional'),
+              decoration: InputDecoration(hintText: l10n.optionalHintText),
               maxLines: 3,
             ),
             CheckboxListTile(
               value: _contactOk,
               onChanged: (value) => setState(() => _contactOk = value ?? false),
-              title: const Text('Can we contact you about your feedback?'),
+              title: Text(l10n.canContactAboutFeedback),
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
             ),
@@ -2584,7 +2612,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Submit feedback'),
+                    : Text(l10n.submitFeedback),
               ),
             ),
           ],

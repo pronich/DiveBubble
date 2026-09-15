@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../l10n/app_localizations.dart';
+
 /// Telegram-style "pull down to reveal the Archive, pull again to refresh".
 ///
 /// Two phases, controlled by [revealed] (owned by the parent so it can reset the state on
@@ -179,7 +181,7 @@ class _ArchivePinnedRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Archived Chats', style: theme.textTheme.titleMedium),
+                  Text(AppLocalizations.of(context).archivedChats, style: theme.textTheme.titleMedium),
                   if (preview.isNotEmpty)
                     Text(
                       preview,
@@ -261,7 +263,7 @@ class _ArchiveRevealCell extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Archived Chats', style: theme.textTheme.titleMedium),
+                  Text(AppLocalizations.of(context).archivedChats, style: theme.textTheme.titleMedium),
                   if (preview.isNotEmpty)
                     Text(
                       preview,
