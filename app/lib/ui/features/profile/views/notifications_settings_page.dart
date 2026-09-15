@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/services/push_preferences.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Master on/off only for now — category toggles (messages, trip updates, transport) land
 /// here once there's more than one event worth distinguishing in the UI.
@@ -92,18 +93,19 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
+      appBar: AppBar(title: Text(l10n.notificationsTitle)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               children: [
                 SwitchListTile(
-                  title: const Text('Push notifications'),
+                  title: Text(l10n.pushNotificationsLabel),
                   subtitle: switch ((_deniedAtOSLevel, _notDeterminedAtOSLevel)) {
-                    (true, _) => const Text('Disabled in system settings — enable DiveBubble notifications there first'),
-                    (_, true) => const Text('Tap to enable notifications'),
-                    _ => const Text('New messages, trip updates and more'),
+                    (true, _) => Text(l10n.pushDisabledInSystemSettings),
+                    (_, true) => Text(l10n.tapToEnableNotifications),
+                    _ => Text(l10n.newMessagesTripUpdatesEtc),
                   },
                   value: _enabled,
                   onChanged: _deniedAtOSLevel && !_enabled ? null : _onChanged,

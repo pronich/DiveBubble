@@ -5,10 +5,12 @@ import '../../../../data/repositories/chat_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/repositories/trip_repository.dart';
+import '../../../../data/services/error_codes.dart';
 import '../../../../data/services/locale_controller.dart';
 import '../../../../data/services/location_service.dart';
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/profile.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/widgets/dashed_divider.dart';
 import '../../../core/widgets/pick_image.dart';
 import '../../onboarding/views/login_sheet.dart';
@@ -125,7 +127,9 @@ class _ProfileViewState extends State<ProfileView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Profile', style: Theme.of(context).textTheme.headlineSmall)),
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context).profileTabTitle, style: Theme.of(context).textTheme.headlineSmall),
+      ),
       body: !_signedIn
           ? _GuestBody(
               location: _guestLocation,
@@ -155,7 +159,7 @@ class _ProfileViewState extends State<ProfileView> {
 
                 final error = _viewModel.error;
                 if (error != null) {
-                  return Center(child: Text('Error: $error'));
+                  return Center(child: Text(AppLocalizations.of(context).errorWithMessage(error)));
                 }
 
                 final profile = _viewModel.profile;
@@ -195,6 +199,7 @@ class _GuestBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return ListView(
       children: [
@@ -214,7 +219,7 @@ class _GuestBody extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Guest', style: theme.textTheme.titleLarge),
+                        Text(l10n.guest, style: theme.textTheme.titleLarge),
                         if (location != null) ...[
                           const SizedBox(height: 2),
                           Row(
@@ -240,7 +245,7 @@ class _GuestBody extends StatelessWidget {
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(onPressed: onDiveIn, child: const Text('Dive in')),
+                child: ElevatedButton(onPressed: onDiveIn, child: Text(l10n.diveIn)),
               ),
             ],
           ),
@@ -248,11 +253,11 @@ class _GuestBody extends StatelessWidget {
         const _SettingsDivider(),
         _SettingsRow(
           icon: Icons.language,
-          label: 'Language',
+          label: l10n.languageSettingsTitle,
           page: LanguageSettingsPage(localeController: localeController),
         ),
-        const _SettingsRow(icon: Icons.info_outline, label: 'About', page: AboutPage()),
-        const _SettingsRow(icon: Icons.description_outlined, label: 'Legal', page: LegalPage()),
+        _SettingsRow(icon: Icons.info_outline, label: l10n.about, page: const AboutPage()),
+        _SettingsRow(icon: Icons.description_outlined, label: l10n.legalTitle, page: const LegalPage()),
       ],
     );
   }
@@ -321,7 +326,9 @@ class _SignedInBody extends StatelessWidget {
     final ok = await viewModel.uploadAvatar(filePath);
     if (!context.mounted) return;
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.error ?? 'Could not upload photo')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(viewModel.error ?? AppLocalizations.of(context).couldNotUploadPhoto)));
     }
   }
 
@@ -329,7 +336,9 @@ class _SignedInBody extends StatelessWidget {
     final ok = await viewModel.removeAvatar();
     if (!context.mounted) return;
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.error ?? 'Could not remove photo')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(viewModel.error ?? AppLocalizations.of(context).couldNotRemovePhoto)));
     }
   }
 
@@ -337,6 +346,7 @@ class _SignedInBody extends StatelessWidget {
   // cert/specialty photos — rather than jumping straight into the image picker on tap.
   Future<void> _showAvatarOptions(BuildContext context) async {
     final hasAvatar = profile.avatarUrl?.isNotEmpty ?? false;
+    final l10n = AppLocalizations.of(context);
     await showModalBottomSheet(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -345,7 +355,7 @@ class _SignedInBody extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
-              title: const Text('Change photo'),
+              title: Text(l10n.changePhoto),
               onTap: () {
                 Navigator.of(sheetContext).pop();
                 _pickAndUploadAvatar(context);
@@ -354,7 +364,7 @@ class _SignedInBody extends StatelessWidget {
             if (hasAvatar)
               ListTile(
                 leading: Icon(Icons.delete_outline, color: Theme.of(sheetContext).colorScheme.error),
-                title: Text('Remove photo', style: TextStyle(color: Theme.of(sheetContext).colorScheme.error)),
+                title: Text(l10n.removePhoto, style: TextStyle(color: Theme.of(sheetContext).colorScheme.error)),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   _removeAvatar(context);
@@ -373,7 +383,9 @@ class _SignedInBody extends StatelessWidget {
     final ok = await viewModel.uploadCertificationPhoto(filePath);
     if (!context.mounted) return;
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.error ?? 'Could not upload photo')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(viewModel.error ?? AppLocalizations.of(context).couldNotUploadPhoto)));
     }
   }
 
@@ -384,13 +396,16 @@ class _SignedInBody extends StatelessWidget {
     final ok = await viewModel.uploadSpecialtyPhoto(id, filePath);
     if (!context.mounted) return;
     if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(viewModel.error ?? 'Could not upload photo')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(viewModel.error ?? AppLocalizations.of(context).couldNotUploadPhoto)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return ListView(
       children: [
@@ -409,12 +424,12 @@ class _SignedInBody extends StatelessWidget {
               const SizedBox(height: 24),
               DashedDivider(key: certificationsKey),
               const SizedBox(height: 16),
-              Text('Certifications', style: theme.textTheme.titleMedium),
+              Text(l10n.certificationsSectionTitle, style: theme.textTheme.titleMedium),
               const SizedBox(height: 16),
               _SubHeader(
-                title: 'Level',
+                title: l10n.level,
                 trailing: _hasLevel
-                    ? TextButton(onPressed: () => _openUpdateLevelSheet(context), child: const Text('Update'))
+                    ? TextButton(onPressed: () => _openUpdateLevelSheet(context), child: Text(l10n.update))
                     : null,
               ),
               _hasLevel
@@ -430,7 +445,7 @@ class _SignedInBody extends StatelessWidget {
                   : AddLevelCard(onTap: () => _openUpdateLevelSheet(context)),
               const SizedBox(height: 20),
               _SubHeader(
-                title: 'Specialties',
+                title: l10n.specialtiesSectionTitle,
                 trailing: viewModel.specialties.isNotEmpty
                     ? IconButton(
                         onPressed: () => _openAddSpecialtySheet(context),
@@ -451,7 +466,7 @@ class _SignedInBody extends StatelessWidget {
               const SizedBox(height: 24),
               const DashedDivider(),
               const SizedBox(height: 16),
-              Text('Dive Log', style: theme.textTheme.titleMedium),
+              Text(l10n.diveLogTabTitle, style: theme.textTheme.titleMedium),
               const SizedBox(height: 16),
               DiveLogDeck(
                 entries: viewModel.diveLog,
@@ -468,7 +483,7 @@ class _SignedInBody extends StatelessWidget {
               const SizedBox(height: 24),
               const DashedDivider(),
               const SizedBox(height: 16),
-              Text('Gear', style: theme.textTheme.titleMedium),
+              Text(l10n.gearSectionTitle, style: theme.textTheme.titleMedium),
               const SizedBox(height: 16),
               GearSummaryCard(
                 gear: viewModel.gear,
@@ -482,18 +497,18 @@ class _SignedInBody extends StatelessWidget {
         const _SettingsDivider(),
         _SettingsRow(
           icon: Icons.notifications_outlined,
-          label: 'Notifications',
+          label: l10n.notificationsTitle,
           page: NotificationsSettingsPage(pushRepository: pushRepository),
         ),
-        _SettingsRow(icon: Icons.block, label: 'Blocked users', page: BlockedUsersPage(profileRepository: profileRepository)),
-        const _SettingsRow(icon: Icons.storage_outlined, label: 'Storage', page: StorageSettingsPage()),
+        _SettingsRow(icon: Icons.block, label: l10n.blockedUsersTitle, page: BlockedUsersPage(profileRepository: profileRepository)),
+        _SettingsRow(icon: Icons.storage_outlined, label: l10n.storageTitle, page: const StorageSettingsPage()),
         _SettingsRow(
           icon: Icons.language,
-          label: 'Language',
+          label: l10n.languageSettingsTitle,
           page: LanguageSettingsPage(localeController: localeController),
         ),
-        const _SettingsRow(icon: Icons.info_outline, label: 'About', page: AboutPage()),
-        const _SettingsRow(icon: Icons.description_outlined, label: 'Legal', page: LegalPage()),
+        _SettingsRow(icon: Icons.info_outline, label: l10n.about, page: const AboutPage()),
+        _SettingsRow(icon: Icons.description_outlined, label: l10n.legalTitle, page: const LegalPage()),
         const Divider(height: 32),
         _DiveOutRow(onDiveOut: onDiveOut),
         _DeleteAccountRow(onDeleteAccount: onDeleteAccount),
@@ -551,7 +566,7 @@ class _DiveOutRow extends StatelessWidget {
     final theme = Theme.of(context);
     return ListTile(
       leading: Icon(Icons.logout, color: theme.colorScheme.onSurfaceVariant),
-      title: Text('Dive out', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+      title: Text(AppLocalizations.of(context).diveOut, style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
       onTap: onDiveOut,
     );
   }
@@ -573,19 +588,17 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
   bool _isDeleting = false;
 
   Future<void> _confirmAndDelete() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete account?'),
-        content: const Text(
-          'This permanently anonymizes your account and cancels any trips you organize. '
-          "This can't be undone.",
-        ),
+        title: Text(l10n.deleteAccountTitle),
+        content: Text(l10n.deleteAccountBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.cancel)),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(l10n.delete, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
@@ -597,7 +610,9 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
       await widget.onDeleteAccount();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not delete account: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.couldNotDeleteAccount(friendlyError(e)))));
     } finally {
       if (mounted) setState(() => _isDeleting = false);
     }
@@ -610,7 +625,7 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
       leading: _isDeleting
           ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
           : Icon(Icons.delete_outline, color: theme.colorScheme.error),
-      title: Text('Delete account', style: TextStyle(color: theme.colorScheme.error)),
+      title: Text(AppLocalizations.of(context).deleteAccountRow, style: TextStyle(color: theme.colorScheme.error)),
       onTap: _isDeleting ? null : _confirmAndDelete,
     );
   }

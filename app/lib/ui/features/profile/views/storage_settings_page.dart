@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/services/attachment_cache_service.dart';
+import '../../../../data/services/error_codes.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Lets a diver free up disk space by wiping the local chat-attachment cache — the files
 /// themselves are still on the server, so anything opened again is simply re-downloaded.
@@ -15,17 +17,15 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
   bool _isClearing = false;
 
   Future<void> _confirmAndClear() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear cache?'),
-        content: const Text(
-          'This removes downloaded photos and files from this device. Nothing is deleted from '
-          'the trip chats themselves — files are simply re-downloaded next time you open them.',
-        ),
+        title: Text(l10n.clearCacheTitle),
+        content: Text(l10n.clearCacheBody),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Clear')),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(l10n.cancel)),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: Text(l10n.clear)),
         ],
       ),
     );
@@ -38,10 +38,12 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
       // wouldn't evict that from Flutter's own in-memory image cache.
       PaintingBinding.instance.imageCache.clear();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cache cleared.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.cacheCleared)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not clear cache: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.couldNotClearCache(friendlyError(e)))));
     } finally {
       if (mounted) setState(() => _isClearing = false);
     }
@@ -49,14 +51,15 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Storage')),
+      appBar: AppBar(title: Text(l10n.storageTitle)),
       body: ListTile(
         leading: _isClearing
             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
             : const Icon(Icons.delete_sweep_outlined),
-        title: const Text('Clear cache'),
-        subtitle: const Text('Removes downloaded chat photos and files from this device'),
+        title: Text(l10n.clearCacheRow),
+        subtitle: Text(l10n.clearCacheSubtitle),
         onTap: _isClearing ? null : _confirmAndClear,
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/gear_ownership.dart';
 import '../../../../domain/gear_item.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// "X/N in Locker" teaser — tap pushes the full GearLockerPage, same summary-card-then-detail-page
 /// pattern as the Certifications section's "See all". Counted against the fixed Essential
@@ -20,6 +21,7 @@ class GearSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final total = kEssentialGearItems.length;
 
     return InkWell(
@@ -40,10 +42,10 @@ class GearSummaryCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Gear locker', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(l10n.gearLockerTitle, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 2),
                   Text(
-                    '$_ownedCount/$total in Locker',
+                    l10n.ownedOfTotalInLocker(_ownedCount, total),
                     style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                   ),
                 ],

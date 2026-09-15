@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/specialty_certification.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../ui/core/theme/app_colors.dart';
 import '../../../core/widgets/card_photo_picker.dart';
 
@@ -113,7 +114,7 @@ class SpecialtyCard extends StatelessWidget {
               children: [
                 const Icon(Icons.verified_outlined, size: 14, color: AppColors.textInverse),
                 const SizedBox(width: 4),
-                Text('Verified', style: theme.textTheme.labelSmall?.copyWith(color: AppColors.textInverse)),
+                Text(AppLocalizations.of(context).verified, style: theme.textTheme.labelSmall?.copyWith(color: AppColors.textInverse)),
               ],
             ),
           ],
@@ -147,7 +148,7 @@ class AddSpecialtyCard extends StatelessWidget {
           children: [
             Icon(Icons.add_circle_outline, color: theme.colorScheme.primary),
             const SizedBox(height: 8),
-            Text('Add speciality', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary)),
+            Text(AppLocalizations.of(context).addSpeciality, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.primary)),
           ],
         ),
       ),

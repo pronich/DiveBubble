@@ -562,4 +562,506 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get request => 'Request';
+
+  @override
+  String get about => 'About';
+
+  @override
+  String versionLabel(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get gearLockerTitle => 'Gear locker';
+
+  @override
+  String ownedOfTotalInLocker(int owned, int total) {
+    return '$owned/$total in Locker';
+  }
+
+  @override
+  String get clearCacheTitle => 'Clear cache?';
+
+  @override
+  String get clearCacheBody =>
+      'This removes downloaded photos and files from this device. Nothing is deleted from the trip chats themselves — files are simply re-downloaded next time you open them.';
+
+  @override
+  String get clear => 'Clear';
+
+  @override
+  String get cacheCleared => 'Cache cleared.';
+
+  @override
+  String couldNotClearCache(String error) {
+    return 'Could not clear cache: $error';
+  }
+
+  @override
+  String get storageTitle => 'Storage';
+
+  @override
+  String get clearCacheRow => 'Clear cache';
+
+  @override
+  String get clearCacheSubtitle =>
+      'Removes downloaded chat photos and files from this device';
+
+  @override
+  String couldNotUnblock(String error) {
+    return 'Could not unblock: $error';
+  }
+
+  @override
+  String get blockedUsersTitle => 'Blocked users';
+
+  @override
+  String get noBlockedUsers => 'No blocked users.';
+
+  @override
+  String get unblock => 'Unblock';
+
+  @override
+  String get copyEmailAddress => 'Copy email address';
+
+  @override
+  String get emailAddressCopied => 'Email address copied';
+
+  @override
+  String get legalTitle => 'Legal';
+
+  @override
+  String get termsOfService => 'Terms of Service';
+
+  @override
+  String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String get contactSupport => 'Contact support';
+
+  @override
+  String get addADive => 'Add a dive';
+
+  @override
+  String get updateLevelTitle => 'Update level';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get addSpeciality => 'Add speciality';
+
+  @override
+  String get specialityName => 'Speciality name';
+
+  @override
+  String get notificationsTitle => 'Notifications';
+
+  @override
+  String get pushNotificationsLabel => 'Push notifications';
+
+  @override
+  String get pushDisabledInSystemSettings =>
+      'Disabled in system settings — enable DiveBubble notifications there first';
+
+  @override
+  String get tapToEnableNotifications => 'Tap to enable notifications';
+
+  @override
+  String get newMessagesTripUpdatesEtc => 'New messages, trip updates and more';
+
+  @override
+  String get verified => 'Verified';
+
+  @override
+  String get addCertificate => 'Add certificate';
+
+  @override
+  String get blockThisUserTitle => 'Block this user?';
+
+  @override
+  String get blockUserBody =>
+      'You won\'t see their messages in shared trip chats anymore. You can undo this from Profile → Blocked users.';
+
+  @override
+  String get block => 'Block';
+
+  @override
+  String get blockUserTooltip => 'Block user';
+
+  @override
+  String get blockedManageBody => 'Blocked. Manage in Profile → Blocked users.';
+
+  @override
+  String couldNotBlockUser(String error) {
+    return 'Could not block user: $error';
+  }
+
+  @override
+  String get bioLabel => 'Bio';
+
+  @override
+  String get divesLabel => 'Dives';
+
+  @override
+  String get languagesLabel => 'Languages';
+
+  @override
+  String get memberSinceLabel => 'Member since';
+
+  @override
+  String get editProfileTitle => 'Edit profile';
+
+  @override
+  String get displayNameLabel => 'Display name';
+
+  @override
+  String get displayNameHelper =>
+      'Shown to other divers instead of your real name';
+
+  @override
+  String get pleaseEnterDisplayName => 'Please enter a display name';
+
+  @override
+  String get locationLabel => 'Location';
+
+  @override
+  String get useCurrentLocationTooltip => 'Use current location';
+
+  @override
+  String get unloggedDivesLabel => 'Unlogged dives';
+
+  @override
+  String get unloggedDivesHelper =>
+      'Dives you haven\'t added to your Dive Log — shown together with it as your total';
+
+  @override
+  String get allDivesAreLogged => 'All my dives are logged';
+
+  @override
+  String get selectLanguages => 'Select languages';
+
+  @override
+  String get zeroOutUnloggedDivesTitle => 'Zero out unlogged dives?';
+
+  @override
+  String get zeroOutUnloggedDivesBody =>
+      'This clears the number above to 0. Your Dive Log entries are untouched — this only affects the manually-entered count.';
+
+  @override
+  String get zeroOut => 'Zero out';
+
+  @override
+  String get editDiveTitle => 'Edit Dive';
+
+  @override
+  String get addDiveTitle => 'Add Dive';
+
+  @override
+  String get importedDiveLockedNotice =>
+      'This dive was imported from your dive computer — only the country, dive site, and notes can be edited.';
+
+  @override
+  String get dateLabel => 'Date';
+
+  @override
+  String get timeLabel => 'Time';
+
+  @override
+  String get maxDepthLabel => 'Max depth';
+
+  @override
+  String get avgDepthLabel => 'Avg depth';
+
+  @override
+  String get durationLabel => 'Duration';
+
+  @override
+  String get minTemperatureLabel => 'Min temperature';
+
+  @override
+  String get minTempLabel => 'Min temp';
+
+  @override
+  String get maxTempLabel => 'Max temp';
+
+  @override
+  String get countryLabel => 'Country';
+
+  @override
+  String get diveSiteLabel => 'Dive site';
+
+  @override
+  String get notesLabel => 'Notes';
+
+  @override
+  String get saveChanges => 'Save changes';
+
+  @override
+  String get deleteThisDiveTitle => 'Delete this dive?';
+
+  @override
+  String get cantBeUndone => 'This can\'t be undone.';
+
+  @override
+  String get gearEssentialSection => 'ESSENTIAL';
+
+  @override
+  String get gearAdditionalSection => 'ADDITIONAL';
+
+  @override
+  String get addItem => 'Add item';
+
+  @override
+  String get gearOwned => 'Owned';
+
+  @override
+  String get gearMissing => 'Missing';
+
+  @override
+  String get gearUsuallyRent => 'Usually rent';
+
+  @override
+  String get addItemSheetBody =>
+      'For anything beyond the essentials — torch, action camera, buoy...';
+
+  @override
+  String get itemNameLabel => 'Item name';
+
+  @override
+  String get gearItemBoots => 'Boots';
+
+  @override
+  String get gearItemFins => 'Fins';
+
+  @override
+  String get gearItemBcd => 'BCD';
+
+  @override
+  String get gearItemWetsuitShorty5mm => 'Wetsuit shorty 5mm';
+
+  @override
+  String get gearItemWetsuit5mm => 'Wetsuit 5mm';
+
+  @override
+  String get gearItemWetsuit7mm => 'Wetsuit 7mm';
+
+  @override
+  String get gearItemWetsuit9mm => 'Wetsuit 9mm';
+
+  @override
+  String get gearItemSemidrySuit => 'Semidry suit';
+
+  @override
+  String get gearItemDrySuit => 'Dry suit';
+
+  @override
+  String get gearItemHelmet => 'Helmet';
+
+  @override
+  String get gearItemGloves => 'Gloves';
+
+  @override
+  String get gearItemRegulator => 'Regulator';
+
+  @override
+  String get gearItemComputer => 'Computer';
+
+  @override
+  String get gearItemMask => 'Mask';
+
+  @override
+  String get shareToBubble => 'Share to Bubble';
+
+  @override
+  String get sourceLabel => 'Source';
+
+  @override
+  String get importedValue => 'Imported';
+
+  @override
+  String get manualValue => 'Manual';
+
+  @override
+  String diveOnDate(String date) {
+    return 'Dive on $date';
+  }
+
+  @override
+  String labelColonValue(String label, String value) {
+    return '$label: $value';
+  }
+
+  @override
+  String get sharedToBubble => 'Shared to Bubble';
+
+  @override
+  String couldNotShare(String error) {
+    return 'Could not share: $error';
+  }
+
+  @override
+  String get haventJoinedAnyBubblesYet =>
+      'You haven\'t joined any Bubbles yet.';
+
+  @override
+  String selectedCountLabel(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get noDivesLoggedYet => 'No dives logged yet';
+
+  @override
+  String get addDiveOrImportBody =>
+      'Add a dive by hand, or import a dive log file.';
+
+  @override
+  String deleteDivesConfirmTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Delete $count dives?',
+      one: 'Delete $count dive?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotDeleteDivesError(int count, String error) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Could not delete $count dives: $error',
+      one: 'Could not delete $count dive: $error',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotDeleteWithError(String error) {
+    return 'Could not delete: $error';
+  }
+
+  @override
+  String get addADiveManually => 'Add a dive manually';
+
+  @override
+  String get importADiveLogFile => 'Import a dive log file';
+
+  @override
+  String get importFormatsSubtitle => 'UDDF, CSV, or a Diving Log 6 export';
+
+  @override
+  String get csvColumnFormatTitle => 'CSV column format';
+
+  @override
+  String get csvColumnFormatBody =>
+      'First row must be a header with these column names (any order, only \"date\" is required):\n\ndate (YYYY-MM-DD)\ntime (HH:MM)\ncountry\nsite\nmax_depth_m\navg_depth_m\nduration_min\nmin_temp_c\nnotes';
+
+  @override
+  String get gotIt => 'Got it';
+
+  @override
+  String diveImportedSimple(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count dives imported',
+      one: '$count dive imported',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String diveImportedWithSkipped(int count, int skipped) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count new dives imported, $skipped already logged',
+      one: '$count new dive imported, $skipped already logged',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotImport(String error) {
+    return 'Could not import: $error';
+  }
+
+  @override
+  String get unknownError => 'unknown error';
+
+  @override
+  String get updateUnloggedCountPromptBody =>
+      'If some of these were already counted in your profile, update it in Edit Profile.';
+
+  @override
+  String get editProfileAction => 'Edit Profile';
+
+  @override
+  String get depthLabel => 'Depth';
+
+  @override
+  String get temperatureLabel => 'Temperature';
+
+  @override
+  String get dragToInspectHint => 'Drag along the chart to inspect a point';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get searchLanguages => 'Search languages';
+
+  @override
+  String get languageSettingsTitle => 'Language';
+
+  @override
+  String get systemDefault => 'System default';
+
+  @override
+  String get guest => 'Guest';
+
+  @override
+  String get certificationsSectionTitle => 'Certifications';
+
+  @override
+  String get update => 'Update';
+
+  @override
+  String get specialtiesSectionTitle => 'Specialties';
+
+  @override
+  String get gearSectionTitle => 'Gear';
+
+  @override
+  String get couldNotUploadPhoto => 'Could not upload photo';
+
+  @override
+  String get couldNotRemovePhoto => 'Could not remove photo';
+
+  @override
+  String get changePhoto => 'Change photo';
+
+  @override
+  String get removePhoto => 'Remove photo';
+
+  @override
+  String get diveOut => 'Dive out';
+
+  @override
+  String get deleteAccountTitle => 'Delete account?';
+
+  @override
+  String get deleteAccountBody =>
+      'This permanently anonymizes your account and cancels any trips you organize. This can\'t be undone.';
+
+  @override
+  String couldNotDeleteAccount(String error) {
+    return 'Could not delete account: $error';
+  }
+
+  @override
+  String get deleteAccountRow => 'Delete account';
 }

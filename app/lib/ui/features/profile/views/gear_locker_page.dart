@@ -1,8 +1,29 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/gear_item.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../../ui/core/theme/app_colors.dart';
 import '../view_models/profile_view_model.dart';
+
+// Canonical English keys sent to/matched against the backend — never translated. Only the
+// displayed label (see _GearRow) goes through this mapping.
+String _gearItemLabel(AppLocalizations l10n, String key) => switch (key) {
+  'boots' => l10n.gearItemBoots,
+  'fins' => l10n.gearItemFins,
+  'bcd' => l10n.gearItemBcd,
+  'wetsuit_shorty_5mm' => l10n.gearItemWetsuitShorty5mm,
+  'wetsuit_5mm' => l10n.gearItemWetsuit5mm,
+  'wetsuit_7mm' => l10n.gearItemWetsuit7mm,
+  'wetsuit_9mm' => l10n.gearItemWetsuit9mm,
+  'semidry_suit' => l10n.gearItemSemidrySuit,
+  'dry_suit' => l10n.gearItemDrySuit,
+  'helmet' => l10n.gearItemHelmet,
+  'gloves' => l10n.gearItemGloves,
+  'regulator' => l10n.gearItemRegulator,
+  'computer' => l10n.gearItemComputer,
+  'mask' => l10n.gearItemMask,
+  _ => key,
+};
 
 class GearLockerPage extends StatelessWidget {
   const GearLockerPage({super.key, required this.viewModel});
@@ -32,8 +53,9 @@ class GearLockerPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Gear locker')),
+      appBar: AppBar(title: Text(l10n.gearLockerTitle)),
       body: ListenableBuilder(
         listenable: viewModel,
         builder: (context, _) {
@@ -43,12 +65,12 @@ class GearLockerPage extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              _SectionLabel('ESSENTIAL'),
+              _SectionLabel(l10n.gearEssentialSection),
               _GearGroup(
                 children: [
                   for (var i = 0; i < kEssentialGearItems.length; i++) ...[
                     _GearRow(
-                      label: kEssentialGearItems[i].label,
+                      label: _gearItemLabel(l10n, kEssentialGearItems[i].key),
                       status: GearStatus.fromValue(
                         statusByKey[kEssentialGearItems[i].key] ?? GearStatus.missing.value,
                       ),
@@ -64,7 +86,7 @@ class GearLockerPage extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 24),
-              _SectionLabel('ADDITIONAL'),
+              _SectionLabel(l10n.gearAdditionalSection),
               if (additionalItems.isNotEmpty)
                 _GearGroup(
                   children: [
@@ -86,7 +108,7 @@ class GearLockerPage extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: () => _openAddItemSheet(context),
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add item'),
+                label: Text(l10n.addItem),
               ),
             ],
           );
@@ -173,10 +195,11 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final (label, icon, fg, bg) = switch (status) {
-      GearStatus.owned => ('Owned', Icons.check_circle_outline, AppColors.onSuccessContainer, AppColors.successContainer),
-      GearStatus.missing => ('Missing', Icons.remove_circle_outline, AppColors.onErrorContainer, AppColors.errorContainer),
-      GearStatus.rents => ('Usually rent', Icons.radio_button_unchecked, AppColors.onWarningContainer, AppColors.warningContainer),
+      GearStatus.owned => (l10n.gearOwned, Icons.check_circle_outline, AppColors.onSuccessContainer, AppColors.successContainer),
+      GearStatus.missing => (l10n.gearMissing, Icons.remove_circle_outline, AppColors.onErrorContainer, AppColors.errorContainer),
+      GearStatus.rents => (l10n.gearUsuallyRent, Icons.radio_button_unchecked, AppColors.onWarningContainer, AppColors.warningContainer),
     };
 
     return Container(
@@ -225,6 +248,7 @@ class _AddGearItemSheetState extends State<_AddGearItemSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return SafeArea(
       child: Padding(
@@ -238,10 +262,10 @@ class _AddGearItemSheetState extends State<_AddGearItemSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Add item', style: theme.textTheme.titleMedium),
+            Text(l10n.addItem, style: theme.textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(
-              'For anything beyond the essentials — torch, action camera, buoy...',
+              l10n.addItemSheetBody,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
@@ -249,7 +273,7 @@ class _AddGearItemSheetState extends State<_AddGearItemSheet> {
               controller: _controller,
               autofocus: true,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(labelText: 'Item name'),
+              decoration: InputDecoration(labelText: l10n.itemNameLabel),
               onSubmitted: (_) => _submit(),
             ),
             const SizedBox(height: 20),
@@ -257,7 +281,7 @@ class _AddGearItemSheetState extends State<_AddGearItemSheet> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _submitting ? null : _submit,
-                child: const Text('Add'),
+                child: Text(l10n.add),
               ),
             ),
           ],

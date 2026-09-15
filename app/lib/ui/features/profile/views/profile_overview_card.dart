@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/profile.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Shared Overview block (avatar/name/location, bio, dive count + level stats,
 /// languages/member-since) — used both for the diver's own Profile screen and for
@@ -41,7 +42,8 @@ class ProfileOverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final name = (profile.displayName?.isNotEmpty ?? false) ? profile.displayName! : 'Diver';
+    final l10n = AppLocalizations.of(context);
+    final name = (profile.displayName?.isNotEmpty ?? false) ? profile.displayName! : l10n.diver;
 
     return Column(
       children: [
@@ -111,7 +113,7 @@ class ProfileOverviewCard extends StatelessWidget {
         if (profile.bio?.isNotEmpty ?? false) ...[
           const SizedBox(height: 24),
           InputDecorator(
-            decoration: const InputDecoration(labelText: 'Bio'),
+            decoration: InputDecoration(labelText: l10n.bioLabel),
             child: SizedBox(
               height: 60,
               child: SingleChildScrollView(child: Text(profile.bio!, style: theme.textTheme.bodyMedium)),
@@ -122,13 +124,13 @@ class ProfileOverviewCard extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: ProfileStatCard(value: '${diveCountOverride ?? profile.diveCount}', label: 'Dives'),
+              child: ProfileStatCard(value: '${diveCountOverride ?? profile.diveCount}', label: l10n.divesLabel),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: ProfileStatCard(
-                value: _hasLevel ? certificationLevelAbbreviation(profile.certificationLevel) : (onLevelStatTap != null ? 'Add certificate' : '—'),
-                label: 'Level',
+                value: _hasLevel ? certificationLevelAbbreviation(profile.certificationLevel) : (onLevelStatTap != null ? l10n.addCertificate : '—'),
+                label: l10n.level,
                 onTap: _hasLevel ? null : onLevelStatTap,
               ),
             ),
@@ -142,9 +144,9 @@ class ProfileOverviewCard extends StatelessWidget {
           ),
           child: Column(
             children: [
-              ProfileInfoRow(label: 'Languages', value: profile.languages.isNotEmpty ? profile.languages : '—'),
+              ProfileInfoRow(label: l10n.languagesLabel, value: profile.languages.isNotEmpty ? profile.languages : '—'),
               const Divider(height: 1),
-              ProfileInfoRow(label: 'Member since', value: '${profile.memberSince.year}'),
+              ProfileInfoRow(label: l10n.memberSinceLabel, value: '${profile.memberSince.year}'),
             ],
           ),
         ),
@@ -153,7 +155,7 @@ class ProfileOverviewCard extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onEditProfile,
             icon: const Icon(Icons.edit_outlined, size: 18),
-            label: const Text('Edit profile'),
+            label: Text(l10n.editProfileTitle),
           ),
         ],
       ],

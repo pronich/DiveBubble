@@ -564,4 +564,510 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get request => 'Skicka';
+
+  @override
+  String get about => 'Om appen';
+
+  @override
+  String versionLabel(String version) {
+    return 'Version $version';
+  }
+
+  @override
+  String get gearLockerTitle => 'Utrustningsskåp';
+
+  @override
+  String ownedOfTotalInLocker(int owned, int total) {
+    return '$owned/$total i skåpet';
+  }
+
+  @override
+  String get clearCacheTitle => 'Rensa cache?';
+
+  @override
+  String get clearCacheBody =>
+      'Detta tar bort nedladdade foton och filer från den här enheten. Inget tas bort från själva resechattarna — filer laddas bara ner igen nästa gång du öppnar dem.';
+
+  @override
+  String get clear => 'Rensa';
+
+  @override
+  String get cacheCleared => 'Cachen rensad.';
+
+  @override
+  String couldNotClearCache(String error) {
+    return 'Kunde inte rensa cachen: $error';
+  }
+
+  @override
+  String get storageTitle => 'Lagring';
+
+  @override
+  String get clearCacheRow => 'Rensa cache';
+
+  @override
+  String get clearCacheSubtitle =>
+      'Tar bort nedladdade chattfoton och -filer från den här enheten';
+
+  @override
+  String couldNotUnblock(String error) {
+    return 'Kunde inte häva blockering: $error';
+  }
+
+  @override
+  String get blockedUsersTitle => 'Blockerade användare';
+
+  @override
+  String get noBlockedUsers => 'Inga blockerade användare.';
+
+  @override
+  String get unblock => 'Häv blockering';
+
+  @override
+  String get copyEmailAddress => 'Kopiera e-postadress';
+
+  @override
+  String get emailAddressCopied => 'E-postadress kopierad';
+
+  @override
+  String get legalTitle => 'Juridiskt';
+
+  @override
+  String get termsOfService => 'Användarvillkor';
+
+  @override
+  String get privacyPolicy => 'Integritetspolicy';
+
+  @override
+  String get contactSupport => 'Kontakta support';
+
+  @override
+  String get addADive => 'Lägg till ett dyk';
+
+  @override
+  String get updateLevelTitle => 'Uppdatera nivå';
+
+  @override
+  String get save => 'Spara';
+
+  @override
+  String get addSpeciality => 'Lägg till specialitet';
+
+  @override
+  String get specialityName => 'Namn på specialitet';
+
+  @override
+  String get notificationsTitle => 'Aviseringar';
+
+  @override
+  String get pushNotificationsLabel => 'Push-aviseringar';
+
+  @override
+  String get pushDisabledInSystemSettings =>
+      'Inaktiverat i systeminställningarna — aktivera DiveBubble-aviseringar där först';
+
+  @override
+  String get tapToEnableNotifications => 'Tryck för att aktivera aviseringar';
+
+  @override
+  String get newMessagesTripUpdatesEtc =>
+      'Nya meddelanden, resändringar och mer';
+
+  @override
+  String get verified => 'Verifierad';
+
+  @override
+  String get addCertificate => 'Lägg till certifikat';
+
+  @override
+  String get blockThisUserTitle => 'Blockera den här användaren?';
+
+  @override
+  String get blockUserBody =>
+      'Du kommer inte längre se deras meddelanden i delade resechattar. Du kan ångra detta från Profil → Blockerade användare.';
+
+  @override
+  String get block => 'Blockera';
+
+  @override
+  String get blockUserTooltip => 'Blockera användare';
+
+  @override
+  String get blockedManageBody =>
+      'Blockerad. Hantera under Profil → Blockerade användare.';
+
+  @override
+  String couldNotBlockUser(String error) {
+    return 'Kunde inte blockera användaren: $error';
+  }
+
+  @override
+  String get bioLabel => 'Bio';
+
+  @override
+  String get divesLabel => 'Dyk';
+
+  @override
+  String get languagesLabel => 'Språk';
+
+  @override
+  String get memberSinceLabel => 'Medlem sedan';
+
+  @override
+  String get editProfileTitle => 'Redigera profil';
+
+  @override
+  String get displayNameLabel => 'Visningsnamn';
+
+  @override
+  String get displayNameHelper =>
+      'Visas för andra dykare istället för ditt riktiga namn';
+
+  @override
+  String get pleaseEnterDisplayName => 'Ange ett visningsnamn';
+
+  @override
+  String get locationLabel => 'Plats';
+
+  @override
+  String get useCurrentLocationTooltip => 'Använd nuvarande plats';
+
+  @override
+  String get unloggedDivesLabel => 'Ologgade dyk';
+
+  @override
+  String get unloggedDivesHelper =>
+      'Dyk du inte har lagt till i din dykloggbok — visas tillsammans med den som ditt totala antal';
+
+  @override
+  String get allDivesAreLogged => 'Alla mina dyk är loggade';
+
+  @override
+  String get selectLanguages => 'Välj språk';
+
+  @override
+  String get zeroOutUnloggedDivesTitle => 'Nollställa ologgade dyk?';
+
+  @override
+  String get zeroOutUnloggedDivesBody =>
+      'Detta nollställer talet ovan. Dina loggboksposter påverkas inte — endast det manuellt angivna antalet ändras.';
+
+  @override
+  String get zeroOut => 'Nollställ';
+
+  @override
+  String get editDiveTitle => 'Redigera dyk';
+
+  @override
+  String get addDiveTitle => 'Lägg till dyk';
+
+  @override
+  String get importedDiveLockedNotice =>
+      'Det här dyket importerades från din dykdator — endast land, dykplats och anteckningar kan redigeras.';
+
+  @override
+  String get dateLabel => 'Datum';
+
+  @override
+  String get timeLabel => 'Tid';
+
+  @override
+  String get maxDepthLabel => 'Maxdjup';
+
+  @override
+  String get avgDepthLabel => 'Snittdjup';
+
+  @override
+  String get durationLabel => 'Varaktighet';
+
+  @override
+  String get minTemperatureLabel => 'Min. temperatur';
+
+  @override
+  String get minTempLabel => 'Min. temp.';
+
+  @override
+  String get maxTempLabel => 'Max. temp.';
+
+  @override
+  String get countryLabel => 'Land';
+
+  @override
+  String get diveSiteLabel => 'Dykplats';
+
+  @override
+  String get notesLabel => 'Anteckningar';
+
+  @override
+  String get saveChanges => 'Spara ändringar';
+
+  @override
+  String get deleteThisDiveTitle => 'Ta bort det här dyket?';
+
+  @override
+  String get cantBeUndone => 'Detta kan inte ångras.';
+
+  @override
+  String get gearEssentialSection => 'GRUNDLÄGGANDE';
+
+  @override
+  String get gearAdditionalSection => 'ÖVRIGT';
+
+  @override
+  String get addItem => 'Lägg till föremål';
+
+  @override
+  String get gearOwned => 'Har';
+
+  @override
+  String get gearMissing => 'Saknas';
+
+  @override
+  String get gearUsuallyRent => 'Hyr oftast';
+
+  @override
+  String get addItemSheetBody =>
+      'För allt utöver det grundläggande — lampa, actionkamera, boj...';
+
+  @override
+  String get itemNameLabel => 'Namn på föremål';
+
+  @override
+  String get gearItemBoots => 'Dykstövlar';
+
+  @override
+  String get gearItemFins => 'Fenor';
+
+  @override
+  String get gearItemBcd => 'BCD';
+
+  @override
+  String get gearItemWetsuitShorty5mm => 'Shorty-våtdräkt 5mm';
+
+  @override
+  String get gearItemWetsuit5mm => 'Våtdräkt 5mm';
+
+  @override
+  String get gearItemWetsuit7mm => 'Våtdräkt 7mm';
+
+  @override
+  String get gearItemWetsuit9mm => 'Våtdräkt 9mm';
+
+  @override
+  String get gearItemSemidrySuit => 'Halvtorrdräkt';
+
+  @override
+  String get gearItemDrySuit => 'Torrdräkt';
+
+  @override
+  String get gearItemHelmet => 'Hjälm';
+
+  @override
+  String get gearItemGloves => 'Handskar';
+
+  @override
+  String get gearItemRegulator => 'Regulator';
+
+  @override
+  String get gearItemComputer => 'Dykdator';
+
+  @override
+  String get gearItemMask => 'Mask';
+
+  @override
+  String get shareToBubble => 'Dela till Bubble';
+
+  @override
+  String get sourceLabel => 'Källa';
+
+  @override
+  String get importedValue => 'Importerat';
+
+  @override
+  String get manualValue => 'Manuellt';
+
+  @override
+  String diveOnDate(String date) {
+    return 'Dyk den $date';
+  }
+
+  @override
+  String labelColonValue(String label, String value) {
+    return '$label: $value';
+  }
+
+  @override
+  String get sharedToBubble => 'Delat till Bubble';
+
+  @override
+  String couldNotShare(String error) {
+    return 'Kunde inte dela: $error';
+  }
+
+  @override
+  String get haventJoinedAnyBubblesYet =>
+      'Du har inte gått med i något Bubble än.';
+
+  @override
+  String selectedCountLabel(int count) {
+    return '$count valda';
+  }
+
+  @override
+  String get noDivesLoggedYet => 'Inga dyk loggade än';
+
+  @override
+  String get addDiveOrImportBody =>
+      'Lägg till ett dyk för hand, eller importera en dykloggfil.';
+
+  @override
+  String deleteDivesConfirmTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Ta bort $count dyk?',
+      one: 'Ta bort $count dyk?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotDeleteDivesError(int count, String error) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Kunde inte ta bort $count dyk: $error',
+      one: 'Kunde inte ta bort $count dyk: $error',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotDeleteWithError(String error) {
+    return 'Kunde inte ta bort: $error';
+  }
+
+  @override
+  String get addADiveManually => 'Lägg till ett dyk manuellt';
+
+  @override
+  String get importADiveLogFile => 'Importera en dykloggfil';
+
+  @override
+  String get importFormatsSubtitle =>
+      'UDDF, CSV eller en export från Diving Log 6';
+
+  @override
+  String get csvColumnFormatTitle => 'CSV-kolumnformat';
+
+  @override
+  String get csvColumnFormatBody =>
+      'Första raden måste vara en rubrikrad med dessa kolumnnamn (valfri ordning, endast \"date\" krävs):\n\ndate (ÅÅÅÅ-MM-DD)\ntime (TT:MM)\ncountry\nsite\nmax_depth_m\navg_depth_m\nduration_min\nmin_temp_c\nnotes';
+
+  @override
+  String get gotIt => 'Uppfattat';
+
+  @override
+  String diveImportedSimple(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count dyk importerade',
+      one: '$count dyk importerat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String diveImportedWithSkipped(int count, int skipped) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count nya dyk importerade, $skipped redan loggade',
+      one: '$count nytt dyk importerat, $skipped redan loggat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotImport(String error) {
+    return 'Kunde inte importera: $error';
+  }
+
+  @override
+  String get unknownError => 'okänt fel';
+
+  @override
+  String get updateUnloggedCountPromptBody =>
+      'Om några av dessa redan räknats i din profil, uppdatera den under Redigera profil.';
+
+  @override
+  String get editProfileAction => 'Redigera profil';
+
+  @override
+  String get depthLabel => 'Djup';
+
+  @override
+  String get temperatureLabel => 'Temperatur';
+
+  @override
+  String get dragToInspectHint =>
+      'Dra längs grafen för att inspektera en punkt';
+
+  @override
+  String get done => 'Klar';
+
+  @override
+  String get searchLanguages => 'Sök språk';
+
+  @override
+  String get languageSettingsTitle => 'Språk';
+
+  @override
+  String get systemDefault => 'Systemstandard';
+
+  @override
+  String get guest => 'Gäst';
+
+  @override
+  String get certificationsSectionTitle => 'Certifieringar';
+
+  @override
+  String get update => 'Uppdatera';
+
+  @override
+  String get specialtiesSectionTitle => 'Specialiteter';
+
+  @override
+  String get gearSectionTitle => 'Utrustning';
+
+  @override
+  String get couldNotUploadPhoto => 'Kunde inte ladda upp foto';
+
+  @override
+  String get couldNotRemovePhoto => 'Kunde inte ta bort foto';
+
+  @override
+  String get changePhoto => 'Byt foto';
+
+  @override
+  String get removePhoto => 'Ta bort foto';
+
+  @override
+  String get diveOut => 'Logga ut';
+
+  @override
+  String get deleteAccountTitle => 'Ta bort konto?';
+
+  @override
+  String get deleteAccountBody =>
+      'Detta anonymiserar ditt konto permanent och ställer in alla resor du arrangerar. Detta kan inte ångras.';
+
+  @override
+  String couldNotDeleteAccount(String error) {
+    return 'Kunde inte ta bort kontot: $error';
+  }
+
+  @override
+  String get deleteAccountRow => 'Ta bort konto';
 }

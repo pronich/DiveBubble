@@ -568,4 +568,511 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get request => 'Enviar';
+
+  @override
+  String get about => 'Acerca de';
+
+  @override
+  String versionLabel(String version) {
+    return 'Versión $version';
+  }
+
+  @override
+  String get gearLockerTitle => 'Equipo';
+
+  @override
+  String ownedOfTotalInLocker(int owned, int total) {
+    return '$owned/$total en el equipo';
+  }
+
+  @override
+  String get clearCacheTitle => '¿Borrar caché?';
+
+  @override
+  String get clearCacheBody =>
+      'Esto elimina las fotos y archivos descargados de este dispositivo. No se elimina nada de los chats de viaje: los archivos simplemente se volverán a descargar la próxima vez que los abras.';
+
+  @override
+  String get clear => 'Borrar';
+
+  @override
+  String get cacheCleared => 'Caché borrada.';
+
+  @override
+  String couldNotClearCache(String error) {
+    return 'No se pudo borrar la caché: $error';
+  }
+
+  @override
+  String get storageTitle => 'Almacenamiento';
+
+  @override
+  String get clearCacheRow => 'Borrar caché';
+
+  @override
+  String get clearCacheSubtitle =>
+      'Elimina las fotos y archivos de chat descargados de este dispositivo';
+
+  @override
+  String couldNotUnblock(String error) {
+    return 'No se pudo desbloquear: $error';
+  }
+
+  @override
+  String get blockedUsersTitle => 'Usuarios bloqueados';
+
+  @override
+  String get noBlockedUsers => 'No hay usuarios bloqueados.';
+
+  @override
+  String get unblock => 'Desbloquear';
+
+  @override
+  String get copyEmailAddress => 'Copiar dirección de correo';
+
+  @override
+  String get emailAddressCopied => 'Dirección de correo copiada';
+
+  @override
+  String get legalTitle => 'Legal';
+
+  @override
+  String get termsOfService => 'Términos del servicio';
+
+  @override
+  String get privacyPolicy => 'Política de privacidad';
+
+  @override
+  String get contactSupport => 'Contactar con soporte';
+
+  @override
+  String get addADive => 'Añadir inmersión';
+
+  @override
+  String get updateLevelTitle => 'Actualizar nivel';
+
+  @override
+  String get save => 'Guardar';
+
+  @override
+  String get addSpeciality => 'Añadir especialidad';
+
+  @override
+  String get specialityName => 'Nombre de la especialidad';
+
+  @override
+  String get notificationsTitle => 'Notificaciones';
+
+  @override
+  String get pushNotificationsLabel => 'Notificaciones push';
+
+  @override
+  String get pushDisabledInSystemSettings =>
+      'Desactivadas en los ajustes del sistema; activa antes las notificaciones de DiveBubble allí';
+
+  @override
+  String get tapToEnableNotifications => 'Toca para activar las notificaciones';
+
+  @override
+  String get newMessagesTripUpdatesEtc =>
+      'Nuevos mensajes, cambios en los viajes y más';
+
+  @override
+  String get verified => 'Verificado';
+
+  @override
+  String get addCertificate => 'Añadir certificado';
+
+  @override
+  String get blockThisUserTitle => '¿Bloquear a este usuario?';
+
+  @override
+  String get blockUserBody =>
+      'Ya no verás sus mensajes en los chats de viaje compartidos. Puedes deshacer esto desde Perfil → Usuarios bloqueados.';
+
+  @override
+  String get block => 'Bloquear';
+
+  @override
+  String get blockUserTooltip => 'Bloquear usuario';
+
+  @override
+  String get blockedManageBody =>
+      'Bloqueado. Gestiónalo en Perfil → Usuarios bloqueados.';
+
+  @override
+  String couldNotBlockUser(String error) {
+    return 'No se pudo bloquear al usuario: $error';
+  }
+
+  @override
+  String get bioLabel => 'Biografía';
+
+  @override
+  String get divesLabel => 'Inmersiones';
+
+  @override
+  String get languagesLabel => 'Idiomas';
+
+  @override
+  String get memberSinceLabel => 'Miembro desde';
+
+  @override
+  String get editProfileTitle => 'Editar perfil';
+
+  @override
+  String get displayNameLabel => 'Nombre visible';
+
+  @override
+  String get displayNameHelper =>
+      'Se muestra a otros buceadores en lugar de tu nombre real';
+
+  @override
+  String get pleaseEnterDisplayName => 'Introduce un nombre visible';
+
+  @override
+  String get locationLabel => 'Ubicación';
+
+  @override
+  String get useCurrentLocationTooltip => 'Usar ubicación actual';
+
+  @override
+  String get unloggedDivesLabel => 'Inmersiones sin registrar';
+
+  @override
+  String get unloggedDivesHelper =>
+      'Inmersiones que no has añadido a tu bitácora — se muestran junto a ella en tu total';
+
+  @override
+  String get allDivesAreLogged => 'Todas mis inmersiones están registradas';
+
+  @override
+  String get selectLanguages => 'Selecciona idiomas';
+
+  @override
+  String get zeroOutUnloggedDivesTitle =>
+      '¿Poner a cero las inmersiones sin registrar?';
+
+  @override
+  String get zeroOutUnloggedDivesBody =>
+      'Esto pone a 0 el número de arriba. Tus entradas de la bitácora no se ven afectadas — solo cambia el número introducido manualmente.';
+
+  @override
+  String get zeroOut => 'Poner a cero';
+
+  @override
+  String get editDiveTitle => 'Editar inmersión';
+
+  @override
+  String get addDiveTitle => 'Añadir inmersión';
+
+  @override
+  String get importedDiveLockedNotice =>
+      'Esta inmersión se importó desde tu ordenador de buceo — solo se pueden editar el país, el punto de inmersión y las notas.';
+
+  @override
+  String get dateLabel => 'Fecha';
+
+  @override
+  String get timeLabel => 'Hora';
+
+  @override
+  String get maxDepthLabel => 'Profundidad máx.';
+
+  @override
+  String get avgDepthLabel => 'Profundidad media';
+
+  @override
+  String get durationLabel => 'Duración';
+
+  @override
+  String get minTemperatureLabel => 'Temperatura mín.';
+
+  @override
+  String get minTempLabel => 'Temp. mín.';
+
+  @override
+  String get maxTempLabel => 'Temp. máx.';
+
+  @override
+  String get countryLabel => 'País';
+
+  @override
+  String get diveSiteLabel => 'Punto de inmersión';
+
+  @override
+  String get notesLabel => 'Notas';
+
+  @override
+  String get saveChanges => 'Guardar cambios';
+
+  @override
+  String get deleteThisDiveTitle => '¿Eliminar esta inmersión?';
+
+  @override
+  String get cantBeUndone => 'Esto no se puede deshacer.';
+
+  @override
+  String get gearEssentialSection => 'ESENCIAL';
+
+  @override
+  String get gearAdditionalSection => 'ADICIONAL';
+
+  @override
+  String get addItem => 'Añadir artículo';
+
+  @override
+  String get gearOwned => 'Tengo';
+
+  @override
+  String get gearMissing => 'Falta';
+
+  @override
+  String get gearUsuallyRent => 'Suelo alquilar';
+
+  @override
+  String get addItemSheetBody =>
+      'Para cualquier cosa más allá de lo esencial: linterna, cámara de acción, boya...';
+
+  @override
+  String get itemNameLabel => 'Nombre del artículo';
+
+  @override
+  String get gearItemBoots => 'Botas';
+
+  @override
+  String get gearItemFins => 'Aletas';
+
+  @override
+  String get gearItemBcd => 'BCD';
+
+  @override
+  String get gearItemWetsuitShorty5mm => 'Traje shorty 5mm';
+
+  @override
+  String get gearItemWetsuit5mm => 'Traje de neopreno 5mm';
+
+  @override
+  String get gearItemWetsuit7mm => 'Traje de neopreno 7mm';
+
+  @override
+  String get gearItemWetsuit9mm => 'Traje de neopreno 9mm';
+
+  @override
+  String get gearItemSemidrySuit => 'Traje semiseco';
+
+  @override
+  String get gearItemDrySuit => 'Traje seco';
+
+  @override
+  String get gearItemHelmet => 'Casco';
+
+  @override
+  String get gearItemGloves => 'Guantes';
+
+  @override
+  String get gearItemRegulator => 'Regulador';
+
+  @override
+  String get gearItemComputer => 'Ordenador de buceo';
+
+  @override
+  String get gearItemMask => 'Máscara';
+
+  @override
+  String get shareToBubble => 'Compartir en Bubble';
+
+  @override
+  String get sourceLabel => 'Origen';
+
+  @override
+  String get importedValue => 'Importado';
+
+  @override
+  String get manualValue => 'Manual';
+
+  @override
+  String diveOnDate(String date) {
+    return 'Inmersión el $date';
+  }
+
+  @override
+  String labelColonValue(String label, String value) {
+    return '$label: $value';
+  }
+
+  @override
+  String get sharedToBubble => 'Compartido en Bubble';
+
+  @override
+  String couldNotShare(String error) {
+    return 'No se pudo compartir: $error';
+  }
+
+  @override
+  String get haventJoinedAnyBubblesYet =>
+      'Aún no te has unido a ningún Bubble.';
+
+  @override
+  String selectedCountLabel(int count) {
+    return '$count seleccionadas';
+  }
+
+  @override
+  String get noDivesLoggedYet => 'Aún no hay inmersiones registradas';
+
+  @override
+  String get addDiveOrImportBody =>
+      'Añade una inmersión a mano o importa un archivo de bitácora.';
+
+  @override
+  String deleteDivesConfirmTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '¿Eliminar $count inmersiones?',
+      one: '¿Eliminar $count inmersión?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotDeleteDivesError(int count, String error) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'No se pudieron eliminar $count inmersiones: $error',
+      one: 'No se pudo eliminar $count inmersión: $error',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotDeleteWithError(String error) {
+    return 'No se pudo eliminar: $error';
+  }
+
+  @override
+  String get addADiveManually => 'Añadir una inmersión manualmente';
+
+  @override
+  String get importADiveLogFile => 'Importar un archivo de bitácora';
+
+  @override
+  String get importFormatsSubtitle =>
+      'UDDF, CSV o una exportación de Diving Log 6';
+
+  @override
+  String get csvColumnFormatTitle => 'Formato de columnas CSV';
+
+  @override
+  String get csvColumnFormatBody =>
+      'La primera fila debe ser un encabezado con estos nombres de columna (en cualquier orden, solo \"date\" es obligatoria):\n\ndate (AAAA-MM-DD)\ntime (HH:MM)\ncountry\nsite\nmax_depth_m\navg_depth_m\nduration_min\nmin_temp_c\nnotes';
+
+  @override
+  String get gotIt => 'Entendido';
+
+  @override
+  String diveImportedSimple(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count inmersiones importadas',
+      one: '$count inmersión importada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String diveImportedWithSkipped(int count, int skipped) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count inmersiones nuevas importadas, $skipped ya registradas',
+      one: '$count inmersión nueva importada, $skipped ya registrada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String couldNotImport(String error) {
+    return 'No se pudo importar: $error';
+  }
+
+  @override
+  String get unknownError => 'error desconocido';
+
+  @override
+  String get updateUnloggedCountPromptBody =>
+      'Si alguna de estas ya estaba contada en tu perfil, actualízalo en Editar perfil.';
+
+  @override
+  String get editProfileAction => 'Editar perfil';
+
+  @override
+  String get depthLabel => 'Profundidad';
+
+  @override
+  String get temperatureLabel => 'Temperatura';
+
+  @override
+  String get dragToInspectHint =>
+      'Arrastra por el gráfico para inspeccionar un punto';
+
+  @override
+  String get done => 'Listo';
+
+  @override
+  String get searchLanguages => 'Buscar idiomas';
+
+  @override
+  String get languageSettingsTitle => 'Idioma';
+
+  @override
+  String get systemDefault => 'Predeterminado del sistema';
+
+  @override
+  String get guest => 'Invitado';
+
+  @override
+  String get certificationsSectionTitle => 'Certificaciones';
+
+  @override
+  String get update => 'Actualizar';
+
+  @override
+  String get specialtiesSectionTitle => 'Especialidades';
+
+  @override
+  String get gearSectionTitle => 'Equipo';
+
+  @override
+  String get couldNotUploadPhoto => 'No se pudo subir la foto';
+
+  @override
+  String get couldNotRemovePhoto => 'No se pudo eliminar la foto';
+
+  @override
+  String get changePhoto => 'Cambiar foto';
+
+  @override
+  String get removePhoto => 'Eliminar foto';
+
+  @override
+  String get diveOut => 'Salir';
+
+  @override
+  String get deleteAccountTitle => '¿Eliminar cuenta?';
+
+  @override
+  String get deleteAccountBody =>
+      'Esto anonimiza tu cuenta de forma permanente y cancela cualquier viaje que organices. Esto no se puede deshacer.';
+
+  @override
+  String couldNotDeleteAccount(String error) {
+    return 'No se pudo eliminar la cuenta: $error';
+  }
+
+  @override
+  String get deleteAccountRow => 'Eliminar cuenta';
 }

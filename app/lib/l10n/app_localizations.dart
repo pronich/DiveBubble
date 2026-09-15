@@ -1095,6 +1095,870 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Request'**
   String get request;
+
+  /// About page title and Profile settings row label.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get about;
+
+  /// App version shown at the bottom of the About page.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version}'**
+  String versionLabel(String version);
+
+  /// Gear Locker page title, and the summary card's own label on Profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Gear locker'**
+  String get gearLockerTitle;
+
+  /// Gear summary card subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{owned}/{total} in Locker'**
+  String ownedOfTotalInLocker(int owned, int total);
+
+  /// Storage settings confirmation dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear cache?'**
+  String get clearCacheTitle;
+
+  /// Storage settings confirmation dialog body.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes downloaded photos and files from this device. Nothing is deleted from the trip chats themselves — files are simply re-downloaded next time you open them.'**
+  String get clearCacheBody;
+
+  /// Confirm button on the clear-cache dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clear;
+
+  /// Snackbar shown after successfully clearing the attachment cache.
+  ///
+  /// In en, this message translates to:
+  /// **'Cache cleared.'**
+  String get cacheCleared;
+
+  /// Snackbar shown when clearing the attachment cache fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not clear cache: {error}'**
+  String couldNotClearCache(String error);
+
+  /// Storage settings page title and Profile settings row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get storageTitle;
+
+  /// Storage settings list tile title.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear cache'**
+  String get clearCacheRow;
+
+  /// Storage settings list tile subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes downloaded chat photos and files from this device'**
+  String get clearCacheSubtitle;
+
+  /// Snackbar shown when unblocking a user fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not unblock: {error}'**
+  String couldNotUnblock(String error);
+
+  /// Blocked Users page title and Profile settings row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked users'**
+  String get blockedUsersTitle;
+
+  /// Empty state on the Blocked Users page.
+  ///
+  /// In en, this message translates to:
+  /// **'No blocked users.'**
+  String get noBlockedUsers;
+
+  /// Button next to a blocked user's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Unblock'**
+  String get unblock;
+
+  /// Option in the contact-support picker sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy email address'**
+  String get copyEmailAddress;
+
+  /// Snackbar after copying the support email address.
+  ///
+  /// In en, this message translates to:
+  /// **'Email address copied'**
+  String get emailAddressCopied;
+
+  /// Legal page title and Profile settings row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal'**
+  String get legalTitle;
+
+  /// Legal page list item.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Service'**
+  String get termsOfService;
+
+  /// Legal page list item.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get privacyPolicy;
+
+  /// Legal page list item.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact support'**
+  String get contactSupport;
+
+  /// CTA on the empty Dive Log deck teaser and the Dive Log list's empty state.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a dive'**
+  String get addADive;
+
+  /// Title of the sheet for changing certification level.
+  ///
+  /// In en, this message translates to:
+  /// **'Update level'**
+  String get updateLevelTitle;
+
+  /// Generic Save button, e.g. on the update-level sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// Empty-state tile label and add-specialty sheet title.
+  ///
+  /// In en, this message translates to:
+  /// **'Add speciality'**
+  String get addSpeciality;
+
+  /// Free-text field label shown when adding an 'Other' specialty.
+  ///
+  /// In en, this message translates to:
+  /// **'Speciality name'**
+  String get specialityName;
+
+  /// Notifications settings page title and Profile settings row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTitle;
+
+  /// Switch label on the notifications settings page.
+  ///
+  /// In en, this message translates to:
+  /// **'Push notifications'**
+  String get pushNotificationsLabel;
+
+  /// Subtitle shown when push was denied at the OS level.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled in system settings — enable DiveBubble notifications there first'**
+  String get pushDisabledInSystemSettings;
+
+  /// Subtitle shown when push permission hasn't been decided yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to enable notifications'**
+  String get tapToEnableNotifications;
+
+  /// Default subtitle on the push-notifications switch.
+  ///
+  /// In en, this message translates to:
+  /// **'New messages, trip updates and more'**
+  String get newMessagesTripUpdatesEtc;
+
+  /// Badge on a verified certification level or specialty card.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get verified;
+
+  /// Empty-state tile label, and the Level stat's own fallback CTA on Profile Overview.
+  ///
+  /// In en, this message translates to:
+  /// **'Add certificate'**
+  String get addCertificate;
+
+  /// Confirmation dialog title on the diver ID card sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Block this user?'**
+  String get blockThisUserTitle;
+
+  /// Confirmation dialog body on the diver ID card sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'You won\'t see their messages in shared trip chats anymore. You can undo this from Profile → Blocked users.'**
+  String get blockUserBody;
+
+  /// Destructive confirm button on the block-user dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Block'**
+  String get block;
+
+  /// Tooltip on the block icon button on the diver ID card sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Block user'**
+  String get blockUserTooltip;
+
+  /// Snackbar shown after successfully blocking a user.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked. Manage in Profile → Blocked users.'**
+  String get blockedManageBody;
+
+  /// Snackbar shown when blocking a user fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not block user: {error}'**
+  String couldNotBlockUser(String error);
+
+  /// Bio field label/section title, both on Edit Profile and Profile Overview.
+  ///
+  /// In en, this message translates to:
+  /// **'Bio'**
+  String get bioLabel;
+
+  /// Dive-count stat tile label on Profile Overview.
+  ///
+  /// In en, this message translates to:
+  /// **'Dives'**
+  String get divesLabel;
+
+  /// Spoken-languages field label — profile info row, language picker page title, and edit-profile field.
+  ///
+  /// In en, this message translates to:
+  /// **'Languages'**
+  String get languagesLabel;
+
+  /// Profile info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Member since'**
+  String get memberSinceLabel;
+
+  /// Edit Profile page title and the button that opens it from Profile Overview.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit profile'**
+  String get editProfileTitle;
+
+  /// Edit Profile field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get displayNameLabel;
+
+  /// Edit Profile field helper text.
+  ///
+  /// In en, this message translates to:
+  /// **'Shown to other divers instead of your real name'**
+  String get displayNameHelper;
+
+  /// Edit Profile validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a display name'**
+  String get pleaseEnterDisplayName;
+
+  /// Location field/row label — Edit Profile field and Dive Log detail info row.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get locationLabel;
+
+  /// Tooltip on the location auto-detect button on Edit Profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Use current location'**
+  String get useCurrentLocationTooltip;
+
+  /// Edit Profile field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlogged dives'**
+  String get unloggedDivesLabel;
+
+  /// Edit Profile field helper text.
+  ///
+  /// In en, this message translates to:
+  /// **'Dives you haven\'t added to your Dive Log — shown together with it as your total'**
+  String get unloggedDivesHelper;
+
+  /// Edit Profile switch label.
+  ///
+  /// In en, this message translates to:
+  /// **'All my dives are logged'**
+  String get allDivesAreLogged;
+
+  /// Placeholder shown on Edit Profile's language field when none are picked.
+  ///
+  /// In en, this message translates to:
+  /// **'Select languages'**
+  String get selectLanguages;
+
+  /// Confirmation dialog title on Edit Profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Zero out unlogged dives?'**
+  String get zeroOutUnloggedDivesTitle;
+
+  /// Confirmation dialog body on Edit Profile.
+  ///
+  /// In en, this message translates to:
+  /// **'This clears the number above to 0. Your Dive Log entries are untouched — this only affects the manually-entered count.'**
+  String get zeroOutUnloggedDivesBody;
+
+  /// Confirm button on the zero-out-unlogged-dives dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Zero out'**
+  String get zeroOut;
+
+  /// Page title when editing an existing dive log entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Dive'**
+  String get editDiveTitle;
+
+  /// Page title and submit button when adding a new dive log entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Dive'**
+  String get addDiveTitle;
+
+  /// Notice shown when editing an imported (read-only measurements) dive log entry.
+  ///
+  /// In en, this message translates to:
+  /// **'This dive was imported from your dive computer — only the country, dive site, and notes can be edited.'**
+  String get importedDiveLockedNotice;
+
+  /// Dive log entry field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get dateLabel;
+
+  /// Dive log entry field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get timeLabel;
+
+  /// Dive log entry field label and detail-page stat label.
+  ///
+  /// In en, this message translates to:
+  /// **'Max depth'**
+  String get maxDepthLabel;
+
+  /// Dive log detail-page stat label.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg depth'**
+  String get avgDepthLabel;
+
+  /// Dive log entry field label and detail-page stat label.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get durationLabel;
+
+  /// Dive log entry field label (full word, unlike the detail page's shorter 'Min temp').
+  ///
+  /// In en, this message translates to:
+  /// **'Min temperature'**
+  String get minTemperatureLabel;
+
+  /// Dive log detail-page stat label (shortened form).
+  ///
+  /// In en, this message translates to:
+  /// **'Min temp'**
+  String get minTempLabel;
+
+  /// Dive log detail-page stat label.
+  ///
+  /// In en, this message translates to:
+  /// **'Max temp'**
+  String get maxTempLabel;
+
+  /// Dive log entry field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get countryLabel;
+
+  /// Dive log entry field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Dive site'**
+  String get diveSiteLabel;
+
+  /// Dive log entry field label and detail-page section heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get notesLabel;
+
+  /// Submit button when editing an existing dive log entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get saveChanges;
+
+  /// Confirmation dialog title for deleting one dive log entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this dive?'**
+  String get deleteThisDiveTitle;
+
+  /// Generic confirmation dialog body for an irreversible delete.
+  ///
+  /// In en, this message translates to:
+  /// **'This can\'t be undone.'**
+  String get cantBeUndone;
+
+  /// Gear Locker section header.
+  ///
+  /// In en, this message translates to:
+  /// **'ESSENTIAL'**
+  String get gearEssentialSection;
+
+  /// Gear Locker section header.
+  ///
+  /// In en, this message translates to:
+  /// **'ADDITIONAL'**
+  String get gearAdditionalSection;
+
+  /// Gear Locker add-item button and sheet title.
+  ///
+  /// In en, this message translates to:
+  /// **'Add item'**
+  String get addItem;
+
+  /// Gear status pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Owned'**
+  String get gearOwned;
+
+  /// Gear status pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing'**
+  String get gearMissing;
+
+  /// Gear status pill.
+  ///
+  /// In en, this message translates to:
+  /// **'Usually rent'**
+  String get gearUsuallyRent;
+
+  /// Add-gear-item sheet body copy.
+  ///
+  /// In en, this message translates to:
+  /// **'For anything beyond the essentials — torch, action camera, buoy...'**
+  String get addItemSheetBody;
+
+  /// Add-gear-item sheet field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Item name'**
+  String get itemNameLabel;
+
+  /// Essential gear item display label (matched by a stable English key server-side, safe to translate).
+  ///
+  /// In en, this message translates to:
+  /// **'Boots'**
+  String get gearItemBoots;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Fins'**
+  String get gearItemFins;
+
+  /// Essential gear item display label — a universal dive-industry acronym, kept as-is.
+  ///
+  /// In en, this message translates to:
+  /// **'BCD'**
+  String get gearItemBcd;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Wetsuit shorty 5mm'**
+  String get gearItemWetsuitShorty5mm;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Wetsuit 5mm'**
+  String get gearItemWetsuit5mm;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Wetsuit 7mm'**
+  String get gearItemWetsuit7mm;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Wetsuit 9mm'**
+  String get gearItemWetsuit9mm;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Semidry suit'**
+  String get gearItemSemidrySuit;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Dry suit'**
+  String get gearItemDrySuit;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Helmet'**
+  String get gearItemHelmet;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Gloves'**
+  String get gearItemGloves;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Regulator'**
+  String get gearItemRegulator;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer'**
+  String get gearItemComputer;
+
+  /// Essential gear item display label.
+  ///
+  /// In en, this message translates to:
+  /// **'Mask'**
+  String get gearItemMask;
+
+  /// Tooltip and sheet title for sharing a dive log entry into a Bubble chat.
+  ///
+  /// In en, this message translates to:
+  /// **'Share to Bubble'**
+  String get shareToBubble;
+
+  /// Dive log detail info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get sourceLabel;
+
+  /// Dive log detail 'Source' row value for an imported entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported'**
+  String get importedValue;
+
+  /// Dive log detail 'Source' row value for a manually-entered entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get manualValue;
+
+  /// First line of the dive-log-entry text shared into a Bubble chat.
+  ///
+  /// In en, this message translates to:
+  /// **'Dive on {date}'**
+  String diveOnDate(String date);
+
+  /// Generic 'Label: value' line, used to compose the shared dive-log-entry text.
+  ///
+  /// In en, this message translates to:
+  /// **'{label}: {value}'**
+  String labelColonValue(String label, String value);
+
+  /// Snackbar shown after sharing a dive log entry into a Bubble chat.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared to Bubble'**
+  String get sharedToBubble;
+
+  /// Snackbar shown when sharing a dive log entry fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not share: {error}'**
+  String couldNotShare(String error);
+
+  /// Empty state on the share-to-Bubble sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t joined any Bubbles yet.'**
+  String get haventJoinedAnyBubblesYet;
+
+  /// AppBar title while multi-selecting dive log entries.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String selectedCountLabel(int count);
+
+  /// Empty state title on the Dive Log list.
+  ///
+  /// In en, this message translates to:
+  /// **'No dives logged yet'**
+  String get noDivesLoggedYet;
+
+  /// Empty state subtitle on the Dive Log list.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a dive by hand, or import a dive log file.'**
+  String get addDiveOrImportBody;
+
+  /// Confirmation dialog title for bulk-deleting selected dive log entries.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Delete {count} dive?} other{Delete {count} dives?}}'**
+  String deleteDivesConfirmTitle(int count);
+
+  /// Snackbar shown when a bulk dive-log delete partially fails.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Could not delete {count} dive: {error}} other{Could not delete {count} dives: {error}}}'**
+  String couldNotDeleteDivesError(int count, String error);
+
+  /// Snackbar shown when a single dive-log swipe-delete fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not delete: {error}'**
+  String couldNotDeleteWithError(String error);
+
+  /// Add-dive choice sheet option.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a dive manually'**
+  String get addADiveManually;
+
+  /// Add-dive choice sheet option.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a dive log file'**
+  String get importADiveLogFile;
+
+  /// Add-dive choice sheet option subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'UDDF, CSV, or a Diving Log 6 export'**
+  String get importFormatsSubtitle;
+
+  /// Add-dive choice sheet option and info dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV column format'**
+  String get csvColumnFormatTitle;
+
+  /// CSV import format info dialog body — the column names themselves are literal, required CSV headers and stay in English in every language.
+  ///
+  /// In en, this message translates to:
+  /// **'First row must be a header with these column names (any order, only \"date\" is required):\n\ndate (YYYY-MM-DD)\ntime (HH:MM)\ncountry\nsite\nmax_depth_m\navg_depth_m\nduration_min\nmin_temp_c\nnotes'**
+  String get csvColumnFormatBody;
+
+  /// Dismiss button on the CSV format info dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get gotIt;
+
+  /// Snackbar after importing a dive log file with nothing skipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} dive imported} other{{count} dives imported}}'**
+  String diveImportedSimple(int count);
+
+  /// Snackbar after importing a dive log file where some entries were already logged.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} new dive imported, {skipped} already logged} other{{count} new dives imported, {skipped} already logged}}'**
+  String diveImportedWithSkipped(int count, int skipped);
+
+  /// Snackbar shown when importing a dive log file fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not import: {error}'**
+  String couldNotImport(String error);
+
+  /// Fallback error text when no specific message is available.
+  ///
+  /// In en, this message translates to:
+  /// **'unknown error'**
+  String get unknownError;
+
+  /// Snackbar shown after logging the first dive log entry.
+  ///
+  /// In en, this message translates to:
+  /// **'If some of these were already counted in your profile, update it in Edit Profile.'**
+  String get updateUnloggedCountPromptBody;
+
+  /// SnackBarAction label pointing to Edit Profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Profile'**
+  String get editProfileAction;
+
+  /// Dive profile chart section label.
+  ///
+  /// In en, this message translates to:
+  /// **'Depth'**
+  String get depthLabel;
+
+  /// Dive profile chart section label.
+  ///
+  /// In en, this message translates to:
+  /// **'Temperature'**
+  String get temperatureLabel;
+
+  /// Dive profile chart hint shown before the diver touches it.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag along the chart to inspect a point'**
+  String get dragToInspectHint;
+
+  /// Confirm button on the language picker page.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get done;
+
+  /// Search field hint on the spoken-languages picker page.
+  ///
+  /// In en, this message translates to:
+  /// **'Search languages'**
+  String get searchLanguages;
+
+  /// App-language settings page title and its Profile settings row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get languageSettingsTitle;
+
+  /// Option to follow the device's own locale rather than overriding it.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get systemDefault;
+
+  /// Placeholder name shown on the signed-out Profile tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest'**
+  String get guest;
+
+  /// Profile section heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Certifications'**
+  String get certificationsSectionTitle;
+
+  /// Button that opens the update-level sheet from Profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get update;
+
+  /// Profile section heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Specialties'**
+  String get specialtiesSectionTitle;
+
+  /// Profile section heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Gear'**
+  String get gearSectionTitle;
+
+  /// Fallback snackbar text when uploading an avatar/certification/specialty photo fails without a specific message.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not upload photo'**
+  String get couldNotUploadPhoto;
+
+  /// Fallback snackbar text when removing the avatar fails without a specific message.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not remove photo'**
+  String get couldNotRemovePhoto;
+
+  /// Avatar options sheet action.
+  ///
+  /// In en, this message translates to:
+  /// **'Change photo'**
+  String get changePhoto;
+
+  /// Avatar options sheet action.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove photo'**
+  String get removePhoto;
+
+  /// Sign-out row label on Profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Dive out'**
+  String get diveOut;
+
+  /// Delete-account confirmation dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account?'**
+  String get deleteAccountTitle;
+
+  /// Delete-account confirmation dialog body.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently anonymizes your account and cancels any trips you organize. This can\'t be undone.'**
+  String get deleteAccountBody;
+
+  /// Snackbar shown when account deletion fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not delete account: {error}'**
+  String couldNotDeleteAccount(String error);
+
+  /// Delete-account row label on Profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccountRow;
 }
 
 class _AppLocalizationsDelegate

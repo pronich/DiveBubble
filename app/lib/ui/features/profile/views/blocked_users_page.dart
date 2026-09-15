@@ -4,6 +4,7 @@ import '../../../../data/services/error_codes.dart';
 
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../domain/entities/profile.dart';
+import '../../../../l10n/app_localizations.dart';
 
 class BlockedUsersPage extends StatefulWidget {
   const BlockedUsersPage({super.key, required this.profileRepository});
@@ -43,7 +44,9 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
       setState(() => _profiles = _profiles!.where((p) => p.id != userId).toList());
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not unblock: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).couldNotUnblock(friendlyError(e)))));
     } finally {
       if (mounted) setState(() => _unblocking.remove(userId));
     }
@@ -52,22 +55,23 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Blocked users')),
+      appBar: AppBar(title: Text(l10n.blockedUsersTitle)),
       body: _error != null
-          ? Center(child: Text('Error: $_error', style: TextStyle(color: theme.colorScheme.error)))
+          ? Center(child: Text(l10n.errorWithMessage(_error!), style: TextStyle(color: theme.colorScheme.error)))
           : _profiles == null
               ? const Center(child: CircularProgressIndicator())
               : _profiles!.isEmpty
                   ? Center(
-                      child: Text('No blocked users.', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+                      child: Text(l10n.noBlockedUsers, style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
                     )
                   : ListView.separated(
                       itemCount: _profiles!.length,
                       separatorBuilder: (_, _) => const Divider(height: 1),
                       itemBuilder: (context, index) {
                         final profile = _profiles![index];
-                        final name = (profile.displayName?.isNotEmpty ?? false) ? profile.displayName! : 'Diver';
+                        final name = (profile.displayName?.isNotEmpty ?? false) ? profile.displayName! : l10n.diver;
                         final isUnblocking = _unblocking.contains(profile.id);
                         return ListTile(
                           leading: CircleAvatar(
@@ -82,7 +86,7 @@ class _BlockedUsersPageState extends State<BlockedUsersPage> {
                             onPressed: isUnblocking ? null : () => _unblock(profile.id),
                             child: isUnblocking
                                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                                : const Text('Unblock'),
+                                : Text(l10n.unblock),
                           ),
                         );
                       },
