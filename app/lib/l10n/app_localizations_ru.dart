@@ -1263,7 +1263,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get bookingCodeHint => 'например, 8XK2NPQ4';
 
   @override
-  String get managePhotos => 'Управление фото';
+  String get managePhotos => 'Фото';
 
   @override
   String get editButtonLabel => 'Изменить';
