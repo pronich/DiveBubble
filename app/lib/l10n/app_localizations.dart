@@ -117,7 +117,7 @@ abstract class AppLocalizations {
   /// Subtitle under the DiveBubble wordmark on the animated first-run intro screen.
   ///
   /// In en, this message translates to:
-  /// **'Find dive trips, meet your buddies, and plan the logistics together.'**
+  /// **'Create dive trips, meet your buddies, and plan the logistics together.'**
   String get introSubtitle;
 
   /// Primary CTA button that opens the sign-in sheet — used on the intro screen and the guest Profile tab.

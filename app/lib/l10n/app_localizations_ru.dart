@@ -13,7 +13,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get introSubtitle =>
-      'Находите дайв-трипы, знакомьтесь с бадди и планируйте логистику вместе.';
+      'Создавайте дайв-трипы, знакомьтесь с бадди и планируйте логистику вместе.';
 
   @override
   String get diveIn => 'Погнали';

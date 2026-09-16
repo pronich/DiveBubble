@@ -13,7 +13,7 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get introSubtitle =>
-      'Hitta dyktrip, träffa dina buddies och planera logistiken tillsammans.';
+      'Skapa dyktrip, träffa dina buddies och planera logistiken tillsammans.';
 
   @override
   String get diveIn => 'Kom igång';
