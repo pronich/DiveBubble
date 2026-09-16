@@ -14,6 +14,7 @@ const _nativeLocaleNames = <String, String>{
   'de': 'Deutsch',
   'da': 'Dansk',
   'sv': 'Svenska',
+  'fr': 'Français',
 };
 
 class LanguageSettingsPage extends StatelessWidget {
