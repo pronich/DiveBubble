@@ -20,7 +20,7 @@ export default function AppLaunchPage() {
         <div className="flex w-full max-w-sm flex-col items-center text-center">
           <Image src="/images/logo.png" alt="" width={72} height={72} className="rounded-2xl shadow-lg" />
           <h1 className="mt-6 font-serif text-3xl font-semibold">DiveBubble</h1>
-          <p className="mt-3 text-white/75">Get the app to discover dive trips and coordinate with your buddies.</p>
+          <p className="mt-3 text-white/75">Get the app to organize dive trips, find your buddy, and split the costs together.</p>
 
           {/* Desktop/tablet: scan the QR with your phone instead of tapping badges you can't. */}
           <div className="mt-8 hidden flex-col items-center gap-3 md:flex">

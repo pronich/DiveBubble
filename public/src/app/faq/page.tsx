@@ -6,7 +6,7 @@ import { SUPPORT_EMAIL } from "@/lib/constants";
 const FAQ_ITEMS = [
   {
     q: "What is DiveBubble?",
-    a: "DiveBubble is a mobile app for divers to discover trips, meet buddies, and coordinate everything in one place — plus a web workspace for dive centers to run their trips.",
+    a: "DiveBubble is a mobile app for divers to organize trips, find buddies, coordinate everything, and split the costs — plus a web workspace for dive centers to run their trips.",
   },
   {
     q: "Is DiveBubble free?",
