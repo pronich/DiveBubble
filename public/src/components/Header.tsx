@@ -3,16 +3,10 @@ import Link from "next/link";
 import { ADMIN_URL } from "@/lib/constants";
 import { MobileNav } from "@/components/MobileNav";
 
-// "Dive in" only ever appears here on the Business page (see its own page.tsx) — every other
-// page has no login affordance at all, per product decision: individuals never sign in from
-// the marketing site, only from the app itself. The Business page itself is currently
-// unlinked (see git log for why) but kept as-is so it's a quick reactivation, not a rebuild.
+// "Dive in" only shows on the (currently unlinked, kept for reactivation) Business page — individuals only ever sign in from the app itself.
 export function Header({ showDiveIn = false }: { showDiveIn?: boolean }) {
   return (
-    // z-40: every page's <main> is also `position: relative` (for its own absolutely
-    // positioned children), and with both header and main "positioned" but neither having an
-    // explicit z-index, they'd stack in DOM order — main comes after header and would paint
-    // over the mobile dropdown otherwise. An explicit z-index settles it unambiguously.
+    // z-40 so header wins DOM-order stacking against <main>'s own position:relative and covers the mobile dropdown.
     <header className="relative z-40 border-b border-white/10">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <Link href="/" className="flex items-center gap-2.5">

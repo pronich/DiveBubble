@@ -6,16 +6,11 @@ class PhotoManagerItem {
   final String id;
   final ImageProvider imageProvider;
 
-  /// True while this specific photo is uploading (Create Trip) or being removed (Trip
-  /// Detail's gallery) — shows a spinner over the tile instead of the delete button.
+  /// True while this specific photo is uploading or being removed — shows a spinner over the tile instead of the delete button.
   final bool isBusy;
 }
 
-/// Shared "manage this trip's photos" grid — square, cropped thumbnails (BoxFit.cover) so a
-/// gallery of any size stays compact, an "add" tile at the end (hidden once [maxItems] is
-/// reached), and a small delete overlay per photo. Used both for Create Trip's not-yet-
-/// uploaded local picks and for an existing trip's already-uploaded gallery — the caller
-/// decides what "add"/"remove" actually do (stage locally vs. call the API).
+/// Shared by Create Trip's not-yet-uploaded local picks and an existing trip's uploaded gallery — the caller decides what "add"/"remove" actually do (stage locally vs. call the API).
 class PhotoManagerGrid extends StatelessWidget {
   const PhotoManagerGrid({
     super.key,

@@ -22,8 +22,7 @@ class ProfileApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
-  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
-  // message to show, or passes it through unchanged if it's not one this file knows about yet.
+  // Server errors come back as {"error": "<code>"}; describeErrorCode maps it to a message or passes it through unchanged if unrecognized.
   String? _extractError(String body) {
     try {
       final decoded = jsonDecode(body);
@@ -44,9 +43,7 @@ class ProfileApiService {
     return ProfileApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Signed in required — the response is a trimmed public projection (no certification
-  // agency/number/verified, no specialties/gear), but viewing another diver's profile is
-  // still an in-app action gated behind sign-in, not open browsing.
+  // Sign-in still required even though the response is a trimmed public projection — viewing another diver's profile is an in-app action, not open browsing.
   Future<ProfileApiModel> fetchPublicProfile(String userId) async {
     final res = await _client.get(Uri.parse('$baseUrl/users/$userId'), headers: await _authHeaders());
     if (res.statusCode != 200) {
@@ -101,8 +98,7 @@ class ProfileApiService {
     return ProfileApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Level card's single photo (users.certification_photo_url) — distinct from a
-  // specialty's own photo, see SpecialtyApiService.uploadSpecialtyPhoto.
+  // Level card's single photo (users.certification_photo_url) — distinct from a specialty's own photo (SpecialtyApiService.uploadSpecialtyPhoto).
   Future<ProfileApiModel> uploadCertificationPhoto(String filePath) async {
     final json = await uploadFile(Uri.parse('$baseUrl/me/certification-photo'), filePath: filePath, headers: await _authHeaders());
     return ProfileApiModel.fromJson(json);

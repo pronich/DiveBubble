@@ -4,10 +4,7 @@ import '../../../../data/repositories/dive_center_repository.dart';
 import '../../../../data/services/dive_center_api_service.dart';
 import '../../../../domain/entities/dive_center_member.dart';
 
-/// Search-then-add for an existing account; falls back to sending an invitation email when
-/// the search comes up empty (see CLAUDE.md's Implemented — dive centers section) — an
-/// invitee is auto-joined the moment they sign in with the invited email, no separate accept
-/// step, so there's nothing more for this dialog to do once the invite is sent.
+/// Falls back to an invitation email when the search comes up empty — an invitee auto-joins the moment they sign in with the invited email, no separate accept step, so there's nothing more for this dialog to do once sent.
 class AddMemberDialog extends StatefulWidget {
   const AddMemberDialog({super.key, required this.diveCenterRepository, required this.diveCenterId});
 
@@ -21,8 +18,7 @@ class AddMemberDialog extends StatefulWidget {
 class _AddMemberDialogState extends State<AddMemberDialog> {
   final _emailController = TextEditingController();
   MemberPreview? _found;
-  // Set on a MemberNotFoundException — the email that came up empty, offered as an invite
-  // target instead. Cleared on every new search so a stale offer never lingers.
+  // Set on a MemberNotFoundException, offered as an invite target instead — cleared on every new search so a stale offer never lingers.
   String? _notFoundEmail;
   String _role = 'staff';
   bool _isSearching = false;

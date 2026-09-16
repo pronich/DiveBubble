@@ -7,8 +7,7 @@ import '../../../core/widgets/card_photo_picker.dart';
 
 const double kSpecialtyCardWidth = 220;
 
-/// One color per specialty type, drawn from the existing AppColors palette (no new hexes)
-/// so the stack reads as a set of distinct, recognizable cards rather than a flat gray pile.
+/// Drawn from the existing AppColors palette (no new hexes) so the stack reads as distinct cards rather than a flat gray pile.
 const Map<String, Color> _kSpecialtyColors = {
   'Enriched Air (Nitrox)': AppColors.success,
   'Deep Diver': AppColors.buttonPrimary,
@@ -20,8 +19,7 @@ const Map<String, Color> _kSpecialtyColors = {
 
 Color colorForSpecialty(String specialty) => _kSpecialtyColors[specialty] ?? AppColors.neutral;
 
-/// Colored per specialty type — the Level card still gets the brand gradient since it's
-/// the hero credential, but specialties are now a proper colorful card deck, not gray tiles.
+/// Colored per specialty type — the Level card still gets the brand gradient since it's the hero credential.
 class SpecialtyCard extends StatelessWidget {
   const SpecialtyCard({
     super.key,
@@ -34,8 +32,7 @@ class SpecialtyCard extends StatelessWidget {
   final SpecialtyCertification specialty;
   final VoidCallback? onRemove;
 
-  /// Same null-hides-the-affordance posture as onRemove — only rendered on the single-card
-  /// case or an expanded deck card, never on a collapsed peeking sliver.
+  /// Same null-hides-the-affordance posture as onRemove — never rendered on a collapsed peeking sliver.
   final VoidCallback? onPhotoTap;
   final bool isUploadingPhoto;
 

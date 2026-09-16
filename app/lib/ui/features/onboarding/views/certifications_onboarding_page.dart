@@ -5,10 +5,7 @@ import '../../../../domain/certification_level.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../profile/view_models/profile_view_model.dart';
 
-/// Last step of new-account onboarding (see LoginSheet, EditProfilePage) — a full screen
-/// explaining why certifications matter (trip eligibility, a trust signal to other divers)
-/// instead of the old bare 3-field bottom sheet with no context, which is what prompted this
-/// screen in the first place. Skippable — Certifications stays reachable from Profile after.
+/// Replaces the old bare 3-field bottom sheet with context on why certifications matter. Skippable — Certifications stays reachable from Profile after.
 class CertificationsOnboardingPage extends StatefulWidget {
   const CertificationsOnboardingPage({super.key, required this.viewModel});
 

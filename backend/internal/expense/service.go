@@ -22,8 +22,7 @@ func NewService(repo *Repository) *Service {
 	return &Service{Repo: repo}
 }
 
-// SplitInput carries whichever field the expense's SplitType actually needs — the other two
-// are simply ignored by computeShares.
+// SplitInput carries whichever field the expense's SplitType actually needs; the other two are simply ignored by computeShares.
 type SplitInput struct {
 	ParticipantUserIDs []uuid.UUID         // SplitEqual
 	Shares             map[uuid.UUID]int   // SplitShares — share count per participant, e.g. 1/2/3
@@ -48,9 +47,7 @@ func (s *Service) Create(ctx context.Context, tripID, payerUserID, createdBy uui
 	})
 }
 
-// Update lets any participant re-split or correct an expense (matches the product decision
-// that editing is unrestricted, unlike Delete) — CreatedBy never changes, so Delete's
-// creator-only check keeps working after an edit by someone else.
+// Update lets any participant re-split or correct an expense, unlike Delete's creator-only restriction; CreatedBy never changes, so Delete's check keeps working after an edit by someone else.
 func (s *Service) Update(ctx context.Context, id, payerUserID uuid.UUID, title string, amountMinor int64, splitType SplitType, occurredAt time.Time, input SplitInput) (Expense, error) {
 	title = strings.TrimSpace(title)
 	if title == "" || amountMinor <= 0 || !splitType.Valid() {
@@ -76,8 +73,7 @@ func (s *Service) ListByTrip(ctx context.Context, tripID uuid.UUID) ([]Expense, 
 	return s.Repo.ListByTrip(ctx, tripID)
 }
 
-// Delete removes an expense outright — only its creator may do this (mirrors transport's
-// Dissolve). Everyone can edit an expense, but only its author can make it disappear.
+// Delete removes an expense outright and is creator-only (mirrors transport's Dissolve); everyone can edit an expense, but only its author can make it disappear.
 func (s *Service) Delete(ctx context.Context, id, callerUserID uuid.UUID) error {
 	e, err := s.Repo.GetByID(ctx, id)
 	if err != nil {
@@ -98,9 +94,7 @@ func (s *Service) CreateSettlement(ctx context.Context, tripID, fromUserID, toUs
 	})
 }
 
-// GetBalance nets every expense and settlement on the trip into one balance per user who's
-// touched either, then simplifies the debts into the minimum practical set of transfers (see
-// Simplify) — the two things the Expenses tab's balance card actually needs.
+// GetBalance nets every expense and settlement on the trip into one balance per touched user, then simplifies the debts via Simplify, the two things the Expenses tab's balance card needs.
 func (s *Service) GetBalance(ctx context.Context, tripID uuid.UUID) ([]Balance, []SettlementSuggestion, error) {
 	expenses, err := s.Repo.ListByTrip(ctx, tripID)
 	if err != nil {
@@ -135,11 +129,7 @@ func (s *Service) GetBalance(ctx context.Context, tripID uuid.UUID) ([]Balance, 
 	return balances, Simplify(balances), nil
 }
 
-// Simplify collapses a set of net balances into the minimum practical set of pairwise
-// transfers that would bring everyone to zero — greedily matching the largest creditor
-// against the largest debtor each round. Not guaranteed globally minimal (that's a harder
-// problem for larger groups), but it's the same "good enough" approach Splitwise itself
-// uses, and a dive trip's participant count is always small.
+// Simplify collapses net balances into pairwise transfers by greedily matching the largest creditor against the largest debtor each round; not guaranteed globally minimal, but the same "good enough" approach Splitwise uses, fine given a dive trip's small participant count.
 func Simplify(balances []Balance) []SettlementSuggestion {
 	type entry struct {
 		userID uuid.UUID
@@ -192,9 +182,7 @@ func computeShares(splitType SplitType, amountMinor int64, input SplitInput) ([]
 	}
 }
 
-// computeEqualSplit divides as evenly as integer minor units allow, then hands the leftover
-// pennies (amountMinor % n of them) to participants in a stable, deterministic order — so the
-// same input always produces the same split, not one that depends on map/slice iteration order.
+// computeEqualSplit divides as evenly as integer minor units allow, handing leftover pennies to participants in a stable sorted order so the same input always produces the same split.
 func computeEqualSplit(amountMinor int64, participants []uuid.UUID) []Share {
 	sorted := append([]uuid.UUID(nil), participants...)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].String() < sorted[j].String() })
@@ -213,10 +201,7 @@ func computeEqualSplit(amountMinor int64, participants []uuid.UUID) []Share {
 	return shares
 }
 
-// computeSharesSplit turns integer share counts (1/2/3 — the "pays for 2" case) into minor
-// units proportionally, using the largest-remainder method to hand out leftover pennies to
-// whoever's exact proportional amount was closest to rounding up, so the total always matches
-// exactly rather than drifting a cent short from truncation.
+// computeSharesSplit turns integer share counts into minor units proportionally, using the largest-remainder method so leftover pennies go to whoever's exact amount was closest to rounding up and the total always matches exactly.
 func computeSharesSplit(amountMinor int64, sharesInput map[uuid.UUID]int) ([]Share, error) {
 	if len(sharesInput) == 0 {
 		return nil, ErrInvalidArgument
@@ -261,9 +246,7 @@ func computeSharesSplit(amountMinor int64, sharesInput map[uuid.UUID]int) ([]Sha
 	return result, nil
 }
 
-// computeExactSplit takes the caller's own per-participant amounts as-is — the only
-// validation needed is that they add up to the total exactly (integer minor units, no
-// rounding tolerance to reason about).
+// computeExactSplit takes the caller's per-participant amounts as-is, only validating that they add up to the total exactly since integer minor units need no rounding tolerance.
 func computeExactSplit(amountMinor int64, exactInput map[uuid.UUID]int64) ([]Share, error) {
 	if len(exactInput) == 0 {
 		return nil, ErrInvalidArgument

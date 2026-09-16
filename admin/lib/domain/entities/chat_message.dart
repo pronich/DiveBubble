@@ -22,18 +22,15 @@ class ChatMessage {
   final String body;
   final DateTime createdAt;
 
-  // True when this sender is a member of the trip's dive center — used to tell a
-  // teammate's reply apart from a diver's in BubblesPage (see _MessageRow).
+  // Used to tell a teammate's reply apart from a diver's in BubblesPage (see _MessageRow).
   final bool isDiveCenterStaff;
 
-  // Diver-armed "@DiveCenter" flag (app/'s ChatView) — surfaced here so staff scrolling
-  // history can spot "this one was flagged for us" without re-reading everything.
+  // Diver-armed "@DiveCenter" flag (app/'s ChatView) — lets staff spot flagged messages while scrolling history.
   final bool mentionsDiveCenter;
 
   final List<ChatAttachment> attachments;
 
-  // Set when this message is a reply to another — resolved back to the original ChatMessage
-  // (if still in the loaded history) by BubblesPage before rendering (see _MessageRow.repliedTo).
+  // Resolved back to the original ChatMessage, if still loaded, by BubblesPage before rendering (see _MessageRow.repliedTo).
   final String? replyToId;
 
   final Map<String, ChatReaction> reactions;

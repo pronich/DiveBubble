@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// A lightweight month-grid date picker — dates only, previous/next month navigation, no
-/// year-picker toggle or input-mode switcher. Replaces Flutter's stock `showDatePicker`
-/// (its Material 3 chrome read as cluttered for this form) with something closer to
-/// Momondo's minimal calendar, which is what this was modeled on.
+/// Replaces Flutter's stock `showDatePicker`, whose Material 3 chrome read as cluttered here, with a minimal Momondo-style calendar.
 Future<DateTime?> showSimpleDatePicker({
   required BuildContext context,
   required DateTime initialDate,

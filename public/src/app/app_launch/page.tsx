@@ -5,9 +5,7 @@ import { AppQrCode } from "@/components/AppQrCode";
 import { StoreBadge } from "@/components/StoreBadge";
 import { APP_LINKS_LIVE, APP_STORE_URL, GOOGLE_PLAY_URL } from "@/config/appLaunch";
 
-// Reached directly whenever next.config.ts's User-Agent redirects don't fire — desktop,
-// unknown browsers, bots, or APP_LINKS_LIVE still off (see src/config/appLaunch.ts).
-// iOS/Android visitors are otherwise sent straight to their store before this renders.
+// Reached only when next.config.ts's User-Agent redirect doesn't fire (desktop, bots, or APP_LINKS_LIVE off) — iOS/Android visitors go straight to their store instead.
 export const metadata: Metadata = {
   title: "Get the App",
 };

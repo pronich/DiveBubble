@@ -37,8 +37,7 @@ func handleRegisterPushToken(svc *push.Service) func(http.ResponseWriter, *http.
 			return
 		}
 		if req.Platform != "android" && req.Platform != "web" {
-			// Defaults to ios rather than erroring — the only platform this project ships
-			// against a real device today (see CLAUDE.md's Stack table).
+			// Defaults to ios rather than erroring, since that's the only platform shipped against a real device today.
 			req.Platform = "ios"
 		}
 
@@ -50,8 +49,7 @@ func handleRegisterPushToken(svc *push.Service) func(http.ResponseWriter, *http.
 	}
 }
 
-// handleUnregisterPushToken is the master-off path (NotificationsSettingsPage) — the token
-// itself, not the platform, since it's the row's primary key.
+// handleUnregisterPushToken keys off the token itself, not the platform, since it's the row's primary key.
 func handleUnregisterPushToken(svc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		token := strings.TrimSpace(r.URL.Query().Get("token"))

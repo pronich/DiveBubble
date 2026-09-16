@@ -1,6 +1,4 @@
-// Plain class, not freezed: a handful of fields don't justify a build_runner step.
-// Full parity with GET /me now (see AccountPage) — the account footer/chat-sender lookups
-// still only ever read displayName/avatarUrl, the rest is unused there.
+// Plain class, not freezed — a handful of fields don't justify a build_runner step; most fields exist only for AccountPage, other lookups only ever read displayName/avatarUrl.
 class MyProfile {
   const MyProfile({
     this.displayName,

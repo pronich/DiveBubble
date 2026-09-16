@@ -14,11 +14,7 @@ import '../../../../domain/entities/chat_reaction.dart';
 import '../../../../domain/entities/my_profile.dart';
 import '../../../../domain/entities/trip.dart';
 
-/// The selected conversation's own message history stays scoped to one live subscription at
-/// a time (re-subscribed on every selectTrip call, see _subscribeToRealtime) — but every
-/// trip in the inbox also gets a lightweight subscription (see _subscribeToAllTrips) purely
-/// to keep unreadCount/hasUnreadMention live for the sidebar dot, mirroring app/'s
-/// MyTripsViewModel, which needs the same thing for its own bottom-nav dot.
+/// Besides the one live subscription for the selected conversation, every trip in the inbox also gets a lightweight subscription (see _subscribeToAllTrips) purely to keep unreadCount/hasUnreadMention live for the sidebar dot.
 class BubblesViewModel extends ChangeNotifier {
   BubblesViewModel({
     required TripRepository tripRepository,
@@ -44,18 +40,14 @@ class BubblesViewModel extends ChangeNotifier {
   centrifuge.Subscription? _subscription;
   StreamSubscription<centrifuge.PublicationEvent>? _publicationListener;
 
-  // One subscription per trip in the inbox, kept alive for this ViewModel's whole lifetime
-  // (see class doc) — this is what makes the sidebar mention dot react without the staff
-  // member having to click into Bubbles first.
+  // One subscription per trip in the inbox, kept alive for this ViewModel's whole lifetime — makes the sidebar mention dot react without opening Bubbles.
   final Map<String, centrifuge.Subscription> _tripSubscriptions = {};
   final Map<String, StreamSubscription<centrifuge.PublicationEvent>> _tripPublicationListeners = {};
 
   List<Trip> _trips = [];
   List<Trip> get trips => _trips;
 
-  // Backs the Bubbles-sidebar mention dot in AdminShell (see BubblesPage's
-  // onMentionStateChanged callback) — recomputed on every notifyListeners, same as
-  // app/'s MyTripsViewModel.hasAnyAttention driving RootShell's bottom-nav Badge.
+  // Backs the Bubbles-sidebar mention dot in AdminShell (see BubblesPage.onMentionStateChanged) — recomputed on every notifyListeners.
   bool get hasUnreadMention => _trips.any((t) => t.hasUnreadMention);
 
   bool _isLoadingTrips = false;
@@ -88,8 +80,7 @@ class BubblesViewModel extends ChangeNotifier {
   final Map<String, MyProfile> _senderProfiles = {};
   Map<String, MyProfile> get senderProfiles => _senderProfiles;
 
-  // GET /trips/mine is already ordered by most recent chat activity server-side — filtering
-  // to this dive center preserves that order, no client-side re-sort needed.
+  // GET /trips/mine is already ordered by most recent chat activity server-side — filtering to this dive center preserves that order.
   Future<void> loadTrips() async {
     _isLoadingTrips = true;
     _error = null;
@@ -123,12 +114,10 @@ class BubblesViewModel extends ChangeNotifier {
       _isLoadingMessages = false;
       notifyListeners();
     }
-    // Best-effort, and after the load above — a staff member has no trip_participants row,
-    // so last_read_at (and therefore unreadCount in the inbox) only ever moves via this call.
+    // Best-effort — a staff member has no trip_participants row, so last_read_at (and unreadCount) only ever moves via this call.
     try {
       await _tripRepository.markRead(tripId);
-      // Quiet refresh — no isLoadingTrips flip, so the inbox list doesn't flash a spinner
-      // every time a conversation is opened.
+      // Quiet refresh — no isLoadingTrips flip, so the inbox list doesn't flash a spinner on every conversation open.
       final all = await _tripRepository.getMyTrips();
       _trips = all.where((t) => t.diveCenterId == diveCenterId).toList();
       await _subscribeToAllTrips();
@@ -138,8 +127,7 @@ class BubblesViewModel extends ChangeNotifier {
     }
   }
 
-  // Idempotent — a trip already in _tripSubscriptions is skipped, so calling this again
-  // after every reload only picks up trips new to the list (e.g. one just created).
+  // Idempotent — a trip already in _tripSubscriptions is skipped, so re-calling after every reload only picks up trips new to the list.
   Future<void> _subscribeToAllTrips() async {
     for (final trip in _trips) {
       if (_tripSubscriptions.containsKey(trip.id)) continue;
@@ -150,8 +138,7 @@ class BubblesViewModel extends ChangeNotifier {
   }
 
   void _onAnyTripMessage(String tripId, centrifuge.PublicationEvent event) {
-    // The selected trip's own transcript is already handled live by _subscribeToRealtime —
-    // and a staff member looking straight at it shouldn't have it flagged as unread/mentioned.
+    // The selected trip's transcript is already handled live by _subscribeToRealtime, and it shouldn't flag itself as unread/mentioned.
     if (tripId == _selectedTripId) return;
     final index = _trips.indexWhere((t) => t.id == tripId);
     if (index == -1) return;
@@ -172,12 +159,7 @@ class BubblesViewModel extends ChangeNotifier {
     _subscription = await _realtimeService.subscribe('trip:$tripId');
     _publicationListener = _subscription!.publication.listen((event) async {
       final json = jsonDecode(utf8.decode(event.data)) as Map<String, dynamic>;
-      // Reaction changes get their own small sentinel (see publishReactionUpdate) instead of a
-      // full message republish — a Centrifugo publish is one shared payload for every
-      // subscriber, and ReactedByMe is per-viewer, so it can never be correct in a broadcast.
-      // Only per-emoji Count travels over the wire; _applyReactionUpdate merges that in while
-      // leaving each emoji's locally-known ReactedByMe untouched (it only ever changes via this
-      // viewer's own reactToMessage call, never via someone else's reaction).
+      // Reaction changes publish only a small sentinel with per-emoji Count, not a full message republish, since ReactedByMe is per-viewer and can't be correct in a broadcast — _applyReactionUpdate merges Count in while leaving locally-known ReactedByMe untouched.
       if (json['event'] == 'reaction_update') {
         _applyReactionUpdate(json);
         return;
@@ -190,27 +172,20 @@ class BubblesViewModel extends ChangeNotifier {
         createdAt: DateTime.parse(json['createdAt'] as String),
         isDiveCenterStaff: json['isDiveCenterStaff'] as bool? ?? false,
         mentionsDiveCenter: json['mentionsDiveCenter'] as bool? ?? false,
-        // Hand-decoded like every other field above, not via ChatMessage.fromJson (same
-        // precedent as app/'s own realtime handler) — easy to forget when adding a new
-        // message field, so don't skip these on the next one.
+        // Hand-decoded like every other field above, not via ChatMessage.fromJson — easy to forget when adding a new message field.
         attachments: ((json['attachments'] as List<dynamic>?) ?? [])
             .map((e) => ChatAttachment.fromJson(e as Map<String, dynamic>))
             .toList(),
         replyToId: json['replyToId'] as String?,
       );
-      // Only this trip's own messages matter here — the shared channel this listener is
-      // attached to is scoped to exactly one trip at a time already, but a stale listener
-      // from a just-superseded selectTrip() call (its unsubscribe still in flight) could
-      // otherwise briefly append into the wrong conversation.
+      // Guards against a stale listener from a just-superseded selectTrip() call (its unsubscribe still in flight) briefly appending into the wrong conversation.
       if (message.tripId != _selectedTripId) {
         return;
       }
       if (_messages.any((m) => m.id == message.id)) {
         return;
       }
-      // A sender who wasn't in the initially-loaded history (e.g. their very first message
-      // in this Bubble) never went through selectTrip's _resolveSenderProfiles — resolve it
-      // now so the row doesn't fall back to the generic "Diver"/person-icon placeholder.
+      // A sender whose first message in this Bubble arrives here never went through selectTrip's _resolveSenderProfiles — resolve it now to avoid the generic "Diver" placeholder.
       if (!_senderProfiles.containsKey(message.userId)) {
         try {
           _senderProfiles[message.userId] = await _profileRepository.getById(message.userId);
@@ -223,9 +198,7 @@ class BubblesViewModel extends ChangeNotifier {
     });
   }
 
-  // Mobile layout only (see BubblesPage) — returns to the inbox list. Only tears down the
-  // selected-conversation subscription, not _subscribeToAllTrips's per-trip ones, which
-  // need to stay alive regardless of what's selected for the sidebar mention dot.
+  // Only tears down the selected-conversation subscription — _subscribeToAllTrips's per-trip ones stay alive for the sidebar mention dot.
   Future<void> clearSelection() async {
     await _unsubscribeCurrent();
     _selectedTripId = null;
@@ -303,8 +276,7 @@ class BubblesViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Toggles the caller's own reaction — tapping the same emoji already reacted with removes it
-  // (Messenger semantics), tapping a different one replaces it.
+  // Messenger semantics: tapping the same emoji already reacted with removes it, tapping a different one replaces it.
   Future<String?> reactToMessage(String messageId, String emoji) async {
     final tripId = _selectedTripId;
     if (tripId == null) return null;

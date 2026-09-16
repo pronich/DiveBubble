@@ -12,9 +12,7 @@ import '../view_models/create_trip_view_model.dart';
 // Mirrors trip.MaxPhotosPerTrip server-side — same precedent as TripDetailPage's own copy.
 const _maxTripPhotos = 10;
 
-// Browser-picked filenames aren't guaranteed unique (unlike app/'s local file paths, which
-// image_picker copies to fresh temp names) — this counter gives each pending pick a stable
-// grid item id regardless of what the original file was called.
+// Browser-picked filenames aren't guaranteed unique — this counter gives each pending pick a stable grid item id regardless of what the original file was called.
 int _nextPendingPhotoId = 0;
 
 class _PendingPhoto {
@@ -24,17 +22,14 @@ class _PendingPhoto {
   final String id;
 }
 
-/// Opened via `showDialog` (not pushed as a route) — the full Create/Edit form fits
-/// comfortably in a popup since there aren't many fields, and the user explicitly asked
-/// for the full form here rather than a stripped-down quick-create modal.
+/// Opened via `showDialog`, not pushed as a route — the full form fits comfortably in a popup since there aren't many fields.
 class CreateTripPage extends StatefulWidget {
   const CreateTripPage({super.key, required this.tripRepository, required this.diveCenterId, this.existingTrip});
 
   final TripRepository tripRepository;
   final String diveCenterId;
 
-  // Non-null reuses this same form to edit an already-created trip instead of creating a
-  // new one — prefilled from its current values (see initState below).
+  // Non-null reuses this same form to edit an already-created trip instead of creating a new one, prefilled from its current values.
   final Trip? existingTrip;
 
   @override
@@ -65,13 +60,10 @@ class _CreateTripPageState extends State<CreateTripPage> {
   DateTime? _endDate;
   String? _minCertification;
 
-  // Flips true on the first failed submit — required fields still empty at that point get a
-  // red border/label instead of only a SnackBar, so it's obvious at a glance which ones need
-  // attention rather than having to re-read the error text against six unlabeled blanks.
+  // Flips true on the first failed submit — required fields still empty at that point get a red border/label instead of only a SnackBar.
   bool _showValidation = false;
 
-  // Create-only — an existing trip's photos are managed through TripDetailPage's own
-  // gallery instead (see AdminShell's Manage flow), so this stays empty while editing.
+  // Create-only — an existing trip's photos are managed through TripDetailPage's own gallery instead, so this stays empty while editing.
   List<_PendingPhoto> _pickedPhotos = [];
   bool _isPickingPhotos = false;
 
@@ -80,9 +72,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
     super.initState();
     final trip = widget.existingTrip;
     if (trip == null) {
-      // New trip: default to the next full hour, not the exact current time — 15:20 right
-      // now shouldn't quietly become the start time of a dive nobody meant to schedule for
-      // 15:20 specifically.
+      // New trip: default to the next full hour, not the exact current time — 15:20 shouldn't quietly become a dive's scheduled start time.
       _startTimeOfDay = _roundUpToNextHour(TimeOfDay.now());
       return;
     }
@@ -98,8 +88,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
     final priceMinor = trip.priceMinor;
     _priceController.text = priceMinor == null ? '' : (priceMinor / 100).toStringAsFixed(2);
     _bookingUrlController.text = trip.bookingUrl ?? '';
-    // startTime comes off the wire UTC-tagged (mapper leaves it as-is) — convert to local
-    // before reading date/time fields, same as app/'s create_trip_page.dart.
+    // startTime comes off the wire UTC-tagged — convert to local before reading date/time fields.
     final localStart = trip.startTime.toLocal();
     _startDate = DateTime(localStart.year, localStart.month, localStart.day);
     _startTimeOfDay = TimeOfDay(hour: localStart.hour, minute: localStart.minute);
@@ -211,10 +200,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
     );
 
     if (trip == null) return;
-    // Sequential, not parallel — the backend assigns each photo's position as "current row
-    // count" at insert time, so concurrent uploads could race for the same position. Also
-    // awaited in full before popping — TripDetailPage's own gallery fetch on mount would
-    // otherwise race a still-in-flight upload.
+    // Sequential, not parallel — the backend assigns each photo's position as "current row count" at insert time, so concurrent uploads could race for the same position.
     for (final pending in _pickedPhotos) {
       await _viewModel.uploadPhoto(trip.id, pending.image.bytes, pending.image.filename);
     }
@@ -228,8 +214,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
 
   int? _intOrNull(TextEditingController controller) => int.tryParse(controller.text.trim());
 
-  // "125.50" -> 12550 øre. Whole-currency-unit input is what an owner actually types;
-  // storage stays in minor units (see migration 000023's own comment on price_minor).
+  // "125.50" -> 12550 øre — whole-currency-unit input is what an owner actually types, but storage stays in minor units.
   int? _priceMinorOrNull(TextEditingController controller) {
     final text = controller.text.trim();
     if (text.isEmpty) return null;
@@ -481,11 +466,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
   }
 }
 
-/// Two plain digit segments (HH, MM) edited directly inside the field's own box — no popup at
-/// all, unlike _PickerField's tap-to-open-dialog pattern. Owns its own controllers seeded once
-/// from [initialValue]; the parent only ever hears about a value once both segments parse to a
-/// valid 24-hour time, via [onChanged] — it doesn't feed edits back in, so the parent rebuilding
-/// (e.g. to update [isError]) never resets what's mid-typed.
+/// [onChanged] fires only once both HH/MM segments parse to a valid time and doesn't feed edits back in, so the parent rebuilding (e.g. to update [isError]) never resets what's mid-typed.
 class _InlineTimeField extends StatefulWidget {
   const _InlineTimeField({required this.label, required this.initialValue, required this.onChanged, this.isError = false});
 

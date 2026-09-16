@@ -22,36 +22,23 @@ class MyTripsViewModel extends ChangeNotifier {
   final TripRepository _repository;
   final RealtimeService _realtimeService;
 
-  // Not final — RootShell is built once (see its own `late final` comment) but the real
-  // signed-in id can change later (anonymous browsing followed by a login-gated sign-in, or
-  // a sign-out/sign-in cycle without an app restart), so RootShell pushes a fresh value in
-  // via didUpdateWidget whenever AppEntryGate re-resolves it.
+  // Not final — the signed-in id can change later (login-gated sign-in, or a sign-out/sign-in cycle without an app restart), pushed in via didUpdateWidget.
   String currentUserId;
 
-  // One subscription per joined trip, kept alive for as long as this ViewModel is (the
-  // whole Bubbles tab's lifetime) — this is what makes the list update live, WhatsApp/
-  // Telegram-style, while just sitting on the list instead of only refreshing on reopen.
+  // One subscription per joined trip, kept alive for this ViewModel's lifetime — this is what makes the list update live instead of only on reopen.
   final Map<String, centrifuge.Subscription> _subscriptions = {};
   final Map<String, StreamSubscription<centrifuge.PublicationEvent>> _publicationListeners = {};
 
   List<Trip> _trips = [];
   List<Trip> get trips => _trips;
 
-  // Fetched alongside the main list purely for the Archive reveal cell's preview/badge (see
-  // ArchivedTripsRevealList) — archived trips never get a realtime subscription here, so this
-  // is a snapshot refreshed on each load()/pull-to-refresh, not a live-updating count. That's
-  // a deliberate simplification: subscribing to every archived trip's channel too just to keep
-  // one badge live would double the socket footprint for a number the diver only glances at.
+  // A snapshot refreshed on each load(), not live — subscribing to every archived trip's channel just for one badge would double the socket footprint for a number the diver only glances at.
   List<Trip> _archivedTrips = [];
   int get archivedCount => _archivedTrips.length;
 
-  // The badge shown on the Archive row itself — count of archived chats with unread
-  // messages, not archived chats in general (an archived chat you've already read
-  // shouldn't keep contributing to a number that reads as "needs attention").
+  // Archived chats with unread messages specifically, not archived chats in general.
   int get archivedUnreadCount => _archivedTrips.where((t) => t.unreadCount > 0).length;
 
-  // Matches the two-line preview Telegram's own Archived Chats cell shows — most recent
-  // first, same ordering the backend already returns.
   String get archivedPreviewText => _archivedTrips.take(2).map((t) => t.title).join(', ');
 
   bool get hasAnyAttention =>
@@ -68,13 +55,7 @@ class MyTripsViewModel extends ChangeNotifier {
 
   Future<void>? _loadFuture;
 
-  // load() has three independent triggers (initState, the authRepository listener, and
-  // tapping the Bubbles tab) that can fire close together — without coalescing, two
-  // overlapping calls would both pass _subscribeToAll's per-trip "already subscribed?"
-  // check before either finishes awaiting, so both would call RealtimeService.subscribe
-  // and register a second sub.publication.listen() for the same trip (double-counting
-  // unread messages), while dispose() would only ever cancel one of the two. A concurrent
-  // caller just awaits the same in-flight load instead of starting its own.
+  // Coalesced: load() has three independent triggers that can fire close together, and without this, overlapping calls could both pass the per-trip "already subscribed?" check and double-subscribe.
   Future<void> load() {
     final existing = _loadFuture;
     if (existing != null) return existing;
@@ -125,25 +106,17 @@ class MyTripsViewModel extends ChangeNotifier {
 
     final json = jsonDecode(utf8.decode(event.data)) as Map<String, dynamic>;
     final eventType = json['event'] as String?;
-    // reaction_update (see publishReactionUpdate) also lands on this same trip:$id channel
-    // and has no 'userId' at all — every other subscriber of the shared channel (Bubbles
-    // list included) needs to shrug off event shapes it doesn't know about instead of
-    // crashing on the unconditional cast below, which used to run for every event
-    // regardless of type.
+    // Other event shapes (e.g. reaction_update, which has no 'userId') also land on this shared channel and must be shrugged off rather than crash the cast below.
     if (eventType != null && eventType != 'sub_chat_activity') return;
 
     final senderId = json['userId'] as String?;
     if (senderId == null) return;
     final trip = _trips[index];
     final isOwn = senderId == currentUserId;
-    // sub_chat_activity (see handleSendOfferMessage/handleSendBuddyMessage) is a car/buddy
-    // chat message — it sums into the same unreadCount a main-chat message would (one number
-    // for "how much is new in this Bubble"), plus its own dot so the diver can tell which
-    // chat it's in without opening the trip.
+    // A car/buddy chat message sums into the same unreadCount as a main-chat message, plus its own dot.
     final scope = eventType == 'sub_chat_activity' ? json['scope'] as String? : null;
 
-    // Own activity never counts as unread for yourself (matches the backend's rule) — this
-    // only fires for the optimistic client-side bump between reloads.
+    // Own activity never counts as unread for yourself, matching the backend's rule.
     final updated = trip.copyWith(
       unreadCount: isOwn ? trip.unreadCount : trip.unreadCount + 1,
       hasUnreadTransportMessages: !isOwn && scope == 'transport' ? true : trip.hasUnreadTransportMessages,
@@ -155,9 +128,7 @@ class MyTripsViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Optimistic — leaves the row visible until the request actually settles (Dismissible/the
-  // long-press sheet call this only after the diver already committed to the action), and
-  // rolls back into place if the request fails rather than leaving the trip stuck in limbo.
+  // Optimistic — rolls back into place if the request fails rather than leaving the trip stuck in limbo.
   Future<void> archiveTrip(String tripId) async {
     final index = _trips.indexWhere((t) => t.id == tripId);
     if (index == -1) return;

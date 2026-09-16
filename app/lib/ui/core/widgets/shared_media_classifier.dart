@@ -4,15 +4,10 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 import '../../../domain/entities/picked_attachment.dart';
 
-// Mirrors pick_attachment.dart's own cap — a video longer than this can't be sent from the
-// composer either way, so there's nothing useful to stage.
+// Mirrors pick_attachment.dart's own cap — a video longer than this can't be sent from the composer either way.
 const _maxVideoDurationSeconds = 60;
 
-/// Converts what the OS handed us via Share-to-DiveBubble into the same PickedAttachment
-/// shape the in-app picker produces, so ChatView's composer (initialAttachments) can't tell
-/// the difference. Unlike pick_attachment.dart's own picker, this has no BuildContext to
-/// show a SnackBar from — items that don't fit (unsupported type, video too long) are just
-/// silently dropped; ChatView's own room/size-cap enforcement covers the rest.
+/// Unlike pick_attachment.dart's picker, this has no BuildContext to show a SnackBar from, so items that don't fit are silently dropped.
 Future<List<PickedAttachment>> classifySharedMedia(
   List<SharedMediaFile> files,
 ) async {
@@ -32,8 +27,7 @@ Future<List<PickedAttachment>> classifySharedMedia(
           ),
         );
       case SharedMediaType.file:
-        // Only PDF maps to anything the chat composer can actually send — see
-        // pick_attachment.dart's own 'document (PDF)' option.
+        // Only PDF maps to anything the chat composer can actually send.
         if (file.mimeType == 'application/pdf' ||
             file.path.toLowerCase().endsWith('.pdf')) {
           result.add(await _toAttachment(file, type: 'pdf'));

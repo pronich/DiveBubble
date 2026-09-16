@@ -3,13 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../domain/entities/specialty_certification.dart';
 import 'specialty_card.dart';
 
-/// 0 items -> AddSpecialtyCard tile. 1 item -> a single card. 2+ items -> a tappable
-/// deck (front card full, the next few peeking as thin slivers to one side) that unfurls
-/// into a horizontal scroll of full cards.
-///
-/// expanded/onToggle are controlled by the parent (rather than owned as local State) so
-/// ProfileView can force-collapse the stack when the Profile tab goes inactive — RootShell's
-/// IndexedStack keeps this widget alive across tab switches, so local state alone wouldn't reset.
+/// expanded/onToggle are controlled by the parent, not owned as local State, so ProfileView can force-collapse the stack when the Profile tab goes inactive — local state alone wouldn't reset since RootShell's IndexedStack keeps this widget alive.
 class SpecialtiesSection extends StatelessWidget {
   const SpecialtiesSection({
     super.key,
@@ -57,9 +51,7 @@ class SpecialtiesSection extends StatelessWidget {
   }
 }
 
-/// Every card lives in one Stack for the whole widget's life — only each card's `left`
-/// (via AnimatedPositioned) and the container's width (via AnimatedContainer) change when
-/// `expanded` flips, so Flutter can interpolate smoothly instead of swapping layouts.
+/// Every card lives in one Stack for the whole widget's life, so Flutter can interpolate `left`/width smoothly when `expanded` flips instead of swapping layouts.
 class _SpecialtyDeck extends StatelessWidget {
   const _SpecialtyDeck({
     required this.specialties,
@@ -115,8 +107,7 @@ class _SpecialtyDeck extends StatelessWidget {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // Painted back-to-front so the front card (i=0) always ends up on top
-                  // while collapsed; order stops mattering once cards no longer overlap.
+                  // Painted back-to-front so the front card (i=0) ends up on top while collapsed; order stops mattering once cards no longer overlap.
                   for (var i = n - 1; i >= 0; i--)
                     AnimatedPositioned(
                       key: ValueKey(specialties[i].id),

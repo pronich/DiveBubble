@@ -7,9 +7,7 @@ import '../../../../domain/entities/profile.dart';
 import '../../../../l10n/app_localizations.dart';
 import 'profile_overview_card.dart';
 
-/// Tap an organizer or participant anywhere in the app and this pops up as a sheet — same
-/// ProfileOverviewCard look as the diver's own Profile screen (Overview), just reached via
-/// a sheet instead of a full page push. No Edit button, no Certifications/Gear/settings.
+/// Same ProfileOverviewCard look as the diver's own Profile screen, reached via a sheet instead of a full page push, with no Edit/Certifications/Gear/settings.
 Future<void> showDiverIdCard(
   BuildContext context, {
   required String userId,
@@ -57,9 +55,7 @@ class _DiverIdCardSheetState extends State<_DiverIdCardSheet> {
     }
   }
 
-  // Deliberately doesn't fetch "is this user already blocked" first — blocking an
-  // already-blocked user is a harmless no-op server-side, so this stays a single always-visible
-  // action rather than a toggle with its own extra round trip.
+  // Deliberately doesn't check "is this user already blocked" first — a no-op re-block is harmless server-side, avoiding a toggle with its own extra round trip.
   Future<void> _confirmBlock() async {
     final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(

@@ -72,9 +72,7 @@ class AuthApiService {
     );
   }
 
-  // Requests a magic-link email — the link (clicked in a browser, possibly a different
-  // tab/device) carries the token+email back to this app's own root as query params, where
-  // MagicLinkGate picks it up and calls verifyEmailLogin with them.
+  // The emailed link carries the token+email back as query params, which MagicLinkGate reads and passes to verifyEmailLogin.
   Future<void> startEmailLogin(String email) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/auth/email/start'),

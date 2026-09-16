@@ -23,10 +23,7 @@ func (t SplitType) Valid() bool {
 	}
 }
 
-// Share is one participant's slice of an expense. Shares is only meaningful for
-// SplitShares (kept alongside AmountMinor so re-opening an expense for edit can show the
-// diver's original 1/2/3 counts rather than a derived amount) — AmountMinor is always
-// populated regardless of SplitType.
+// Share is one participant's slice of an expense; Shares is only meaningful for SplitShares, kept alongside AmountMinor so re-opening an expense for edit can show the original 1/2/3 counts rather than a derived amount.
 type Share struct {
 	UserID      uuid.UUID
 	Shares      *int
@@ -56,15 +53,13 @@ type Settlement struct {
 	CreatedAt   time.Time
 }
 
-// Balance is one participant's net position on a trip — positive means the trip owes them,
-// negative means they owe the trip.
+// Balance is one participant's net position on a trip: positive means the trip owes them, negative means they owe the trip.
 type Balance struct {
 	UserID      uuid.UUID
 	AmountMinor int64
 }
 
-// SettlementSuggestion is one leg of the simplified "who pays whom" graph computed from a
-// set of Balances — see Simplify.
+// SettlementSuggestion is one leg of the simplified "who pays whom" graph computed from a set of Balances (see Simplify).
 type SettlementSuggestion struct {
 	FromUserID  uuid.UUID
 	ToUserID    uuid.UUID

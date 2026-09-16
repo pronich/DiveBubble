@@ -17,9 +17,7 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
 }
 
-// Upsert associates a device token with a user. Re-registering an already-known token
-// (e.g. a different account signing into the same device) reassigns it rather than
-// leaving a stale row pointed at the old user.
+// Upsert associates a device token with a user, reassigning an already-known token (e.g. a different account on the same device) rather than leaving a stale row pointed at the old user.
 func (r *Repository) Upsert(ctx context.Context, userID uuid.UUID, platform, token string) error {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO push_tokens (token, user_id, platform)
@@ -29,8 +27,7 @@ func (r *Repository) Upsert(ctx context.Context, userID uuid.UUID, platform, tok
 	return err
 }
 
-// ListTokensForUsers returns every registered device token across the given users — a
-// user with multiple devices signed in gets a push to each. Empty input is a no-op.
+// ListTokensForUsers returns every registered device token across the given users, so a user with multiple devices gets a push to each; empty input is a no-op.
 func (r *Repository) ListTokensForUsers(ctx context.Context, userIDs []uuid.UUID) ([]string, error) {
 	if len(userIDs) == 0 {
 		return nil, nil
@@ -60,16 +57,13 @@ func (r *Repository) ListTokensForUsers(ctx context.Context, userIDs []uuid.UUID
 	return tokens, rows.Err()
 }
 
-// DeleteTokenForUser removes exactly one device's registration — scoped to userID so a
-// caller can only unregister their own token, not guess someone else's (e.g. from
-// NotificationsSettingsPage's master toggle).
+// DeleteTokenForUser removes exactly one device's registration, scoped to userID so a caller can only unregister their own token, not guess someone else's (e.g. from NotificationsSettingsPage's master toggle).
 func (r *Repository) DeleteTokenForUser(ctx context.Context, userID uuid.UUID, token string) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM push_tokens WHERE token = $1 AND user_id = $2`, token, userID)
 	return err
 }
 
-// DeleteTokens removes tokens FCM reports as no longer registered (app uninstalled, token
-// rotated) — called best-effort after every send so the table doesn't accumulate dead rows.
+// DeleteTokens removes tokens FCM reports as no longer registered (app uninstalled, token rotated), called best-effort after every send so the table doesn't accumulate dead rows.
 func (r *Repository) DeleteTokens(ctx context.Context, tokens []string) error {
 	if len(tokens) == 0 {
 		return nil

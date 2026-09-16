@@ -1,6 +1,4 @@
-/// One dive in the diver's personal log — entirely separate from Profile.diveCount (the
-/// self-reported "unlogged dives" number, see EditProfilePage) — the two are simply summed
-/// in the UI, never reconciled against each other.
+/// Entirely separate from Profile.diveCount (the self-reported "unlogged dives" number); the two are simply summed in the UI, never reconciled.
 class DiveLogEntry {
   const DiveLogEntry({
     required this.id,
@@ -25,8 +23,7 @@ class DiveLogEntry {
   final String source; // 'manual' | 'imported'
   final DateTime divedAt;
   final double? maxDepthM;
-  // Only ever set by an importer that actually knows it (a source app's own average-depth
-  // column, or computed from sample depths) — there's no manual-entry field for this.
+  // Only ever set by an importer that actually knows it; there's no manual-entry field for this.
   final double? avgDepthM;
   final int? durationMinutes;
   final double? minTemperatureC;
@@ -35,24 +32,19 @@ class DiveLogEntry {
   final double? latitude;
   final double? longitude;
   final String? notes;
-  // Only ever non-empty for source == 'imported' — a manual entry has no instrument data to
-  // draw a graph from, gated by source in the UI rather than by this being empty (an import
-  // with a sparse/missing waypoint section is still "imported", just without a chart).
+  // Gated by source in the UI rather than by this being empty, since an import with a sparse waypoint section is still "imported", just without a chart.
   final List<DiveProfileSample> profileSamples;
   final DateTime createdAt;
 
   bool get isImported => source == 'imported';
 
-  /// "{country} - {site}", or whichever half is actually present, or null if neither is —
-  /// the one line every dive-log card/row/detail page uses for "where".
+  /// "{country} - {site}", or whichever half is present, or null if neither is.
   String? get locationText {
     final parts = [country, siteName].where((s) => s?.isNotEmpty ?? false).toList();
     return parts.isEmpty ? null : parts.join(' - ');
   }
 
-  /// Highest temperature sample — only meaningful alongside minTemperatureC once a diver
-  /// drills into a dive with a full profile; there's no single "max temp" field for a
-  /// manual entry (which only ever has minTemperatureC, hand-typed).
+  /// Only meaningful for a dive with a full profile — a manual entry has no field for this beyond hand-typed minTemperatureC.
   double? get maxTemperatureC {
     final temps = profileSamples.map((s) => s.temperatureC).whereType<double>();
     return temps.isEmpty ? null : temps.reduce((a, b) => a > b ? a : b);
@@ -93,8 +85,7 @@ class DiveProfileSample {
   );
 }
 
-/// What an UDDF import actually did — surfaced as "N new, M already logged" rather than
-/// assuming every dive in the file was fresh (see the backend's dedup-by-dived_at).
+/// Surfaced as "N new, M already logged" rather than assuming every dive in the file was fresh (backend dedups by dived_at).
 class DiveLogImportResult {
   const DiveLogImportResult({required this.imported, required this.skipped});
 

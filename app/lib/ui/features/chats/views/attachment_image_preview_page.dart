@@ -6,9 +6,7 @@ import '../../../../data/services/error_codes.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../core/widgets/cached_attachment_image.dart';
 
-/// Full-screen, pinch-to-zoom view of a chat photo attachment — pushed from the bubble
-/// thumbnail/grid or the Media tab in Chat Info. Reuses the same cached local file everywhere
-/// else (AttachmentCacheService), never re-downloads.
+/// Reuses the same cached local file everywhere else (AttachmentCacheService), never re-downloads.
 class AttachmentImagePreviewPage extends StatefulWidget {
   const AttachmentImagePreviewPage({
     super.key,
@@ -19,10 +17,7 @@ class AttachmentImagePreviewPage extends StatefulWidget {
 
   final String url;
 
-  /// When set to more than one URL, swipe between every photo attachment on the same message
-  /// (see _AttachmentGrid in chat_view.dart) — the page opens on initialIndex. Left null (or a
-  /// single item) by the Media tab and every other single-photo entry point, which fall back
-  /// to the plain single-photo view this page always had.
+  /// When set to more than one URL, swipe between every photo attachment on the same message; left null by single-photo entry points.
   final List<String>? siblingUrls;
   final int initialIndex;
 
@@ -53,16 +48,13 @@ class _AttachmentImagePreviewPageState extends State<AttachmentImagePreviewPage>
   List<String> get _urls =>
       (widget.siblingUrls != null && widget.siblingUrls!.length > 1) ? widget.siblingUrls! : [widget.url];
 
-  // The OS share sheet, not a dedicated "save to library" action — lets the user pick Save
-  // Image, AirDrop, another app, etc., same as tapping Share on any photo elsewhere on the
-  // phone, rather than DiveBubble reimplementing one specific destination itself.
+  // Uses the OS share sheet rather than a dedicated "save to library" action, so the user can pick any destination.
   Future<void> _share() async {
     if (_sharing) return;
     setState(() => _sharing = true);
     try {
       final file = await AttachmentCacheService.getFile(_currentUrl);
-      // Anchors the share popover to the button on iPad/Mac — required there or it throws;
-      // harmless elsewhere (see ShareParams.sharePositionOrigin's own doc comment).
+      // Required on iPad/Mac or the share popover throws; harmless elsewhere.
       final box = _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
       final origin = box == null ? null : (box.localToGlobal(Offset.zero) & box.size);
       await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], sharePositionOrigin: origin));

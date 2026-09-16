@@ -9,12 +9,7 @@ export const metadata: Metadata = {
   title: "Trip Invite",
 };
 
-// Reached via a trip's own "Copy invite link" (see app/'s TripPage _BookingCodeRow) — the
-// code itself is what actually gets you in (trip.Service.JoinByCode), this page is just a
-// friendlier landing spot than handing someone a bare code over text. No trip lookup here —
-// deliberately static, no backend call — the code is unambiguous enough to read off a screen
-// and type by hand (see backend's bookingCodeAlphabet comment), so that's the fallback for
-// anyone who lands here without the app installed yet.
+// Deliberately static, no backend lookup — the invite code itself (not this page) is what gets you in once the app opens it.
 export default async function JoinPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
 

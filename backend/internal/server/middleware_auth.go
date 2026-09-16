@@ -39,11 +39,7 @@ func withAuth(issuer *auth.TokenIssuer, next func(http.ResponseWriter, *http.Req
 	}
 }
 
-// optionalAuth resolves the caller's user id if a valid bearer token is present, or passes
-// uuid.Nil for anonymous callers (no Authorization header at all) — for routes that stay
-// browsable without an account but personalize the response (e.g. "joined") when logged in.
-// A *present but invalid* token still 401s, so a stale/garbled token doesn't silently degrade
-// to anonymous instead of surfacing the problem.
+// optionalAuth resolves the caller's user id if a bearer token is present or passes uuid.Nil if absent, but still 401s on a present-but-invalid token rather than silently treating it as anonymous.
 func optionalAuth(issuer *auth.TokenIssuer, next func(http.ResponseWriter, *http.Request, uuid.UUID)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		header := r.Header.Get("Authorization")

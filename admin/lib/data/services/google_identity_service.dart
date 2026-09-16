@@ -5,16 +5,7 @@ import 'package:google_identity_services_web/id.dart' as gis;
 import 'package:google_identity_services_web/loader.dart' as gis_loader;
 import 'package:web/web.dart' as web;
 
-/// Thin wrapper directly over `package:google_identity_services_web` — a plain Dart
-/// JS-interop library, not a Flutter *plugin* — deliberately used instead of
-/// `google_sign_in`/`google_sign_in_web` (removed 2026-07-20, see AuthRepository's own
-/// doc comment). Those packages' `GoogleSignInPlugin` is constructed automatically by
-/// Flutter's web plugin registration, before any of our own code runs, and its
-/// constructor eagerly kicks off `loadWebSdk()` in the background — that was observed
-/// hanging the whole app in production. This class is a normal object we construct and
-/// call ourselves, so the GIS script only ever loads when *we* decide to call
-/// [ensureLoaded] (LoginPage, on mount) — no framework-level side effect tied to the
-/// dependency merely existing.
+/// Replaces google_sign_in/google_sign_in_web (removed 2026-07-20): those packages' plugin is constructed by Flutter's web plugin registration before our code runs and its constructor eagerly kicks off loadWebSdk() in the background, which was observed hanging the app in production — this class only loads the GIS script when [ensureLoaded] is explicitly called.
 class GoogleIdentityService {
   static const _viewType = 'divebubble_google_signin_button';
   static bool _viewFactoryRegistered = false;
@@ -24,8 +15,7 @@ class GoogleIdentityService {
 
   Future<void> ensureLoaded() => _loadFuture ??= gis_loader.loadWebSdk();
 
-  /// Per GIS's own docs, initialize() should only be called once per page — callers
-  /// (LoginPage) are expected to only call this once per widget lifetime (initState).
+  /// Per GIS's own docs, initialize() must only be called once per page — guarded here in case a caller invokes it more than once.
   void initialize({required String clientId, required void Function(String idToken) onCredential}) {
     if (_initialized) return;
     _initialized = true;
@@ -40,8 +30,7 @@ class GoogleIdentityService {
     );
   }
 
-  /// Registers the platform-view factory backing [buildButtonViewType] — idempotent,
-  /// safe to call from every CustomGoogleButton build.
+  /// Idempotent — safe to call from every CustomGoogleButton build.
   static String buildButtonViewType() {
     if (!_viewFactoryRegistered) {
       _viewFactoryRegistered = true;

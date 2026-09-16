@@ -46,12 +46,7 @@ import 'ui/features/onboarding/views/app_entry_gate.dart';
 import 'ui/features/trips/view_models/trip_view_model.dart';
 import 'ui/features/trips/views/trip_page.dart';
 
-// Build-time config via --dart-define, same pattern as admin/'s main.dart — a physical
-// device can't reach the dev machine's `localhost`, so real-device runs need either the
-// Mac's LAN IP or the deployed API passed explicitly. `flutter run` with no --dart-define
-// still falls back to localhost (simulator/desktop convenience), but a `--release` build
-// (App Store archive, TestFlight) falls back to the real production API instead — a release
-// build shipped without remembering the flag must never silently point at localhost.
+// `flutter run` with no --dart-define falls back to localhost, but a `--release` build falls back to the real production API instead, so a shipped build never silently points at localhost.
 const _apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: kReleaseMode
@@ -65,11 +60,7 @@ const _centrifugoWsUrl = String.fromEnvironment(
       : 'ws://localhost:8000/connection/websocket',
 );
 
-// Google Cloud Console project divebubble-a96e2 (the Firebase-linked project, same one push
-// notifications already use) — iOS client identifies the app to Google, the Web (server)
-// client is the ID token audience the backend verifies against. The backend accepts this
-// alongside the older client id from before this migration (see GOOGLE_SERVER_CLIENT_IDS)
-// so already-shipped app builds keep working until they update.
+// The backend accepts this alongside the older client id from before this migration (GOOGLE_SERVER_CLIENT_IDS) so already-shipped app builds keep working until they update.
 const _googleIosClientId =
     '583379001701-1kncasa92pin9ib1laae9obn5t9mum14.apps.googleusercontent.com';
 const _googleServerClientId =
@@ -89,9 +80,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  // Lets a push notification tap push a route from outside any particular widget's
-  // BuildContext — main.dart is the one place that already holds every repository, so
-  // deep-linking happens here rather than threading push state through RootShell.
+  // Lets a push notification tap push a route from outside any particular widget's BuildContext, since main.dart is the one place that already holds every repository.
   final _navigatorKey = GlobalKey<NavigatorState>();
 
   final _appLinks = AppLinks();
@@ -195,10 +184,7 @@ class _MyAppState extends State<MyApp> {
     super.dispose();
   }
 
-  // Invite links (divebubble.io/join/{code}) — Universal Links (iOS) / App Links (Android).
-  // uriLinkStream alone covers both cold start (its first event is the launching link) and
-  // warm (app already running) — this is app_links' own documented pattern, not a getInitialLink
-  // + uriLinkStream split; calling both would double-handle the cold-start link.
+  // uriLinkStream alone covers both cold start and warm launch (app_links' own documented pattern) — pairing it with getInitialLink too would double-handle the cold-start link.
   Future<void> _setUpDeepLinks() async {
     _linkSubscription = _appLinks.uriLinkStream.listen(
       _handleIncomingLink,
@@ -246,10 +232,7 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
-  // Share-to-DiveBubble — photos/video/PDF shared from another app's OS share sheet. The
-  // package's own example (unlike app_links' single-stream pattern) uses getMediaStream for
-  // warm sharing plus a separate getInitialMedia for cold start, paired with reset() so the
-  // cold-start share isn't also redelivered through the stream afterward.
+  // Unlike app_links' single-stream pattern, this package needs getMediaStream (warm) plus getInitialMedia (cold start), paired with reset() so the cold-start share isn't redelivered through the stream too.
   Future<void> _setUpShareToApp() async {
     _shareSubscription = ReceiveSharingIntent.instance.getMediaStream().listen(
       _handleSharedMedia,
@@ -271,9 +254,7 @@ class _MyAppState extends State<MyApp> {
 
     final context = _navigatorKey.currentContext;
     if (context == null) return;
-    // Share-to-DiveBubble has no sensible "preview" state the way an invite link does —
-    // picking a Bubble to share into requires an account, so gate here rather than letting
-    // ChooseBubblePage's own trip fetch fail with an auth error.
+    // Gated here rather than letting ChooseBubblePage's own trip fetch fail with an auth error, since picking a Bubble to share into requires an account.
     final userId = await ensureSignedIn(
       context,
       _authRepository,
@@ -305,8 +286,7 @@ class _MyAppState extends State<MyApp> {
   void _onAuthChanged() => _syncPushTokenIfAuthorized();
 
   Future<void> _setUpPushNotifications() async {
-    // iOS shows a system banner for a foreground notification-payload message only if asked —
-    // otherwise a push that arrives while the app is open is silently swallowed.
+    // iOS shows a system banner for a foreground notification-payload message only if asked, otherwise it's silently swallowed.
     await FirebaseMessaging.instance
         .setForegroundNotificationPresentationOptions(
           alert: true,
@@ -316,25 +296,18 @@ class _MyAppState extends State<MyApp> {
 
     FirebaseMessaging.instance.onTokenRefresh.listen(_registerToken);
     FirebaseMessaging.onMessageOpenedApp.listen(_openTripFromPush);
-    // A push that launched the app from fully terminated (not just backgrounded) doesn't
-    // fire onMessageOpenedApp — this is the cold-start equivalent of that same tap.
+    // A push that launched the app from fully terminated doesn't fire onMessageOpenedApp — this is the cold-start equivalent of that same tap.
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) _openTripFromPush(initialMessage);
 
-    // Covers a returning already-signed-in user (no auth-change event fires on a silent
-    // token restore, only on an explicit sign-in) — see _onAuthChanged's own comment.
+    // Covers a returning already-signed-in user, since no auth-change event fires on a silent token restore, only on an explicit sign-in.
     _syncPushTokenIfAuthorized();
   }
 
-  // Deliberately passive — never calls requestPermission(), which is what actually shows
-  // the OS prompt. For a brand-new account, that prompt now only ever appears from the
-  // explicit PushPermissionPage step in LoginSheet's onboarding chain (with its own "why"
-  // explained first); this just re-syncs the token for an already-decided diver on sign-in,
-  // token refresh, or app resume, so a permission granted once doesn't need re-asking.
+  // Deliberately passive — never calls requestPermission() (that only happens from LoginSheet's PushPermissionPage step); this just re-syncs the token for an already-decided diver.
   Future<void> _syncPushTokenIfAuthorized() async {
     if (await _authRepository.currentUserId() == null) return;
-    // Respects an explicit opt-out from NotificationsSettingsPage — a sign-in/token-refresh
-    // event must never silently undo that.
+    // A sign-in/token-refresh event must never silently undo an explicit opt-out from NotificationsSettingsPage.
     if (!await PushPreferences.isEnabled()) return;
 
     try {
@@ -343,9 +316,7 @@ class _MyAppState extends State<MyApp> {
       if (settings.authorizationStatus != AuthorizationStatus.authorized)
         return;
 
-      // iOS-only gotcha: the APNS device token arrives from Apple asynchronously — calling
-      // getToken() before it lands throws apns-token-not-set, even when already authorized
-      // (e.g. right after a cold start). Poll briefly rather than assuming it's instant.
+      // iOS-only: the APNS device token arrives from Apple asynchronously, so calling getToken() too early throws apns-token-not-set even when already authorized; poll briefly instead.
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         var apnsToken = await FirebaseMessaging.instance.getAPNSToken();
         var attempts = 0;
@@ -367,8 +338,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _registerToken(String token) async {
-    // A token-refresh event fires regardless of the diver's own preference — must not
-    // silently re-enable push after an explicit opt-out via NotificationsSettingsPage.
+    // A token-refresh event fires regardless of preference — must not silently re-enable push after an explicit opt-out.
     if (!await PushPreferences.isEnabled()) return;
     try {
       await _pushRepository.registerToken(
@@ -378,8 +348,7 @@ class _MyAppState extends State<MyApp> {
             : 'ios',
       );
     } catch (e) {
-      // Best-effort — a failed registration just means this device misses pushes until the
-      // next token refresh or sign-in retries it, not something worth surfacing to the diver.
+      // Best-effort — a failed registration just means this device misses pushes until the next retry, not worth surfacing to the diver.
       debugPrint('push: token registration failed: $e');
     }
   }
@@ -412,15 +381,12 @@ class _MyAppState extends State<MyApp> {
         ),
       );
     } catch (e) {
-      // Best-effort — a failed deep-link (e.g. trip fetch failed) means the tap does
-      // nothing, not a crash. The diver can still find the trip from Bubbles directly.
+      // Best-effort — a failed deep-link means the tap does nothing rather than crashing; the diver can still find the trip from Bubbles directly.
       debugPrint('push: could not open trip from notification: $e');
     }
   }
 
-  // Matches the "chatScope" data field set by notifyNewMessage/notifyNewOfferMessage/
-  // notifyNewBuddyMessage and the two join-event pushes (see routes_transport.go/
-  // routes_buddy.go) — an absent or unrecognized value falls back to the main Chat tab.
+  // Matches the "chatScope" data field set backend-side; an absent or unrecognized value falls back to the main Chat tab.
   int _tabIndexForChatScope(String? scope) {
     switch (scope) {
       case 'transport':

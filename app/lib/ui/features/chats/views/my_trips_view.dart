@@ -74,17 +74,14 @@ class _MyTripsViewState extends State<MyTripsView> {
   );
   String _search = '';
 
-  // Pinned by pulling past the reveal threshold (see ArchiveRevealList) — reset whenever this
-  // tab is left and returned to, or the app comes back from background, so the diver has to
-  // pull again each time rather than it staying stuck open, per the product ask.
+  // Reset whenever this tab is left/returned to or the app resumes, so the diver has to pull again rather than it staying stuck open.
   bool _archiveRevealed = false;
 
   @override
   void initState() {
     super.initState();
     widget.viewModel.load();
-    // Reload once signed in — this tab may have already loaded (and cached "needs sign in")
-    // before the user logged in via some other screen's gate (Create trip, Join, etc.).
+    // Reload once signed in — this tab may have already cached "needs sign in" before a login-gated action elsewhere.
     widget.authRepository.addListener(_onAuthChanged);
   }
 
@@ -161,8 +158,7 @@ class _MyTripsViewState extends State<MyTripsView> {
 
                 return Column(
                   children: [
-                    // Only shown once there's more than a handful to search through — a single
-                    // Bubble doesn't need a search box sitting above it.
+                    // Only shown once there's more than a handful to search through.
                     if (allTrips.length > 5)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -252,14 +248,12 @@ class _MyTripsViewState extends State<MyTripsView> {
         ),
       ),
     );
-    // An unarchive on that screen isn't reflected in this list until we reload — cheap
-    // either way since returning here means the diver's back on this tab regardless.
+    // An unarchive on that screen isn't reflected here until we reload.
     if (context.mounted) widget.viewModel.load();
   }
 
   Future<void> _openChat(BuildContext context, Trip trip) async {
-    // Fire-and-forget — a failed mark-read shouldn't block opening the chat, it just
-    // means the unread badge lingers until the next successful one.
+    // Fire-and-forget — a failed mark-read shouldn't block opening the chat, just leaves the badge lingering.
     widget.tripRepository.markRead(trip.id).catchError((_) {});
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -281,9 +275,7 @@ class _MyTripsViewState extends State<MyTripsView> {
         ),
       ),
     );
-    // Mark read again on the way out — catches any messages that arrived while the
-    // diver was actively inside the chat — then refresh so the corrected (accurate)
-    // unread count shows immediately rather than waiting for the next tab switch.
+    // Mark read again on the way out to catch messages that arrived while inside the chat, then refresh for an immediate accurate count.
     if (!context.mounted) return;
     widget.tripRepository.markRead(trip.id).catchError((_) {});
     widget.viewModel.load();
@@ -372,8 +364,7 @@ class _MyTripsViewState extends State<MyTripsView> {
   }
 }
 
-// Persistent — same two entry points Explore used to own, now living on Bubbles since
-// divers create/organize their own trips instead of discovering dive-center listings.
+// Same two entry points Explore used to own, moved here since divers now organize their own trips instead of discovering listings.
 class _BubblesActionsHeader extends StatelessWidget {
   const _BubblesActionsHeader({required this.onCreateTrip, required this.onJoinByCode});
 

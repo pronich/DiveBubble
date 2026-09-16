@@ -1,17 +1,6 @@
 package server
 
-// Error codes returned as the "error" field in an error response body
-// ({"error": "<code>"}), replacing free-text English prose so the client can show a
-// localized message instead of whatever string happened to be written here. Added
-// incrementally, one backend area at a time — see CLAUDE.md's translations section for the
-// running list of which areas are done.
-//
-// ErrCodeGeneric covers everything that isn't meaningful for a user to see distinctly: a
-// malformed request body, an unexpected internal failure, or any other "something broke, try
-// again" case (a Sentry/log line already carries the real reason — this string never needs
-// to). The client can safely fall back to ErrCodeGeneric's own message for any code it
-// doesn't recognize, so an area that hasn't been converted to codes yet just degrades to
-// this instead of erroring on unknown input.
+// ErrCodeGeneric is the fallback for any error with no user-meaningful distinction, and is also what the client falls back to for any code it doesn't recognize.
 const ErrCodeGeneric = "generic_error"
 
 // Auth (routes_auth.go)
@@ -27,9 +16,7 @@ const (
 	ErrCodeRefreshTokenExpired   = "refresh_token_expired"
 	ErrCodeRefreshTokenRevoked   = "refresh_token_revoked"
 	ErrCodeRefreshTokenReused    = "refresh_token_reused"
-	// ErrCodeUnauthenticated covers both "no/malformed bearer token" and "token invalid or
-	// expired" — the client's reaction is identical either way (treat as signed out), so
-	// there's no meaningful distinction to preserve for the user.
+	// ErrCodeUnauthenticated covers both missing/malformed and invalid/expired tokens, since the client treats both identically as signed out.
 	ErrCodeUnauthenticated = "unauthenticated"
 )
 
@@ -51,9 +38,7 @@ const (
 	ErrCodePhotoNotFound               = "photo_not_found"
 )
 
-// Shared between transport (routes_transport.go) and buddy (routes_buddy.go) — same
-// underlying concept, no reason for the diver to see two different strings for it depending
-// on which tab they were in.
+// Shared between transport and buddy — same underlying concept, so the diver shouldn't see different strings depending on which tab they were in.
 const (
 	ErrCodeTripCancelled            = "trip_cancelled"
 	ErrCodeBodyOrAttachmentRequired = "body_or_attachment_required"
@@ -93,10 +78,7 @@ const (
 // Profile (routes_profile.go)
 const ErrCodeUserNotFound = "user_not_found"
 
-// DiveCenter (routes_divecenter.go) — mostly admin/-only screens (company profile, staff
-// management, invitations); admin/ isn't in scope for translated error messages yet (see the
-// translations plan), so only ErrCodeDiveCenterNotFound has a client-side message today — the
-// rest are still real, distinct codes for contract consistency, just not yet localized.
+// DiveCenter (routes_divecenter.go) — admin/ isn't in scope for translations yet, so only ErrCodeDiveCenterNotFound has a client-side message today; the rest exist for contract consistency.
 const (
 	ErrCodeDiveCenterNotFound        = "dive_center_not_found"
 	ErrCodeNameRequired              = "name_required"

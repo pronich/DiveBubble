@@ -38,9 +38,7 @@ class TripsListViewModel extends ChangeNotifier {
   bool _isResolvingPosition = false;
   bool get isResolvingPosition => _isResolvingPosition;
 
-  /// Nearest-sorted trips with null coordinates sort to the end (can't be placed, but
-  /// shouldn't disappear) — date order (already what the backend returns) is left as-is
-  /// for the default "Soonest" mode.
+  /// Nearest-sorted trips with null coordinates sort to the end, since they can't be placed but shouldn't disappear.
   List<Trip> get trips {
     if (_sortMode != SortMode.nearest || _myPosition == null) return _trips;
 
@@ -77,9 +75,7 @@ class TripsListViewModel extends ChangeNotifier {
     }
   }
 
-  /// Called from the Search & Filters sheet's "Show trips" action — re-fetches from the
-  /// backend when the query changed (search is server-side, see CLAUDE.md), and resolves
-  /// the diver's position first if switching to "Nearest" (distance sort is client-side).
+  /// Re-fetches from the backend when the query changed (search is server-side), and resolves the diver's position first if switching to "Nearest" (distance sort is client-side).
   Future<void> applyFilters({required String query, required SortMode sortMode}) async {
     final queryChanged = query != _query;
     _query = query;
@@ -102,8 +98,7 @@ class TripsListViewModel extends ChangeNotifier {
     loadTrips();
   }
 
-  /// Best-effort — a denied/failed permission just means "Nearest" silently falls back to
-  /// date order (see [trips]) rather than blocking the sheet or erroring.
+  /// Best-effort — a denied/failed permission just falls back to date order rather than blocking the sheet or erroring.
   Future<bool> resolvePosition() async {
     _isResolvingPosition = true;
     notifyListeners();

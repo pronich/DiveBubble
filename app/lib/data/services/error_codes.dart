@@ -3,24 +3,10 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
-// Maps a backend error code (see backend/internal/server/errcodes.go) to a message to show
-// the diver. The backend is being converted to codes one area at a time — an unrecognized
-// code (an area not converted yet, or old-style prose slipping through) is returned as-is
-// rather than treated as an error, so client and backend never need a hard synchronized
-// cutover; each area can ship independently.
-//
-// Not yet localized (see the translations plan) — these are the English strings that will
-// become the base .arb entries once that infrastructure lands.
+// An unrecognized code (an area not converted to codes yet, or old-style prose) is returned as-is rather than treated as an error, so client and backend never need a synchronized cutover.
 String describeErrorCode(String code) => _messages[code] ?? code;
 
-// Turns any caught error into text safe to show a diver. A plain Exception thrown by one of
-// our own *_api_service.dart calls already carries a clean message (see describeErrorCode
-// above, and each service's own _extractError) — but that's only ever reached once an HTTP
-// response actually comes back. A request that never gets a response at all (no connection,
-// DNS failure, timeout) throws some other exception type instead (SocketException,
-// http.ClientException, TimeoutException), whose toString() is raw and technical — the
-// Connection-refused wall of text this exists to stop. Anything that isn't our own plain
-// Exception collapses to the same generic message ErrCodeGeneric already uses.
+// A request that never gets an HTTP response (no connection, DNS failure, timeout) throws SocketException/ClientException/TimeoutException with a raw, technical toString(); those collapse to the generic message instead.
 String friendlyError(Object error) {
   if (error is SocketException || error is http.ClientException || error is TimeoutException) {
     return describeErrorCode('generic_error');
@@ -93,10 +79,7 @@ const _messages = <String, String>{
   // Profile (backend/internal/server/routes_profile.go)
   'user_not_found': 'This diver could not be found.',
 
-  // DiveCenter (backend/internal/server/routes_divecenter.go) — only the codes app/ can
-  // actually see (it only views a dive center, never manages one — see
-  // DiveCenterApiService's own doc comment). The rest are admin/-only for now; admin/ isn't
-  // in scope for translated messages yet, so those codes have no entry here.
+  // DiveCenter (backend/internal/server/routes_divecenter.go) — only the codes app/ can see; the rest are admin/-only and not in scope for translated messages yet.
   'dive_center_not_found': 'This dive center could not be found.',
 
   // Gear (backend/internal/server/routes_gear.go)
@@ -121,8 +104,7 @@ const _messages = <String, String>{
   'invalid_divinglog6_file': 'Could not read this file as a Diving Log 6 export.',
   'unrecognized_dive_log_format': 'Unrecognized file format — expected UDDF, CSV, or a Diving Log 6 export.',
 
-  // Upload (backend/internal/server/routes_upload.go) — shared by every photo/attachment
-  // upload in the app (avatar, specialty/trip photos, chat attachments).
+  // Upload (backend/internal/server/routes_upload.go) — shared by every photo/attachment upload in the app.
   'trip_photo_limit_reached': 'This trip already has the maximum number of photos.',
   'invalid_image': 'Choose a JPEG, PNG, or WebP image.',
   'file_too_large': "That file is too large — try a smaller one.",

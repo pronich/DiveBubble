@@ -43,8 +43,7 @@ func (s *Service) List(ctx context.Context, tripID, callerUserID uuid.UUID) ([]O
 	return s.Repo.ListByTrip(ctx, tripID, callerUserID)
 }
 
-// Join returns the offer joined — callers use it (specifically its UserID, the offer's
-// creator) to notify them that someone joined, without a second fetch.
+// Join returns the offer so callers can notify its creator (offer.UserID) without a second fetch.
 func (s *Service) Join(ctx context.Context, offerID, userID uuid.UUID) (Offer, error) {
 	offer, err := s.Repo.GetByID(ctx, offerID)
 	if err != nil {
@@ -87,15 +86,12 @@ func (s *Service) ListJoins(ctx context.Context, offerID uuid.UUID) ([]uuid.UUID
 	return s.Repo.ListJoins(ctx, offerID)
 }
 
-// Leave lets a joined diver step out of a single car — the offer itself (and its chat)
-// carries on for whoever's left. Deleting a non-existent join is a harmless no-op.
+// Leave lets a joined diver step out of a single car; the offer and its chat carry on for whoever's left.
 func (s *Service) Leave(ctx context.Context, offerID, userID uuid.UUID) error {
 	return s.Repo.Leave(ctx, offerID, userID)
 }
 
-// Dissolve is the creator cancelling their own car outright — deletes the offer, cascading
-// its joins and chat history (see migration 000046's ON DELETE CASCADE on chat_messages).
-// Only the creator may dissolve; anyone else gets ErrForbidden.
+// Dissolve deletes the offer, cascading its joins and chat history; anyone but the creator gets ErrForbidden.
 func (s *Service) Dissolve(ctx context.Context, offerID, userID uuid.UUID) error {
 	offer, err := s.Repo.GetByID(ctx, offerID)
 	if err != nil {
@@ -107,15 +103,7 @@ func (s *Service) Dissolve(ctx context.Context, offerID, userID uuid.UUID) error
 	return s.Repo.DeleteOffer(ctx, offerID)
 }
 
-// HandleUserLeavingTrip is called when a diver leaves a trip entirely (see trip.Service —
-// this is transport's side of that): drops their own joins (frees seats they held), and
-// dissolves any offer *they* created on this trip — an offer with its creator gone no
-// longer makes sense, so it's deleted (cascading its joins) rather than left stale. Everyone
-// who'd joined a dissolved offer gets a transport_alerts row — a real notification doesn't
-// exist yet, this is the "something changed, go check" stopgap surfaced as a dot in the UI.
-// HandleUserLeavingTrip returns every user who got a fresh transport_alerts row (i.e. whose
-// offer just dissolved out from under them) — callers use this to push-notify them, since
-// this is the one place that already knows exactly who was affected.
+// HandleUserLeavingTrip frees the user's own seats and dissolves any offer they created, returning everyone who got a fresh transport_alerts row so callers can push-notify them.
 func (s *Service) HandleUserLeavingTrip(ctx context.Context, tripID, userID uuid.UUID) ([]uuid.UUID, error) {
 	if err := s.Repo.RemoveUserJoinsInTrip(ctx, tripID, userID); err != nil {
 		return nil, err

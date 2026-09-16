@@ -21,8 +21,7 @@ class ExpenseApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
-  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
-  // message to show, or passes it through unchanged if it's not one this file knows about yet.
+  // Server errors come back as {"error": "<code>"}; describeErrorCode maps it to a message or passes it through unchanged if unrecognized.
   String? _extractError(String body) {
     try {
       final decoded = jsonDecode(body);
@@ -102,9 +101,7 @@ class ExpenseApiService {
     return Expense.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // A plain calendar date, sent as UTC midnight — converting the local DateTime with
-  // .toUtc() directly would shift it into the *previous* UTC day for any positive-offset
-  // timezone (same gotcha createTrip/updateTrip already work around for endDate).
+  // Sent as UTC midnight; .toUtc() directly would shift it into the *previous* UTC day for a positive-offset timezone (same gotcha createTrip/updateTrip work around for endDate).
   String _dateOnlyIso(DateTime date) =>
       DateTime.utc(date.year, date.month, date.day).toIso8601String();
 

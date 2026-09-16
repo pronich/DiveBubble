@@ -21,11 +21,7 @@ const (
 	appleRevokeURL = "https://appleid.apple.com/auth/revoke"
 )
 
-// AppleTokenClient talks to Apple's OAuth token/revoke endpoints — used to exchange a native
-// Sign in with Apple authorizationCode for a refresh token at login (so we have something to
-// revoke later) and to revoke that refresh token when a diver deletes their account (App Store
-// Review Guideline 5.1.1(v)). key == nil means disabled: every method becomes a safe no-op,
-// same "empty disables" convention as internal/push.Service's nil httpClient.
+// AppleTokenClient talks to Apple's OAuth token/revoke endpoints to exchange a Sign in with Apple authorizationCode for a refresh token at login and revoke it on account deletion (App Store Guideline 5.1.1(v)); key == nil makes every method a safe no-op.
 type AppleTokenClient struct {
 	key        *ecdsa.PrivateKey
 	teamID     string
@@ -34,10 +30,7 @@ type AppleTokenClient struct {
 	httpClient *http.Client
 }
 
-// NewAppleTokenClient builds a client from a Sign in with Apple key (Team ID + Key ID + the
-// .p8 private key's PEM content). All three empty disables Apple token exchange/revocation
-// entirely — sign-in and account deletion still work, just without this side effect. Any
-// other partial combination is treated as a real misconfiguration and returns an error.
+// NewAppleTokenClient disables Apple token exchange/revocation entirely if teamID, keyID and privateKeyPEM are all empty, but treats any other partial combination as a misconfiguration error.
 func NewAppleTokenClient(teamID, keyID, privateKeyPEM, clientID string) (*AppleTokenClient, error) {
 	if teamID == "" && keyID == "" && privateKeyPEM == "" {
 		log.Print("auth: APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY not set, Apple token revocation disabled")
@@ -61,9 +54,7 @@ func NewAppleTokenClient(teamID, keyID, privateKeyPEM, clientID string) (*AppleT
 	}, nil
 }
 
-// buildClientSecret mints a fresh ES256 client_secret JWT, as Apple's token/revoke endpoints
-// require in place of a static client secret. Short-lived (5 min) since it's only ever used
-// immediately after being built, never cached or reused across calls.
+// buildClientSecret mints a short-lived (5 min) ES256 client_secret JWT, which Apple requires in place of a static client secret.
 func (c *AppleTokenClient) buildClientSecret() (string, error) {
 	now := time.Now().UTC()
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
@@ -77,9 +68,7 @@ func (c *AppleTokenClient) buildClientSecret() (string, error) {
 	return token.SignedString(c.key)
 }
 
-// Exchange trades a native Sign in with Apple authorizationCode for Apple's own refresh
-// token, which is what Revoke later needs — the authorizationCode itself is single-use and
-// already spent by the time this returns. A no-op (empty result, nil error) when disabled.
+// Exchange trades a single-use Sign in with Apple authorizationCode for the refresh token Revoke later needs, and is a no-op when disabled.
 func (c *AppleTokenClient) Exchange(ctx context.Context, authorizationCode string) (string, error) {
 	if c.key == nil {
 		return "", nil
@@ -109,9 +98,7 @@ func (c *AppleTokenClient) Exchange(ctx context.Context, authorizationCode strin
 	return res.RefreshToken, nil
 }
 
-// Revoke calls Apple's revocation endpoint for a previously-exchanged refresh token — the
-// account-deletion side effect Guideline 5.1.1(v) requires. A no-op when disabled, which is
-// what makes it safe for account.Service to call unconditionally.
+// Revoke calls Apple's revocation endpoint for a previously-exchanged refresh token (App Store Guideline 5.1.1(v)) and is a safe no-op when disabled so account.Service can call it unconditionally.
 func (c *AppleTokenClient) Revoke(ctx context.Context, refreshToken string) error {
 	if c.key == nil {
 		return nil
@@ -131,8 +118,7 @@ func (c *AppleTokenClient) Revoke(ctx context.Context, refreshToken string) erro
 	return c.post(ctx, appleRevokeURL, form, nil)
 }
 
-// post submits a form-encoded request to one of Apple's OAuth endpoints and decodes the JSON
-// response into out (skipped if out is nil, e.g. Revoke's empty-body response).
+// post submits a form-encoded request to an Apple OAuth endpoint and decodes the JSON response into out, skipping decode when out is nil (Revoke's empty-body response).
 func (c *AppleTokenClient) post(ctx context.Context, endpoint string, form url.Values, out any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
 	if err != nil {

@@ -38,10 +38,7 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Offer, error) 
 	return o, err
 }
 
-// ListByTrip computes JoinedCount/Joined/HasUnreadMessages in one query rather than N+1
-// per-offer lookups. HasUnreadMessages follows trip.Repository.ListJoinedByUser's own
-// last_read_at COALESCE pattern, scoped to this one offer's read-state row instead of the
-// trip's.
+// ListByTrip computes JoinedCount/Joined/HasUnreadMessages in one query rather than N+1 per-offer lookups.
 func (r *Repository) ListByTrip(ctx context.Context, tripID, callerUserID uuid.UUID) ([]Offer, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT o.id, o.trip_id, o.user_id, o.type, o.seats, o.details, o.created_at,
@@ -154,16 +151,13 @@ func (r *Repository) Join(ctx context.Context, offerID, userID uuid.UUID) error 
 	return err
 }
 
-// Leave removes a single user's join on a single offer — unlike RemoveUserJoinsInTrip, this
-// doesn't touch any other offer the user might be joined to (they can only be joined to one,
-// but this stays scoped to the one offer being left regardless).
+// Leave removes a single user's join on a single offer, unlike RemoveUserJoinsInTrip which touches every offer.
 func (r *Repository) Leave(ctx context.Context, offerID, userID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `DELETE FROM transport_offer_joins WHERE offer_id = $1 AND user_id = $2`, offerID, userID)
 	return err
 }
 
-// ListCreatedByUserInTrip finds offers this user made on this trip — used when they leave
-// the trip, since an offer with its creator gone no longer makes sense.
+// ListCreatedByUserInTrip is used when the user leaves the trip, since an offer with its creator gone no longer makes sense.
 func (r *Repository) ListCreatedByUserInTrip(ctx context.Context, tripID, userID uuid.UUID) ([]Offer, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT id, trip_id, user_id, type, seats, details, created_at
@@ -186,15 +180,13 @@ func (r *Repository) ListCreatedByUserInTrip(ctx context.Context, tripID, userID
 	return offers, rows.Err()
 }
 
-// DeleteOffer cascades to transport_offer_joins via the FK (ON DELETE CASCADE) — callers
-// that need to notify joined users should read ListJoins before calling this.
+// DeleteOffer cascades to transport_offer_joins via the FK, so callers needing to notify joined users must read ListJoins before calling this.
 func (r *Repository) DeleteOffer(ctx context.Context, offerID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `DELETE FROM trip_transport_offers WHERE id = $1`, offerID)
 	return err
 }
 
-// RemoveUserJoinsInTrip drops this user's joins across every offer on the trip — used when
-// they leave the trip entirely, freeing whatever seats they held.
+// RemoveUserJoinsInTrip drops this user's joins across every offer on the trip, freeing whatever seats they held.
 func (r *Repository) RemoveUserJoinsInTrip(ctx context.Context, tripID, userID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `
 		DELETE FROM transport_offer_joins
@@ -203,8 +195,7 @@ func (r *Repository) RemoveUserJoinsInTrip(ctx context.Context, tripID, userID u
 	return err
 }
 
-// CreateAlerts is a best-effort "something changed in Transport" ping — ON CONFLICT DO
-// NOTHING since a user only needs to see the dot once, not one per bumped offer.
+// CreateAlerts ignores conflicts since a user only needs to see the dot once, not one per bumped offer.
 func (r *Repository) CreateAlerts(ctx context.Context, tripID uuid.UUID, userIDs []uuid.UUID) error {
 	for _, userID := range userIDs {
 		if _, err := r.DB.ExecContext(ctx, `
@@ -230,8 +221,7 @@ func (r *Repository) ClearAlert(ctx context.Context, tripID, userID uuid.UUID) e
 	return err
 }
 
-// MarkRead marks this one car's chat read up to now — mirrors trip.Repository.MarkRead,
-// scoped to a single offer instead of the whole trip.
+// MarkRead mirrors trip.Repository.MarkRead but scoped to a single offer instead of the whole trip.
 func (r *Repository) MarkRead(ctx context.Context, offerID, userID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `
 		INSERT INTO transport_offer_read_state (offer_id, user_id, last_read_at)

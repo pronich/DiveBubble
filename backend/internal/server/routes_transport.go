@@ -46,8 +46,7 @@ func registerTransportRoutes(
 	mux.HandleFunc("POST /trips/{id}/transport/{offerId}/read", withAuth(authIssuer, handleMarkTransportOfferRead(svc, tripSvc)))
 }
 
-// requireOfferAccess is requireParticipant (trip-level) plus an offer-level check: only the
-// offer's creator or someone who's joined it may read/post in its chat or manage it.
+// requireOfferAccess is requireParticipant plus an offer-level check: only the creator or someone who's joined may read/post/manage it.
 func requireOfferAccess(w http.ResponseWriter, r *http.Request, transportSvc *transport.Service, tripSvc *trip.Service, tripIDStr, offerIDStr string, userID uuid.UUID) (transport.Offer, bool) {
 	tripID, ok := requireParticipant(w, r, tripSvc, tripIDStr, userID)
 	if !ok {
@@ -138,8 +137,6 @@ func handleListTransportOffers(svc *transport.Service, tripSvc *trip.Service, di
 			return
 		}
 
-		// diveCenterStaffChecker is defined in routes_message.go — same "who wrote this"
-		// attribution concern as chat, reused as-is rather than duplicated.
 		checker := newDiveCenterStaffChecker(diveCenterSvc, t.DiveCenterID)
 		out := make([]transportOfferResponse, 0, len(offers))
 		for _, o := range offers {
@@ -211,8 +208,7 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service, pro
 		if !ok {
 			return
 		}
-		// Joining an existing offer is blocked too, not just creating new ones — the trip
-		// is dead, so committing to a ride toward it doesn't make sense either.
+		// Joining is blocked too, not just creating, since the trip is dead either way.
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
 				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
@@ -259,8 +255,7 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service, pro
 					Data:     map[string]string{"tripId": t.ID.String(), "type": "transport_joined", "chatScope": "transport"},
 				})
 
-				// One system message per join event — not idempotent like SendSystem, since
-				// every new joiner should get their own announcement in the car's chat.
+				// Not idempotent like SendSystem, since every new joiner needs their own announcement.
 				msg, sysErr := messageSvc.PostSystemEvent(r.Context(), tripID, message.Scope{OfferID: uuid.NullUUID{UUID: offerID, Valid: true}}, message.KindCarJoined, joinerName+" joined your car")
 				if sysErr != nil {
 					log.Printf("car chat: could not post join system message for offer:%s: %v", offerID, sysErr)
@@ -269,9 +264,7 @@ func handleJoinTransportOffer(svc *transport.Service, tripSvc *trip.Service, pro
 				}
 			}
 
-			// The system join message is attributed to message.SystemUserID, not the joiner,
-			// so ListByTrip's unread check (cm.user_id != caller) can't tell it was their own
-			// action — without this, the joiner would see their own join flagged as unread.
+			// Marked read explicitly because the system join message is attributed to message.SystemUserID, so the unread check can't tell it was the joiner's own action.
 			if err := svc.MarkRead(r.Context(), offerID, userID); err != nil {
 				log.Printf("car chat: could not mark offer read for joiner:%s offer:%s: %v", userID, offerID, err)
 			}
@@ -285,9 +278,7 @@ type joinedUserResponse struct {
 	UserID uuid.UUID `json:"userId"`
 }
 
-// handleGetTransportAlert both reads and clears — viewing the Transport tab is what
-// acknowledges the "something changed" ping (transport_alerts), same as opening a chat
-// marks it read. No separate ack endpoint needed for this stopgap.
+// handleGetTransportAlert both reads and clears the alert, since viewing the Transport tab is what acknowledges it.
 func handleGetTransportAlert(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
@@ -353,7 +344,7 @@ func handleListOfferMessages(transportSvc *transport.Service, tripSvc *trip.Serv
 			return
 		}
 
-		// Same best-effort blocked-user filtering as the main chat (routes_message.go).
+		// Best-effort, same as the main chat: a lookup failure falls back to "nothing blocked".
 		blocked, err := moderationSvc.ListBlockedUserIDs(r.Context(), userID)
 		if err != nil {
 			log.Printf("list offer messages: could not load blocked users for %s: %v", userID, err)
@@ -386,8 +377,7 @@ func handleListOfferMessages(transportSvc *transport.Service, tripSvc *trip.Serv
 		checker := newDiveCenterStaffChecker(diveCenterSvc, t.DiveCenterID)
 		out := make([]messageResponse, 0, len(messages))
 		for _, m := range messages {
-			// feedbackProvided is always false here — an offer chat never carries a
-			// feedback_prompt message, that kind only ever appears in the main trip chat.
+			// feedbackProvided is always false: an offer chat never carries a feedback_prompt message.
 			out = append(out, toMessageResponse(m, checker.isStaff(r.Context(), m.UserID), false, reactionsByMessage[m.ID]))
 		}
 		writeJSON(w, http.StatusOK, out)
@@ -442,11 +432,7 @@ func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Servi
 		if pubErr := publisher.Publish(r.Context(), "transport_offer:"+offer.ID.String(), resp); pubErr != nil {
 			log.Printf("realtime publish failed for transport_offer:%s: %v", offer.ID, pubErr)
 		}
-		// Also pinged on the trip channel — MyTripsViewModel (Bubbles list) and
-		// TripConversationPage both already subscribe to trip:$id, but neither of them is
-		// subscribed to transport_offer:$id unless the diver is actually looking at this car's
-		// chat right now. Without this second, tagged publish, the Bubbles-list badge and the
-		// Transport pill dot would only refresh on the next explicit reload.
+		// Also pinged on the trip channel, since the Bubbles-list badge and Transport pill dot only subscribe to trip:$id, not this specific offer's channel.
 		if pubErr := publisher.Publish(r.Context(), "trip:"+offer.TripID.String(), map[string]string{
 			"event": "sub_chat_activity", "scope": "transport", "userId": userID.String(),
 		}); pubErr != nil {
@@ -459,8 +445,7 @@ func handleSendOfferMessage(transportSvc *transport.Service, tripSvc *trip.Servi
 	}
 }
 
-// handleLeaveTransportOffer is for a joiner stepping out of a car they don't own — the
-// creator has no "leave" (dissolving is the equivalent, see handleDissolveTransportOffer).
+// handleLeaveTransportOffer is for a joiner only; the creator's equivalent is handleDissolveTransportOffer.
 func handleLeaveTransportOffer(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		offer, ok := requireOfferAccess(w, r, svc, tripSvc, r.PathValue("id"), r.PathValue("offerId"), userID)
@@ -479,10 +464,7 @@ func handleLeaveTransportOffer(svc *transport.Service, tripSvc *trip.Service) fu
 	}
 }
 
-// handleDissolveTransportOffer cancels the car outright — only the creator may do this
-// (transport.Service.Dissolve enforces it). The realtime "dissolved" sentinel is published
-// only after the delete succeeds, so a rejected/failed attempt never falsely signals
-// dissolution to anyone still viewing the chat.
+// handleDissolveTransportOffer publishes the "dissolved" event only after the delete succeeds, so a rejected/failed attempt never falsely signals dissolution.
 func handleDissolveTransportOffer(svc *transport.Service, tripSvc *trip.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		offer, ok := requireOfferAccess(w, r, svc, tripSvc, r.PathValue("id"), r.PathValue("offerId"), userID)
@@ -504,9 +486,7 @@ func handleDissolveTransportOffer(svc *transport.Service, tripSvc *trip.Service,
 	}
 }
 
-// notifyNewOfferMessage pushes a car chat message to the offer's own members only (creator +
-// joiners) — narrower than notifyNewMessage's whole-trip-roster reach, since the rest of the
-// trip has no visibility into a car they haven't joined.
+// notifyNewOfferMessage notifies only the offer's own members, narrower than notifyNewMessage's whole-trip reach, since the rest of the trip can't see a car they haven't joined.
 func notifyNewOfferMessage(ctx context.Context, pushSvc *push.Service, profileSvc *profile.Service, transportSvc *transport.Service, t trip.Trip, offer transport.Offer, m message.Message, senderID uuid.UUID) {
 	joinedIDs, err := transportSvc.ListJoins(ctx, offer.ID)
 	if err != nil {
@@ -522,8 +502,7 @@ func notifyNewOfferMessage(ctx context.Context, pushSvc *push.Service, profileSv
 	if sender, err := profileSvc.Get(ctx, senderID); err == nil && sender.DisplayName.Valid && sender.DisplayName.String != "" {
 		senderName = sender.DisplayName.String
 	}
-	// Same three-tier Title/Subtitle/Body shape as notifyNewMessage — Subtitle/chatScope are
-	// what let the diver (and the tap handler) tell this apart from the trip's main chat.
+	// Subtitle/chatScope let the diver (and the tap handler) tell this apart from the trip's main chat.
 	pushSvc.SendToUsers(ctx, recipients, push.Notification{
 		Title:    t.Title,
 		Subtitle: "Transport chat",
@@ -532,9 +511,7 @@ func notifyNewOfferMessage(ctx context.Context, pushSvc *push.Service, profileSv
 	})
 }
 
-// handleMarkTransportOfferRead marks this one car's chat read up to now — called when the
-// diver actually opens it, same "viewing acknowledges it" idea as trip.MarkRead, but scoped
-// to a single offer instead of clearing the whole Transport tab's dissolved-alert dot.
+// handleMarkTransportOfferRead marks only this one car's chat read, unlike trip.MarkRead which clears the whole Transport tab's alert dot.
 func handleMarkTransportOfferRead(svc *transport.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		offer, ok := requireOfferAccess(w, r, svc, tripSvc, r.PathValue("id"), r.PathValue("offerId"), userID)

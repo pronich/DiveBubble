@@ -22,8 +22,7 @@ class DiveLogApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
-  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
-  // message to show, or passes it through unchanged if it's not one this file knows about yet.
+  // Server errors come back as {"error": "<code>"}; describeErrorCode maps it to a message or passes it through unchanged if unrecognized.
   String? _extractError(String body) {
     try {
       final decoded = jsonDecode(body);
@@ -102,11 +101,7 @@ class DiveLogApiService {
     return DiveLogEntry.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  /// Handles all three accepted formats (UDDF, CSV, a Diving Log 6 SQLite export) — the
-  /// backend sniffs the actual bytes to tell them apart, this just uploads whatever file
-  /// the diver picked. uploadFile (multipart_upload.dart) already extracts and describes the
-  /// error itself now, so whatever it throws is already a clean, ready-to-show message —
-  /// nothing to unwrap here.
+  /// The backend sniffs the file's bytes to tell UDDF/CSV/Diving-Log-6 apart, so this just uploads whatever the diver picked without inspecting it.
   Future<DiveLogImportResult> importFile(String filePath) async {
     final token = await getAccessToken();
     if (token == null) throw const AuthRequiredException();

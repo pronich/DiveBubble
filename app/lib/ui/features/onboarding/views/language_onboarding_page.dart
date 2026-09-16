@@ -4,11 +4,7 @@ import '../../../../data/services/locale_controller.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../core/formatting/locale_display.dart';
 
-/// One-time language-selection step — shown once to every diver, new or returning (see
-/// AppEntryGate's own two trigger paths), with the device's own language pre-selected via
-/// LocaleController starting at null (see its own doc comment on that convention). Picking a
-/// row applies immediately, same as the Profile > Language settings page; Continue just moves
-/// on, it doesn't itself need to persist anything.
+/// Picking a row applies immediately, same as the Profile > Language settings page; Continue just moves on, it doesn't itself persist anything.
 class LanguageOnboardingPage extends StatelessWidget {
   const LanguageOnboardingPage({super.key, required this.localeController, required this.onDone});
 

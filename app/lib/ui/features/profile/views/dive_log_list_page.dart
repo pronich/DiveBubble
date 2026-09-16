@@ -90,9 +90,7 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
                     return _DiveLogRow(
                       key: ValueKey(entry.id),
                       entry: entry,
-                      // entries is sorted newest-first (see ProfileViewModel._diveLog), so the
-                      // top row is the diver's most recent — and therefore highest-numbered —
-                      // dive, counting back down to 1 for the oldest at the bottom.
+                      // entries is sorted newest-first, so the top row is highest-numbered, counting back down to 1 for the oldest.
                       diveNumber: entries.length - index,
                       multiSelect: _multiSelect,
                       selected: _selectedIds.contains(entry.id),
@@ -157,8 +155,7 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
     }
   }
 
-  /// Backs the swipe-left gesture — confirms before deleting since a swipe is easy to
-  /// trigger by accident, same as the detail page's own delete confirmation.
+  /// Confirms before deleting since a swipe is easy to trigger by accident.
   Future<bool> _confirmDeleteOne(BuildContext context, DiveLogEntry entry) async {
     final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
@@ -337,8 +334,7 @@ class _DiveLogRow extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
   final VoidCallback? onIconTap;
-  // Null while in multi-select mode — swipe-to-delete is disabled there, bulk delete via
-  // the AppBar action is the equivalent action.
+  // Null while in multi-select mode — swipe-to-delete is disabled there, bulk delete via the AppBar action is the equivalent.
   final Future<bool> Function()? onSwipeDelete;
 
   @override

@@ -12,14 +12,7 @@ import 'add_specialty_dialog.dart';
 import 'edit_account_dialog.dart';
 import 'update_level_dialog.dart';
 
-/// Personal account screen — reached from the sidebar's account footer (see AdminShell).
-/// Mirrors app/'s ProfileView content (Overview, Certifications: Level + Specialties,
-/// About/Legal, Sign out) minus the Gear Locker, which doesn't apply to a business
-/// console the same way it does to a diver deciding what to pack for a trip. Deliberately
-/// simpler than app/'s copy in two ways: no animated specialty "deck" (a plain list is
-/// enough here — this screen won't realistically hold enough specialties to need it), and
-/// no photo upload on Level/specialty cards (avatar upload is still there, on the profile
-/// itself) — both scope cuts made to ship this round rather than left silently incomplete.
+/// Mirrors app/'s ProfileView minus the Gear Locker (doesn't apply to a business console) and, as deliberate scope cuts, no animated specialty "deck" and no photo upload on Level/specialty cards.
 class AccountPage extends StatefulWidget {
   const AccountPage({
     super.key,
@@ -75,10 +68,7 @@ class _AccountPageState extends State<AccountPage> {
   Future<void> _signOut() async {
     setState(() => _isSigningOut = true);
     await widget.authRepository.signOut();
-    // Pop this pushed route *before* triggering RootGate's recheck — otherwise this screen
-    // would still sit on top of the Navigator stack after RootGate swaps its base route to
-    // LoginPage underneath, leaving the signed-out diver stranded looking at a stale Account
-    // page instead of the login screen.
+    // Pop before RootGate's recheck, or this screen stays on top of the Navigator stack after RootGate swaps its base route to LoginPage underneath.
     if (mounted) Navigator.of(context).pop();
     widget.onSignedOut();
   }

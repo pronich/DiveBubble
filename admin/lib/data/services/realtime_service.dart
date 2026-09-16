@@ -1,9 +1,6 @@
 import 'package:centrifuge/centrifuge.dart' as centrifuge;
 
-// One shared Centrifugo connection for admin/'s lifetime; channels are subscribed per-Bubble.
-// Same shape as app/'s RealtimeService (see CLAUDE.md: admin/ and app/ don't share code
-// yet) — ref-counted shared Subscription per channel, in-flight-Future de-duplication for
-// overlapping subscribe() calls.
+// One shared Centrifugo connection for admin/'s lifetime — a ref-counted Subscription per channel, with in-flight-Future de-duplication for overlapping subscribe() calls.
 class RealtimeService {
   RealtimeService({required this.wsUrl, required this.getToken});
 

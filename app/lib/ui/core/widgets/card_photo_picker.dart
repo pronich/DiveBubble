@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Shared by LevelCard and SpecialtyCard: no photo yet -> a small bordered placeholder
-/// that opens the picker on tap; photo present -> a thumbnail that opens a full-screen
-/// Preview instead, with its own Edit action to replace it. White-on-color styling since
-/// both host cards are solid-color (brand gradient / specialty accent) with white text.
+/// White-on-color styling since both host cards (LevelCard, SpecialtyCard) are solid-color with white text.
 class CardPhotoPicker extends StatelessWidget {
   const CardPhotoPicker({
     super.key,

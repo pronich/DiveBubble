@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 
-// Same pairing as app/'s AppTextTheme and admin/'s AdminTheme — Fraunces for
-// headings (brand warmth), Inter for everything else (legibility at small sizes).
+// Same font pairing as app/'s AppTextTheme and admin/'s AdminTheme: Fraunces for headings, Inter for body text.
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],

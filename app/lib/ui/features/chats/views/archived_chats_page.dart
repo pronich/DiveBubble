@@ -19,8 +19,7 @@ import 'trip_conversation_page.dart';
 import 'trip_row.dart';
 import 'trip_row_actions.dart';
 
-/// Reached only via ArchiveRevealList's pull-down gesture (see its own doc comment) — there's
-/// deliberately no other entry point, matching the "stays hidden" product ask.
+/// Reached only via ArchiveRevealList's pull-down gesture — deliberately no other entry point, matching the "stays hidden" product ask.
 class ArchivedChatsPage extends StatefulWidget {
   const ArchivedChatsPage({
     super.key,

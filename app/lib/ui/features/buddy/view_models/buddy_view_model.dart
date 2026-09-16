@@ -43,10 +43,7 @@ class BuddyViewModel extends ChangeNotifier {
   bool _hasAlert = false;
   bool get hasAlert => _hasAlert;
 
-  /// The buddy group (created or joined) this diver is currently part of on this trip, if
-  /// any — at most one, since joining is capped to one group per trip (see
-  /// buddy.ErrAlreadyBooked server-side). Drives both the Buddy tab's chat-vs-list swap
-  /// (BuddyView) and the ⓘ affordance's visibility (TripConversationPage).
+  /// At most one, since a diver is capped to one buddy group per trip (buddy.ErrAlreadyBooked server-side).
   BuddyRequest? get myRequest {
     for (final r in _requests) {
       if (r.joined || r.userId == currentUserId) return r;
@@ -69,17 +66,13 @@ class BuddyViewModel extends ChangeNotifier {
     }
   }
 
-  /// Seeds the alert dot from data the caller already has (e.g. Trip.hasBuddyAlert) instead
-  /// of a fresh network round-trip — the flag isn't cleared server-side by this, only
-  /// [checkAlert] (called on an actual Buddy-tab visit) does that.
+  /// Only sets the local flag; unlike [checkAlert] this never clears it server-side.
   void seedAlert(bool value) {
     _hasAlert = value;
     notifyListeners();
   }
 
-  /// Checks (and, server-side, clears) whether the buddy list changed under this diver since
-  /// they last looked — call whenever the Buddy tab is actually shown, not on every [load],
-  /// since viewing is what acknowledges the alert.
+  /// Clears the alert server-side too, so only call this on an actual Buddy-tab visit, not on every [load].
   Future<void> checkAlert() async {
     try {
       _hasAlert = await _repository.getHasAlert(tripId);
@@ -89,10 +82,7 @@ class BuddyViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Marks [myRequest]'s own group chat as read — call whenever the Buddy tab is shown and
-  /// the diver is actually in a group, same "viewing acknowledges it" moment as [checkAlert].
-  /// Updates the local flag optimistically so the pill dot clears immediately rather than
-  /// waiting on the next [load].
+  /// Updates the local flag optimistically so the pill dot clears immediately rather than waiting on the next [load].
   Future<void> markMyRequestRead() async {
     final request = myRequest;
     if (request == null || !request.hasUnreadMessages) return;
@@ -126,9 +116,7 @@ class BuddyViewModel extends ChangeNotifier {
     }
   }
 
-  /// Returns null on success, or an error message on failure — a join failure (e.g. already
-  /// booked elsewhere on this trip) shouldn't blow away the whole list via the shared [error]
-  /// field, just that one action.
+  /// Returns an error message instead of using the shared [error] field, so a join failure doesn't blow away the whole list.
   Future<String?> join(String requestId) async {
     _joiningRequestIds.add(requestId);
     notifyListeners();
@@ -159,8 +147,7 @@ class BuddyViewModel extends ChangeNotifier {
     }
   }
 
-  /// Creator-only: cancels the buddy group outright. Returns an error message on failure,
-  /// null on success.
+  /// Creator-only: cancels the buddy group outright.
   Future<String?> dissolve(String requestId) async {
     try {
       await _repository.dissolveRequest(tripId, requestId);

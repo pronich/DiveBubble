@@ -5,9 +5,7 @@ import '../../../../data/repositories/transport_repository.dart';
 import '../../../../domain/entities/my_profile.dart';
 import '../../../../domain/entities/transport_offer.dart';
 
-/// Scoped to a single trip — one instance per open Bubble, recreated whenever the selected
-/// trip changes (same "per-trip, not long-lived" shape as app/'s own TransportViewModel),
-/// unlike BubblesViewModel which stays alive across trip switches for the whole tab.
+/// Scoped to a single trip — recreated whenever the selected trip changes, unlike BubblesViewModel which stays alive across trip switches for the whole tab.
 class TransportViewModel extends ChangeNotifier {
   TransportViewModel({
     required TransportRepository transportRepository,
@@ -67,8 +65,7 @@ class TransportViewModel extends ChangeNotifier {
 
   Future<List<String>> getJoinedUserIds(String offerId) => _transportRepository.getJoinedUserIds(tripId, offerId);
 
-  // Best-effort, one-at-a-time — a failed lookup just falls back to "Diver" in the UI,
-  // same precedent as BubblesViewModel._resolveSenderProfiles.
+  // Best-effort — a failed lookup just falls back to "Diver" in the UI.
   Future<void> resolveProfile(String userId) async {
     if (_profiles.containsKey(userId)) return;
     try {

@@ -6,8 +6,7 @@ const LIGHT = "#ffffff";
 const MODULE_SIZE = 10;
 const QUIET_ZONE = 4; // modules, per QR spec recommendation
 
-// Builds the QR code as raw SVG markup (no wrapping <svg> tag, so callers can size
-// it freely via a viewBox) plus the square viewBox dimension it was drawn at.
+// No wrapping <svg> tag — callers size it freely via their own viewBox using the returned dim.
 export async function buildAppQrSvg(): Promise<{ dim: number; markup: string }> {
   const qr = QRCode.create(APP_LAUNCH_URL, { errorCorrectionLevel: "M" });
   const N = qr.modules.size;

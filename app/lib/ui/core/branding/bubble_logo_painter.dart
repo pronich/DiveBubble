@@ -11,7 +11,6 @@ class RenderedBubble {
   final double opacity;
 }
 
-/// Draws a set of white circles plus the two brand highlight arcs, scaled/positioned into [box].
 /// Used both for the animated intro (per-frame bubble positions) and the static "B" splash (bubbles at rest).
 class BubbleLogoPainter extends CustomPainter {
   BubbleLogoPainter({
@@ -59,8 +58,7 @@ class BubbleLogoPainter extends CustomPainter {
       oldDelegate.highlightOpacity != highlightOpacity;
 }
 
-/// Minimal absolute-only SVG path parser — the brand highlight paths use just M/C/Z, so a full
-/// SVG path grammar (relative commands, L/Q/A, shorthand) isn't needed.
+/// Minimal absolute-only SVG path parser — the brand highlight paths use just M/C/Z, so a full grammar isn't needed.
 Path _parseSimpleSvgPath(String d) {
   final path = Path();
   var i = 0;

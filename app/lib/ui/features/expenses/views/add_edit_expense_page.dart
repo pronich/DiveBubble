@@ -8,8 +8,7 @@ import '../../../core/widgets/calendar_picker_sheet.dart';
 import '../utils/expense_format.dart';
 import '../view_models/expense_view_model.dart';
 
-/// One page for both create and edit — widget.existing is null for create. Any participant
-/// may edit (per product decision); only the expense's own creator sees the delete action.
+/// Any participant may edit; only the expense's own creator sees the delete action.
 class AddEditExpensePage extends StatefulWidget {
   const AddEditExpensePage({super.key, required this.viewModel, this.existing});
 
@@ -132,9 +131,7 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
           ),
           const SizedBox(height: 16),
           SegmentedButton<String>(
-            // The built-in checkmark on the selected segment eats into its width, which
-            // wrapped a longer translation (e.g. Russian "По долям") onto a second line —
-            // dropped so all three segments size consistently regardless of selection.
+            // Disabled: the built-in checkmark ate into the selected segment's width, wrapping longer translations (e.g. Russian) onto a second line.
             showSelectedIcon: false,
             segments: [
               ButtonSegment(value: 'equal', label: Text(l10n.splitEqual)),
@@ -246,8 +243,7 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
     final picked = await showCalendarPicker(
       context,
       initialDate: _occurredAt,
-      // No floor at "today" like trip creation's own use of this picker — an expense
-      // routinely gets logged a day or two after it actually happened.
+      // No floor at "today": an expense routinely gets logged a day or two after it actually happened.
       minimumDate: DateTime(_occurredAt.year - 5),
     );
     if (picked != null) setState(() => _occurredAt = picked);

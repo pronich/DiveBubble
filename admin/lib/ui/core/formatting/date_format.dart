@@ -5,9 +5,7 @@ const _fullMonths = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-/// e.g. "Sat, Jul 18" — same dependency-free approach as app/'s equivalent, kept as a
-/// separate copy rather than a shared package (see CLAUDE.md: admin/ doesn't share code
-/// with app/ yet, a deliberate MVP choice, not an oversight).
+/// e.g. "Sat, Jul 18" — dependency-free, kept as a separate copy since admin/ doesn't share code with app/ yet.
 String formatShortDate(DateTime dateTime) {
   final local = dateTime.toLocal();
   return '${_weekdays[local.weekday - 1]}, ${_months[local.month - 1]} ${local.day}';

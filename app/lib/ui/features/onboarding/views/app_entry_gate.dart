@@ -12,15 +12,7 @@ import 'static_splash_view.dart';
 
 enum _Phase { loading, intro, languageSelect, staticSplash, app }
 
-/// Root gate: first-ever launch gets the animated bubble intro; returning users (already past
-/// intro) get a quick static "B" splash instead, then either way land on [rootShellBuilder].
-///
-/// The language-selection step (see [LanguageOnboardingPage]) is shown exactly once per
-/// device, regardless of which of those two paths a diver is on — a brand-new diver sees it
-/// right after the animated intro, and a diver who installed before this step ever existed
-/// sees it once, right after the static splash, on their first launch post-update. Both paths
-/// converge on the same [OnboardingStateService.markLanguagePromptSeen] flag, so neither one
-/// can show it twice.
+/// The language-selection step is shown exactly once per device regardless of which path a diver is on; both converge on the same [OnboardingStateService.markLanguagePromptSeen] flag.
 class AppEntryGate extends StatefulWidget {
   const AppEntryGate({
     super.key,
@@ -36,9 +28,7 @@ class AppEntryGate extends StatefulWidget {
   final PushRepository pushRepository;
   final LocaleController localeController;
 
-  /// currentUserId is the real signed-in user's id if logged in, or '' for an anonymous/browsing
-  /// session — resolved fresh right before entering the app, not fixed at app startup, since
-  /// sign-in can happen during the intro flow itself.
+  /// Resolved fresh right before entering the app, not fixed at app startup, since sign-in can happen during the intro flow itself.
   final Widget Function(BuildContext, String currentUserId) rootShellBuilder;
 
   @override
@@ -50,8 +40,7 @@ class _AppEntryGateState extends State<AppEntryGate> {
   _Phase _phase = _Phase.loading;
   String _currentUserId = '';
 
-  // Only meaningful on the returning-user path — a brand-new diver always sees the language
-  // step right after intro regardless of this flag (see _completeIntro).
+  // Only meaningful on the returning-user path — a brand-new diver always sees the language step right after intro regardless of this flag.
   bool _needsLanguagePromptAfterSplash = false;
 
   @override
@@ -68,12 +57,7 @@ class _AppEntryGateState extends State<AppEntryGate> {
       _needsLanguagePromptAfterSplash = !seenLanguagePrompt;
       setState(() => _phase = _Phase.staticSplash);
     });
-    // A login-gated action (ensureSignedIn) can sign the user in — or a session refresh can
-    // fail and sign them out — long after _enterApp() already ran once. Without this,
-    // _currentUserId stayed frozen at whatever it was resolved to on that first transition
-    // (e.g. '' for a browsing-then-later-signed-in session), and every isMine/currentUserId
-    // comparison downstream (chat bubbles, unread counts) would compare against the wrong id
-    // for the rest of the app's process lifetime.
+    // Without this, _currentUserId stayed frozen at its first-resolved value, and every isMine/currentUserId comparison downstream would compare against the wrong id for the app's process lifetime.
     widget.authRepository.addListener(_onAuthChanged);
   }
 

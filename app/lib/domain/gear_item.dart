@@ -1,6 +1,4 @@
-/// Fixed "Essential" gear catalogue — items without which a dive isn't possible at all.
-/// Anything beyond this (torch, action camera, buoy, ...) goes in the free-text
-/// "Additional" list instead of growing this fixed set further.
+/// Anything beyond this (torch, action camera, buoy, ...) goes in the free-text "Additional" list instead of growing this fixed set further.
 class GearItem {
   final String key;
   final String label;
@@ -25,8 +23,7 @@ const List<GearItem> kEssentialGearItems = [
   GearItem('mask', 'Mask'),
 ];
 
-/// Matches the backend's free-text `status` column — validated here, not with a DB CHECK,
-/// same pattern as certification_level/languages.
+/// Matches the backend's free-text `status` column, validated here rather than a DB CHECK.
 enum GearStatus {
   owned('owned'),
   missing('missing'),

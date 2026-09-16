@@ -43,8 +43,7 @@ class ChatRepository {
     return apiModel.toDomain();
   }
 
-  // Returns the transport-only upload result (url/type/filename/sizeBytes) — the caller passes
-  // it straight into sendMessage above; nothing here is persisted independently.
+  // Result is transport-only — the caller passes it straight into sendMessage above, nothing here is persisted independently.
   Future<AttachmentUploadResult> uploadAttachment(String tripId, String filePath) async {
     final json = await _service.uploadAttachment(tripId, filePath);
     return AttachmentUploadResult(
@@ -74,8 +73,7 @@ class ChatRepository {
 
   Future<String> getRealtimeToken() => _service.fetchRealtimeToken();
 
-  // Chat Info's Media/Files/Links tabs — main trip chat only (v1 scope, see the backend plan).
-  // "media" = image+video, backend-side (see routes_message.go's attachmentTypesForQuery).
+  // "media" type maps to image+video backend-side (routes_message.go's attachmentTypesForQuery).
   Future<List<MediaItem>> getMediaAttachments(String tripId, {DateTime? before, int limit = 50}) async {
     final apiModels = await _service.fetchAttachments(tripId, type: 'media', before: before, limit: limit);
     return apiModels.map((m) => m.toDomain()).toList();

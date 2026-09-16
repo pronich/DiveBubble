@@ -2,22 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../l10n/app_localizations.dart';
 
-/// Telegram-style "pull down to reveal the Archive, pull again to refresh".
-///
-/// Two phases, controlled by [revealed] (owned by the parent so it can reset the state on
-/// tab-switch-away/background-return — see MyTripsView's `_archiveRevealed`):
-///
-/// - Not revealed: the folder cell isn't a normal list item, it's drawn in the overscroll gap
-///   that opens up above the list's first row while dragging past the top (BouncingScrollPhysics
-///   is what makes that gap exist at all — forced here on every platform, not just iOS, since
-///   Android's default ClampingScrollPhysics never overscrolls). Releasing past _openThreshold
-///   calls [onRevealed] to pin the row; releasing short of it just springs back with the list,
-///   no separate animation needed.
-/// - Revealed: the folder becomes a real first list item (scrolls with the list, same as
-///   Telegram), and the list switches to a normal RefreshIndicator — so a second pull now
-///   triggers [onRefresh] instead of fighting the reveal gesture for the same drag.
-///
-/// Exact thresholds/feel are a best guess without on-device testing — expect a tuning pass.
+/// Telegram-style "pull down to reveal the Archive, pull again to refresh"; [revealed] is owned by the parent so it can reset on tab-switch-away/background-return.
 class ArchiveRevealList extends StatefulWidget {
   const ArchiveRevealList({
     required this.itemCount,
@@ -54,11 +39,7 @@ class _ArchiveRevealListState extends State<ArchiveRevealList> {
   static const _openThreshold = 116.0;
 
   double _pullDistance = 0;
-  // Guards against firing onRevealed more than once per gesture — BouncingScrollPhysics
-  // still delivers a handful of ScrollUpdateNotifications after the finger lifts (the
-  // spring-back), so this can't wait for ScrollEndNotification to check the threshold: by
-  // then the ballistic animation has already carried pixels most of the way back to 0.
-  // Triggering the moment the threshold is crossed mid-drag sidesteps that entirely.
+  // Can't wait for ScrollEndNotification: BouncingScrollPhysics' spring-back already carries pixels back toward 0 by then, so the threshold is checked mid-drag instead.
   bool _triggeredReveal = false;
 
   bool get _canReveal => !widget.revealed && widget.archivedCount > 0;

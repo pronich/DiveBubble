@@ -1,6 +1,4 @@
-// Per-emoji summary on a message — mirrors backend's reactionSummaryResponse. reactedByMe is
-// per-viewer and never travels over the realtime channel (see BubblesViewModel's own comment
-// on _applyReactionUpdate) — only ever set from this viewer's own REST calls.
+// reactedByMe is per-viewer and never travels over the realtime channel — only ever set from this viewer's own REST calls (see BubblesViewModel._applyReactionUpdate).
 class ChatReaction {
   const ChatReaction({required this.count, required this.reactedByMe});
 

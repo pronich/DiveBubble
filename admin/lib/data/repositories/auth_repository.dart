@@ -5,9 +5,7 @@ import '../services/auth_api_service.dart';
 import '../services/google_identity_service.dart';
 import '../services/token_storage_service.dart';
 
-/// Result of a successful sign-in — isNewUser isn't acted on here the way app/'s
-/// LoginSheet uses it (there's no personal-profile onboarding in admin/), but it's kept
-/// on the result for parity with the mobile client's AuthApiService/backend contract.
+/// isNewUser is unused here (no onboarding in admin/) — kept only for parity with the mobile AuthApiService/backend contract.
 class SignInResult {
   const SignInResult({required this.userId, required this.isNewUser});
 
@@ -15,12 +13,7 @@ class SignInResult {
   final bool isNewUser;
 }
 
-/// Web-only variant of app/'s AuthRepository. Google Sign-In goes through
-/// [GoogleIdentityService] (a thin wrapper directly over the plain
-/// `google_identity_services_web` JS-interop library) rather than the
-/// `google_sign_in`/`google_sign_in_web` packages — see that class's own doc comment for
-/// the production incident (2026-07-20) that motivated this. Email/passwordless
-/// (startEmailLogin/completeEmailLogin) is unaffected and works either way.
+/// Web-only variant of app/'s AuthRepository — Google Sign-In goes through [GoogleIdentityService] instead of google_sign_in/google_sign_in_web after a production incident (see that class's doc comment).
 class AuthRepository extends ChangeNotifier {
   AuthRepository({
     required this.googleWebClientId,
@@ -35,12 +28,10 @@ class AuthRepository extends ChangeNotifier {
   final AuthApiService _api;
   final TokenStorageService _tokens;
 
-  /// Exposed (not private) so LoginPage/CustomGoogleButton can call ensureLoaded() and
-  /// renderButton() directly — this repository only owns the backend token-exchange half.
+  /// Exposed (not private) so LoginPage/CustomGoogleButton can call ensureLoaded()/renderButton() directly — this repository only owns the backend token-exchange half.
   final GoogleIdentityService googleIdentity;
 
-  /// Loads the GIS script (if not already) and registers the one-time credential callback.
-  /// Safe to call every time LoginPage mounts — both steps are idempotent internally.
+  /// Safe to call on every LoginPage mount — loading the script and registering the callback are both idempotent.
   Future<void> ensureGoogleReady() async {
     await googleIdentity.ensureLoaded();
     googleIdentity.initialize(clientId: googleWebClientId, onCredential: _handleGoogleCredential);
@@ -51,14 +42,11 @@ class AuthRepository extends ChangeNotifier {
   void Function(SignInResult)? _onGoogleSignIn;
   void Function(Object)? _onGoogleError;
 
-  /// LoginPage listens for the *next* credential via this — GIS's own callback fires
-  /// independently of any particular widget's lifetime, so there's no Future to just
-  /// await from a button tap the way a normal imperative sign-in call would give you.
+  /// GIS's callback fires independently of any widget's lifetime, so there's no Future to await from a button tap — LoginPage listens for the next credential via this instead.
   void listenForGoogleSignIn({required void Function(SignInResult) onSignedIn, required void Function(Object error) onError}) {
     _onGoogleSignIn = onSignedIn;
     _onGoogleError = onError;
-    // A credential may have arrived (e.g. an auto-select) before this listener was
-    // attached — deliver it now rather than dropping it.
+    // A credential may have arrived (e.g. an auto-select) before this listener attached — deliver it now instead of dropping it.
     if (_pendingResult != null) {
       onSignedIn(_pendingResult!);
       _pendingResult = null;
@@ -91,12 +79,10 @@ class AuthRepository extends ChangeNotifier {
     }
   }
 
-  /// Requests a magic-link email for passwordless login. See
-  /// AuthApiService.startEmailLogin's own doc comment for where the link points.
+  /// Requests a magic-link email for passwordless login — see AuthApiService.startEmailLogin for where the link points.
   Future<void> startEmailLogin(String email) => _api.startEmailLogin(email);
 
-  /// Completes a magic-link login — called by MagicLinkGate with the token+email it read
-  /// off this app's own URL query params on load.
+  /// Completes a magic-link login — called by MagicLinkGate with the token+email it read off this app's own URL query params on load.
   Future<SignInResult> completeEmailLogin(String email, String token) async {
     final result = await _api.verifyEmailLogin(email, token);
     return _persistAuthResult(result);
@@ -113,9 +99,7 @@ class AuthRepository extends ChangeNotifier {
     return SignInResult(userId: result.userId, isNewUser: result.isNewUser);
   }
 
-  /// Returns a currently-valid access token, transparently refreshing it if it's expired (or
-  /// close to it). Returns null if there's no session at all, or refreshing failed — either
-  /// way, any stored tokens are cleared so the caller can prompt login.
+  /// Returns a valid access token, refreshing if needed; returns null (clearing stored tokens) if there's no session or the refresh fails, so the caller can prompt login.
   Future<String?> getValidAccessToken() async {
     final stored = await _tokens.read();
     if (stored == null) return null;
@@ -153,9 +137,7 @@ class AuthRepository extends ChangeNotifier {
         // best-effort — still clear locally below
       }
     }
-    // Best-effort — prevents GIS auto-selecting the same Google account again silently on
-    // the next visit to the login page. A no-op if GIS was never initialized this session
-    // (e.g. the diver only ever used email), which is fine — nothing to disable.
+    // Best-effort: prevents GIS from silently auto-selecting the same account next visit; a no-op if GIS was never initialized this session.
     try {
       gis.id.disableAutoSelect();
     } catch (_) {

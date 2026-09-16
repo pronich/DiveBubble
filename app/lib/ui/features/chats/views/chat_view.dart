@@ -28,29 +28,19 @@ import '../view_models/chat_view_model.dart';
 import 'attachment_image_preview_page.dart';
 import 'attachment_video_preview_page.dart';
 
-// Consecutive messages from the same sender on the same day collapse into one visual
-// cluster (name shown once, avatar anchored to the last bubble) as long as the gap
-// between them stays under this window — a longer gap reads as a separate "turn", so it
-// gets its own name + avatar again, Telegram-style.
+// A longer gap than this between same-sender same-day messages reads as a separate "turn", getting its own name + avatar again, Telegram-style.
 const _groupingWindow = Duration(minutes: 5);
 
-// Mirrors the backend's upload.MaxAttachmentSize — checked client-side before ever hitting the
-// network as a cheap UX win; the backend still enforces this authoritatively. Video has no
-// client-side size cap (see _pickAttachment's fitsSizeCap) since picked.sizeBytes is the raw,
-// not-yet-compressed file.
+// Mirrors the backend's upload.MaxAttachmentSize as a cheap client-side UX win; video has no cap here since picked.sizeBytes is the raw, uncompressed file.
 const _maxAttachmentSizeBytes = 10 * 1024 * 1024;
 
-// Mirrors message.maxAttachmentsPerMessage backend-side — same "cheap client-side check, real
-// enforcement is server-side" split as the size cap above.
+// Mirrors message.maxAttachmentsPerMessage backend-side; real enforcement is server-side.
 const _maxAttachmentsPerMessage = 9;
 
-// Fixed set, Messenger-style — mirrors message.AllowedReactionEmojis / migration 000055's CHECK
-// constraint. No custom-emoji picker in v1.
+// Fixed set, Messenger-style — mirrors message.AllowedReactionEmojis / migration 000055's CHECK constraint.
 const _reactionEmojis = ['❤️', '😅', '😁', '🙃', '😢', '😮', '😡', '👌'];
 
-// One row in the @-mention autocomplete list — either the dive center (synthetic, not a real
-// participant) or a trip participant, both rendered/selected identically (see
-// _ChatViewState._mentionEntries and the mention list's ListTile builder).
+// Either the dive center (synthetic, not a real participant) or a trip participant, both rendered/selected identically.
 class _MentionEntry {
   const _MentionEntry({required this.displayName, this.isDiveCenter = false});
 
@@ -70,24 +60,16 @@ class ChatView extends StatefulWidget {
 
   final ChatViewModel viewModel;
 
-  /// Pre-staged into the composer on open — used when this Bubble was reached via
-  /// Share-to-DiveBubble (see ChooseBubblePage), so the diver lands straight in the compose
-  /// state instead of having to re-pick the same content they just shared.
+  /// Pre-staged into the composer on open, used when reached via Share-to-DiveBubble so the diver doesn't have to re-pick what they just shared.
   final List<PickedAttachment> initialAttachments;
 
-  /// Trip Page (see TripConversationPage._refreshTripDerivedState) is the source of truth —
-  /// cancelling freezes the input, but history stays fully visible either way.
+  /// Cancelling freezes the input, but history stays fully visible either way.
   final bool isCancelled;
 
-  /// Set when this Bubble's trip is organized by a dive center — a non-own message from an
-  /// actual staff member of that center (message.isDiveCenterStaff) gets "Name | Dive
-  /// Center" instead of just "Name" (see _MessageRow); other divers in the same Bubble
-  /// keep their plain name, since they aren't posting on the organization's behalf.
+  /// A non-own message from an actual staff member of this dive center gets "Name | Dive Center" instead of just "Name"; other divers keep their plain name.
   final String? businessName;
 
-  /// False when the current user is themselves staff of this trip's dive center — mentioning
-  /// your own business is meaningless, so the chip is hidden for staff even though they're
-  /// on a "business trip" (businessName != null) the same way a diver is.
+  /// Hides the mention chip for the current user's own dive-center staff, since mentioning your own business is meaningless.
   final bool canMentionDiveCenter;
 
   @override
@@ -106,40 +88,31 @@ class _ChatViewState extends State<ChatView>
   bool _isNearBottom = true;
   bool _showNewMessagesPill = false;
 
-  // Index of the '@' that opened the currently-active mention token in _textController.text,
-  // or -1 when no mention is being typed right now (see _onComposerTextChanged).
+  // -1 when no mention is being typed right now.
   int _mentionTokenStart = -1;
   List<_MentionEntry> _mentionMatches = [];
 
   List<PickedAttachment> _pendingAttachments = [];
 
-  // Set by the long-press actions sheet's Reply action or a bubble's swipe-to-reply gesture;
-  // cleared on send or explicit dismiss (_ReplyPreviewChip's X).
+  // Set by the long-press actions sheet's Reply action or a bubble's swipe-to-reply gesture; cleared on send or explicit dismiss.
   ChatMessage? _replyingTo;
 
-  // Briefly flashed on the bubble _scrollToMessage lands on, then cleared — see
-  // _scrollToMessage's own comment.
+  // Briefly flashed on the bubble _scrollToMessage lands on, then cleared.
   String? _highlightedMessageId;
   Timer? _highlightTimer;
 
-  // TabBarView disposes offscreen tabs by default — without this, switching to Transport
-  // and back tore down ChatView (and, since dispose() below tears down the ChatViewModel
-  // with it) then rebuilt a fresh ChatView still holding the now-disposed ViewModel,
-  // throwing "used after being disposed" on the next call.
+  // Without this, TabBarView's default offscreen-tab disposal tears down the ChatViewModel too, then rebuilds a fresh ChatView still holding the now-disposed instance.
   @override
   bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    // Same deferral as TransportView's initState — TabBarView builds both tabs eagerly,
-    // and load()'s synchronous first-line notifyListeners() can otherwise fire mid-build.
+    // Deferred: TabBarView builds both tabs eagerly, and load()'s synchronous first notifyListeners() can otherwise fire mid-build.
     Future.microtask(widget.viewModel.load);
     _itemPositionsListener.itemPositions.addListener(_onScroll);
     _textController.addListener(_onComposerTextChanged);
-    // Same room/size-cap/PDF-exclusivity enforcement as _pickAttachment's own merge —
-    // initialAttachments comes from an OS share, which has no idea about this composer's
-    // own limits.
+    // Same room/size-cap/PDF-exclusivity enforcement as _pickAttachment's merge, since an OS share has no idea about this composer's limits.
     bool fitsSizeCap(PickedAttachment p) =>
         p.type == 'video' || p.sizeBytes <= _maxAttachmentSizeBytes;
     final fitting = widget.initialAttachments.where(fitsSizeCap).toList();
@@ -160,12 +133,7 @@ class _ChatViewState extends State<ChatView>
     super.dispose();
   }
 
-  // Tracks whether the diver is close enough to the bottom that a new message should
-  // just land in front of them — also what dismisses the "new messages" pill once they
-  // scroll back down manually, without waiting for a tap on it. The list renders reverse:
-  // true (see build) so "bottom"/newest is item index 0 — near-bottom means that item is
-  // currently among the visible ones, not a precise pixel threshold (scrollable_positioned_list
-  // doesn't expose raw scroll-offset pixels the way a plain ScrollController did).
+  // The list renders reverse: true, so "near-bottom" means item index 0 is visible — scrollable_positioned_list exposes no raw pixel offset to threshold against instead.
   void _onScroll() {
     final nearBottom = _itemPositionsListener.itemPositions.value.any(
       (p) => p.index == 0,
@@ -178,8 +146,7 @@ class _ChatViewState extends State<ChatView>
     });
   }
 
-  // Reversed list means the bottom/newest message is item index 0 — jumpTo/scrollTo(index: 0)
-  // always lands exactly there, same guarantee the old pixel-offset-0 approach relied on.
+  // Reversed list means the bottom/newest message is item index 0, so jumpTo/scrollTo(index: 0) always lands exactly there.
   void _scrollToBottom({required bool animate}) {
     if (!_itemScrollController.isAttached) return;
     if (animate) {
@@ -193,9 +160,7 @@ class _ChatViewState extends State<ChatView>
     }
   }
 
-  // Jumps to and briefly highlights an arbitrary earlier message — tapping a reply's quoted
-  // strip (see _MessageRow). Recomputes reversedItems fresh rather than caching it, since the
-  // display-item list only otherwise exists inside build()'s scope.
+  // Recomputes reversedItems fresh rather than caching it, since the display-item list otherwise only exists inside build()'s scope.
   void _scrollToMessage(String messageId) {
     final reversedItems = _buildDisplayItems(
       widget.viewModel.messages,
@@ -217,8 +182,7 @@ class _ChatViewState extends State<ChatView>
     });
   }
 
-  // Best-effort, one-at-a-time per sender — a profile fetch failing just leaves that
-  // cluster's name/avatar on the generic "Diver" fallback rather than blocking the chat.
+  // Best-effort — a failed fetch just leaves that cluster's name/avatar on the generic "Diver" fallback.
   void _loadProfile(String userId) {
     if (_profiles.containsKey(userId) || _fetchingProfileIds.contains(userId))
       return;
@@ -234,10 +198,7 @@ class _ChatViewState extends State<ChatView>
         .whenComplete(() => _fetchingProfileIds.remove(userId));
   }
 
-  // Telegram-style: typing '@' always opens the people list (dive center included, per
-  // Nikolai's review comment — no more separate fixed chip) right above the composer, live-
-  // filtered as more characters follow. Fires on every keystroke via _textController's
-  // listener; cheap enough (participants list tops out at a trip's roster) not to debounce.
+  // Fires on every keystroke; cheap enough (participants list tops out at a trip's roster) not to debounce.
   void _onComposerTextChanged() {
     final text = _textController.text;
     final cursor = _textController.selection.baseOffset;
@@ -263,9 +224,7 @@ class _ChatViewState extends State<ChatView>
     });
   }
 
-  // Scans backward from the cursor for an '@' that starts the current word (at the very
-  // start of the text, or preceded by whitespace) — hitting whitespace first, or no '@' at
-  // all, means no mention is currently being typed.
+  // Hitting whitespace before an '@', or no '@' at all, means no mention is currently being typed.
   int _activeMentionStart(String text, int cursor) {
     for (var i = cursor - 1; i >= 0; i--) {
       final char = text[i];
@@ -278,9 +237,7 @@ class _ChatViewState extends State<ChatView>
     return -1;
   }
 
-  // Dive center first (when this is a business trip and the current user isn't its own
-  // staff — same gate the old chip used), then every trip participant except the viewer
-  // themselves (mentioning your own name isn't a real use case here).
+  // Dive center first (when applicable), then every trip participant except the viewer themselves.
   List<_MentionEntry> _mentionEntries() {
     final businessName = widget.businessName;
     final currentUserId = widget.viewModel.currentUserId;
@@ -327,11 +284,7 @@ class _ChatViewState extends State<ChatView>
     );
   }
 
-  // Deferred a frame past whatever triggered it (menu-item tap, backdrop dismiss, swipe) —
-  // popping the context-menu route has its own focus-restoration behavior that runs on the
-  // same frame, so calling requestFocus/unfocus synchronously right after Navigator.pop()
-  // routinely got clobbered by it (or vice versa). Scheduling via addPostFrameCallback lets
-  // ours run last and win, regardless of exactly what the route pop itself does.
+  // Deferred via addPostFrameCallback: calling requestFocus/unfocus synchronously right after Navigator.pop() routinely got clobbered by the route's own focus-restoration on the same frame.
   void _settleFocus({required bool focusComposer}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -401,13 +354,7 @@ class _ChatViewState extends State<ChatView>
     ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).couldNotReact(error))));
   }
 
-  // Long-press menu — iOS/Telegram-style: background dims+blurs, the pressed bubble stays put
-  // (rendered from a snapshot taken at press time — see _MessageRow's onLongPress, which hands
-  // over the bubble's on-screen Rect + a captured image), and the action list sits right below
-  // it. Reply/Copy are universal, Report (not-mine) vs Delete (mine) is the only branch.
-  // Deleted messages never reach here (see build's onLongPress gate). The dimmed backdrop is
-  // deliberately its own overlay (not showModalBottomSheet) so it can leave room for a future
-  // emoji-reaction row above the bubble without restructuring this again.
+  // The dimmed backdrop is deliberately its own overlay, not showModalBottomSheet, to leave room for a future emoji-reaction row without restructuring this again.
   void _showMessageActionsSheet(
     ChatMessage message,
     Rect bubbleRect,
@@ -463,8 +410,7 @@ class _ChatViewState extends State<ChatView>
     );
   }
 
-  // A document stays a message on its own — the grid below is built for photo/video cells,
-  // and a PDF mixed into it would just render broken. Mutually exclusive in both directions.
+  // A document stays a message on its own: the grid below is built for photo/video cells and a PDF mixed in would render broken.
   Future<void> _pickAttachment() async {
     if (_pendingAttachments.any((a) => a.type == 'pdf')) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -496,12 +442,7 @@ class _ChatViewState extends State<ChatView>
       );
       return;
     }
-    // Video is exempt here — picked.sizeBytes is the raw, not-yet-compressed file (compression
-    // now happens at Send time, see ChatViewModel._compressedVideoPathOrFallback), which can
-    // easily be well over the cap for a source phone's own recording even though the
-    // compressed upload will land comfortably under it. The 60s duration check in
-    // pick_attachment.dart is what actually bounds this; the backend's post-compression size
-    // cap is the real, authoritative enforcement.
+    // Video is exempt here — picked.sizeBytes is the raw, uncompressed file, which can be well over the cap even though the compressed upload lands comfortably under it.
     bool fitsSizeCap(PickedAttachment p) =>
         p.type == 'video' || p.sizeBytes <= _maxAttachmentSizeBytes;
     final tooLarge = picked.where((p) => !fitsSizeCap(p)).isNotEmpty;
@@ -530,9 +471,7 @@ class _ChatViewState extends State<ChatView>
 
   Future<void> _handleSend() async {
     final text = _textController.text;
-    // No structured mention storage (see the chat-richness plan's Stage 4) — the composer
-    // just checks whether the literal "@BusinessName" text made it into the message, same as
-    // the old chip's boolean but driven by what was actually typed instead of a manual toggle.
+    // No structured mention storage — just checks whether the literal "@BusinessName" text made it into the message.
     final businessName = widget.businessName;
     final mentionsDiveCenter =
         businessName != null && text.contains('@$businessName');
@@ -554,9 +493,7 @@ class _ChatViewState extends State<ChatView>
       return;
     }
 
-    // Clear the composer immediately — a pending bubble (with its own per-item loaders, see
-    // _AttachmentGrid) takes over from here, see ChatViewModel.uploadMultipleAndSend, so
-    // there's no window where both the composer chips and the sent bubble are visible at once.
+    // Clear the composer immediately — a pending bubble takes over from here, so there's no window where both the composer chips and the sent bubble are visible at once.
     _textController.clear();
     setState(() {
       _mentionTokenStart = -1;
@@ -593,9 +530,7 @@ class _ChatViewState extends State<ChatView>
     return Column(
       children: [
         Expanded(
-          // Telegram-style: tapping anywhere in the message list dismisses the keyboard —
-          // translucent so it never steals the scroll drag or a message bubble's own onTap,
-          // both of which keep working exactly as before.
+          // Translucent so tapping to dismiss the keyboard never steals the scroll drag or a bubble's own onTap.
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
             onTap: () => FocusScope.of(context).unfocus(),
@@ -626,18 +561,12 @@ class _ChatViewState extends State<ChatView>
                     _loadProfile(message.userId);
                   }
                 }
-                // Rendered with reverse: true (see below), so item 0 is the newest — reverse
-                // the ascending list built above rather than reworking the clustering logic
-                // (isFirstInCluster/isLastInCluster/date separators) to run backwards.
+                // Reversed after building ascending, rather than reworking the clustering logic to run backwards.
                 final reversedItems = items.reversed.toList();
 
                 if (messages.length != _lastMessageCount) {
                   final wasEmpty = _lastMessageCount == 0;
-                  // Sending a message always snaps you to it, regardless of scroll position —
-                  // an incoming message from someone else only does that if you were already
-                  // near the bottom; otherwise it'd yank you away mid-read, so it just raises
-                  // the "new messages" pill instead. wasEmpty (initial load) needs no explicit
-                  // scroll at all: offset 0 in a reversed list is already the newest message.
+                  // An incoming message from someone else only auto-scrolls if already near the bottom, or it'd yank the diver away mid-read; own messages always snap.
                   final isOwnMessage =
                       messages.isNotEmpty &&
                       messages.last.userId == widget.viewModel.currentUserId;
@@ -762,11 +691,7 @@ class _ChatViewState extends State<ChatView>
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Typing '@' opens this list (dive center included as a normal entry when
-                    // it's a business trip — see _mentionEntries); tapping a row inserts
-                    // "@Display Name " and closes it. Mentioning the dive center is how a
-                    // diver flags a message as actually needing staff attention (push only
-                    // notifies staff on a mention, not every message).
+                    // Mentioning the dive center is how a diver flags a message as needing staff attention — push only notifies staff on a mention, not every message.
                     if (_mentionTokenStart != -1 && _mentionMatches.isNotEmpty)
                       Container(
                         key: const ValueKey('mentionList'),
@@ -822,8 +747,7 @@ class _ChatViewState extends State<ChatView>
                       Padding(
                         key: const ValueKey('pendingAttachmentsRow'),
                         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-                        // A lone PDF keeps the named chip; photos get a compact thumbnail
-                        // strip instead (a filename-per-item row doesn't fit several across).
+                        // A lone PDF keeps the named chip; photos get a compact thumbnail strip since a filename-per-item row doesn't fit several across.
                         child:
                             _pendingAttachments.length == 1 &&
                                 _pendingAttachments.first.type == 'pdf'
@@ -892,8 +816,7 @@ class _ChatViewState extends State<ChatView>
   }
 }
 
-/// Shown above the composer while replying to an earlier message — same shape/slot as
-/// _PendingAttachmentChip below (a left accent bar instead of a thumbnail, same dismiss-X).
+/// Same shape/slot as _PendingAttachmentChip below, but a left accent bar instead of a thumbnail.
 class _ReplyPreviewChip extends StatelessWidget {
   const _ReplyPreviewChip({
     required this.senderName,
@@ -950,9 +873,7 @@ class _ReplyPreviewChip extends StatelessWidget {
   }
 }
 
-/// Shown above the composer between picking a file and tapping send — a small preview chip
-/// with a remove (X) affordance. Once send is tapped this is cleared immediately; the upload
-/// itself is tracked by a pending bubble in the message list instead (see ChatViewModel).
+/// Cleared immediately once send is tapped; the upload itself is then tracked by a pending bubble in the message list instead.
 class _PendingAttachmentChip extends StatelessWidget {
   const _PendingAttachmentChip({
     required this.attachment,
@@ -1012,9 +933,7 @@ class _PendingAttachmentChip extends StatelessWidget {
   }
 }
 
-/// One square thumbnail in the multi-photo composer strip — a small remove-X badge overlaid
-/// top-right, same idea as _PendingAttachmentChip's dismiss but compact enough to sit several
-/// across in a horizontal scroll.
+/// Same dismiss idea as _PendingAttachmentChip, but compact enough to sit several across in a horizontal scroll.
 class _PendingPhotoThumb extends StatelessWidget {
   const _PendingPhotoThumb({required this.attachment, required this.onRemove});
 
@@ -1062,9 +981,7 @@ class _PendingPhotoThumb extends StatelessWidget {
   }
 }
 
-/// Renders a message's attachment(s) above its caption (`_MessageBody`) — the caption still
-/// renders unconditionally below, even when empty, since it's what shows the timestamp. A
-/// single non-PDF attachment gets the plain thumbnail treatment; several get the grid.
+/// The caption below still renders unconditionally even when empty, since it's what shows the timestamp.
 class _AttachmentPreview extends StatelessWidget {
   const _AttachmentPreview({required this.attachments, required this.color});
 
@@ -1088,26 +1005,14 @@ class _AttachmentPreview extends StatelessWidget {
   }
 }
 
-// 1 -> full-width single image (handled by _ImageAttachmentThumbnail instead, never calls
-// this); 2-3 -> that many columns, 1 row; 4 -> 2x2; 5-6 -> 3 columns, 2 rows; 7-9 -> 3x3. A
-// trailing incomplete row's empty cells just stay empty, same as Telegram/WhatsApp.
+// 2-3 -> that many columns, 1 row; 4 -> 2x2; 5-9 -> 3 columns (never called for count == 1).
 int _gridColumns(int count) {
   if (count <= 3) return count;
   if (count == 4) return 2;
   return 3;
 }
 
-/// The 2+ attachment case — mixed photo/video. Tapping a photo cell opens the full-screen photo
-/// preview, swipeable across every *photo* on this message (see AttachmentImagePreviewPage's
-/// siblingUrls — video items are excluded from that swipe set, each video opens its own single
-/// player instead). Each cell shows its own upload spinner independently (Nikolai's ask) rather
-/// than one shared spinner for the whole grid.
-///
-/// Built as plain nested Row/Column, not GridView(shrinkWrap: true) — a shrink-wrapped sliver
-/// grid nested inside this screen's ScrollablePositionedList (not a plain ListView) measured an
-/// incomplete last row wrong, leaving a block of blank bubble-colored space below the images
-/// and before the timestamp. Row/Column sizing is fully intrinsic (AspectRatio per cell), so
-/// there's no sliver viewport measurement involved at all to get wrong.
+/// Built as plain nested Row/Column, not GridView(shrinkWrap: true) — a shrink-wrapped sliver grid nested inside this screen's ScrollablePositionedList measured an incomplete last row wrong, leaving blank space below the images.
 class _AttachmentGrid extends StatelessWidget {
   const _AttachmentGrid({required this.attachments, required this.color});
 
@@ -1148,9 +1053,7 @@ class _AttachmentGrid extends StatelessWidget {
                                 imageUrls: imageUrls,
                               ),
                             )
-                          // Trailing incomplete row's empty cells just stay empty (no
-                          // AspectRatio, so they don't force phantom row height), same as
-                          // Telegram/WhatsApp.
+                          // No AspectRatio here, so empty trailing cells don't force phantom row height.
                           : const SizedBox.shrink(),
                     ),
                   ],
@@ -1240,8 +1143,7 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: GestureDetector(
-        // Not tappable yet while it's still just a local pending echo — nothing to preview
-        // remotely until the upload actually resolves.
+        // Not tappable while still a local pending echo — nothing to preview remotely until the upload resolves.
         onTap: url == null
             ? null
             : () => Navigator.of(context).push(
@@ -1254,12 +1156,7 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // No separate "downloaded" badge here (unlike the PDF row below) — the image
-              // itself is the badge: a spinner while it's fetching, the photo once it's on
-              // disk. A sibling badge fed by its own independent
-              // AttachmentCacheService.getCachedFileInfo call raced this widget's own download
-              // and settled first, so it showed "not downloaded" even after the photo had
-              // fully loaded and was visibly on-screen.
+              // No separate "downloaded" badge: a sibling badge fed by its own independent getCachedFileInfo call previously raced this widget's download and settled first, showing stale state.
               if (url != null)
                 CachedAttachmentImage(url: url, width: 220, height: 160)
               else if (localPath != null)
@@ -1293,9 +1190,7 @@ class _ImageAttachmentThumbnail extends StatelessWidget {
   }
 }
 
-/// Single-video bubble, sized to match _ImageAttachmentThumbnail so a solo video and a solo
-/// photo bubble read the same width/height — the difference is the play-icon placeholder body
-/// (see VideoThumbnailPlaceholder) instead of a decoded frame.
+/// Sized to match _ImageAttachmentThumbnail so a solo video and a solo photo bubble read the same width/height.
 class _VideoAttachmentThumbnail extends StatelessWidget {
   const _VideoAttachmentThumbnail({
     required this.attachment,
@@ -1467,8 +1362,7 @@ class _NewMessagesPill extends StatelessWidget {
   }
 }
 
-/// One cluster boundary can be forced by a sender change, a gap over [_groupingWindow],
-/// or a calendar-day change (which also emits a [_ChatDisplayItem.separator] ahead of it).
+/// A boundary can be forced by a sender change, a gap over [_groupingWindow], or a calendar-day change.
 class _MessageCluster {
   _MessageCluster(this.day, ChatMessage first) : messages = [first];
   final DateTime day;
@@ -1481,8 +1375,7 @@ List<_MessageCluster> _buildClusters(List<ChatMessage> messages) {
     final local = m.createdAt.toLocal();
     final day = DateTime(local.year, local.month, local.day);
     final last = clusters.isEmpty ? null : clusters.last;
-    // A system message (kind != 'user') always starts its own cluster — it renders as a
-    // centered row, never grouped with a neighboring real message.
+    // A system message (kind != 'user') always starts its own cluster, since it renders as a centered row, never grouped with a real message.
     final continuesCluster =
         last != null &&
         last.day == day &&
@@ -1524,9 +1417,7 @@ ChatMessage? _findMessageById(List<ChatMessage> messages, String id) {
   return null;
 }
 
-// Shown in both the reply-quote strip inside a bubble and the composer's _ReplyPreviewChip —
-// same fallback a deleted push notification body needs, mirrored from the backend's own
-// pushBodyFor (routes_message.go), since text-vs-attachment-only is the same ambiguity here.
+// Mirrors the backend's own pushBodyFor (routes_message.go), since text-vs-attachment-only is the same ambiguity there.
 String _replyPreviewText(BuildContext context, ChatMessage m) {
   final l10n = AppLocalizations.of(context);
   if (m.deletedAt != null) return l10n.messageDeleted;
@@ -1592,9 +1483,7 @@ class _DateSeparator extends StatelessWidget {
   }
 }
 
-/// A system-generated row (kind != 'user') — centered, no bubble/avatar, same pill look as
-/// _DateSeparator. The switch on message.kind is the deliberate extension point for future
-/// system kinds (Car/Buddy chat join messages); each just adds another case here.
+/// The switch on message.kind is the deliberate extension point for future system kinds; each just adds another case here.
 class _SystemMessageRow extends StatelessWidget {
   const _SystemMessageRow({
     super.key,
@@ -1673,9 +1562,7 @@ class _FeedbackButton extends StatelessWidget {
   }
 }
 
-/// Own messages never carry a name/avatar (isMine short-circuits straight to a
-/// right-aligned bubble); everyone else's messages reserve a fixed-width avatar gutter
-/// so bubbles line up whether or not this particular row is the one showing the avatar.
+/// Everyone else's messages reserve a fixed-width avatar gutter so bubbles line up whether or not this row shows the avatar.
 class _MessageRow extends StatefulWidget {
   const _MessageRow({
     super.key,
@@ -1702,34 +1589,24 @@ class _MessageRow extends StatefulWidget {
   final Profile? profile;
   final VoidCallback onTapSender;
 
-  /// Fired once the bubble's on-screen Rect + a snapshot image are captured (see
-  /// _MessageRowState._handleLongPress) — the caller uses both to render the iOS-style
-  /// dimmed-background context menu in place. Null only for an already-deleted message.
+  /// Null only for an already-deleted message; the caller uses the captured Rect/image to render the iOS-style dimmed-background context menu in place.
   final void Function(Rect bubbleRect, ui.Image bubbleImage)? onLongPress;
 
-  /// Fired by the swipe-to-reply gesture — same effect as the long-press menu's own Reply
-  /// action. Null only for an already-deleted message.
+  /// Same effect as the long-press menu's Reply action; null only for an already-deleted message.
   final VoidCallback? onReply;
 
-  /// Never applied to the diver's own messages (see isMine below), and only ever combined
-  /// with message.isDiveCenterStaff — a regular diver's message in a business trip's chat
-  /// must never look like it came from the organization.
+  /// Never applied to the diver's own messages, and only combined with message.isDiveCenterStaff — a regular diver must never look like it came from the organization.
   final String? businessName;
 
-  /// Resolved by ChatView (looked up in the already-loaded message list) when
-  /// message.replyToId is set — null means either not a reply, or the original has since
-  /// scrolled out of the loaded history (rare, v1 loads full history — see ChatViewModel).
+  /// Null means either not a reply, or the original has since scrolled out of the loaded history.
   final ChatMessage? repliedToMessage;
   final String? repliedToSenderName;
   final VoidCallback? onTapReplyPreview;
 
-  /// Briefly true right after onTapReplyPreview's own scroll-to lands here — see
-  /// ChatView._scrollToMessage.
+  /// Briefly true right after onTapReplyPreview's scroll-to lands here.
   final bool isHighlighted;
 
-  /// Fired by tapping an emoji in the reaction summary pill (_ReactionSummary) — a quick
-  /// "one tap, no long-press" way to add the same reaction someone else already left. Null
-  /// only for an already-deleted message.
+  /// A quick "one tap, no long-press" way to add the same reaction someone else already left; null only for an already-deleted message.
   final void Function(String emoji)? onReact;
 
   @override
@@ -1741,9 +1618,7 @@ class _MessageRowState extends State<_MessageRow> {
   static const _maxDrag = 60.0;
   static const _triggerThreshold = 40.0;
 
-  // Wraps the bubble so onLongPress can snapshot exactly what's on screen (see
-  // _handleLongPress) — the context menu renders this snapshot in place rather than
-  // rebuilding the bubble's widget tree a second time in a completely different part of it.
+  // Wraps the bubble so onLongPress can snapshot exactly what's on screen; the context menu renders this snapshot rather than rebuilding the bubble's widget tree elsewhere.
   final _repaintKey = GlobalKey();
 
   void _onHorizontalDragUpdate(DragUpdateDetails details) {
@@ -1790,8 +1665,7 @@ class _MessageRowState extends State<_MessageRow> {
     final baseName = (profile?.displayName?.isNotEmpty ?? false)
         ? profile!.displayName!
         : AppLocalizations.of(context).diver;
-    // Staff display always wins over the Observer label — in his own dive center's Bubbles
-    // the founder shows up as staff, not as an observer (see users.is_product_observer).
+    // Staff display always wins over the Observer label — the founder shows up as staff in his own dive center's Bubbles, not as an observer.
     final isObserver =
         !message.isDiveCenterStaff && (profile?.isProductObserver ?? false);
     final name =
@@ -1800,11 +1674,7 @@ class _MessageRowState extends State<_MessageRow> {
         : isObserver
         ? '$baseName | ${AppLocalizations.of(context).productObserver}'
         : baseName;
-    // Staff/Observer messages always carry a name, even mid-cluster — a trip's chat is
-    // effectively a group conversation (organizer + every diver) even though it's framed as
-    // one thread, so it should always be clear which staff member/observer is replying, not
-    // just the first message in a burst. Regular divers keep the usual "only the first
-    // message in a cluster" rule.
+    // Staff/Observer messages always carry a name, even mid-cluster, so it's always clear which one is replying; regular divers keep the usual "only the first message in a cluster" rule.
     final showName =
         !isMine &&
         (isFirstInCluster || message.isDiveCenterStaff || isObserver);
@@ -1889,8 +1759,7 @@ class _MessageRowState extends State<_MessageRow> {
             ),
     );
 
-    // AnimatedContainer color-flash for _scrollToMessage's landing highlight — transparent
-    // to isHighlighted's own bubbleColor-tinted overlay otherwise.
+    // Color-flash for _scrollToMessage's landing highlight; transparent otherwise.
     final highlighted = AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       decoration: BoxDecoration(
@@ -1976,13 +1845,7 @@ class _MessageRowState extends State<_MessageRow> {
   }
 }
 
-/// The quoted strip inside a bubble that's replying to another message — tap scrolls to and
-/// highlights the original (see ChatView._scrollToMessage).
-/// "❤️ 3 😂 1" under a bubble that has any reactions — tapping a pill is a one-tap shortcut
-/// to add that same reaction yourself (same toggle semantics as the long-press picker: tapping
-/// your own current reaction again removes it), no need to long-press just to join in on one
-/// that's already there. Sorted by _reactionEmojis' own fixed order so the row doesn't visually
-/// reshuffle as counts change.
+/// Tapping a pill toggles that reaction (same semantics as the long-press picker); sorted by _reactionEmojis' fixed order so the row doesn't reshuffle as counts change.
 class _ReactionSummary extends StatelessWidget {
   const _ReactionSummary({
     required this.reactions,
@@ -2029,6 +1892,7 @@ class _ReactionSummary extends StatelessWidget {
   }
 }
 
+/// Tap scrolls to and highlights the original message (see ChatView._scrollToMessage).
 class _ReplyQuoteStrip extends StatelessWidget {
   const _ReplyQuoteStrip({
     required this.senderName,
@@ -2094,11 +1958,7 @@ class _ContextMenuAction {
   final bool isDestructive;
 }
 
-/// iOS/Telegram-style long-press menu: dims+blurs everything, keeps the pressed bubble visible
-/// in place (rendered from the snapshot _MessageRow captured, not rebuilt), and anchors the
-/// action list directly below it — flipping above when there isn't room underneath. Tapping
-/// the backdrop dismisses with no action; tapping an item pops first, then runs it, so each
-/// [_ContextMenuAction.onTap] can stay a plain "do the thing" callback.
+/// Tapping an item pops the route first, then runs it, so each [_ContextMenuAction.onTap] can stay a plain "do the thing" callback.
 class _MessageContextMenu extends StatelessWidget {
   const _MessageContextMenu({
     required this.bubbleRect,
@@ -2113,13 +1973,10 @@ class _MessageContextMenu extends StatelessWidget {
   final ui.Image bubbleImage;
   final List<_ContextMenuAction> actions;
 
-  /// Fired on backdrop-tap-to-cancel only — action taps handle their own focus outcome (see
-  /// ChatView._settleFocus), so this must not also fire there or it'd fight Reply's intent.
+  /// Fired on backdrop-tap-to-cancel only — action taps handle their own focus outcome, and firing this too would fight Reply's intent.
   final VoidCallback onDismiss;
 
-  /// This viewer's current reactions on the message — used only to highlight whichever of the
-  /// fixed 8 emojis (if any) they've already picked; ChatViewModel.reactToMessage decides
-  /// set-vs-remove from this same data.
+  /// Used only to highlight whichever of the fixed 8 emojis this viewer has already picked.
   final Map<String, ChatReaction> reactions;
   final void Function(String emoji) onReact;
 
@@ -2129,8 +1986,7 @@ class _MessageContextMenu extends StatelessWidget {
   static const _screenMargin = 16.0;
   static const _reactionRowHeight = 52.0;
   static const _reactionCellWidth = 36.0;
-  // 8 == _reactionEmojis.length — can't reference that in a const expression here, so kept in
-  // sync by hand; both live right next to each other at the top of this file.
+  // 8 == _reactionEmojis.length, kept in sync by hand since it can't be referenced in a const expression here.
   static const _reactionRowWidth = _reactionCellWidth * 8 + 12;
 
   @override
@@ -2140,19 +1996,12 @@ class _MessageContextMenu extends StatelessWidget {
     final safePadding = MediaQuery.paddingOf(context);
     final menuHeight = actions.length * _rowHeight + 16;
 
-    // Menu always renders below the bubble, the reaction row always above it — a fixed,
-    // consistent arrangement. When there isn't room below for the menu, or above for the
-    // reaction row, the whole group shifts up together instead (Telegram/Messenger do the same
-    // for a bubble near the bottom of the screen); minTop reserves space above the bubble for
-    // the reaction row specifically, since that's a second thing (not just the menu) now
-    // competing for vertical space near the top of the screen.
+    // When there isn't room below for the menu (or above for the reaction row), the whole group shifts up together instead of reflowing the fixed menu-below/reaction-above arrangement.
     final spaceBelow =
         screenSize.height - safePadding.bottom - bubbleRect.bottom;
     final shortfall = (menuHeight + _gap + _screenMargin) - spaceBelow;
     final verticalShift = shortfall > 0 ? shortfall : 0.0;
-    // max/min rather than .clamp() — a bubble already hard against the top of the screen can
-    // make the "don't go above the safe area" floor exceed bubbleRect.top itself, which
-    // .clamp(lower, upper) would throw on (lower > upper); this degrades to "no shift" instead.
+    // max/min rather than .clamp(): a bubble already hard against the top of the screen can make the safe-area floor exceed bubbleRect.top, which .clamp would throw on; this degrades to "no shift" instead.
     final minTop = safePadding.top + _screenMargin + _reactionRowHeight + _gap;
     final shiftedBubbleTop = math.max(
       minTop,
@@ -2184,10 +2033,7 @@ class _MessageContextMenu extends StatelessWidget {
                 onDismiss();
                 Navigator.of(context).pop();
               },
-              // Solid, near-opaque scrim — not a real-time blur (BackdropFilter's first-frame
-              // cost was visibly lagging a beat behind the menu appearing, see the bug this
-              // fixed) — and matches Telegram/Messenger's own look: other messages aren't just
-              // dimmed, they're not really visible at all.
+              // Solid scrim, not a real-time blur: BackdropFilter's first-frame cost visibly lagged a beat behind the menu appearing.
               child: Container(color: Colors.black.withValues(alpha: 0.92)),
             ),
           ),
@@ -2311,8 +2157,7 @@ class _MessageContextMenu extends StatelessWidget {
   }
 }
 
-// Canonical English values sent to the backend/moderation queue — never translated. Only the
-// displayed chip label goes through _reportReasonLabel below.
+// Canonical English values sent to the backend/moderation queue, never translated — only the displayed chip label goes through _reportReasonLabel below.
 const _reportReasons = ['Spam', 'Harassment', 'Inappropriate content', 'Other'];
 
 String _reportReasonLabel(AppLocalizations l10n, String reason) => switch (reason) {
@@ -2429,11 +2274,7 @@ class _ReportMessageSheetState extends State<_ReportMessageSheet> {
   }
 }
 
-// Fixed checklist for "what did DiveBubble help you with" — 'Nothing yet' is exclusive with
-// the rest (see _FeedbackSheetState._toggleHelpedWith), so it's never combined with a real
-// answer in the stored comma-joined string.
-// Canonical English values sent to the backend — never translated. Only the displayed chip
-// label goes through _helpedWithLabel below.
+// 'Nothing yet' is exclusive with the rest, never combined with a real answer in the stored comma-joined string; values are canonical English, never translated.
 const _helpedWithOptions = [
   'Trip information',
   'Chatting with participants',
@@ -2564,10 +2405,7 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
               children: _helpedWithOptions.map((option) {
                 final selected = _helpedWith.contains(option);
                 return FilterChip(
-                  // The built-in checkmark animates its own width in/out of the avatar slot,
-                  // which visibly resizes/reflows every chip in the Wrap on toggle. Reserving
-                  // a fixed-size icon slot ourselves (check when selected, invisible otherwise)
-                  // keeps every chip's width constant regardless of selection state.
+                  // Disabled: the built-in checkmark animates its width in/out, resizing every chip in the Wrap on toggle; a fixed-size icon slot below keeps widths constant.
                   showCheckmark: false,
                   avatar: SizedBox(
                     width: 18,
@@ -2622,13 +2460,9 @@ class _FeedbackSheetState extends State<_FeedbackSheet> {
   }
 }
 
-/// Message text with its timestamp trailing inline on the same line — like WhatsApp/Telegram,
-/// not stacked on its own row below. A zero-opacity copy of the timestamp is appended as a
-/// [WidgetSpan] so the paragraph's line-wrapping reserves room for it (falling to a new line
-/// if the last line is already full); the real, visible timestamp is then drawn on top at the
-/// bottom-right corner via [Stack]+[Positioned], landing in that reserved space.
 final _urlPattern = RegExp(r'(https?:\/\/\S+|www\.\S+)', caseSensitive: false);
 
+/// A zero-opacity copy of the timestamp is appended as a [WidgetSpan] so line-wrapping reserves room for it; the real one is then drawn on top via [Stack]+[Positioned].
 class _MessageBody extends StatefulWidget {
   const _MessageBody({
     required this.body,

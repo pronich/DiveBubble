@@ -61,8 +61,7 @@ class TripsListView extends StatefulWidget {
 class _TripsListViewState extends State<TripsListView> {
   bool _isScrolled = false;
 
-  // Refetches on auth change (e.g. logging in via another screen's gate personalizes "joined")
-  // and on app resume — data may be stale after the app sat backgrounded for a while.
+  // Refetches on app resume, since data may be stale after the app sat backgrounded for a while.
   late final _lifecycleListener = AppLifecycleListener(onResume: widget.viewModel.loadTrips);
 
   @override
@@ -291,12 +290,7 @@ class _TripsListViewState extends State<TripsListView> {
   }
 }
 
-// The two quick actions below deliberately reuse the calm FilledButton (light-fill) theme
-// rather than the bold primary ElevatedButton style, since Create/Join are secondary entry
-// points most divers will ignore in favor of just browsing, the same way Airbnb's category
-// chips stay quiet under its search bar. Search expands inline, directly below the search
-// field, staying pinned at the top of the screen — Airbnb's "Where?" panel pattern — rather
-// than sliding up as a bottom sheet; the trip grid below just gets shorter while it's open.
+// Quick actions deliberately use the calm FilledButton theme, not bold ElevatedButton, since Create/Join are secondary to just browsing; search expands inline below the field (Airbnb's "Where?" pattern) rather than as a bottom sheet.
 class _ExploreHeader extends StatefulWidget {
   const _ExploreHeader({
     required this.viewModel,
@@ -409,9 +403,7 @@ class _ExploreHeaderState extends State<_ExploreHeader> {
                               controller: _queryController,
                               focusNode: _queryFocusNode,
                               textInputAction: TextInputAction.search,
-                              // Only needed so the clear/close "X" next to this field
-                              // (below) can react to isNotEmpty on every keystroke —
-                              // nothing here otherwise listens to _queryController.
+                              // Only needed so the clear/close "X" below can react to isNotEmpty on every keystroke.
                               onChanged: (_) => setState(() {}),
                               onSubmitted: (_) => _apply(),
                               decoration: const InputDecoration(
@@ -436,9 +428,7 @@ class _ExploreHeaderState extends State<_ExploreHeader> {
                     if (_filtersOpen)
                       InkWell(
                         borderRadius: BorderRadius.circular(999),
-                        // Text present -> clear just the query, keep the sheet open and
-                        // focused (matches a native search bar's "X"). Empty -> nothing left
-                        // to clear here, so the same tap falls back to closing the sheet.
+                        // Text present -> clear just the query and stay focused; empty -> the same tap falls back to closing the sheet.
                         onTap: _queryController.text.isNotEmpty
                             ? () {
                                 setState(() => _queryController.clear());
@@ -645,9 +635,7 @@ class _TripCardBadges extends StatelessWidget {
     final color = theme.colorScheme.onSurfaceVariant;
     final style = theme.textTheme.labelSmall?.copyWith(color: color);
 
-    // Two fixed rows (not one flexible Wrap) so every card reserves exactly the same
-    // badge-area height regardless of which optional fields a trip actually has.
-    // Level is always populated (falls back to "Open to all"), so it anchors row 1.
+    // Two fixed rows, not one flexible Wrap, so every card reserves the same badge-area height regardless of which optional fields a trip has.
     final secondRow = <Widget>[
       if (_depthText != null)
         _Badge(
@@ -749,11 +737,7 @@ class _Badge extends StatelessWidget {
   }
 }
 
-// A quick "who's running this" signal — same top-left corner Airbnb-style listings use for
-// a superhost/guest-favorite badge. Deliberately reuses _DatePill's exact pill styling
-// (inverseSurface pill, labelSmall text) just mirrored to the opposite corner, so the two
-// badges read as one visual family rather than two different treatments competing for
-// attention on the same photo.
+// Reuses _DatePill's exact pill styling mirrored to the opposite corner, so the two badges read as one visual family.
 class _OrganizerTypePill extends StatelessWidget {
   const _OrganizerTypePill({required this.isDiveCenter});
 

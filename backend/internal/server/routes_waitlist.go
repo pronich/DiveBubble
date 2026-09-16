@@ -9,8 +9,7 @@ import (
 	"divebubble_be/internal/waitlist"
 )
 
-// Public, unauthenticated — called from the marketing site (public/), not from app/ or
-// admin/. A prospective dive-center owner has no DiveBubble account at this point.
+// registerWaitlistRoutes is public and unauthenticated, since a prospective dive-center owner has no DiveBubble account at this point.
 func registerWaitlistRoutes(mux *http.ServeMux, svc *waitlist.Service) {
 	mux.HandleFunc("POST /waitlist", handleWaitlistSignup(svc))
 }

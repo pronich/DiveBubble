@@ -36,10 +36,7 @@ func NewService(repo *Repository, diveCenterSvc *divecenter.Service) *Service {
 	return &Service{Repo: repo, DiveCenterSvc: diveCenterSvc}
 }
 
-// isOrganizer reports whether userID can act as this trip's organizer — either they
-// created it personally, or the trip is run by a dive center they're a member of (any
-// member, not just the staff member who happened to create it — the organization is the
-// organizer, not one specific employee; see CLAUDE.md's Business/dive-center section).
+// isOrganizer treats any member of the trip's dive center as the organizer, not just whichever staff member happened to create it.
 func (s *Service) isOrganizer(ctx context.Context, t Trip, userID uuid.UUID) (bool, error) {
 	if t.CreatorUserID.Valid && t.CreatorUserID.UUID == userID {
 		return true, nil
@@ -50,11 +47,7 @@ func (s *Service) isOrganizer(ctx context.Context, t Trip, userID uuid.UUID) (bo
 	return false, nil
 }
 
-// HasAccess is the general "can this user read/write inside this trip" check — either
-// they've joined normally (a trip_participants row) or they're the trip's organizer.
-// Dive-center staff never get a trip_participants row for the center's own trips (see
-// CreateTrip below), so without the organizer branch here they'd be locked out of their
-// own business's chat/transport.
+// HasAccess needs the organizer branch since dive-center staff never get a trip_participants row for their own business's trips.
 func (s *Service) HasAccess(ctx context.Context, id string, userID uuid.UUID) (uuid.UUID, bool, error) {
 	tripID, err := uuid.Parse(id)
 	if err != nil {
@@ -81,10 +74,7 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 	if p.Title == "" || p.Location == "" || p.StartTime.IsZero() {
 		return Trip{}, ErrInvalidArgument
 	}
-	// Compare calendar dates, not exact instants — EndDate is a pure date (always
-	// midnight UTC by the time it gets here, see clients' own endDate serialization), so a
-	// same-day trip's EndDate is always clock-earlier than its StartTime even though the two
-	// dates are equal, which a raw .Before() would wrongly reject.
+	// Compares calendar dates, not exact instants, since EndDate is always midnight UTC and a raw .Before() would wrongly reject a same-day trip.
 	if p.EndDate != nil {
 		endDate := time.Date(p.EndDate.Year(), p.EndDate.Month(), p.EndDate.Day(), 0, 0, 0, 0, time.UTC)
 		startDate := time.Date(p.StartTime.Year(), p.StartTime.Month(), p.StartTime.Day(), 0, 0, 0, 0, time.UTC)
@@ -93,8 +83,7 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 		}
 	}
 	if p.DiveCenterID != nil {
-		// A business trip is always a public marketplace listing — is_private only means
-		// anything for an individual trip.
+		// A business trip is always a public marketplace listing; is_private only means anything for an individual trip.
 		p.IsPrivate = false
 		if s.DiveCenterSvc == nil {
 			return Trip{}, ErrInvalidArgument
@@ -106,9 +95,7 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 		if !isMember {
 			return Trip{}, ErrNotDiveCenterMember
 		}
-		// A business trip is a marketplace listing — a diver books externally on the
-		// dive center's own site (see JoinByCode/Booking Code flow), so without a price
-		// and a link to actually book, the listing has nothing for a diver to act on.
+		// A diver books externally on the dive center's own site, so without a price and a link the listing has nothing for a diver to act on.
 		if p.PriceMinor == nil {
 			return Trip{}, ErrBusinessTripRequiresPriceAndURL
 		}
@@ -120,11 +107,7 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 			return Trip{}, ErrBusinessTripRequiresPriceAndURL
 		}
 	}
-	// Every trip gets a server-generated code, retried on the rare unique-constraint
-	// collision — never client-supplied. It backs the invite link (JoinByCode/ResolveByCode)
-	// for every trip type: the only way in for a business or private trip (see Join's
-	// matching gate below), and just an alternate entry point for an otherwise-open public
-	// trip alongside Explore/direct Join.
+	// Every trip gets a server-generated code, retried on collision, backing the invite link that's the only way into a business or private trip.
 	var t Trip
 	var err error
 	for attempt := 0; attempt < maxBookingCodeAttempts; attempt++ {
@@ -138,13 +121,7 @@ func (s *Service) CreateTrip(ctx context.Context, p CreateParams) (Trip, error) 
 	if err != nil {
 		return Trip{}, err
 	}
-	// Individual trips auto-join their creator (no separate Join step — it's what makes
-	// the trip show up in their own Bubbles tab immediately). Business trips skip this
-	// deliberately: staff reach the trip via dive-center membership (see HasAccess/
-	// isOrganizer above and ListJoinedByUser's dive_center_members branch), the same way
-	// regardless of which specific staff member created it — a trip_participants row for
-	// just the creator would be redundant and would need to be kept in sync with staffing
-	// changes for no benefit.
+	// Business trips skip auto-joining their creator, since staff reach the trip via dive-center membership instead, and a creator-only row would need syncing with staffing changes for no benefit.
 	if p.DiveCenterID == nil {
 		if err := s.Repo.Join(ctx, t.ID, p.CreatorUserID); err != nil {
 			return Trip{}, err
@@ -174,29 +151,18 @@ func (s *Service) Join(ctx context.Context, id string, userID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	// The client already hides the Join button once bookingStatus isn't "open" (full or
-	// cancelled) — this closes the same gap server-side, since that was previously only a
-	// client-side convention with no backend enforcement behind it.
+	// Closes server-side what was previously only a client-side convention (hiding the Join button).
 	if t.BookingStatus != "open" {
 		return ErrTripNotOpen
 	}
-	// Business trips are a marketplace listing, not a direct join — a diver has to actually
-	// pay on the dive center's own site and come back with the code it gave them (see
-	// JoinByCode below). Private trips have no external payment step, but the same code gate
-	// applies: they're excluded from Explore, so this only matters if someone calls the
-	// endpoint directly with a trip id they got some other way. Rejecting this server-side
-	// (not just hiding the button) matters in both cases.
+	// Business trips require paying externally and returning with a code (see JoinByCode); private trips reuse the same code gate since they're excluded from Explore.
 	if t.DiveCenterID.Valid || t.IsPrivate {
 		return ErrRequiresBookingCode
 	}
 	return s.Repo.Join(ctx, tripID, userID)
 }
 
-// ResolveByCode looks up a trip by its booking code without joining — the read-only half of
-// an invite link (divebubble.io/join/{code}): the app resolves the trip first to show a
-// preview, and only calls JoinByCode once the diver actually taps Join. Deliberately doesn't
-// check BookingStatus — a cancelled/full trip should still preview (with its real status),
-// not 404, and Join/JoinByCode already re-check status before actually joining.
+// ResolveByCode deliberately doesn't check BookingStatus, since a cancelled/full trip should still preview with its real status rather than 404, and Join/JoinByCode re-check status before actually joining.
 func (s *Service) ResolveByCode(ctx context.Context, code string) (Trip, error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	if code == "" {
@@ -212,9 +178,7 @@ func (s *Service) ResolveByCode(ctx context.Context, code string) (Trip, error) 
 	return t, nil
 }
 
-// JoinByCode resolves a trip purely from its booking code — no trip id needed, since the
-// code alone is what a diver actually has in hand after paying externally (see Explore's
-// "Join trip" entry point, which doesn't know which trip in advance either).
+// JoinByCode needs no trip id, since the code alone is what a diver has in hand after paying externally.
 func (s *Service) JoinByCode(ctx context.Context, code string, userID uuid.UUID) (Trip, error) {
 	code = strings.ToUpper(strings.TrimSpace(code))
 	if code == "" {
@@ -236,8 +200,7 @@ func (s *Service) JoinByCode(ctx context.Context, code string, userID uuid.UUID)
 	return t, nil
 }
 
-// Leave rejects the trip's organizer — other participants are relying on them, so their
-// way out is cancelling the trip (booking_status), not quietly disappearing from it.
+// Leave rejects the trip's organizer, whose way out is cancelling the trip, not quietly disappearing from it.
 func (s *Service) Leave(ctx context.Context, id string, userID uuid.UUID) error {
 	tripID, err := uuid.Parse(id)
 	if err != nil {
@@ -253,9 +216,7 @@ func (s *Service) Leave(ctx context.Context, id string, userID uuid.UUID) error 
 	return s.Repo.Leave(ctx, tripID, userID)
 }
 
-// Cancel is organizer-only and, once set, final — there's no reopen path (an organizer
-// who cancelled by mistake creates a new trip rather than walking back a public
-// cancellation). Idempotent: cancelling an already-cancelled trip is a no-op success.
+// Cancel is final with no reopen path; an organizer who cancelled by mistake creates a new trip instead.
 func (s *Service) Cancel(ctx context.Context, id string, userID uuid.UUID) error {
 	tripID, err := uuid.Parse(id)
 	if err != nil {
@@ -278,8 +239,7 @@ func (s *Service) Cancel(ctx context.Context, id string, userID uuid.UUID) error
 	return s.Repo.SetBookingStatus(ctx, tripID, "cancelled")
 }
 
-// ListPhotos has no organizer gate — a trip's gallery is shown to anyone viewing the trip
-// (same posture as GetTrip), only adding/removing is restricted.
+// ListPhotos has no organizer gate, same posture as GetTrip; only adding/removing is restricted.
 func (s *Service) ListPhotos(ctx context.Context, id string) ([]Photo, error) {
 	tripID, err := uuid.Parse(id)
 	if err != nil {
@@ -288,9 +248,7 @@ func (s *Service) ListPhotos(ctx context.Context, id string) ([]Photo, error) {
 	return s.Repo.ListPhotos(ctx, tripID)
 }
 
-// AddPhoto is organizer-only (same ownership check as Update below) and caps the gallery at
-// MaxPhotosPerTrip — enforced here, not in the repository, so the check-then-insert reads as
-// one clear business rule rather than being buried in a SQL constraint.
+// AddPhoto caps the gallery at MaxPhotosPerTrip here, not in the repository, so the check-then-insert reads as one clear business rule.
 func (s *Service) AddPhoto(ctx context.Context, id string, userID uuid.UUID, url string) (Photo, error) {
 	tripID, err := uuid.Parse(id)
 	if err != nil {
@@ -337,11 +295,7 @@ func (s *Service) RemovePhoto(ctx context.Context, id string, userID uuid.UUID, 
 	return s.Repo.RemovePhoto(ctx, tripID, photoID)
 }
 
-// Update is organizer-only (same isOrganizer check as Cancel/SetPhotoURL — any dive-center
-// member, not just the trip's literal creator). Trims/validates Title and Location the
-// same way CreateTrip does, since a blank one would slip through Repository.Update's
-// COALESCE(nil-is-untouched) semantics if not caught here first — an empty *string* isn't
-// nil, so it would overwrite the field with blank rather than leaving it alone.
+// Update trims/validates Title and Location itself, since an empty (non-nil) *string would otherwise slip through Repository.Update's nil-is-untouched COALESCE semantics and blank the field.
 func (s *Service) Update(ctx context.Context, id string, userID uuid.UUID, p UpdateParams) (Trip, error) {
 	tripID, err := uuid.Parse(id)
 	if err != nil {
@@ -377,10 +331,7 @@ func (s *Service) Update(ctx context.Context, id string, userID uuid.UUID, p Upd
 			trimmed := strings.TrimSpace(*p.BookingURL)
 			p.BookingURL = &trimmed
 		}
-		// Effective value after this update: the incoming one if the request touches the
-		// field, otherwise whatever's already on the row (see UpdateParams' COALESCE
-		// semantics — nil here means "leave untouched", not "clear"). Either way, a
-		// business trip must end up with both fields set.
+		// Checks the effective value after this update (incoming if touched, else the existing row), since a business trip must end up with both fields set either way.
 		hasPrice := p.PriceMinor != nil || t.PriceMinor.Valid
 		hasBookingURL := (p.BookingURL != nil && *p.BookingURL != "") || (t.BookingURL.Valid && t.BookingURL.String != "")
 		if !hasPrice || !hasBookingURL {
@@ -390,9 +341,7 @@ func (s *Service) Update(ctx context.Context, id string, userID uuid.UUID, p Upd
 	return s.Repo.Update(ctx, tripID, p)
 }
 
-// EnsureNotCancelled is the shared guard for actions that freeze once a trip is
-// cancelled — sending a message, creating or joining a transport offer — while everything
-// read-only (message history, transport list, participants) stays reachable.
+// EnsureNotCancelled is the shared guard for actions that freeze once a trip is cancelled, while everything read-only stays reachable.
 func (s *Service) EnsureNotCancelled(ctx context.Context, tripID uuid.UUID) error {
 	t, err := s.Repo.GetByID(ctx, tripID)
 	if err != nil {
@@ -484,8 +433,7 @@ func (s *Service) IsMuted(ctx context.Context, id string, userID uuid.UUID) (boo
 	return s.Repo.IsMuted(ctx, tripID, userID)
 }
 
-// ListMutedUserIDs is un-gated (no callerID) — for internal/system callers like push
-// fan-out, not an HTTP-exposed listing (same pattern as divecenter.ListMemberUserIDs).
+// ListMutedUserIDs is un-gated (no callerID): for internal/system callers like push fan-out, not an HTTP-exposed listing.
 func (s *Service) ListMutedUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
 	return s.Repo.ListMutedUserIDs(ctx, tripID)
 }

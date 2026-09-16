@@ -16,9 +16,7 @@ class LegalPage extends StatelessWidget {
   Future<void> _open(String url) =>
       launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
-  // Android already shows its own app chooser for an implicit mailto intent when more than
-  // one mail app is installed, so only iOS (which always jumps straight to Mail.app with no
-  // chooser) needs this picker.
+  // Android already shows its own app chooser for an implicit mailto intent; only iOS (which jumps straight to Mail.app) needs this picker.
   Future<void> _contactSupport(BuildContext context) async {
     if (defaultTargetPlatform != TargetPlatform.iOS) {
       await _open('mailto:$_supportEmail');

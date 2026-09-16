@@ -5,12 +5,7 @@ import (
 	"strings"
 )
 
-// withCORS is only needed for browser clients (admin/, and eventually app/'s own web
-// build) — native mobile requests never go through a browser's CORS enforcement, which is
-// why nothing here existed until admin/'s first real cross-origin fetch surfaced it.
-// Bearer-token auth (not cookies) means credentialed CORS isn't required, so a wildcard
-// "*" in CORS_ALLOWED_ORIGINS is safe to use for local dev; production should set the
-// real origin(s) explicitly.
+// withCORS matters only for browser clients (native mobile requests bypass CORS); since auth is bearer-token not cookies, a wildcard origin is safe for local dev.
 func withCORS(allowedOrigins []string, next http.Handler) http.Handler {
 	allowAll := false
 	allowed := make(map[string]bool, len(allowedOrigins))

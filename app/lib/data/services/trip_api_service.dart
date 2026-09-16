@@ -17,8 +17,7 @@ class TripApiService {
   final AccessTokenProvider getAccessToken;
   final http.Client _client;
 
-  // Trip detail stays browsable without an account — attach a token if signed in
-  // (personalizes "joined"), but don't require one.
+  // Attaches a token if signed in (personalizes "joined") but doesn't require one, since trip detail stays browsable without an account.
   Future<Map<String, String>> _optionalAuthHeaders() async {
     final token = await getAccessToken();
     return token == null ? {} : {'Authorization': 'Bearer $token'};
@@ -53,9 +52,7 @@ class TripApiService {
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Read-only half of an invite link (GET /invite/{code}) — resolves a trip preview without
-  // joining it, same anonymous-browsable posture as fetchTrip. See joinTripByCode for the
-  // action that actually joins once the diver taps Join on that preview.
+  // Read-only half of an invite link (GET /invite/{code}); joinTripByCode is the action once the diver taps Join on the resulting preview.
   Future<TripApiModel> resolveTripByCode(String code) async {
     final res = await _client.get(
       Uri.parse('$baseUrl/invite/$code'),
@@ -89,9 +86,7 @@ class TripApiService {
     }
   }
 
-  // The marketplace redemption path for business trips (see CLAUDE.md's Booking Code flow
-  // section) — no trip id needed, the code alone resolves it. Returns the resolved trip so
-  // the caller can navigate straight to it.
+  // No trip id needed — the code alone resolves it, and the resolved trip is returned so the caller can navigate straight to it.
   Future<TripApiModel> joinTripByCode(String code) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/trips/join-by-code'),
@@ -104,8 +99,7 @@ class TripApiService {
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
-  // message to show, or passes it through unchanged if it's not one this file knows about yet.
+  // Server errors come back as {"error": "<code>"}; describeErrorCode maps it to a message or passes it through unchanged if unrecognized.
   String? _extractError(String body) {
     try {
       final decoded = jsonDecode(body);
@@ -118,8 +112,7 @@ class TripApiService {
     return null;
   }
 
-  // 403 (mapped to an Exception here) if the caller is the trip's organizer — they cancel
-  // the trip instead of leaving it.
+  // 403 if the caller is the trip's organizer — they cancel the trip instead of leaving it.
   Future<void> leaveTrip(String id) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/trips/$id/leave'),
@@ -130,8 +123,7 @@ class TripApiService {
     }
   }
 
-  // 403 if the caller isn't the trip's organizer. Idempotent server-side — cancelling an
-  // already-cancelled trip still returns 204.
+  // Idempotent server-side — cancelling an already-cancelled trip still returns 204.
   Future<void> cancelTrip(String id) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/trips/$id/cancel'),
@@ -168,8 +160,7 @@ class TripApiService {
     return decoded.map((e) => TripPhotoApiModel.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  // 403 if the caller isn't the trip's organizer, 409 if the trip is already at the cap
-  // (trip.MaxPhotosPerTrip server-side) — both mapped to a plain Exception here.
+  // 403 if the caller isn't the organizer, 409 if the trip is already at trip.MaxPhotosPerTrip.
   Future<TripPhotoApiModel> addTripPhoto(String id, String filePath) async {
     final json = await uploadFile(
       Uri.parse('$baseUrl/trips/$id/photos'),
@@ -283,10 +274,7 @@ class TripApiService {
       'location': location,
       'isPrivate': isPrivate,
       'startTime': startTime.toUtc().toIso8601String(),
-      // endDate is a pure calendar date (picked date-only, always local midnight) — .toUtc()
-      // on that shifts it into the *previous* UTC day for any positive-offset timezone,
-      // which then fails the backend's endDate >= startTime check for same-day trips. Build
-      // a fresh UTC-midnight DateTime from the Y/M/D instead of converting the local one.
+      // Built as fresh UTC midnight from Y/M/D rather than endDate.toUtc(), which would shift into the *previous* UTC day for a positive-offset timezone and fail the backend's endDate >= startTime check.
       if (endDate != null)
         'endDate': DateTime.utc(endDate.year, endDate.month, endDate.day).toIso8601String(),
       if (description != null) 'description': description,
@@ -311,8 +299,7 @@ class TripApiService {
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Individual-organizer trips only — no priceMinor/bookingUrl (those are business-trip-only
-  // fields, admin's edit form handles those). PATCH semantics: only non-null fields change.
+  // Individual-organizer trips only — no priceMinor/bookingUrl, those business-trip-only fields are admin's edit form's job.
   Future<TripApiModel> updateTrip({
     required String id,
     String? title,

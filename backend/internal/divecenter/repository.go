@@ -43,8 +43,7 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{DB: db}
 }
 
-// CreateParams — optional fields are nil pointers when not provided, same convention as
-// trip.CreateParams.
+// CreateParams optional fields are nil pointers when not provided, same convention as trip.CreateParams.
 type CreateParams struct {
 	Name         string
 	Location     *string
@@ -58,8 +57,7 @@ type CreateParams struct {
 	Email        *string
 }
 
-// Create and the owner's membership row happen together — a dive center with zero owners
-// would be immediately unmanageable, so there's never a moment where one exists without the other.
+// Create inserts the dive center and the owner's membership row together in one transaction, so one never exists without the other.
 func (r *Repository) Create(ctx context.Context, p CreateParams, ownerUserID uuid.UUID) (DiveCenter, error) {
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -133,10 +131,7 @@ func (r *Repository) SetLogoURL(ctx context.Context, id uuid.UUID, url string) e
 	return err
 }
 
-// UpdateParams uses pointers so a nil field is left unchanged rather than cleared — same
-// COALESCE convention (and same can't-null-an-optional-field-back-out limitation) as
-// trip.UpdateParams/profile.UpdateParams. Name excluded from the pointer treatment: it's
-// required, so an empty request just means "don't touch it" at the service layer instead.
+// UpdateParams uses pointers so a nil field is left unchanged (same COALESCE convention as trip.UpdateParams/profile.UpdateParams); Name is required, so an empty request means "don't touch it" at the service layer instead.
 type UpdateParams struct {
 	Name         *string
 	Location     *string
@@ -183,12 +178,7 @@ func (r *Repository) IsOwner(ctx context.Context, diveCenterID, userID uuid.UUID
 	return exists, err
 }
 
-// ListMembers joins users (display_name/avatar_url/certification_level) and, since a
-// member can only ever have been added via the exact-email search in the first place (see
-// FindUserIDByEmail), auth_identities (provider_email) — an owner viewing their own
-// roster already knows every teammate's email, so surfacing it back here isn't a new
-// disclosure. LEFT JOIN on auth_identities: a user could in principle have none yet
-// (identity rows aren't created until first login), so a member row shouldn't vanish for it.
+// ListMembers joins users and auth_identities to surface each teammate's email, which isn't a new disclosure since members are only ever added via exact-email search, using LEFT JOIN so a member without an identity row yet doesn't vanish.
 func (r *Repository) ListMembers(ctx context.Context, diveCenterID uuid.UUID) ([]MemberView, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT dcm.dive_center_id, dcm.user_id, dcm.role, dcm.joined_at,
@@ -218,8 +208,7 @@ func (r *Repository) ListMembers(ctx context.Context, diveCenterID uuid.UUID) ([
 	return members, rows.Err()
 }
 
-// ListMemberUserIDs is the lightweight counterpart to ListMembers — no user/profile joins,
-// for callers that only need who to reach (e.g. push notification fan-out), not who they are.
+// ListMemberUserIDs is the lightweight counterpart to ListMembers, skipping user/profile joins for callers like push fan-out that only need who to reach, not who they are.
 func (r *Repository) ListMemberUserIDs(ctx context.Context, diveCenterID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := r.DB.QueryContext(ctx, `SELECT user_id FROM dive_center_members WHERE dive_center_id = $1`, diveCenterID)
 	if err != nil {
@@ -270,9 +259,7 @@ func (r *Repository) CountOwners(ctx context.Context, diveCenterID uuid.UUID) (i
 	return count, err
 }
 
-// CreateOrRefreshInvitation upserts on (dive_center_id, email) — re-inviting an already
-// -pending (or even previously-accepted, e.g. someone who left) email just refreshes the
-// role/timestamps and resets accepted_at, rather than erroring or duplicating.
+// CreateOrRefreshInvitation upserts on (dive_center_id, email), so re-inviting a pending or previously-accepted email just refreshes the role/timestamps and resets accepted_at rather than erroring.
 func (r *Repository) CreateOrRefreshInvitation(ctx context.Context, diveCenterID uuid.UUID, email, role string, invitedByUserID uuid.UUID) (Invitation, error) {
 	var inv Invitation
 	err := r.DB.QueryRowContext(ctx, `
@@ -290,11 +277,7 @@ func (r *Repository) CreateOrRefreshInvitation(ctx context.Context, diveCenterID
 	return inv, err
 }
 
-// ConsumeInvitationsForEmail adds userID to every dive center with a pending invitation for
-// email, then marks each accepted — called after every successful sign-in (see
-// Service.AcceptInvitations). Uses ON CONFLICT DO NOTHING (not AddMember's own DO-UPDATE
-// upsert) so this can never downgrade a role an owner may have since set manually through
-// the normal add-member flow in the meantime.
+// ConsumeInvitationsForEmail adds userID to every dive center with a pending invitation for email and marks each accepted, using ON CONFLICT DO NOTHING (not AddMember's DO-UPDATE) so it never downgrades a role an owner has since set manually.
 func (r *Repository) ConsumeInvitationsForEmail(ctx context.Context, email string, userID uuid.UUID) error {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT id, dive_center_id, role FROM dive_center_invitations

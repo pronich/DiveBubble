@@ -1,6 +1,4 @@
-/// Splitwise-style per-trip expense. Read-mostly and always replaced wholesale after a
-/// mutation (create/update/delete all just reload the list) — same reasoning as ChatLink for
-/// skipping the freezed/API-model/mapper split, a plain class with fromJson is enough.
+/// Read-mostly and always replaced wholesale after a mutation, same reasoning as ChatLink for skipping the freezed/API-model/mapper split.
 class Expense {
   const Expense({
     required this.id,
@@ -23,8 +21,7 @@ class Expense {
   final String title;
   final int amountMinor;
   final String splitType; // 'equal' | 'shares' | 'exact'
-  // The date the expense actually happened — distinct from createdAt (when the record was
-  // entered), so a diver can log a purchase from a day or two ago.
+  // Distinct from createdAt (when the record was entered), so a diver can log a purchase from a day or two ago.
   final DateTime occurredAt;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -51,8 +48,7 @@ class ExpenseShare {
   const ExpenseShare({required this.userId, this.shares, required this.amountMinor});
 
   final String userId;
-  // Only meaningful for split_type 'shares' — the raw 1/2/3 count the payer entered, kept
-  // around so re-opening an expense for edit shows that instead of a derived amount.
+  // Only meaningful for split_type 'shares'; kept so re-opening an expense for edit shows the raw count instead of a derived amount.
   final int? shares;
   final int amountMinor;
 
@@ -63,8 +59,7 @@ class ExpenseShare {
   );
 }
 
-/// One participant's net position on a trip — positive means the trip owes them, negative
-/// means they owe the trip.
+/// Positive means the trip owes them, negative means they owe the trip.
 class ExpenseBalance {
   const ExpenseBalance({required this.userId, required this.amountMinor});
 
@@ -75,8 +70,7 @@ class ExpenseBalance {
       ExpenseBalance(userId: json['userId'] as String, amountMinor: json['amountMinor'] as int);
 }
 
-/// One suggested transfer from the simplified "who pays whom" graph — see the backend's
-/// expense.Simplify for how these are derived from a trip's balances.
+/// Derived from a trip's balances by the backend's expense.Simplify.
 class ExpenseSettlement {
   const ExpenseSettlement({
     required this.fromUserId,
@@ -95,9 +89,7 @@ class ExpenseSettlement {
   );
 }
 
-/// One row of a create/update request's split — which fields matter depends on the
-/// expense's splitType (equal only needs userId, shares needs `shares`, exact needs
-/// `amountMinor`). Built by the add/edit form, not read back from the server.
+/// Which fields matter depends on the expense's splitType (equal only needs userId, shares needs `shares`, exact needs `amountMinor`).
 class ExpenseShareInput {
   const ExpenseShareInput({required this.userId, this.shares, this.amountMinor});
 

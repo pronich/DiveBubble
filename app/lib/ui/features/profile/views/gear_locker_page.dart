@@ -5,8 +5,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../../ui/core/theme/app_colors.dart';
 import '../view_models/profile_view_model.dart';
 
-// Canonical English keys sent to/matched against the backend — never translated. Only the
-// displayed label (see _GearRow) goes through this mapping.
+// Canonical English keys sent to/matched against the backend, never translated — only the displayed label goes through this mapping.
 String _gearItemLabel(AppLocalizations l10n, String key) => switch (key) {
   'boots' => l10n.gearItemBoots,
   'fins' => l10n.gearItemFins,
@@ -145,9 +144,7 @@ class _GearGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Material (not Container+BoxDecoration) so the ListTiles inside have a proper ink
-    // surface to paint splashes on — a plain colored DecoratedBox hides them and Flutter
-    // throws a runtime assertion for it.
+    // Material, not Container+BoxDecoration: a plain colored DecoratedBox hides the ListTiles' ink splashes and Flutter throws a runtime assertion for it.
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(12),

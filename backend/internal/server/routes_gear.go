@@ -29,8 +29,7 @@ func toGearOwnershipResponse(o gear.Ownership) gearOwnershipResponse {
 	return gearOwnershipResponse{ItemKey: o.ItemKey, Status: o.Status, UpdatedAt: o.UpdatedAt}
 }
 
-// handleListGear only returns rows the user has actually set — items with no row are
-// treated as "missing" by the client against its fixed gear catalog dictionary.
+// handleListGear only returns rows the user has actually set; the client treats items with no row as "missing" against its fixed gear catalog.
 func handleListGear(svc *gear.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		items, err := svc.List(r.Context(), userID)

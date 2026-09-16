@@ -14,18 +14,7 @@ class StoredAuthTokens {
   final String userId;
 }
 
-/// Persists auth tokens in `window.localStorage` — deliberately not
-/// `flutter_secure_storage` (2026-07-20): its web backend encrypts values via the Web
-/// Crypto API before storing them, but was observed hanging indefinitely on
-/// `admin.divebubble.io` specifically (a backend login would fully succeed — user created,
-/// tokens issued — while the app stayed stuck on its loading screen forever, because the
-/// `write()` call into that layer never resolved). Raw `crypto.subtle` calls tested fine in
-/// isolation in the same browser/domain, so the hang is presumably somewhere in that
-/// package's own Dart/JS-interop plumbing, not Web Crypto itself — not something worth
-/// chasing further here. Note this is a smaller loss of "security at rest" than it sounds:
-/// flutter_secure_storage's own web implementation stores its encryption key alongside the
-/// encrypted values in the same browser storage anyway, so it was never protecting against
-/// anything beyond casual inspection of localStorage to begin with.
+/// Uses `window.localStorage`, not `flutter_secure_storage` — the latter's web `write()` was observed hanging indefinitely on `admin.divebubble.io` (2026-07-20), and it offered little real security anyway since it stores its own encryption key alongside the encrypted values in the same browser storage.
 class TokenStorageService {
   static const _kAccessToken = 'auth_access_token';
   static const _kAccessTokenExpiresAt = 'auth_access_token_expires_at';

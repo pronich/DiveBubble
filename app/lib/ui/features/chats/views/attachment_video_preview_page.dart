@@ -6,10 +6,7 @@ import '../../../../data/services/attachment_cache_service.dart';
 import '../../../../data/services/error_codes.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// Full-screen video playback for a chat attachment — pushed from the bubble thumbnail/grid or
-/// the Media tab. Deliberately minimal (no chewie/scrubber-with-thumbnails): a single
-/// tap-to-play/pause overlay plus a thin linear progress indicator, matching the plan's "keep it
-/// minimal for v1" call. Mirrors AttachmentImagePreviewPage's AppBar/Share-button block exactly.
+/// Deliberately minimal (no chewie/scrubber-with-thumbnails) — a v1 scope call.
 class AttachmentVideoPreviewPage extends StatefulWidget {
   const AttachmentVideoPreviewPage({super.key, required this.url});
 
@@ -40,9 +37,7 @@ class _AttachmentVideoPreviewPageState extends State<AttachmentVideoPreviewPage>
         controller.dispose();
         return;
       }
-      // Keeps the play/pause overlay in sync with playback ending naturally, not just with
-      // taps — VideoProgressIndicator listens to the controller itself, but this widget's own
-      // play-icon overlay needs its own rebuild trigger.
+      // VideoProgressIndicator listens to the controller itself, but this widget's play-icon overlay needs its own rebuild trigger to stay in sync when playback ends naturally.
       controller.addListener(_onControllerUpdate);
       setState(() => _controller = controller..play());
     } catch (e) {

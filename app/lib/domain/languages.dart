@@ -1,5 +1,4 @@
-/// Common languages for the profile language picker — a practical list, not an exhaustive
-/// ISO 639 catalogue, since this is just "which languages can you dive/chat in".
+/// A practical list, not an exhaustive ISO 639 catalogue, since this is just "which languages can you dive/chat in".
 const List<String> kLanguages = [
   'English',
   'Spanish',

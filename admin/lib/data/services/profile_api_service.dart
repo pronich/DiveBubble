@@ -29,8 +29,7 @@ class ProfileApiService {
     return _fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Trimmed public-profile projection (GET /users/{id}) — used to resolve a chat message
-  // sender's name/avatar, same shape as MyProfile since the fields overlap exactly.
+  // Used to resolve a chat message sender's name/avatar — reuses MyProfile's shape since the fields overlap exactly.
   Future<MyProfile> fetchById(String userId) async {
     final res = await _client.get(Uri.parse('$baseUrl/users/$userId'), headers: await _authHeaders());
     if (res.statusCode != 200) {
@@ -39,9 +38,7 @@ class ProfileApiService {
     return _fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // nil-leaves-unchanged on the backend (profile.UpdateParams' COALESCE), same contract as
-  // app/'s own PATCH /me. Used by both the onboarding step (name/location/bio only) and
-  // AccountPage's full edit form.
+  // A null field is left unchanged on the backend (COALESCE), so onboarding and AccountPage can share this with different field subsets.
   Future<MyProfile> updateProfile({
     String? displayName,
     String? location,

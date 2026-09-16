@@ -64,8 +64,7 @@ class TransportApiService {
     }
   }
 
-  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
-  // message to show, or passes it through unchanged if it's not one this file knows about yet.
+  // Server errors come back as {"error": "<code>"}; describeErrorCode maps it to a message or passes it through unchanged if unrecognized.
   String? _extractError(String body) {
     try {
       final decoded = jsonDecode(body);

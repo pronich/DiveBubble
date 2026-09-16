@@ -23,11 +23,7 @@ import 'ui/core/magic_link_gate.dart';
 import 'ui/core/root_gate.dart';
 import 'ui/core/theme/app_theme.dart';
 
-// Build-time config via --dart-define (Flutter web has no runtime env vars — everything
-// compiles into the static bundle). Vercel's Build Command is expected to pass these from its
-// own project-level Environment Variables; if it doesn't, a --release build still falls back
-// to the real production API instead of localhost (kReleaseMode-gated, same fallback app/'s
-// main.dart uses) — local `flutter run -d chrome` (debug) keeps defaulting to localhost.
+// Build-time config via --dart-define (Flutter web has no runtime env vars) — if Vercel's Build Command doesn't pass these, a --release build falls back to the real production API instead of localhost.
 const _apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: kReleaseMode ? 'https://api.divebubble.io' : 'http://localhost:8080',
@@ -39,17 +35,11 @@ const _centrifugoWsUrl = String.fromEnvironment(
       : 'ws://localhost:8000/connection/websocket',
 );
 
-// Same Web OAuth client app/ already uses for its own ID-token audience — a web build has
-// no separate native-app identity to keep distinct from it, unlike app/'s iOS client id.
+// Same Web OAuth client app/ uses for its ID-token audience — a web build has no separate native-app identity to keep distinct, unlike app/'s iOS client id.
 const _googleWebClientId = '267576474476-ea5pbefve96l3oqd1j59oo276sskv54f.apps.googleusercontent.com';
 
 void main() {
-  // An uncaught async error from an unrelated microtask (observed: a stray FormatException
-  // from a dependency, firing around the same time as Google Identity Services' own init,
-  // on some accounts/browser states) should never be able to take down the whole app —
-  // without a guarded zone it reaches the root zone's default handler, which on Flutter
-  // web can leave the app stuck on the pre-Flutter loading splash forever instead of just
-  // logging the error and continuing.
+  // Without a guarded zone, an uncaught async error (observed: a stray FormatException around Google Identity Services' init) can leave the app stuck on the pre-Flutter loading splash forever instead of just logging and continuing.
   runZonedGuarded(() {
     runApp(const AdminApp());
   }, (error, stack) {

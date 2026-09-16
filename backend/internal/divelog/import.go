@@ -9,9 +9,7 @@ var ErrUnrecognizedFormat = errors.New("unrecognized dive log file format")
 
 var sqliteMagic = []byte("SQLite format 3\x00")
 
-// parseImportFile sniffs the file's actual bytes — never the filename/extension, which is
-// unreliable (Diving Log 6's own SQLite export is literally named "....sql" despite being a
-// SQLite database, not SQL text) — to decide which parser handles it.
+// parseImportFile sniffs the file's actual bytes rather than its filename/extension, since Diving Log 6's SQLite export is literally named ".sql" despite not being SQL text.
 func parseImportFile(data []byte) ([]Entry, error) {
 	switch {
 	case bytes.HasPrefix(data, sqliteMagic):
@@ -39,9 +37,7 @@ func looksLikeXML(data []byte) bool {
 	return bytes.HasPrefix(trimmed, []byte("<"))
 }
 
-// looksLikeCSV requires the first line to actually contain a "date" column — otherwise
-// garbage/unsupported input would silently get treated as an all-empty CSV import (zero
-// dives found) instead of a clear "unrecognized format" error.
+// looksLikeCSV requires the first line to contain a "date" column, so garbage input gets a clear "unrecognized format" error instead of silently importing as zero dives.
 func looksLikeCSV(data []byte) bool {
 	firstLine, _, _ := bytes.Cut(data, []byte("\n"))
 	return bytes.Contains(bytes.ToLower(firstLine), []byte("date"))

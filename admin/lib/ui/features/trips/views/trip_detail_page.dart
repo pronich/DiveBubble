@@ -16,15 +16,10 @@ import '../../../core/widgets/pick_image.dart';
 import 'create_trip_page.dart';
 import 'trip_content_tabs.dart';
 
-// Mirrors trip.MaxPhotosPerTrip server-side — hides/disables the "+" affordance once
-// reached instead of letting the staff member hit the 409 the hard way.
+// Mirrors trip.MaxPhotosPerTrip server-side — hides/disables the "+" affordance instead of letting the staff member hit the 409 the hard way.
 const _maxTripPhotos = 10;
 
-/// "Manage" now pushes here instead of opening the edit form directly — a real page (not a
-/// popup), reachable from TripsPage's card, showing everything about the trip with an Edit
-/// button that opens CreateTripPage's popup for actual field changes. Same icon set as
-/// app/'s Trip Page info grid (badge_outlined/waves/scuba_diving_outlined/schedule) for
-/// visual consistency between the two clients.
+/// A real page (not a popup) showing everything about the trip, with an Edit button that opens CreateTripPage's popup for actual field changes.
 class TripDetailPage extends StatefulWidget {
   const TripDetailPage({
     super.key,
@@ -44,8 +39,7 @@ class TripDetailPage extends StatefulWidget {
   final String diveCenterId;
   final String diveCenterName;
 
-  // Threaded from AdminShell (via TripsPage) — pops this page and switches AdminShell to
-  // the Bubbles tab with this trip's conversation already selected.
+  // Threaded from AdminShell — pops this page and switches AdminShell to the Bubbles tab with this trip's conversation already selected.
   final ValueChanged<String> onDiveIntoBubble;
 
   @override
@@ -59,9 +53,7 @@ class _TripDetailPageState extends State<TripDetailPage> with SingleTickerProvid
   List<TripPhoto> _photos = [];
   bool _isLoadingPhotos = true;
 
-  // One shot per page instance — People/Media/Files/Links don't change from anything this
-  // page itself does, so there's no reason to refetch them on every rebuild the way _photos
-  // (mutable via Manage photos) needs to.
+  // One shot per page instance — unlike _photos, People/Media/Files/Links don't change from anything this page does, so there's no reason to refetch on every rebuild.
   late final _tabController = TabController(length: 4, vsync: this);
   late final Future<List<MediaItem>> _mediaFuture = widget.messageRepository.getMediaAttachments(_trip.id);
   late final Future<List<MediaItem>> _filesFuture = widget.messageRepository.getFileAttachments(_trip.id);
@@ -91,9 +83,7 @@ class _TripDetailPageState extends State<TripDetailPage> with SingleTickerProvid
     }
   }
 
-  // The hero stays a pure slider (see build) — actual add/remove happens in its own grid
-  // dialog, same "Manage photos" split as app/'s Trip Page. Refreshes the hero's own photo
-  // list on close since the dialog manages its own copy independently.
+  // The hero stays a pure slider — actual add/remove happens in its own grid dialog, which manages its own photo-list copy independently, so refresh the hero's list on close.
   Future<void> _openManagePhotos() async {
     await showDialog<void>(
       context: context,
@@ -124,8 +114,7 @@ class _TripDetailPageState extends State<TripDetailPage> with SingleTickerProvid
     if (u != null && mounted) setState(() => _trip = u);
   }
 
-  // Final, no reopen path (same as app/'s own Cancel) — confirm before calling since this
-  // affects every participant, not just the staff member tapping the button.
+  // Final, no reopen path — confirm before calling since this affects every participant, not just the staff member tapping the button.
   Future<void> _cancelTrip() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -232,11 +221,7 @@ class _TripDetailPageState extends State<TripDetailPage> with SingleTickerProvid
     );
   }
 
-  // Everything above the People/Media/Files/Links tabs — photo hero, title/price, date/time,
-  // stat grid, booking code, meeting point, description, participant count. Pulled out of
-  // build() so it can sit in NestedScrollView's headerSliverBuilder alongside the pinned tab
-  // bar (see _PinnedTabBarDelegate), while still reading/mutating this State's own fields
-  // directly (_photos, _currentPhotoIndex) rather than prop-drilling into a separate widget.
+  // Pulled out of build() so it can sit in NestedScrollView's headerSliverBuilder alongside the pinned tab bar, while still reading/mutating this State's fields directly rather than prop-drilling into a separate widget.
   Widget _buildHeaderContent(BuildContext context, Trip trip) {
     final theme = Theme.of(context);
     final cancelled = trip.bookingStatus == 'cancelled';
@@ -270,8 +255,6 @@ class _TripDetailPageState extends State<TripDetailPage> with SingleTickerProvid
                                     ? const Center(child: CircularProgressIndicator())
                                     : Icon(Icons.image_outlined, size: 40, color: theme.colorScheme.onPrimaryContainer),
                               ),
-                        // Dot page indicator — only worth showing once there's more than
-                        // one photo to swipe between.
                         if (_photos.length > 1)
                           Positioned(
                             bottom: 12,
@@ -293,11 +276,7 @@ class _TripDetailPageState extends State<TripDetailPage> with SingleTickerProvid
                               ],
                             ),
                           ),
-                        // Trackpad/mouse edge navigation — a web admin panel has no swipe
-                        // gesture the way a touch device does, so clicking the left/right
-                        // edge is the primary way to move between photos here. The chevron
-                        // itself only shows up on hover (see _EdgeNavZone) so the slider
-                        // doesn't look cluttered with permanent arrows.
+                        // Trackpad/mouse edge navigation — a web admin panel has no swipe gesture, so clicking the left/right edge moves between photos; the chevron only shows on hover to avoid clutter.
                         if (_photos.length > 1) ...[
                           _EdgeNavZone(
                             alignment: Alignment.centerLeft,
@@ -314,8 +293,7 @@ class _TripDetailPageState extends State<TripDetailPage> with SingleTickerProvid
                                 : null,
                           ),
                         ],
-                        // A single "Manage photos" entry point, not inline add/remove
-                        // controls on the slider itself — same split as app/'s Trip Page.
+                        // A single "Manage photos" entry point, not inline add/remove controls on the slider itself.
                         Positioned(
                           right: 12,
                           bottom: 12,
@@ -432,10 +410,7 @@ class _PinnedTabBarDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-/// A ~15% hit zone at one edge of the hero image — always clickable (when [onTap] isn't
-/// null), but the chevron itself only fades in on hover so it doesn't clutter the slider
-/// permanently. Web-only interaction pattern (mouse hover has no touch-device equivalent),
-/// which is exactly why admin/'s hero needs this and app/'s doesn't.
+/// Web-only interaction pattern (mouse hover has no touch-device equivalent) — the chevron fades in on hover so it doesn't clutter the slider permanently, but the zone stays clickable always.
 class _EdgeNavZone extends StatefulWidget {
   const _EdgeNavZone({required this.alignment, required this.icon, required this.onTap});
 
@@ -501,9 +476,7 @@ class _InfoGrid extends StatelessWidget {
         _InfoTile(icon: Icons.scuba_diving_outlined, label: 'DIVES', value: _range(trip.diveCountMin, trip.diveCountMax, '')),
       _InfoTile(icon: Icons.schedule, label: 'DURATION', value: _duration(trip)),
     ];
-    // Row+Expanded, not Wrap — Wrap's fixed-width tiles (140) added up to just over the
-    // 640px page's usable width with all 4 present, wrapping DURATION onto its own row.
-    // Expanded instead shares the available width evenly, so 2-4 tiles always fit one row.
+    // Row+Expanded, not Wrap — Wrap's fixed-width 140px tiles added up to just over the 640px page's usable width with all 4 present, wrapping DURATION onto its own row.
     return Row(
       children: [
         for (var i = 0; i < tiles.length; i++) ...[
@@ -561,11 +534,7 @@ class _InfoTile extends StatelessWidget {
   }
 }
 
-/// Only rendered for business trips (trip.diveCenterId != null) — individual trips never
-/// get a booking code (see trip.Service.CreateTrip). This is the whole reason join-by-code
-/// exists: a diver pays on bookingUrl, gets this code from the dive center some other way
-/// (email, their own site's confirmation), and redeems it back in app/ — we never see the
-/// actual transaction.
+/// Only rendered for business trips — a diver pays externally on bookingUrl, gets this code from the dive center some other way, and redeems it in app/; DiveBubble never sees the actual transaction.
 class _BookingCodeCard extends StatelessWidget {
   const _BookingCodeCard({required this.trip});
 
@@ -640,10 +609,7 @@ class _BookingCodeCard extends StatelessWidget {
   }
 }
 
-/// The staff member's actual photo-editing surface — a grid instead of one-at-a-time
-/// controls overlaid on the hero slider, with multi-select add (see pick_image.dart's
-/// pickMultipleImages) instead of picking one file per tap. Manages its own copy of the
-/// photo list; TripDetailPage refreshes its own hero from scratch once this closes.
+/// Manages its own copy of the photo list — TripDetailPage refreshes its hero from scratch once this closes.
 class _ManagePhotosDialog extends StatefulWidget {
   const _ManagePhotosDialog({required this.tripRepository, required this.tripId});
 
@@ -683,8 +649,7 @@ class _ManagePhotosDialogState extends State<_ManagePhotosDialog> {
       final picked = await pickMultipleImages();
       if (picked.isEmpty) return;
       final room = _maxTripPhotos - _photos.length;
-      // Sequential, not parallel — the backend assigns each photo's position as "current
-      // row count" at insert time, so concurrent uploads could race for the same position.
+      // Sequential, not parallel — the backend assigns each photo's position as "current row count" at insert time, so concurrent uploads could race for the same position.
       for (final image in picked.take(room)) {
         try {
           final photo = await widget.tripRepository.addTripPhoto(widget.tripId, image.bytes, image.filename);
@@ -749,9 +714,7 @@ class _ManagePhotosDialogState extends State<_ManagePhotosDialog> {
           ],
         ),
       ),
-      // "Save", not "Close" — every add/remove already commits immediately (there's no
-      // deferred/batched write to actually save), but the label reads more like "I'm done
-      // here" than "did closing just discard something?".
+      // "Save", not "Close" — every add/remove already commits immediately, but the label reads more reassuring than "did closing just discard something?".
       actions: [FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Save'))],
     );
   }

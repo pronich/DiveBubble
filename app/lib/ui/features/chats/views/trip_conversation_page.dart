@@ -29,10 +29,7 @@ import '../../../core/theme/app_colors.dart';
 import '../view_models/chat_view_model.dart';
 import 'chat_view.dart';
 
-/// Shell for a joined trip: Chat and Transport are the two things worth reaching
-/// immediately, so they're tabs here rather than buried inside Trip Page — reachable via
-/// either the AppBar title or avatar, both opening the same "Bubble Info" screen (People/
-/// Media/Files/Links tabs alongside the trip's own details).
+/// Chat and Transport are tabs here rather than buried inside Trip Page, since they're the two things worth reaching immediately.
 class TripConversationPage extends StatefulWidget {
   const TripConversationPage({
     super.key,
@@ -60,11 +57,7 @@ class TripConversationPage extends StatefulWidget {
     this.initialTabIndex = 0,
   });
 
-  /// Builds the three per-trip ViewModels (Chat/Transport/Buddy) and the rest of this page's
-  /// params from a Trip + the repos already in hand — every call site used to hand-roll this
-  /// exact ~35-line block itself (main.dart's push-notification handler, MyTripsView, Trip
-  /// Page's own Dive-in button, and ChooseBubblePage), which is exactly the kind of duplicate
-  /// that drifts the moment one of them needs a new param and the other three don't get it.
+  /// Factors out the ~35-line ViewModel-building block every call site used to hand-roll separately, which drifted whenever one needed a new param.
   TripConversationPage.forTrip({
     Key? key,
     required Trip trip,
@@ -141,9 +134,7 @@ class TripConversationPage extends StatefulWidget {
   final BuddyViewModel buddyViewModel;
   final ExpenseViewModel expenseViewModel;
   final String tripTitle;
-  // Rendered as a small tappable thumbnail on the right of the AppBar (see build) —
-  // null shows a plain placeholder icon instead, same fallback every other trip photo spot
-  // in the app uses.
+  // Null shows a plain placeholder icon instead, same fallback every other trip photo spot uses.
   final String? tripPhotoUrl;
   final TripRepository tripRepository;
   final ChatRepository chatRepository;
@@ -155,26 +146,18 @@ class TripConversationPage extends StatefulWidget {
   final PushRepository pushRepository;
   final DiveCenterRepository diveCenterRepository;
   final ExpenseRepository expenseRepository;
-  // Seeds TransportViewModel.hasAlert from the already-loaded Trip — the Bubble is only
-  // ever reached by tapping a row from that loaded list, so this is always available and
-  // skips a redundant GET /trips/{id}/transport/alert on every chat open.
+  // Seeded from the already-loaded Trip to skip a redundant GET /trips/{id}/transport/alert on every chat open.
   final bool initialHasTransportAlert;
-  // Fired once the Transport tab is actually visited and the alert clears server-side —
-  // lets MyTripsViewModel flip the same flag locally so the bottom-nav dot and Bubbles
-  // row indicator update immediately, without MyTripsView refetching the whole list.
+  // Lets MyTripsViewModel flip its flag locally so the bottom-nav dot updates immediately, without refetching the whole list.
   final VoidCallback? onTransportAlertCleared;
   // Same two as above, for BuddyViewModel.hasAlert.
   final bool initialHasBuddyAlert;
   final VoidCallback? onBuddyAlertCleared;
 
-  /// Set when this Bubble was opened straight from Share-to-DiveBubble's Bubble picker —
-  /// see ChatView.initialAttachments for what happens with it.
+  /// Set when this Bubble was opened straight from Share-to-DiveBubble's Bubble picker.
   final List<PickedAttachment> initialAttachments;
 
-  /// Which pill tab to land on — 0/1/2/3 for Chat/Transport/Buddy/Expenses. Set when opening
-  /// straight from a push notification for a specific chat (see main.dart's
-  /// _openTripFromPush), so the diver lands on the chat the notification was actually about
-  /// instead of always the main Chat tab.
+  /// Which pill tab to land on — 0/1/2/3 for Chat/Transport/Buddy/Expenses.
   final int initialTabIndex;
 
   @override
@@ -186,16 +169,10 @@ class _TripConversationPageState extends State<TripConversationPage>
   late final TabController _tabController;
   bool _isCancelled = false;
   String? _businessName;
-  // Gates the "@mention" composer chip off for the caller's own dive center — a staff
-  // member mentioning their own business is meaningless (see ChatView.businessName's own
-  // gate, which only checks "is this a business trip", not "am I the diver here").
+  // Gates the "@mention" composer chip off for the caller's own dive center — mentioning their own business is meaningless.
   bool _isDiveCenterStaff = false;
 
-  // Listens for sub_chat_activity (see handleSendOfferMessage/handleSendBuddyMessage) so the
-  // Transport/Buddy pill dots update live even while sitting on a different tab — neither
-  // ViewModel otherwise has any way to know about a car/buddy chat message that isn't the one
-  // currently open (that chat's own transport_offer:$id/buddy_request:$id subscription only
-  // exists while its ChatView is actually mounted).
+  // Lets the Transport/Buddy pill dots update live even on a different tab, since each tab's own subscription only exists while its ChatView is mounted.
   centrifuge.Subscription? _tripSubscription;
   StreamSubscription<centrifuge.PublicationEvent>? _tripPublicationListener;
 
@@ -204,18 +181,10 @@ class _TripConversationPageState extends State<TripConversationPage>
     super.initState();
     _tabController = TabController(length: 4, vsync: this, initialIndex: widget.initialTabIndex);
     _tabController.addListener(_onTabChanged);
-    // Seeded from the Trip already in hand (see the field's own comment) — the dot itself
-    // lives in the AppBar, always visible regardless of which tab is active, so this is
-    // what actually surfaces it before the diver ever switches to Transport/Buddy.
+    // Seeded so the AppBar dot surfaces before the diver ever switches to Transport/Buddy.
     widget.transportViewModel.seedAlert(widget.initialHasTransportAlert);
     widget.buddyViewModel.seedAlert(widget.initialHasBuddyAlert);
-    // Loaded here, not left to TransportView/BuddyView's own initState — the pill bar (built
-    // right away, regardless of which tab is selected) needs myOffer/myRequest.
-    // hasUnreadMessages immediately, but those tabs are TabBarView pages and Flutter doesn't
-    // build an offscreen page (or run its initState) until it's actually scrolled/switched to.
-    // Chained with a mark-read for a push notification that opened straight onto that tab —
-    // TabController's initialIndex doesn't fire the "changed" listener _onTabChanged relies on
-    // for that, since nothing actually changes from the controller's point of view.
+    // Loaded here, not in TransportView/BuddyView's initState, because those are offscreen TabBarView pages that Flutter won't build until switched to, yet the pill bar needs their data immediately; chained with mark-read since initialIndex doesn't fire the "changed" listener _onTabChanged relies on.
     widget.transportViewModel.load().then((_) {
       if (mounted && _tabController.index == 1) widget.transportViewModel.markMyOfferRead();
     });
@@ -246,10 +215,7 @@ class _TripConversationPageState extends State<TripConversationPage>
     });
   }
 
-  // Owned here, not by ChatViewModel/TransportViewModel — both tabs (plus the message
-  // attribution below) just need plain read-only values derived from the trip, and a
-  // single fetch avoids duplicating this (and its own realtime-subscription-shaped
-  // footguns, see RealtimeService) into multiple ViewModels.
+  // Owned here rather than duplicated into ChatViewModel/TransportViewModel, since both just need plain read-only values derived from one fetch.
   Future<void> _refreshTripDerivedState() async {
     try {
       final trip = await widget.tripRepository.getTrip(
@@ -282,8 +248,7 @@ class _TripConversationPageState extends State<TripConversationPage>
         });
       }
     } catch (_) {
-      // Best-effort — worst case the input stays enabled until the next successful check,
-      // and the server-side guards (EnsureNotCancelled) still reject the action either way.
+      // Best-effort — server-side guards (EnsureNotCancelled) still reject the action either way.
     }
   }
 
@@ -357,10 +322,7 @@ class _TripConversationPageState extends State<TripConversationPage>
           businessName: _businessName,
         ),
       ),
-      // Swipe-to-switch-tabs disabled: TabBarView's own horizontal drag recognizer competed
-      // with each tab's vertical message scroll for any diagonal drag, sometimes hijacking a
-      // scroll attempt into an accidental tab switch. The pill bar above already covers
-      // switching tabs by tap, so nothing is lost by requiring that instead of a swipe.
+      // Swipe-to-switch-tabs disabled: it competed with each tab's vertical message scroll, sometimes hijacking a diagonal drag into an accidental tab switch.
       body: TabBarView(
         controller: _tabController,
         physics: const NeverScrollableScrollPhysics(),
@@ -417,15 +379,12 @@ class _TripConversationPageState extends State<TripConversationPage>
         ),
       ),
     );
-    // Trip Page is the only place bookingStatus can change (Cancel Trip) — refresh once
-    // back, since ChatView/TransportView otherwise have no reason to know it changed.
+    // Trip Page is the only place bookingStatus can change — refresh once back, since ChatView/TransportView otherwise have no reason to know.
     if (mounted) _refreshTripDerivedState();
   }
 }
 
-/// Airbnb/iOS-style segmented pill tab bar — the active segment expands to icon+label, the
-/// other three collapse to icon-only circles. Pure restyle of a plain TabBar: same controller,
-/// same 4 tabs, same tap-to-switch behavior, alert dot and ⓘ affordances carried over.
+/// Pure restyle of a plain TabBar — the active segment expands to icon+label, the other three collapse to icon-only circles.
 class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
   const _PillTabBar({
     required this.tabController,
@@ -444,8 +403,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
   static const _compactWidth = 44.0;
   static const _pillHeight = 44.0;
   static const _gap = 8.0;
-  // Both tab-tap page transitions and the pill's own width morph share this duration/curve —
-  // kept in sync deliberately so the two motions read as one, not two competing animations.
+  // Shared with the tab-tap page transition so the two motions read as one, not two competing animations.
   static const _switchDuration = Duration(milliseconds: 320);
   static const _switchCurve = Curves.easeOutCubic;
 
@@ -503,10 +461,7 @@ class _PillTabBar extends StatelessWidget implements PreferredSizeWidget {
                         duration: _switchDuration,
                         curve: _switchCurve,
                       ),
-                      // Only reachable once you're actually in a car — a plain offers list has
-                      // nothing to show info about or leave/dissolve yet. Only surfaced on the
-                      // active, expanded segment — no room for a second tap target once
-                      // collapsed to an icon.
+                      // Only reachable once actually in a car — no room for a second tap target once collapsed to an icon.
                       onInfoTap: myOffer == null
                           ? null
                           : () => showTransportOfferDetailSheet(
@@ -588,9 +543,7 @@ class _PillSegment extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Both states sit on soft, near-identical light-blue backgrounds — content color stays
-    // the same dark navy in both, only the background shade shifts (see AppColors.surfaceSelected
-    // vs surfaceSecondary and the textOnLightBlue token, all straight from Figma).
+    // Both active/inactive states keep the same dark navy content color; only the background shade shifts, per Figma.
     const contentColor = AppColors.textOnLightBlue;
     return GestureDetector(
       onTap: onTap,

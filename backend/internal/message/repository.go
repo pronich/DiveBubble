@@ -17,8 +17,7 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{DB: db}
 }
 
-// messageColumns is the fixed SELECT/RETURNING column list shared by every read/write query
-// below, kept in one place so scanMessage/scanMessages always match it.
+// messageColumns is the fixed SELECT/RETURNING column list shared by every read/write query below, kept in one place so scanMessage/scanMessages always match it.
 const messageColumns = `id, trip_id, user_id, body, created_at, mentions_dive_center, kind, offer_id, buddy_request_id,
 	attachment_url, attachment_type, attachment_filename, attachment_size_bytes, reply_to_id, deleted_at`
 
@@ -27,12 +26,7 @@ func scanMessage(row interface{ Scan(...any) error }, m *Message) error {
 		&m.AttachmentURL, &m.AttachmentType, &m.AttachmentFilename, &m.AttachmentSizeBytes, &m.ReplyToID, &m.DeletedAt)
 }
 
-// Create inserts a user-authored message. scope is the zero value for the trip's main chat,
-// or set for a car offer's or buddy group's own chat — trip_id is always populated either way
-// (see migrations 000046/000048). attachments may be empty (text-only message); every send
-// with attachments goes through chat_message_attachments now, never the legacy scalar columns
-// (those stay write-only-in-the-past, read for old rows — see toMessageResponse). replyToID may
-// be the zero uuid.NullUUID (not a reply).
+// Create inserts a user-authored message; scope selects the trip's main chat (zero value) or a car offer's/buddy group's own chat (trip_id stays populated either way), and any attachments always go through chat_message_attachments, never the legacy scalar columns which are read-only for old rows now.
 func (r *Repository) Create(ctx context.Context, tripID, userID uuid.UUID, scope Scope, body string, mentionsDiveCenter bool, attachments []Attachment, replyToID uuid.NullUUID) (Message, error) {
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -73,8 +67,7 @@ func (r *Repository) Create(ctx context.Context, tripID, userID uuid.UUID, scope
 	return m, nil
 }
 
-// attachmentColumns/scanAttachmentRow back the batched per-message attachment fetch below —
-// kept separate from messageColumns/scanMessage since chat_message_attachments is its own table.
+// attachmentColumns/scanAttachmentRow back the batched per-message attachment fetch below, kept separate from messageColumns/scanMessage since chat_message_attachments is its own table.
 const attachmentColumns = `message_id, url, type, filename, size_bytes, duration_seconds`
 
 func scanAttachmentRow(rows *sql.Rows) (uuid.UUID, Attachment, error) {
@@ -88,11 +81,7 @@ func scanAttachmentRow(rows *sql.Rows) (uuid.UUID, Attachment, error) {
 	return messageID, a, err
 }
 
-// ListAttachmentsByMessageIDs batch-fetches chat_message_attachments rows for a set of
-// messages, grouped by message and ordered by position — used to populate Message.Attachments
-// after ListByTrip/ListByOffer/ListByBuddyRequest/GetByID, same batch-not-N+1 shape as
-// routes_message.go's diveCenterStaffChecker. Messages with no rows here (text-only, or an old
-// message still on the legacy scalar columns) simply have no entry in the returned map.
+// ListAttachmentsByMessageIDs batch-fetches chat_message_attachments rows grouped by message and ordered by position to populate Message.Attachments, same batch-not-N+1 shape as routes_message.go's diveCenterStaffChecker; messages with no rows (text-only or legacy-scalar) simply have no map entry.
 func (r *Repository) ListAttachmentsByMessageIDs(ctx context.Context, messageIDs []uuid.UUID) (map[uuid.UUID][]Attachment, error) {
 	out := map[uuid.UUID][]Attachment{}
 	if len(messageIDs) == 0 {
@@ -118,8 +107,7 @@ func (r *Repository) ListAttachmentsByMessageIDs(ctx context.Context, messageIDs
 	return out, rows.Err()
 }
 
-// UpsertReaction sets the caller's reaction on a message, replacing any previous one they had
-// (one reaction per user per message, Messenger semantics — see migration 000055's PRIMARY KEY).
+// UpsertReaction sets the caller's reaction on a message, replacing any previous one (one reaction per user per message, Messenger semantics, see migration 000055's PRIMARY KEY).
 func (r *Repository) UpsertReaction(ctx context.Context, messageID, userID uuid.UUID, emoji string) error {
 	_, err := r.DB.ExecContext(ctx, `
 		INSERT INTO chat_message_reactions (message_id, user_id, emoji)
@@ -129,8 +117,7 @@ func (r *Repository) UpsertReaction(ctx context.Context, messageID, userID uuid.
 	return err
 }
 
-// RemoveReaction removes the caller's reaction, if any — idempotent, no error when there wasn't
-// one to remove (mirrors DELETE semantics elsewhere in this package).
+// RemoveReaction removes the caller's reaction if any, idempotent with no error when there wasn't one to remove, mirroring DELETE semantics elsewhere in this package.
 func (r *Repository) RemoveReaction(ctx context.Context, messageID, userID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `
 		DELETE FROM chat_message_reactions WHERE message_id = $1 AND user_id = $2
@@ -138,9 +125,7 @@ func (r *Repository) RemoveReaction(ctx context.Context, messageID, userID uuid.
 	return err
 }
 
-// ListReactionsByMessageIDs batch-fetches per-emoji reaction summaries for a set of messages —
-// one query, not N+1, same shape as ListAttachmentsByMessageIDs. viewerID decides ReactedByMe;
-// Count itself is the same for every viewer. Messages with no reactions have no entry in the map.
+// ListReactionsByMessageIDs batch-fetches per-emoji reaction summaries in one query (same shape as ListAttachmentsByMessageIDs); viewerID decides ReactedByMe while Count is the same for every viewer, and messages with no reactions have no map entry.
 func (r *Repository) ListReactionsByMessageIDs(ctx context.Context, messageIDs []uuid.UUID, viewerID uuid.UUID) (map[uuid.UUID]map[string]ReactionSummary, error) {
 	out := map[uuid.UUID]map[string]ReactionSummary{}
 	if len(messageIDs) == 0 {
@@ -171,11 +156,7 @@ func (r *Repository) ListReactionsByMessageIDs(ctx context.Context, messageIDs [
 	return out, rows.Err()
 }
 
-// SoftDelete marks a message deleted — author-only, idempotent-safe (deleting an
-// already-deleted message just reports ErrNotFound rather than double-processing). The row
-// itself is kept (not removed) so any reply pointing at it via reply_to_id still resolves;
-// callers are responsible for blanking Body/Attachment* before this reaches a response (see
-// routes_message.go's toMessageResponse) — the row in the DB still holds the real content.
+// SoftDelete marks a message deleted (author-only; re-deleting reports ErrNotFound rather than double-processing) but keeps the row itself so any reply pointing at it via reply_to_id still resolves; callers must blank Body/Attachment* before a response leaves (see toMessageResponse).
 func (r *Repository) SoftDelete(ctx context.Context, messageID, callerUserID uuid.UUID) (Message, error) {
 	var m Message
 	err := scanMessage(r.DB.QueryRowContext(ctx, `
@@ -188,8 +169,7 @@ func (r *Repository) SoftDelete(ctx context.Context, messageID, callerUserID uui
 	return m, err
 }
 
-// CreateSystem inserts a message sent by SystemUserID with the given kind (never KindUser).
-// System messages never carry an attachment.
+// CreateSystem inserts a message sent by SystemUserID with the given kind (never KindUser); system messages never carry an attachment.
 func (r *Repository) CreateSystem(ctx context.Context, tripID uuid.UUID, scope Scope, kind, body string) (Message, error) {
 	var m Message
 	err := scanMessage(r.DB.QueryRowContext(ctx, `
@@ -200,8 +180,7 @@ func (r *Repository) CreateSystem(ctx context.Context, tripID uuid.UUID, scope S
 	return m, err
 }
 
-// ExistsByTripAndKind reports whether a message of the given kind has already been sent for
-// this trip — used to keep the periodic feedback-prompt scan idempotent.
+// ExistsByTripAndKind reports whether a message of the given kind has already been sent for this trip, used to keep the periodic feedback-prompt scan idempotent.
 func (r *Repository) ExistsByTripAndKind(ctx context.Context, tripID uuid.UUID, kind string) (bool, error) {
 	var exists bool
 	err := r.DB.QueryRowContext(ctx, `
@@ -220,8 +199,7 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Message, error)
 	return m, err
 }
 
-// ListByTrip returns only the trip's main-chat messages — excludes every car offer's and
-// buddy group's own chat, which live under ListByOffer/ListByBuddyRequest instead.
+// ListByTrip returns only the trip's main-chat messages, excluding every car offer's and buddy group's own chat (see ListByOffer/ListByBuddyRequest).
 func (r *Repository) ListByTrip(ctx context.Context, tripID uuid.UUID) ([]Message, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT `+messageColumns+`
@@ -266,11 +244,7 @@ func (r *Repository) ListByBuddyRequest(ctx context.Context, requestID uuid.UUID
 	return scanMessages(rows)
 }
 
-// MediaItem is one row for the Media/Files tab — one per *attachment*, not per message, so a
-// message with several attachments (see migration 000054) contributes several grid entries
-// rather than one. UNIONs the new chat_message_attachments rows with the legacy single-
-// attachment scalar columns on chat_messages, so nothing sent before that migration disappears
-// from the tab.
+// MediaItem is one row per attachment, not per message, so a message with several attachments contributes several grid entries; it UNIONs chat_message_attachments with the legacy scalar columns on chat_messages so nothing sent before migration 000054 disappears from the tab.
 type MediaItem struct {
 	MessageID uuid.UUID
 	UserID    uuid.UUID
@@ -278,9 +252,7 @@ type MediaItem struct {
 	Attachment
 }
 
-// ListAttachmentsByTrip backs the Media ("image"+"video") and Files ("pdf") tabs — main trip
-// chat only (v1 scope), newest first (ties broken by position within a message), cursor-
-// paginated on created_at, excludes soft-deleted messages. before nil means "from the start".
+// ListAttachmentsByTrip backs the Media and Files tabs, main trip chat only (v1 scope), newest first with ties broken by position, cursor-paginated on created_at, excluding soft-deleted messages; before nil means "from the start".
 func (r *Repository) ListAttachmentsByTrip(ctx context.Context, tripID uuid.UUID, attachmentTypes []string, before *time.Time, limit int) ([]MediaItem, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT message_id, user_id, created_at, url, type, filename, size_bytes, duration_seconds FROM (
@@ -325,8 +297,7 @@ func (r *Repository) ListAttachmentsByTrip(ctx context.Context, tripID uuid.UUID
 	return items, rows.Err()
 }
 
-// LinkSourceMessage is the minimal shape ListLinksByTrip reads — the handler regex-extracts
-// URLs from Body, so the full Message scan (attachment columns etc.) isn't needed here.
+// LinkSourceMessage is the minimal shape ListLinksByTrip reads, since the handler regex-extracts URLs from Body and doesn't need the full Message scan (attachment columns etc.).
 type LinkSourceMessage struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
@@ -334,10 +305,7 @@ type LinkSourceMessage struct {
 	CreatedAt time.Time
 }
 
-// ListLinksByTrip returns main-chat user messages whose body contains at least one URL, newest
-// first, cursor-paginated on created_at. The handler extracts individual links from Body — limit
-// bounds the number of *messages* scanned, not the number of links returned (acceptable, trip
-// chats aren't link-dense).
+// ListLinksByTrip returns main-chat user messages whose body contains a URL, newest first, cursor-paginated on created_at; limit bounds the number of messages scanned, not links returned, which is fine since trip chats aren't link-dense.
 func (r *Repository) ListLinksByTrip(ctx context.Context, tripID uuid.UUID, before *time.Time, limit int) ([]LinkSourceMessage, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT id, user_id, body, created_at

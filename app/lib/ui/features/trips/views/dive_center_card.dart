@@ -6,11 +6,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../core/utils/external_url.dart';
 import '../../profile/views/profile_overview_card.dart';
 
-/// Same "tap an identity, get a sheet" pattern as showDiverIdCard, but for a business — a
-/// dive center's card shows what it collected at onboarding for exactly this purpose (see
-/// CLAUDE.md's Business/dive centers section) rather than a diver's Overview. No network
-/// fetch needed here (unlike showDiverIdCard) since the caller already has the DiveCenter
-/// loaded — TripPage's own organizerDiveCenter.
+/// Same "tap an identity, get a sheet" pattern as showDiverIdCard, but for a business; no network fetch needed since the caller already has the DiveCenter loaded.
 Future<void> showDiveCenterCard(BuildContext context, DiveCenter diveCenter) {
   return showModalBottomSheet(
     context: context,
@@ -35,8 +31,7 @@ class _DiveCenterCardSheet extends StatelessWidget {
   }
 }
 
-/// Extracted from the sheet above so it could, in principle, be reused elsewhere the way
-/// ProfileOverviewCard is (nothing does yet — a dive center has no other detail screen).
+/// Extracted from the sheet above so it could, in principle, be reused elsewhere the way ProfileOverviewCard is.
 class DiveCenterOverviewCard extends StatelessWidget {
   const DiveCenterOverviewCard({super.key, required this.diveCenter});
 
@@ -53,8 +48,7 @@ class DiveCenterOverviewCard extends StatelessWidget {
       children: [
         Row(
           children: [
-            // Rounded square, not a circle — the same visual distinction _OrganizerCard's
-            // avatar already makes between a business and a person.
+            // Rounded square, not a circle — the same visual distinction _OrganizerCard's avatar makes between a business and a person.
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Container(
@@ -136,11 +130,7 @@ class DiveCenterOverviewCard extends StatelessWidget {
                 const Divider(height: 1),
                 _LinkRow(label: l10n.emailLabel, value: dc.email!, onTap: () => launchUrl(Uri(scheme: 'mailto', path: dc.email!))),
               ],
-              // No "Member since" here — that's when this dive center joined the platform,
-              // not how long it's actually operated, and showing it reads as "brand new
-              // business" even for an established one. Profile's ProfileInfoRow equivalent
-              // is legitimate there (it really is the diver's own membership date), but
-              // isn't the same fact for a business — deliberately omitted, not forgotten.
+              // No "Member since" here: that's when the dive center joined the platform, not how long it's operated, so showing it reads as "brand new" even for an established one.
             ],
           ),
         ),

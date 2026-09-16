@@ -19,12 +19,7 @@ func NewIdentityRepository(db *sql.DB) *IdentityRepository {
 	return &IdentityRepository{DB: db}
 }
 
-// FindUserIDByEmail backs the dive-center "add staff by email" flow — a deliberately narrow
-// prefix-match lookup (not full substring, and no name search) so it still can't be used as
-// a general user directory: the caller has to already know the start of the real email, just
-// not necessarily the exact "@domain" suffix (e.g. "n.g.pronichev" matches
-// "n.g.pronichev@gmail.com"). If a prefix matches more than one account, that's treated as
-// ambiguous rather than guessing — the caller types more of the email instead.
+// FindUserIDByEmail backs the dive-center "add staff by email" flow with a deliberately narrow prefix match (not substring or name search) so it can't work as a general user directory, and treats a multi-match as ambiguous rather than guessing.
 func (r *IdentityRepository) FindUserIDByEmail(ctx context.Context, email string) (uuid.UUID, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT user_id FROM auth_identities WHERE provider_email ILIKE $1 || '%' LIMIT 2
@@ -56,18 +51,7 @@ func (r *IdentityRepository) FindUserIDByEmail(ctx context.Context, email string
 	}
 }
 
-// LoginOrRegister resolves the internal user id for a (provider, providerUserID) identity,
-// creating both the user and the identity link on first sign-in. displayName/avatarURL (from
-// the provider's profile, e.g. Google's name/picture claims) only seed the user row on that
-// first creation — later logins never overwrite whatever the user has since set themselves.
-// isNewUser tells the caller whether this was the account's very first sign-in, so the client
-// can drop a brand-new user straight into Edit Profile instead of an empty screen.
-//
-// Mirrors LoginOrRegisterByEmail's own linking check (see its comment): a diver who already
-// has an account under some *other* provider sharing this email — including one created via
-// the passwordless "email" flow — must land on that same account, not a disconnected new one.
-// Without this, signing in with email first and Google/Apple second (or Google first, Apple
-// second) silently created two separate accounts for the same person.
+// LoginOrRegister resolves the internal user id for a (provider, providerUserID) identity, creating both the user and the identity link (seeding displayName/avatarURL only on that first creation, never overwriting later) on first sign-in, and links onto an existing account under a different provider sharing this email rather than creating a disconnected new one; isNewUser tells the caller whether to send a brand-new user to Edit Profile.
 func (r *IdentityRepository) LoginOrRegister(ctx context.Context, provider, providerUserID, email, displayName, avatarURL string) (userID uuid.UUID, isNewUser bool, err error) {
 	err = r.DB.QueryRowContext(ctx, `
 		SELECT user_id FROM auth_identities WHERE provider = $1 AND provider_user_id = $2
@@ -85,10 +69,7 @@ func (r *IdentityRepository) LoginOrRegister(ctx context.Context, provider, prov
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	// Apple only ever returns an email on the diver's very first-ever authorization — a
-	// repeat sign-in with no email can't be linked by it, but also doesn't need to be,
-	// since a repeat sign-in should already have matched the provider+providerUserID check
-	// above.
+	// Apple only returns an email on the diver's first-ever authorization; a repeat sign-in with no email doesn't need linking since it already matched the provider+providerUserID check above.
 	if email != "" {
 		var existingUserID uuid.UUID
 		err = tx.QueryRowContext(ctx, `
@@ -130,10 +111,7 @@ func (r *IdentityRepository) LoginOrRegister(ctx context.Context, provider, prov
 	return userID, true, nil
 }
 
-// GetAppleRefreshToken returns the Apple refresh token stored for this user's "apple"
-// identity (see SetAppleRefreshToken), if any — used at account-deletion time to revoke it.
-// ok is false when the user has no "apple" identity, or one was never captured (e.g. signed
-// in before this feature existed, or Apple token exchange was disabled/failed at the time).
+// GetAppleRefreshToken returns the Apple refresh token stored for this user's "apple" identity, used at account-deletion time to revoke it; ok is false if there's no "apple" identity or none was ever captured.
 func (r *IdentityRepository) GetAppleRefreshToken(ctx context.Context, userID uuid.UUID) (token string, ok bool, err error) {
 	var raw sql.NullString
 	err = r.DB.QueryRowContext(ctx, `
@@ -151,10 +129,7 @@ func (r *IdentityRepository) GetAppleRefreshToken(ctx context.Context, userID uu
 	return raw.String, true, nil
 }
 
-// SetAppleRefreshToken persists the refresh token AppleTokenClient.Exchange returned for this
-// user's "apple" identity — overwritten on every sign-in (Apple issues a fresh one each time)
-// rather than kept only from the first, so it stays valid even if an earlier one was somehow
-// invalidated. A no-op if the user has no "apple" identity row.
+// SetAppleRefreshToken overwrites the stored Apple refresh token on every sign-in, since Apple issues a fresh one each time and an earlier one may have been invalidated; a no-op if the user has no "apple" identity row.
 func (r *IdentityRepository) SetAppleRefreshToken(ctx context.Context, userID uuid.UUID, refreshToken string) error {
 	_, err := r.DB.ExecContext(ctx, `
 		UPDATE auth_identities SET apple_refresh_token = $1 WHERE user_id = $2 AND provider = 'apple'
@@ -162,15 +137,7 @@ func (r *IdentityRepository) SetAppleRefreshToken(ctx context.Context, userID uu
 	return err
 }
 
-// LoginOrRegisterByEmail is LoginOrRegister's counterpart for the passwordless "email"
-// provider, which needs one extra step the others don't: Google/Apple sub claims are
-// already scoped per-provider, so two different providers never collide, but a diver who
-// signed up via Google and *separately* verifies a passwordless code for that same address
-// must land on their existing account, not a disconnected new one. Order of checks: (1) an
-// "email" identity for this address already exists → that account; (2) some *other*
-// provider's identity shares this provider_email → link a new "email" identity onto that
-// same user_id rather than creating a second account for the same person; (3) neither →
-// create fresh, same as LoginOrRegister.
+// LoginOrRegisterByEmail mirrors LoginOrRegister for the passwordless "email" provider: it checks for an existing "email" identity first, then links onto any other provider's identity sharing this provider_email so a diver who separately verifies a code for an address they already signed up with elsewhere lands on the same account, and only creates a new account if neither matches.
 func (r *IdentityRepository) LoginOrRegisterByEmail(ctx context.Context, normalizedEmail string) (userID uuid.UUID, isNewUser bool, err error) {
 	err = r.DB.QueryRowContext(ctx, `
 		SELECT user_id FROM auth_identities WHERE provider = 'email' AND provider_user_id = $1

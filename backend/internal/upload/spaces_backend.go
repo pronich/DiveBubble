@@ -10,21 +10,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
-// SpacesBackend stores uploaded images in a DigitalOcean Space — S3-compatible, so this
-// just uses the AWS SDK against Spaces' own endpoint rather than a DO-specific client.
+// SpacesBackend uses the AWS SDK against Spaces' own endpoint, since Spaces is S3-compatible and needs no DO-specific client.
 type SpacesBackend struct {
 	client    *s3.Client
 	bucket    string
 	publicURL string // CDN endpoint if configured, else the direct Spaces URL — see NewSpacesBackend
 }
 
-// NewSpacesBackend — region is an opaque string to the SDK (Spaces doesn't have "real" AWS
-// regions, e.g. "fra1"), endpoint is the region-level Spaces endpoint (e.g.
-// https://fra1.digitaloceanspaces.com, no bucket in it — the SDK prepends the bucket as a
-// subdomain, matching how Spaces expects virtual-hosted-style requests). publicURL is the
-// CDN endpoint if the Space has one enabled (e.g.
-// https://<bucket>.fra1.cdn.digitaloceanspaces.com), else the same direct
-// https://<bucket>.<region>.digitaloceanspaces.com host — either way, no trailing slash.
+// NewSpacesBackend takes endpoint without a bucket in it, since the SDK prepends the bucket as a subdomain to match Spaces' virtual-hosted-style requests.
 func NewSpacesBackend(endpoint, region, bucket, accessKey, secretKey, publicURL string) *SpacesBackend {
 	client := s3.New(s3.Options{
 		Region:       region,

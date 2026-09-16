@@ -12,9 +12,7 @@ import (
 
 var ErrInvalidSQLite = errors.New("could not read this SQLite dive log — expected a Diving Log 6 export")
 
-// parseDivingLogSQLite reads a Diving Log 6 (tenderson software) export — despite the ".sql"
-// extension some versions give it, the file is an actual SQLite database, not SQL text (see
-// parseImportFile's magic-byte sniff).
+// parseDivingLogSQLite reads a Diving Log 6 export, which is an actual SQLite database despite some versions naming it ".sql" (see parseImportFile's magic-byte sniff).
 func parseDivingLogSQLite(data []byte) ([]Entry, error) {
 	tmp, err := os.CreateTemp("", "divelog-import-*.sqlite")
 	if err != nil {
@@ -94,11 +92,7 @@ func parseDivingLogSQLite(data []byte) ([]Entry, error) {
 
 		if samples := decodeDivingLogProfile(profile.String, profile2.String, int(profileInt.Int64)); samples != nil {
 			e.ProfileSamples = samples
-			// The decoded curve is more precise than the single stored summary stats for
-			// exactly the cases those stats are missing (older DepthAvg is often NULL for
-			// newer watch-sourced dives) or coarser (Watertemp is one averaged reading, the
-			// samples let us report the dive's actual minimum) — prefer it over the column
-			// whenever we have it, rather than only using it as a fallback.
+			// The decoded curve is preferred over the summary columns whenever available, since it's more precise than the single averaged Watertemp reading and fills gaps where DepthAvg is often NULL for watch-sourced dives.
 			var depthSum, minTemp float64
 			var minTempSet bool
 			for _, s := range samples {
@@ -126,17 +120,7 @@ func parseDivingLogSQLite(data []byte) ([]Entry, error) {
 	return entries, nil
 }
 
-// decodeDivingLogProfile decodes Diving Log 6's own undocumented (but empirically verified —
-// cross-checked against this same file's Depth/DepthAvg/Watertemp summary columns until the
-// averages matched) sample encoding: Profile is a flat string of fixed-width 12-character
-// chunks, one per sample, whose first 4 characters are the depth in decimeters (e.g. "0122"
-// = 12.2m); Profile2 is the same idea at 11 characters per chunk, whose first 2 characters
-// are the water temperature in whole degrees Celsius (0 across the board on older entries
-// from a device with no temperature sensor — treated as "no temperature data" below, same as
-// UDDF's own per-waypoint optional temperature). Returns nil if either column doesn't divide
-// evenly by its chunk width, doesn't match the other's sample count, or there's no usable
-// sample interval — a dive just keeps its summary stats and no graph in that case, same as
-// before this function existed.
+// decodeDivingLogProfile decodes Diving Log 6's undocumented sample encoding, reverse-engineered by cross-checking against its own summary columns: Profile is 12-character chunks with a 4-character depth in decimeters, Profile2 is 11-character chunks with a 2-character temperature in whole Celsius (0 meaning no sensor), and it returns nil on any chunk-width/count/interval mismatch so the dive falls back to summary stats with no graph.
 func decodeDivingLogProfile(profile, profile2 string, intervalSeconds int) []ProfileSample {
 	const depthChunkWidth = 12
 	const tempChunkWidth = 11

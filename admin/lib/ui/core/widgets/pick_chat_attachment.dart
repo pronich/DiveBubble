@@ -11,9 +11,7 @@ class PickedChatAttachment {
   final String type; // 'image' | 'pdf'
 }
 
-/// Web-only build, bytes-based (same reasoning as pick_image.dart) — no camera, no video
-/// (admin/'s attach flow only covers what a dive-center staff member on a desktop actually
-/// needs: sharing photos and documents, mirrors [pickMultipleImages]).
+/// Web-only, bytes-based like pick_image.dart — no camera or video, since admin/'s attach flow only needs sharing photos and documents on desktop.
 Future<List<PickedChatAttachment>> pickChatPhotos() async {
   final picked = await ImagePicker().pickMultiImage(maxWidth: 1600, imageQuality: 85);
   final result = <PickedChatAttachment>[];

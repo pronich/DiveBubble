@@ -4,10 +4,7 @@ import '../formatting/date_format.dart';
 
 const _weekdayHeaders = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
-/// A month-grid date picker, Apple Calendar-style layout (weekday header row, chevron month
-/// navigation, tap a day to pick it immediately — no separate Cancel/Done step, unlike the
-/// wheel picker this replaces for date selection) skinned in DiveBubble's own theme rather
-/// than Material's `showDatePicker` look.
+/// Apple Calendar-style layout — tap a day to pick it immediately, no separate Cancel/Done step unlike the wheel picker this replaces.
 Future<DateTime?> showCalendarPicker(
   BuildContext context, {
   DateTime? initialDate,
@@ -48,8 +45,7 @@ class _CalendarPickerSheetState extends State<_CalendarPickerSheet> {
     final daysInMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1, 0).day;
     // DateTime.weekday is already 1=Mon..7=Sun, so a Monday-first grid needs no remapping.
     final leadingBlanks = DateTime(_visibleMonth.year, _visibleMonth.month, 1).weekday - 1;
-    // Same calendar month as the floor -> can still navigate back into it (to reach days
-    // before the selected one that are still >= minimumDate); any earlier month is a dead end.
+    // Same calendar month as the floor can still be navigated back into (to reach days before the selected one that are still >= minimumDate); any earlier month is a dead end.
     final canGoBack = _visibleMonth.year > widget.minimumDate.year ||
         (_visibleMonth.year == widget.minimumDate.year && _visibleMonth.month > widget.minimumDate.month);
 

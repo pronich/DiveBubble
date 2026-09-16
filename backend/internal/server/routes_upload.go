@@ -34,9 +34,7 @@ func registerUploadRoutes(
 	mux.HandleFunc("POST /trips/{id}/messages/attachment", withAuth(authIssuer, handleUploadMessageAttachment(uploadSvc, tripSvc)))
 }
 
-// parseUploadFile expects a single multipart field named "file". The size cap here is
-// upload.MaxFileSize plus headroom for the rest of the multipart form (field boundaries,
-// other parts) — upload.Service.Save enforces the real per-file limit.
+// parseUploadFile's size cap is upload.MaxFileSize plus headroom for the rest of the multipart form; upload.Service.Save enforces the real per-file limit.
 func parseUploadFile(r *http.Request) (multipart.File, *multipart.FileHeader, error) {
 	if err := r.ParseMultipartForm(upload.MaxFileSize + 1<<20); err != nil {
 		return nil, nil, err
@@ -90,9 +88,7 @@ func handleDeleteAvatar(profileSvc *profile.Service) func(http.ResponseWriter, *
 	}
 }
 
-// handleUploadCertificationPhoto is for the Level card's single photo (users.
-// certification_photo_url) — distinct from a specialty's own photo (see
-// handleUploadSpecialtyPhoto), since Level is a singleton the diver updates in place.
+// handleUploadCertificationPhoto is for the Level card's single photo, distinct from a specialty's own photo, since Level is a singleton the diver updates in place.
 func handleUploadCertificationPhoto(uploadSvc *upload.Service, profileSvc *profile.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		file, header, err := parseUploadFile(r)
@@ -222,17 +218,12 @@ func handleUploadTripPhoto(uploadSvc *upload.Service, tripSvc *trip.Service) fun
 			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
-		// 200, not 201 — every other upload endpoint in this file (avatar, certification
-		// photo, specialty photo, dive-center logo) returns 200, and both clients' shared
-		// multipart-upload helpers (uploadImageFile/uploadImageBytes) hardcode checking for
-		// it, so a 201 here would look like a failure to them.
+		// 200, not 201: both clients' shared multipart-upload helpers hardcode checking for 200, so a 201 here would look like a failure.
 		writeJSON(w, http.StatusOK, toTripPhotoResponse(photo))
 	}
 }
 
-// parseUploadAttachmentFile mirrors parseUploadFile but sized for the larger chat-attachment
-// cap — upload.MaxVideoAttachmentSize, the largest of the two attachment caps, since video is
-// accepted through this same endpoint and SaveAttachment does the actual per-type enforcement.
+// parseUploadAttachmentFile mirrors parseUploadFile but sized for upload.MaxVideoAttachmentSize, the largest attachment cap, since SaveAttachment does the actual per-type enforcement.
 func parseUploadAttachmentFile(r *http.Request) (multipart.File, *multipart.FileHeader, error) {
 	if err := r.ParseMultipartForm(upload.MaxVideoAttachmentSize + 1<<20); err != nil {
 		return nil, nil, err
@@ -258,19 +249,14 @@ type attachmentUploadResponse struct {
 	SizeBytes int64  `json:"sizeBytes"`
 }
 
-// handleUploadMessageAttachment is scope-agnostic (main trip chat, a car offer's chat, or a
-// buddy group's chat) — it only needs the caller to be a trip participant, not which chat the
-// resulting message will land in. The caller uploads here first, then passes the returned
-// url/type/filename/sizeBytes into whichever POST .../messages call sends the actual message
-// (see internal/message.Attachment).
+// handleUploadMessageAttachment is scope-agnostic: it only needs the caller to be a trip participant, not which chat the resulting message will land in.
 func handleUploadMessageAttachment(uploadSvc *upload.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
 		if !ok {
 			return
 		}
-		// Same read-only guard as sending a message — no point uploading a file that can
-		// never be attached to a message once the trip's chat is closed.
+		// Same read-only guard as sending a message: no point uploading a file that can never be attached once the chat is closed.
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
 				writeError(w, http.StatusConflict, ErrCodeTripCancelled)

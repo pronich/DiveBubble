@@ -6,8 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// MaxMembers is the whole group's size cap, including the creator — fixed, no per-request
-// choice (unlike transport's per-offer seats). Real trips have produced groups of 3.
+// MaxMembers is the whole group's size cap including the creator, fixed rather than per-request like transport's per-offer seats; real trips have produced groups of 3.
 const MaxMembers = 3
 
 type Request struct {
@@ -17,9 +16,6 @@ type Request struct {
 	CreatedAt   time.Time
 	JoinedCount int  // joiners only, excludes the creator — see Join's capacity check
 	Joined      bool // whether the calling user has joined this request (not counting being creator)
-	// HasUnreadMessages is true when this group's own chat has a message the caller hasn't
-	// seen yet — see buddy_request_read_state. Distinct from an alert (which fires when a
-	// *joined* group dissolves), this is about ordinary new activity in a chat you're
-	// already part of.
+	// HasUnreadMessages is true when this group's chat has an unseen message, distinct from an alert (which fires only when a joined group dissolves).
 	HasUnreadMessages bool
 }

@@ -20,10 +20,7 @@ class ProviderSignInResult {
   final bool isNewUser;
 }
 
-/// Thrown by [AuthApiService.refresh] specifically when the backend rejects the refresh token
-/// itself (401 — invalid/expired/revoked/reused). Distinct from the generic [Exception] thrown
-/// for any other failure (network error, timeout, 5xx) so callers can tell "this session is
-/// genuinely dead" apart from "this request just didn't go through" — see AuthRepository.
+/// Distinct from the generic [Exception] thrown for other failures, so callers can tell "this session is genuinely dead" apart from "this request just didn't go through" (see AuthRepository).
 class RefreshRejectedException implements Exception {
   const RefreshRejectedException(this.message);
   final String message;
@@ -68,9 +65,7 @@ class AuthApiService {
     );
   }
 
-  // nonce is the *raw* nonce (the client sends Apple the SHA-256 hex digest of it instead —
-  // see AuthRepository.signInWithApple). email/fullName are out-of-band hints from
-  // AuthorizationCredentialAppleID, present only on the very first authorization ever.
+  // nonce here is the *raw* nonce; the client sent Apple the SHA-256 hex digest instead (see AuthRepository.signInWithApple).
   Future<ProviderSignInResult> signInWithApple({
     required String identityToken,
     required String nonce,
@@ -102,9 +97,7 @@ class AuthApiService {
     );
   }
 
-  // kind is always "otp" here — app/'s passwordless flow is code-entry, unlike admin/'s
-  // clicked-link flow (same backend endpoint, same email_login_codes table either way, see
-  // backend's internal/auth/email.go).
+  // kind is always "otp" here since app/'s flow is code-entry, unlike admin/'s clicked-link flow (same backend endpoint and table either way).
   Future<void> startEmailLogin(String email) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/auth/email/start'),
@@ -162,8 +155,7 @@ class AuthApiService {
     );
   }
 
-  // Unlike logout (best-effort, status ignored), a failure here must propagate — the caller
-  // only clears the local session once this genuinely succeeds (see AuthRepository.deleteAccount).
+  // Unlike logout (best-effort, status ignored), a failure here must propagate since the caller only clears the local session once this genuinely succeeds.
   Future<void> deleteAccount(String accessToken) async {
     final res = await _client.delete(
       Uri.parse('$baseUrl/me'),
@@ -174,9 +166,7 @@ class AuthApiService {
     }
   }
 
-  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
-  // message to show, or passes it through unchanged if it's not one this file knows about
-  // yet (an old-style prose message, or a code from an area not yet converted).
+  // Server errors come back as {"error": "<code>"}; describeErrorCode maps it to a message or passes it through unchanged if unrecognized.
   String? _extractError(String body) {
     try {
       final decoded = jsonDecode(body);

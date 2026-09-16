@@ -4,9 +4,7 @@ import '../../../../domain/entities/gear_ownership.dart';
 import '../../../../domain/gear_item.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// "X/N in Locker" teaser — tap pushes the full GearLockerPage, same summary-card-then-detail-page
-/// pattern as the Certifications section's "See all". Counted against the fixed Essential
-/// list only — free-text Additional items aren't part of the denominator.
+/// Counted against the fixed Essential list only — free-text Additional items aren't part of the denominator.
 class GearSummaryCard extends StatelessWidget {
   const GearSummaryCard({super.key, required this.gear, required this.onTap});
 

@@ -5,23 +5,7 @@ import 'package:web/web.dart' as web;
 
 import '../../../../data/services/google_identity_service.dart';
 
-/// A "Continue with Google" button that actually looks like the rest of this screen's
-/// buttons — our brand-tinted FilledButton.tonal style — instead of Google's own
-/// stock-rendered widget, which read as visually mismatched next to "Dive in with email".
-///
-/// Google's Identity Services deliberately doesn't allow restyling its own button (brand
-/// guidelines — see https://developers.google.com/identity/branding-guidelines) or
-/// redirecting its click to an arbitrary element; the click has to land on Google's own
-/// real button. So this renders the real button (via [GoogleIdentityService], see its own
-/// doc comment for why that's a direct `google_identity_services_web` call rather than
-/// `google_sign_in_web`), sized to match, but made almost fully transparent
-/// (`opacity: 0.01` — not 0, since some browsers treat a fully-invisible element's click
-/// as untrusted/synthetic and Google's own SDK rejects it) and stacks it on TOP of a
-/// purely decorative, `IgnorePointer`-wrapped copy of our own button style underneath.
-/// Every real click still lands on Google's real button and goes through the same OAuth
-/// flow; only the paint layer is ours. Same technique foreignreader_public's own web
-/// login page uses for its Google button (an invisible real `GoogleLogin` widget stacked
-/// under a custom-styled div there).
+/// Since GIS forbids restyling or redirecting clicks off its real button, this stacks GIS's real button on top at opacity 0.01 (not 0, since some browsers reject a fully-invisible element's click as untrusted) over a purely decorative IgnorePointer-wrapped copy of our own button style, so every click still lands on Google's button but the paint layer is ours.
 class CustomGoogleButton extends StatelessWidget {
   const CustomGoogleButton({super.key, required this.googleIdentity});
 
@@ -33,8 +17,7 @@ class CustomGoogleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // GIS's own minimumWidth caps out at 400px — clamp so a wide parent doesn't just
-        // silently get a narrower real button than the fake one drawn on top of it.
+        // GIS's own minimumWidth caps out at 400px — clamp so a wide parent doesn't get a narrower real button than the fake one on top of it.
         final width = constraints.maxWidth.clamp(1.0, 400.0);
 
         return SizedBox(
@@ -43,11 +26,7 @@ class CustomGoogleButton extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // A real FilledButton.tonal (not a hand-rolled Container) so it picks up this
-              // theme's actual colors/radius/font automatically — including any future
-              // theme change — rather than a second, separately-maintained copy of that
-              // styling. onPressed is non-null purely so it *paints* enabled; IgnorePointer
-              // below is what actually stops it from ever receiving the click.
+              // A real FilledButton.tonal (not a hand-rolled Container) so it tracks theme changes automatically; onPressed is non-null only so it paints enabled, IgnorePointer stops it receiving clicks.
               IgnorePointer(
                 child: FilledButton.tonalIcon(
                   onPressed: () {},

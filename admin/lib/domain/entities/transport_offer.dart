@@ -21,8 +21,7 @@ class TransportOffer {
   final DateTime createdAt;
   final int joinedCount;
 
-  // True when the creator is a member of this trip's dive center — mirrors
-  // ChatMessage.isDiveCenterStaff.
+  // True when the creator is a member of this trip's dive center — mirrors ChatMessage.isDiveCenterStaff.
   final bool isDiveCenterStaff;
 
   factory TransportOffer.fromJson(Map<String, dynamic> json) => TransportOffer(

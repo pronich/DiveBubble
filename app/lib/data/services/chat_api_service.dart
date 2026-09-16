@@ -26,8 +26,7 @@ class ChatApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
-  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
-  // message to show, or passes it through unchanged if it's not one this file knows about yet.
+  // Server errors come back as {"error": "<code>"}; describeErrorCode maps it to a message or passes it through unchanged if unrecognized.
   String? _extractError(String body) {
     try {
       final decoded = jsonDecode(body);
@@ -54,8 +53,7 @@ class ChatApiService {
         .toList();
   }
 
-  // Neither set: the trip's main chat. offerId: a car offer's own chat. buddyRequestId: a
-  // buddy group's own chat. The two are mutually exclusive (mirrors the DB's own CHECK).
+  // offerId and buddyRequestId are mutually exclusive, mirroring the DB's own CHECK constraint.
   String _messagesPath(String tripId, String? offerId, String? buddyRequestId) {
     if (offerId != null) return '/trips/$tripId/transport/$offerId/messages';
     if (buddyRequestId != null) return '/trips/$tripId/buddy/$buddyRequestId/messages';
@@ -105,11 +103,7 @@ class ChatApiService {
     return ChatMessageApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Soft-delete — author-only, enforced server-side. Scope-agnostic path (works for main chat,
-  // offer chat, or buddy chat messages alike; the backend resolves the trip off the message
-  // row itself), so no offerId/buddyRequestId param needed here, unlike sendMessage/fetchMessages.
-  // Returns the now-redacted message (body/attachment blanked, deletedAt set) — the caller
-  // splices this straight into its local list rather than hand-building the "deleted" shape.
+  // Scope-agnostic (backend resolves the trip off the message row itself) and returns the now-redacted message so the caller can splice it straight into its local list.
   Future<ChatMessageApiModel> deleteMessage(String tripId, String messageId) async {
     final res = await _client.delete(
       Uri.parse('$baseUrl/trips/$tripId/messages/$messageId'),
@@ -121,10 +115,7 @@ class ChatApiService {
     return ChatMessageApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Both scope-agnostic (no offerId/buddyRequestId — the backend resolves the target message's
-  // own chat off the message row itself, same as deleteMessage above) and idempotent: setting
-  // the same emoji again is still just an upsert; removing a reaction that was never set is a
-  // no-op. Both return the message's fresh per-emoji summary from the caller's own point of view.
+  // Idempotent: setting the same emoji again is just an upsert; removing one never set is a no-op.
   Future<Map<String, ChatReactionApiModel>> setReaction(String tripId, String messageId, String emoji) async {
     final res = await _client.put(
       Uri.parse('$baseUrl/trips/$tripId/messages/$messageId/reaction'),
@@ -153,15 +144,11 @@ class ChatApiService {
     return reactions.map((emoji, raw) => MapEntry(emoji, ChatReactionApiModel.fromJson(raw as Map<String, dynamic>)));
   }
 
-  // Scope-agnostic by design (no offerId/buddyRequestId) — the backend only needs the caller to
-  // be a trip participant, not which chat the resulting message will land in. Upload first, then
-  // pass the returned fields into sendMessage above.
+  // Scope-agnostic by design — the backend only needs the caller to be a trip participant, not which chat the message will land in.
   Future<Map<String, dynamic>> uploadAttachment(String tripId, String filePath) async =>
       uploadFile(Uri.parse('$baseUrl/trips/$tripId/messages/attachment'), filePath: filePath, headers: await _authHeaders());
 
-  // Backs the Media ("type=media", image+video) / Files ("type=pdf") tabs in Chat Info — main
-  // trip chat only, newest-first, cursor-paginated. One row per attachment (see MediaItemApiModel),
-  // not per message — a message can carry several attachments now.
+  // One row per attachment (see MediaItemApiModel), not per message, since a message can carry several attachments.
   Future<List<MediaItemApiModel>> fetchAttachments(
     String tripId, {
     required String type,

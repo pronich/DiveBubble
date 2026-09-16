@@ -1,5 +1,4 @@
-/// Same list as app/'s kCertificationLevels — kept in sync manually (see CLAUDE.md:
-/// admin/ and app/ don't share code yet, a deliberate MVP choice).
+/// Mirrors app/'s kCertificationLevels, kept in sync manually since admin/ and app/ don't share code yet.
 const List<String> kCertificationLevels = [
   'Open Water',
   'Advanced Open Water',
@@ -18,10 +17,7 @@ const Map<String, String> _certificationLevelAbbreviations = {
   'Instructor': 'Instructor',
 };
 
-/// Compact form for read-only display (badges, tiles, table cells) — dropdowns and other
-/// selection UI keep the full canonical name from kCertificationLevels above, since that's
-/// what's actually stored/matched. Falls back to "Open to all" for a null/empty level
-/// (e.g. a trip with no minimum set).
+/// Compact form for read-only display only — selection UI keeps the full canonical name since that's what's actually stored/matched; falls back to "Open to all" for a null/empty level.
 String certificationLevelAbbreviation(String? level) {
   if (level == null || level.isEmpty) return 'Open to all';
   return _certificationLevelAbbreviations[level] ?? level;

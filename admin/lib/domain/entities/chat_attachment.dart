@@ -1,5 +1,4 @@
-// One file on a message — mirrors backend's attachmentResponse. No durationSeconds/video
-// support here (admin/'s attach flow only offers photos and PDFs, see pick_chat_attachment.dart).
+// No durationSeconds/video support here — admin/'s attach flow only offers photos and PDFs (see pick_chat_attachment.dart).
 class ChatAttachment {
   const ChatAttachment({required this.url, required this.type, this.filename, this.sizeBytes});
 

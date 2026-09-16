@@ -1,5 +1,4 @@
-/// Transport-only result of uploading a chat attachment — discarded immediately after being
-/// passed into ChatRepository.sendMessage, never persisted on its own.
+/// Discarded immediately after being passed into ChatRepository.sendMessage; never persisted on its own.
 class AttachmentUploadResult {
   const AttachmentUploadResult({
     required this.url,

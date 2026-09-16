@@ -12,9 +12,7 @@ import 'trip_detail_page.dart';
 
 enum _TripFilter { all, upcoming, past }
 
-/// Body-only (no Scaffold/AppBar of its own) — embedded as one of AdminShell's sections.
-/// Formerly DashboardPage/DashboardViewModel — renamed once this became specifically the
-/// Trips section of a multi-section shell rather than the app's only screen.
+/// Formerly DashboardPage/DashboardViewModel, renamed once this became specifically the Trips section of a multi-section shell.
 class TripsPage extends StatefulWidget {
   const TripsPage({
     super.key,
@@ -80,8 +78,7 @@ class _TripsPageState extends State<TripsPage> {
         ),
       ),
     );
-    // The detail page may have edited the trip (price, dates, ...) — reload so the grid
-    // reflects it without the diver having to manually refresh.
+    // The detail page may have edited the trip — reload so the grid reflects it without a manual refresh.
     _viewModel.load();
   }
 
@@ -160,9 +157,7 @@ class _TripsPageState extends State<TripsPage> {
                     const SizedBox(width: 8),
                     _FilterPill(label: 'Past', selected: _filter == _TripFilter.past, onTap: () => setState(() => _filter = _TripFilter.past)),
                     const Spacer(),
-                    // Collapsed to an icon by default — not worth a permanent input box
-                    // for something used rarely (per explicit feedback; Bubbles' own
-                    // search stays always-visible since that list grows unbounded faster).
+                    // Collapsed to an icon by default (per explicit feedback) — not worth a permanent input box for something used this rarely.
                     if (_searchExpanded)
                       SizedBox(
                         width: 260,
@@ -208,12 +203,7 @@ class _TripsPageState extends State<TripsPage> {
                     ),
                   )
                 else
-                  // Single column, thin rows — tried a 2-column card grid first (matching
-                  // app/'s Explore) but admin/'s trip fields vary a lot more per trip than a
-                  // fixed-aspect-ratio grid can absorb gracefully, so rows ended up uneven
-                  // heights. A thin single-line row sidesteps that: every trip's tags share
-                  // one scrollable row regardless of how many are present, so every row is
-                  // the same height no matter what.
+                  // Single column, thin rows — a 2-column card grid was tried first, but admin/'s trip fields vary too much per trip for a fixed-aspect-ratio grid, leaving uneven row heights.
                   Column(
                     children: [
                       for (final trip in trips)
@@ -269,10 +259,7 @@ String _rangeText(int? min, int? max, String unit) {
   return '${max!}$unit';
 }
 
-// Same "1d if no end date, otherwise inclusive day span" rule as TripDetailPage's _InfoGrid
-// and app/'s Explore card badges. Diffs calendar dates (both sides converted to local first),
-// not raw DateTime.difference — startTime carries a real time-of-day while endDate is
-// UTC-midnight-normalized, which truncates the count if diffed directly.
+// Diffs calendar dates (both converted to local first), not raw DateTime.difference — startTime carries a real time-of-day while endDate is UTC-midnight-normalized, which truncates the count if diffed directly.
 String _durationText(Trip trip) {
   final end = trip.endDate;
   if (end == null) return '1d';
@@ -334,9 +321,7 @@ class _TripRow extends StatelessWidget {
                       style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
-                    // One scrollable row rather than a Wrap — keeps every row exactly one
-                    // line tall regardless of how many optional fields a given trip has
-                    // (see the Column above's own comment on why this replaced the grid).
+                    // One scrollable row rather than a Wrap — keeps every row exactly one line tall regardless of how many optional fields a trip has.
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       physics: const ClampingScrollPhysics(),

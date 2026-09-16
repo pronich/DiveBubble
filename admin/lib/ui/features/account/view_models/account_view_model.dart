@@ -72,8 +72,7 @@ class AccountViewModel extends ChangeNotifier {
 
   Future<bool> updateLevel({required String level, String? agency, String? number}) async {
     try {
-      // displayName deliberately omitted (stays null) — passing an empty-string fallback
-      // here would COALESCE the real name away server-side if it happened to be unset.
+      // displayName deliberately omitted — an empty-string fallback would COALESCE the real name away server-side if it happened to be unset.
       _profile = await _profileRepository.update(
         certificationLevel: level,
         certificationAgency: agency,

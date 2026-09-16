@@ -13,9 +13,7 @@ import (
 	"time"
 )
 
-// Same lightweight (not full RFC 5322) pattern as internal/waitlist's own emailPattern —
-// there's no session/account to blame a malformed address on either way, this is just
-// enough to reject an obvious typo before generating and emailing a code for it.
+// emailPattern is a lightweight (not full RFC 5322) check, just enough to reject an obvious typo before generating and emailing a code.
 var emailPattern = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 
 // IsValidEmail is exported for routes_auth.go's handler-level check.
@@ -23,11 +21,7 @@ func IsValidEmail(email string) bool {
 	return emailPattern.MatchString(strings.TrimSpace(email))
 }
 
-// EmailCodeKind distinguishes the two passwordless flows that share this table — a
-// magic-link token (admin/'s web login, emailed as a clickable URL) and an OTP code
-// (app/'s mobile login, emailed as digits the diver types in) are the same underlying
-// concept, a one-time secret proving control of an inbox, just a different alphabet/length
-// for a different UI. VerifyCode never needs to know which kind produced a given hash.
+// EmailCodeKind distinguishes the two passwordless flows sharing this table, magic-link (admin/'s web login) and OTP (app/'s mobile login), which VerifyCode treats identically since both are just a one-time secret proving inbox control.
 type EmailCodeKind string
 
 const (
@@ -50,10 +44,7 @@ func NewEmailCodeRepository(db *sql.DB) *EmailCodeRepository {
 	return &EmailCodeRepository{DB: db}
 }
 
-// GenerateAndStore creates a new code for (email, kind), first invalidating any prior
-// unconsumed code for that exact pair — only the most recently requested code for a given
-// flow should ever be usable, otherwise an older still-unexpired email sitting in an inbox
-// could be used after the diver asked for (and received) a newer one.
+// GenerateAndStore invalidates any prior unconsumed code for (email, kind) before creating a new one, so an older still-unexpired code sitting in an inbox can't be used after a newer one was requested.
 func (r *EmailCodeRepository) GenerateAndStore(ctx context.Context, email string, kind EmailCodeKind, ttl time.Duration) (rawCode string, err error) {
 	email = NormalizeEmail(email)
 
@@ -88,9 +79,7 @@ func (r *EmailCodeRepository) GenerateAndStore(ctx context.Context, email string
 	return rawCode, nil
 }
 
-// LastSentAt returns when the most recent code (of either kind) was requested for this
-// email — StartLogin's cooldown check, so a diver can't hammer the send endpoint (and the
-// email quota behind it). Zero time if none exists yet.
+// LastSentAt returns when the most recent code of either kind was requested for this email, backing StartLogin's cooldown against hammering the send endpoint; zero time if none exists.
 func (r *EmailCodeRepository) LastSentAt(ctx context.Context, email string) (time.Time, error) {
 	var t sql.NullTime
 	err := r.DB.QueryRowContext(ctx, `
@@ -105,13 +94,7 @@ func (r *EmailCodeRepository) LastSentAt(ctx context.Context, email string) (tim
 	return t.Time, nil
 }
 
-// VerifyCode checks a submitted code — an OTP's typed digits, or a magic link's token read
-// straight off the query string, same lookup either way — and consumes it on success,
-// returning the normalized email to hand to LoginOrRegister. Scoped by email (not just the
-// code hash) because OTP's 6-digit space isn't large enough to treat as globally unique the
-// way a magic-link token is; a wrong guess increments every one of the email's still-active
-// codes rather than erroring silently, so repeated guessing burns down to
-// ErrEmailCodeTooManyTries instead of being retryable forever.
+// VerifyCode looks up the code scoped by email (not just its hash, since OTP's 6-digit space isn't globally unique) and increments attempts on every active code for that email on a wrong guess, so repeated guessing burns down to ErrEmailCodeTooManyTries.
 func (r *EmailCodeRepository) VerifyCode(ctx context.Context, email, code string) (string, error) {
 	email = NormalizeEmail(email)
 	codeHash := hashCode(code)
@@ -202,9 +185,7 @@ func hashCode(raw string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// NormalizeEmail is also what LoginOrRegister's providerUserID is built from for the
-// "email" provider — the address itself is the stable identifier (unlike Google/Apple's
-// opaque sub), lowercased so "Bob@x.com" and "bob@x.com" never resolve to two accounts.
+// NormalizeEmail lowercases and trims the address, which LoginOrRegister also uses as the "email" provider's stable identifier, so "Bob@x.com" and "bob@x.com" never resolve to two accounts.
 func NormalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }

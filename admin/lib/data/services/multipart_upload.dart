@@ -2,10 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-/// Bytes-based, not path-based (unlike app/'s equivalent) — this is a web-only build, and
-/// there's no real filesystem to read an `XFile.path` from; `image_picker` on web gives you
-/// a blob URI you can only get at via `readAsBytes()`. Every upload call site collects
-/// bytes + a filename from `image_picker`'s `XFile` before calling this.
+/// Bytes-based, not path-based like app/'s equivalent — this is web-only, and image_picker's web XFile gives only a blob URI readable via readAsBytes(), not a real filesystem path.
 Future<Map<String, dynamic>> uploadImageBytes(
   Uri uri, {
   required List<int> bytes,

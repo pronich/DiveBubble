@@ -8,9 +8,7 @@ import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
 import 'multipart_upload.dart';
 
-/// Trimmed to what admin/ actually needs — no join/leave here, those stay diver-facing
-/// actions in app/. Business trip creation/listing/cancel, plus read-only participants
-/// (People tab on TripDetailPage).
+/// No join/leave here — those stay diver-facing actions in app/; this covers business trip creation/listing/cancel plus read-only participants.
 class TripApiService {
   TripApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
       : _client = client ?? http.Client();
@@ -25,9 +23,7 @@ class TripApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
-  // GET /trips/mine already includes every trip a dive-center member has access to (see
-  // trip.Repository.ListJoinedByUser's dive_center_members branch) — no separate
-  // "list this dive center's trips" endpoint exists or is needed.
+  // GET /trips/mine already includes every trip a dive-center member has access to — no separate "list this dive center's trips" endpoint exists.
   Future<List<TripApiModel>> fetchMyTrips() async {
     final res = await _client.get(Uri.parse('$baseUrl/trips/mine'), headers: await _authHeaders());
     if (res.statusCode != 200) {
@@ -59,10 +55,7 @@ class TripApiService {
       'location': location,
       'startTime': startTime.toUtc().toIso8601String(),
       'diveCenterId': diveCenterId,
-      // endDate is a pure calendar date (picked date-only, always local midnight) — .toUtc()
-      // on that shifts it into the *previous* UTC day for any positive-offset timezone,
-      // which then fails the backend's endDate >= startTime check for same-day trips. Build
-      // a fresh UTC-midnight DateTime from the Y/M/D instead of converting the local one.
+      // Build a fresh UTC-midnight DateTime from Y/M/D rather than .toUtc() the local midnight, which shifts to the previous UTC day in positive-offset timezones and fails the backend's endDate >= startTime check.
       if (endDate != null) 'endDate': DateTime.utc(endDate.year, endDate.month, endDate.day).toIso8601String(),
       if (description != null) 'description': description,
       if (meetingPoint != null) 'meetingPoint': meetingPoint,
@@ -86,9 +79,7 @@ class TripApiService {
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // diveCenterId isn't here — ownership doesn't change via an edit (see trip.UpdateParams'
-  // own comment on the backend). Every other field is nullable/optional, matching PATCH
-  // semantics: only fields present in the body get changed.
+  // diveCenterId isn't here — ownership doesn't change via an edit; every other field is optional, matching PATCH semantics.
   Future<TripApiModel> updateTrip({
     required String id,
     String? title,
@@ -133,9 +124,7 @@ class TripApiService {
     return TripApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Same "opening a chat marks it read" behavior as app/'s ChatView — without this, a
-  // dive-center staff member's unreadCount would never clear (they have no
-  // trip_participants row, so last_read_at only ever moves via this call).
+  // Needed because dive-center staff have no trip_participants row, so their last_read_at (and unreadCount) only ever moves via this call.
   Future<void> markRead(String tripId) async {
     final res = await _client.post(Uri.parse('$baseUrl/trips/$tripId/read'), headers: await _authHeaders());
     if (res.statusCode != 204) {
@@ -143,8 +132,7 @@ class TripApiService {
     }
   }
 
-  // isOrganizer (backend) already accepts any member of the trip's dive center, not just
-  // whoever created it — same access rule Edit/photo-upload already rely on here.
+  // isOrganizer (backend) accepts any member of the trip's dive center, not just whoever created it — same access rule Edit/photo-upload rely on.
   Future<void> cancelTrip(String tripId) async {
     final res = await _client.post(Uri.parse('$baseUrl/trips/$tripId/cancel'), headers: await _authHeaders());
     if (res.statusCode != 204) {
@@ -179,8 +167,7 @@ class TripApiService {
     }
   }
 
-  // Gated to participants server-side (dive-center staff always qualify, see HasAccess) —
-  // backs the People tab.
+  // Gated to participants server-side (dive-center staff always qualify) — backs the People tab.
   Future<List<String>> fetchParticipantUserIds(String tripId) async {
     final res = await _client.get(Uri.parse('$baseUrl/trips/$tripId/participants'), headers: await _authHeaders());
     if (res.statusCode != 200) {

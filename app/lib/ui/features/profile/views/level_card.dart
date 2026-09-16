@@ -5,9 +5,7 @@ import '../../../../ui/core/theme/app_colors.dart';
 import '../../../../ui/core/theme/app_gradients.dart';
 import '../../../core/widgets/card_photo_picker.dart';
 
-/// Full-size wallet-style card for the diver's current certification level —
-/// deliberately not the same as Overview's compact "Level" stat tile (that one
-/// stays a short text value; this shows agency/number/verified detail).
+/// Deliberately not the same as Overview's compact "Level" stat tile, which stays a short text value; this shows agency/number/verified detail.
 class LevelCard extends StatelessWidget {
   const LevelCard({
     super.key,
@@ -26,9 +24,7 @@ class LevelCard extends StatelessWidget {
   final bool verified;
   final String? photoUrl;
 
-  /// Null hides the photo affordance — the Level card is shown read-only wherever it's
-  /// reused outside the diver's own Profile screen (none today, but matches the same
-  /// null-hides-the-edit-affordance posture as ProfileOverviewCard's onAvatarTap).
+  /// Null hides the photo affordance, matching ProfileOverviewCard's onAvatarTap posture for read-only reuse outside the diver's own Profile screen.
   final VoidCallback? onPhotoTap;
   final bool isUploadingPhoto;
 
@@ -127,8 +123,7 @@ class _VerifiedBadge extends StatelessWidget {
   }
 }
 
-/// Empty-state tile shown in place of the card when no level has been added yet —
-/// the whole tile is the "Add" affordance, not a separate button next to a blank card.
+/// The whole tile is the "Add" affordance, not a separate button next to a blank card.
 class AddLevelCard extends StatelessWidget {
   const AddLevelCard({super.key, required this.onTap});
 

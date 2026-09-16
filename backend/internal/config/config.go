@@ -16,18 +16,11 @@ type Config struct {
 	CentrifugoAPIKey      string
 	CentrifugoTokenSecret string
 	JWTSecret             string
-	// Every Web OAuth client id whose id_tokens we accept as valid — normally just one, but
-	// briefly two during a credential migration (old app builds already in the wild keep
-	// sending id_tokens audienced to the retired client id until they're updated).
+	// GoogleServerClientIDs holds every Web OAuth client id whose id_tokens we accept, briefly two during a credential migration until old app builds update.
 	GoogleServerClientIDs []string
-	// AppleAudience is the iOS app's bundle id (the App ID, not a Services ID — DiveBubble
-	// has no web Sign in with Apple flow). Defaults to the one and only bundle id this
-	// project ships, so no env var is required in dev.
+	// AppleAudience is the iOS app's bundle id (not a Services ID, since DiveBubble has no web Sign in with Apple flow), defaulting to the project's one bundle id so no env var is required in dev.
 	AppleAudience string
-	// AppleTeamID/AppleKeyID/ApplePrivateKey are all optional and only needed to revoke a
-	// diver's Apple authorization on account deletion (App Store Review Guideline 5.1.1(v)) —
-	// empty disables that specific side effect, same "empty disables" convention as
-	// FirebaseCredentialsJSON below. Sign-in itself never depends on these.
+	// AppleTeamID/AppleKeyID/ApplePrivateKey are optional and only needed to revoke Apple authorization on account deletion (Guideline 5.1.1(v)); empty disables just that side effect, never sign-in.
 	AppleTeamID           string
 	AppleKeyID            string
 	ApplePrivateKey       string
@@ -38,34 +31,25 @@ type Config struct {
 	PublicBaseURL         string
 	CORSAllowedOrigins    []string
 
-	// Passwordless email login (magic link for admin/, OTP for app/) — ResendAPIKey empty
-	// disables real sending (see internal/email.Service's own doc comment); everything else
-	// here has a working default so local dev never needs these set.
+	// Passwordless email login (magic link for admin/, OTP for app/): ResendAPIKey empty disables real sending, and every other field here has a working dev default.
 	ResendAPIKey      string
 	EmailFromAddress  string
 	EmailMagicLinkTTL time.Duration
 	EmailOTPTTL       time.Duration
 	EmailCodeCooldown time.Duration
-	// AdminBaseURL is where a magic-link email points back to (admin/'s own root, read via
-	// Uri.base query params on load — see admin/'s MagicLinkGate) — distinct from
-	// PublicBaseURL, which is the *backend's* own base URL for uploaded-file links.
+	// AdminBaseURL is where a magic-link email points back to (admin/'s root, read via Uri.base query params — see MagicLinkGate), distinct from PublicBaseURL which is the backend's own base URL for uploaded files.
 	AdminBaseURL string
 
-	// FirebaseCredentialsJSON is the Firebase service account JSON content (not a file path)
-	// used to send push notifications. Empty disables push entirely (local dev default without
-	// it) — not required, same optional-infra pattern as Spaces below.
+	// FirebaseCredentialsJSON is the Firebase service account JSON content (not a file path); empty disables push entirely, the local dev default.
 	FirebaseCredentialsJSON string
 
-	// Spaces* are all optional — SpacesBucket empty means "use LocalBackend" (dev default,
-	// see server.go). Set together in production; there's no partial-Spaces mode.
+	// Spaces* are all optional; SpacesBucket empty means "use LocalBackend" (dev default), and they must be set together in production since there's no partial-Spaces mode.
 	SpacesEndpoint  string
 	SpacesRegion    string
 	SpacesBucket    string
 	SpacesAccessKey string
 	SpacesSecretKey string
-	// SpacesPublicURL is the CDN endpoint if the Space has one enabled, else the same
-	// direct https://<bucket>.<region>.digitaloceanspaces.com host — either way, computed
-	// once here so callers never re-derive it. No trailing slash.
+	// SpacesPublicURL is the CDN endpoint if enabled, else the direct digitaloceanspaces.com host, computed once here (no trailing slash) so callers never re-derive it.
 	SpacesPublicURL string
 }
 
@@ -93,29 +77,24 @@ func Load() Config {
 	}
 	appleTeamID := os.Getenv("APPLE_TEAM_ID")
 	appleKeyID := os.Getenv("APPLE_KEY_ID")
-	// Stored as a single-line env var with literal \n sequences (works regardless of how the
-	// hosting env parses .env files, since the unescaping happens here, not in a dotenv
-	// parser's own quoting rules) — unescaped back to real newlines before use.
+	// Stored as a single-line env var with literal \n sequences, unescaped to real newlines here rather than relying on the dotenv parser's own quoting.
 	applePrivateKey := strings.ReplaceAll(os.Getenv("APPLE_PRIVATE_KEY"), `\n`, "\n")
 	accessTokenTTL := durationEnv("ACCESS_TOKEN_TTL", 8*time.Hour)
 	refreshSessionTTL := durationEnv("REFRESH_SESSION_TTL", 180*24*time.Hour)
-	// How long an expired/revoked auth_sessions row is kept before physical deletion —
-	// separate from RefreshSessionTTL, which only governs how long the token stays usable.
+	// How long an expired/revoked auth_sessions row is kept before physical deletion, separate from RefreshSessionTTL which only governs token usability.
 	sessionRetentionGrace := durationEnv("SESSION_RETENTION_GRACE", 30*24*time.Hour)
 
 	uploadDir := os.Getenv("UPLOAD_DIR")
 	if uploadDir == "" {
 		uploadDir = "./uploads"
 	}
-	// What the client uses to build a full image URL from the relative path Save()
-	// returns — must be reachable from the device/simulator, not just the server host.
+	// What the client uses to build a full image URL from Save()'s relative path; must be reachable from the device/simulator, not just the server host.
 	publicBaseURL := os.Getenv("PUBLIC_BASE_URL")
 	if publicBaseURL == "" {
 		publicBaseURL = "http://localhost:" + port
 	}
 
-	// "*" by default — safe for Bearer-token auth (no cookies/credentials involved), and
-	// local dev's Flutter web port varies run to run. Set explicitly in production.
+	// "*" by default is safe since Bearer-token auth uses no cookies/credentials, and local dev's Flutter web port varies run to run; set explicitly in production.
 	corsAllowedOrigins := []string{"*"}
 	if raw := os.Getenv("CORS_ALLOWED_ORIGINS"); raw != "" {
 		corsAllowedOrigins = strings.Split(raw, ",")
@@ -143,8 +122,7 @@ func Load() Config {
 	spacesSecretKey := os.Getenv("SPACES_SECRET_KEY")
 	spacesPublicURL := strings.TrimSuffix(os.Getenv("SPACES_CDN_URL"), "/")
 	if spacesPublicURL == "" && spacesBucket != "" {
-		// No CDN configured — fall back to the direct virtual-hosted-style Space URL,
-		// derived from the endpoint (e.g. https://fra1.digitaloceanspaces.com) + bucket.
+		// No CDN configured — fall back to the direct virtual-hosted-style Space URL derived from endpoint + bucket.
 		spacesPublicURL = strings.Replace(spacesEndpoint, "https://", "https://"+spacesBucket+".", 1)
 	}
 

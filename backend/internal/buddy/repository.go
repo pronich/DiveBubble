@@ -33,10 +33,7 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Request, error
 	return req, err
 }
 
-// ListByTrip computes JoinedCount/Joined/HasUnreadMessages in one query rather than N+1
-// per-request lookups. HasUnreadMessages follows trip.Repository.ListJoinedByUser's own
-// last_read_at COALESCE pattern, scoped to this one request's read-state row instead of the
-// trip's.
+// ListByTrip computes JoinedCount/Joined/HasUnreadMessages in one query rather than N+1 per-request lookups, following trip.Repository.ListJoinedByUser's last_read_at COALESCE pattern scoped to this request's read state.
 func (r *Repository) ListByTrip(ctx context.Context, tripID, callerUserID uuid.UUID) ([]Request, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT b.id, b.trip_id, b.user_id, b.created_at,
@@ -149,16 +146,13 @@ func (r *Repository) Join(ctx context.Context, requestID, userID uuid.UUID) erro
 	return err
 }
 
-// Leave removes a single user's join on a single request — unlike RemoveUserJoinsInTrip, this
-// doesn't touch any other request the user might be joined to (they can only be joined to one,
-// but this stays scoped to the one request being left regardless).
+// Leave removes a single user's join on a single request only, unlike RemoveUserJoinsInTrip which touches every request the user might be joined to.
 func (r *Repository) Leave(ctx context.Context, requestID, userID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `DELETE FROM buddy_request_joins WHERE request_id = $1 AND user_id = $2`, requestID, userID)
 	return err
 }
 
-// ListCreatedByUserInTrip finds requests this user made on this trip — used when they leave
-// the trip, since a request with its creator gone no longer makes sense.
+// ListCreatedByUserInTrip finds requests this user made on this trip, used when they leave it since a request with its creator gone no longer makes sense.
 func (r *Repository) ListCreatedByUserInTrip(ctx context.Context, tripID, userID uuid.UUID) ([]Request, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT id, trip_id, user_id, created_at
@@ -181,15 +175,13 @@ func (r *Repository) ListCreatedByUserInTrip(ctx context.Context, tripID, userID
 	return requests, rows.Err()
 }
 
-// DeleteRequest cascades to buddy_request_joins and chat_messages via their FKs
-// (ON DELETE CASCADE) — callers that need to notify joined users should read ListJoins first.
+// DeleteRequest cascades to buddy_request_joins and chat_messages via ON DELETE CASCADE, so callers that need to notify joined users should read ListJoins first.
 func (r *Repository) DeleteRequest(ctx context.Context, requestID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `DELETE FROM trip_buddy_requests WHERE id = $1`, requestID)
 	return err
 }
 
-// RemoveUserJoinsInTrip drops this user's joins across every request on the trip — used when
-// they leave the trip entirely, freeing whatever spot they held.
+// RemoveUserJoinsInTrip drops this user's joins across every request on the trip, used when they leave it entirely to free whatever spot they held.
 func (r *Repository) RemoveUserJoinsInTrip(ctx context.Context, tripID, userID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `
 		DELETE FROM buddy_request_joins
@@ -198,8 +190,7 @@ func (r *Repository) RemoveUserJoinsInTrip(ctx context.Context, tripID, userID u
 	return err
 }
 
-// CreateAlerts is a best-effort "something changed in Buddy" ping — ON CONFLICT DO NOTHING
-// since a user only needs to see the dot once, not one per bumped request.
+// CreateAlerts is a best-effort "something changed" ping; ON CONFLICT DO NOTHING since a user only needs to see the dot once, not once per bumped request.
 func (r *Repository) CreateAlerts(ctx context.Context, tripID uuid.UUID, userIDs []uuid.UUID) error {
 	for _, userID := range userIDs {
 		if _, err := r.DB.ExecContext(ctx, `
@@ -225,8 +216,7 @@ func (r *Repository) ClearAlert(ctx context.Context, tripID, userID uuid.UUID) e
 	return err
 }
 
-// MarkRead marks this one group's chat read up to now — mirrors trip.Repository.MarkRead,
-// scoped to a single request instead of the whole trip.
+// MarkRead marks this one group's chat read up to now, mirroring trip.Repository.MarkRead but scoped to a single request instead of the whole trip.
 func (r *Repository) MarkRead(ctx context.Context, requestID, userID uuid.UUID) error {
 	_, err := r.DB.ExecContext(ctx, `
 		INSERT INTO buddy_request_read_state (request_id, user_id, last_read_at)

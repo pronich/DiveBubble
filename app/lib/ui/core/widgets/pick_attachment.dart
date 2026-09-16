@@ -13,11 +13,7 @@ const _maxVideoDurationSeconds = 60;
 
 const _videoExtensions = {'.mp4', '.mov', '.m4v', '.avi', '.3gp'};
 
-/// Sibling to `pickImage`'s bottom sheet, but multi-capable: Photos & video (multi-select from
-/// the library, mixed media in one pick, up to however many the caller still has room for — see
-/// ChatView's cap) vs a single camera shot vs a single PDF document. Always returns a list —
-/// empty if the diver backed out at any step, one item for camera/document, however many for a
-/// library multi-select (fewer than picked if a video was rejected for being too long).
+/// Always returns a list — empty if the diver backed out, one item for camera/document, however many for a library multi-select (fewer than picked if a video was rejected for being too long).
 Future<List<PickedAttachment>> pickAttachment(BuildContext context) async {
   final choice = await showModalBottomSheet<_AttachmentChoice>(
     context: context,
@@ -95,11 +91,7 @@ Future<PickedAttachment> _toImagePickedAttachment(String path) async {
   );
 }
 
-// Only a quick duration check here — a real read, not a guess, since getMediaInfo is fast
-// (no encoding involved). Compression is deliberately deferred to Send time (see
-// ChatViewModel._compressedVideoPathOrFallback) rather than run right here: doing it at pick
-// time made the composer look frozen/unresponsive for however many seconds a clip took to
-// compress, with no visible feedback that anything was happening at all.
+// Compression is deliberately deferred to Send time (ChatViewModel._compressedVideoPathOrFallback) rather than run here, since doing it at pick time made the composer look frozen for however long a clip took to compress.
 Future<PickedAttachment?> _toVideoPickedAttachment(BuildContext context, String path) async {
   final messenger = ScaffoldMessenger.of(context);
   try {

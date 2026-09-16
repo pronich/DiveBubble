@@ -4,11 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/services/attachment_cache_service.dart';
 
-/// Resolves a cached (or freshly downloaded) attachment image with proper loading/error states
-/// — shared by the chat bubble, Chat Info's Media grid, and the full-screen preview. A failed
-/// download (bad URL, network drop) shows a tap-to-retry affordance instead of spinning
-/// forever — `FutureBuilder.hasData` alone stays false on error too, so callers that only check
-/// `!hasData` never notice the future actually completed (with an error) and get stuck.
+/// Shows a tap-to-retry affordance on failure rather than spinning forever, since `FutureBuilder.hasData` alone stays false on error too and callers checking only `!hasData` never notice.
 class CachedAttachmentImage extends StatefulWidget {
   const CachedAttachmentImage({
     super.key,
@@ -33,19 +29,14 @@ class _CachedAttachmentImageState extends State<CachedAttachmentImage> {
   @override
   void didUpdateWidget(covariant CachedAttachmentImage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // `late` only evaluates once at State creation — without this, a State object reused for a
-    // different message (e.g. a ListView without per-item Keys reusing State by position) would
-    // keep showing whichever image its *first* url resolved to, forever, regardless of what
-    // widget.url becomes afterward.
+    // `late` only evaluates once at State creation, so without this a State object reused by position (e.g. a keyless ListView) would keep showing whichever image its *first* url resolved to.
     if (oldWidget.url != widget.url) {
       _future = AttachmentCacheService.getFile(widget.url);
     }
   }
 
   void _retry() {
-    // Block body, not `=> _future = ...` — an arrow body here evaluates to the assignment's
-    // value (the Future itself), which trips Flutter's "setState callback returned a Future"
-    // assertion since it expects a plain VoidCallback.
+    // Block body, not `=> _future = ...`, which would evaluate to the Future itself and trip Flutter's "setState callback returned a Future" assertion.
     setState(() {
       _future = AttachmentCacheService.getFile(widget.url);
     });

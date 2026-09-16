@@ -12,8 +12,7 @@ Rect fitLogoBox(Size screenSize) {
   return Rect.fromCenter(center: center, width: side, height: side);
 }
 
-/// The logo bubbles fully assembled and opaque — the "at rest" state, used by the static splash
-/// and as the animated intro's final frame.
+/// The "at rest" state, used by the static splash and as the animated intro's final frame.
 List<RenderedBubble> restingBubbles(Rect box) {
   return kLogoBubbles
       .map(

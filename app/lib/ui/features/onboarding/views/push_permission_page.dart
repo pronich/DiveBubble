@@ -8,11 +8,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../profile/view_models/profile_view_model.dart';
 import '../../profile/views/edit_profile_page.dart';
 
-/// This is the one place in the app that ever calls
-/// FirebaseMessaging.requestPermission() from onboarding; everywhere else (main.dart's
-/// auto-sync on sign-in/token-refresh, NotificationsSettingsPage) either only checks an
-/// already-decided status or is a settings toggle the diver tapped themselves. Shown by
-/// [LoginSheet] only when the device hasn't decided this permission yet.
+/// The one place in the app that calls FirebaseMessaging.requestPermission() from onboarding; shown only when the device hasn't decided this permission yet.
 class PushPermissionPage extends StatefulWidget {
   const PushPermissionPage({
     super.key,
@@ -56,9 +52,7 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
     try {
       final settings = await FirebaseMessaging.instance.requestPermission();
       if (settings.authorizationStatus != AuthorizationStatus.denied) {
-        // iOS-only gotcha: the APNS device token arrives asynchronously after
-        // requestPermission() — calling getToken() before it lands throws. Same poll
-        // main.dart's own token-refresh path uses.
+        // iOS-only: the APNS device token arrives asynchronously after requestPermission(), and calling getToken() before it lands throws.
         if (defaultTargetPlatform == TargetPlatform.iOS) {
           var apnsToken = await FirebaseMessaging.instance.getAPNSToken();
           var attempts = 0;
@@ -77,11 +71,9 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
         }
       }
     } catch (_) {
-      // Best-effort — worst case this device just doesn't get pushes until the diver
-      // later enables it from NotificationsSettingsPage.
+      // Best-effort — worst case this device doesn't get pushes until enabled later from NotificationsSettingsPage.
     }
-    // Diver may have already tapped "Not now" and left while this was in flight — calling
-    // _finish() again here would push onto a Navigator that's no longer in the tree.
+    // Diver may have already tapped "Not now" and left while this was in flight — calling _finish() again would push onto a Navigator no longer in the tree.
     if (!mounted) return;
     setState(() => _requesting = false);
     await _finish();
@@ -116,8 +108,7 @@ class _PushPermissionPageState extends State<PushPermissionPage> {
                     : Text(l10n.continueLabel),
               ),
               const SizedBox(height: 8),
-              // Stays tappable even mid-request — push permission must stay optional and
-              // never block onboarding (see App Store Guideline 4.5.4 rejection).
+              // Stays tappable even mid-request — push permission must stay optional and never block onboarding (App Store Guideline 4.5.4).
               TextButton(onPressed: _finish, child: Text(l10n.notNow)),
               const SizedBox(height: 24),
             ],

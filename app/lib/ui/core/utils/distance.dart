@@ -1,7 +1,6 @@
 import 'dart:math';
 
-/// Great-circle distance between two coordinates, in kilometers — used by Explore's
-/// "Nearest" sort to rank trips by distance from the diver's current position.
+/// Great-circle distance in kilometers, used by Explore's "Nearest" sort.
 double haversineKm(double lat1, double lng1, double lat2, double lng2) {
   const earthRadiusKm = 6371.0;
   final dLat = _degToRad(lat2 - lat1);

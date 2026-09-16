@@ -17,11 +17,7 @@ import '../../features/company/views/company_page.dart';
 import '../../features/trips/views/trips_page.dart';
 import '../../features/users/views/users_page.dart';
 
-/// The whole app's persistent frame once signed in: a fixed left sidebar (nav + account
-/// footer) with a swappable content area on the right — replaces the old
-/// one-screen-per-Scaffold navigation (see CLAUDE.md's admin/ scaffolding notes). Every
-/// section is body-only (no own Scaffold/AppBar), same "embedded, not pushed" pattern
-/// app/'s ChatView/TransportView use inside TripConversationPage.
+/// A fixed left sidebar (nav + account footer) with a swappable content area — every section is body-only (no own Scaffold/AppBar), the same "embedded, not pushed" pattern app/'s ChatView/TransportView use.
 class AdminShell extends StatefulWidget {
   const AdminShell({
     super.key,
@@ -56,19 +52,13 @@ class _AdminShellState extends State<AdminShell> {
   int _selectedIndex = 0;
   MyProfile? _profile;
 
-  // Mirrors _selectedIndex for pages built once via `late final _pages` below (a plain
-  // constructor arg on those pages would only ever see the index's value at that first
-  // build) — BubblesPage listens to this directly to know when it becomes the active tab.
+  // Mirrors _selectedIndex as a listenable, since `_pages` is built once and a plain constructor arg would only ever see its value at that first build.
   final _selectedIndexNotifier = ValueNotifier<int>(0);
 
-  // Set by "Dive into Bubble" (Trip Page → Bubbles) — BubblesPage listens and, once it's
-  // consumed the request (selected that trip), resets this back to null so switching tabs
-  // away and back doesn't reselect it.
+  // Set by "Dive into Bubble" (Trip Page → Bubbles); BubblesPage resets it to null once consumed so switching tabs away and back doesn't reselect it.
   final _pendingBubbleTripId = ValueNotifier<String?>(null);
 
-  // Mirrors BubblesViewModel.hasUnreadMention (see BubblesPage.onMentionStateChanged) —
-  // the sidebar listens to this directly since it needs to show a dot even while Bubbles
-  // itself isn't the active section.
+  // Mirrors BubblesViewModel.hasUnreadMention so the sidebar can show a dot even while Bubbles isn't the active section.
   final _hasUnreadMention = ValueNotifier<bool>(false);
 
   void _diveIntoBubble(String tripId) {
@@ -79,14 +69,10 @@ class _AdminShellState extends State<AdminShell> {
     _pendingBubbleTripId.value = tripId;
   }
 
-  // Sidebar-only display state — kept separate from _pages below so a Company edit can
-  // refresh the account-footer company name without rebuilding (and losing the state of)
-  // every other section.
+  // Kept separate from _pages so a Company edit can refresh the account-footer name without rebuilding (and losing the state of) every other section.
   late String _companyName = widget.diveCenter.name;
 
-  // Built once each, not inline in build() — an IndexedStack still rebuilds its children on
-  // every parent rebuild if they're constructed inline, which would wipe each section's own
-  // state on every sidebar tap (same gotcha app/'s RootShell already hit once — see CLAUDE.md).
+  // Built once, not inline in build() — an IndexedStack still rebuilds inline-constructed children on every parent rebuild, wiping each section's state on every sidebar tap.
   late final _pages = [
     TripsPage(
       tripRepository: widget.tripRepository,
@@ -136,8 +122,7 @@ class _AdminShellState extends State<AdminShell> {
     super.dispose();
   }
 
-  // Below this, a permanent 260px sidebar leaves too little room for actual content — a
-  // browser window this narrow is either a phone or a very cramped desktop window either way.
+  // Below this, a permanent 260px sidebar leaves too little room for actual content.
   static const _mobileBreakpoint = 760.0;
 
   void _onAccountTap(BuildContext context) {
@@ -169,8 +154,7 @@ class _AdminShellState extends State<AdminShell> {
           _selectedIndex = i;
           _selectedIndexNotifier.value = i;
         });
-        // The Drawer (mobile only — see build's isMobile branch) needs closing after a tap;
-        // a no-op on desktop, where this widget isn't wrapped in a Drawer at all.
+        // No-op on desktop; on mobile, the Drawer this is wrapped in needs closing after a tap.
         if (isMobile) Navigator.of(context).maybePop();
       },
       hasUnreadMention: _hasUnreadMention,
@@ -213,9 +197,7 @@ class _Sidebar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelect;
 
-  // Only the Bubbles item (index _bubblesIndex) ever shows a dot — a diver @mentioning
-  // the dive center, surfaced here so a mention isn't just one row among many in an inbox
-  // staff might not have open.
+  // Only the Bubbles item shows a dot, so a diver @mentioning the dive center isn't buried in an inbox staff might not have open.
   final ValueListenable<bool> hasUnreadMention;
   static const _bubblesIndex = 1;
 
@@ -224,8 +206,7 @@ class _Sidebar extends StatelessWidget {
   final VoidCallback onAccountTap;
   final VoidCallback onSignOut;
 
-  // Bubbles' icon pair (bubble_chart_outlined/bubble_chart) matches app/'s own bottom-nav
-  // Bubbles tab exactly (root_shell.dart) — same brand concept, same glyph, on purpose.
+  // Bubbles' icon pair intentionally matches app/'s bottom-nav Bubbles tab glyph exactly.
   static const _items = [
     (icon: Icons.calendar_today_outlined, selectedIcon: Icons.calendar_today, label: 'Trips'),
     (icon: Icons.bubble_chart_outlined, selectedIcon: Icons.bubble_chart, label: 'Bubbles'),
@@ -242,9 +223,7 @@ class _Sidebar extends StatelessWidget {
         ? '?'
         : displayName.trim().split(RegExp(r'\s+')).map((w) => w[0]).take(2).join().toUpperCase();
 
-    // No fixed width here — the desktop call site wraps this in its own SizedBox(width:
-    // 260), while the mobile Drawer wrapping it (see AdminShell.build's isMobile branch)
-    // sizes itself. Only the border is unconditional; a thin line reads fine either way.
+    // No fixed width here — the desktop call site sizes this via SizedBox(width: 260) while the mobile Drawer sizes itself.
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
@@ -263,9 +242,7 @@ class _Sidebar extends StatelessWidget {
                     width: 36,
                     height: 36,
                     fit: BoxFit.cover,
-                    // A failed load's default error widget doesn't respect the 36x36 box the
-                    // way a normal image does, which blew out this Row's width entirely (see
-                    // the "RIGHT OVERFLOWED" report) — bound to the same size explicitly.
+                    // Bound to the same 36x36 size explicitly — a failed load's default error widget ignores the box and blew out this Row's width entirely.
                     errorBuilder: (context, error, stackTrace) => Container(
                       width: 36,
                       height: 36,

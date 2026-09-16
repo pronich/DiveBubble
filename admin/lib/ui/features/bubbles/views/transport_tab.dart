@@ -7,10 +7,7 @@ import '../../transport/view_models/transport_view_model.dart';
 const _typeLabels = {'offer_ride': 'Offering a ride', 'share_rental': 'Sharing a rental'};
 const _typeIcons = {'offer_ride': Icons.directions_car, 'share_rental': Icons.car_rental};
 
-/// Transport tab content for one open Bubble — embedded next to Chat in BubblesPage's
-/// _Conversation (see its own comment: transport lives inside the Bubble, not as its own
-/// top-level admin section, same "one place holds everything about this trip" idea app/'s
-/// TripConversationPage already follows with its Chat/Transport tabs).
+/// Lives inside the Bubble, not as its own top-level admin section — same "one place holds everything about this trip" idea app/'s TripConversationPage follows.
 class TransportTab extends StatelessWidget {
   const TransportTab({super.key, required this.viewModel});
 

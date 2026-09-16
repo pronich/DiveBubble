@@ -6,8 +6,7 @@ import '../../domain/entities/specialty_certification.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
 
-// Photo upload isn't ported here (see AccountPage's own doc comment on scope) — only
-// list/add/remove, unlike app/'s SpecialtyApiService which also has uploadSpecialtyPhoto.
+// Only list/add/remove — photo upload isn't ported here (see AccountPage's doc comment on scope).
 class SpecialtyApiService {
   SpecialtyApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
       : _client = client ?? http.Client();

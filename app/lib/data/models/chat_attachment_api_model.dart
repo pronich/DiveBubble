@@ -3,8 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'chat_attachment_api_model.freezed.dart';
 part 'chat_attachment_api_model.g.dart';
 
-/// Mirrors backend's attachmentResponse (routes_message.go) — url/type always present on a
-/// server-sent attachment; filename/sizeBytes/durationSeconds are omitted when empty/zero.
+/// Mirrors backend's attachmentResponse (routes_message.go); filename/sizeBytes/durationSeconds are omitted when empty/zero.
 @freezed
 abstract class ChatAttachmentApiModel with _$ChatAttachmentApiModel {
   const factory ChatAttachmentApiModel({

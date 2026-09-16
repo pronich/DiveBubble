@@ -9,9 +9,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../services/auth_api_service.dart';
 import '../services/token_storage_service.dart';
 
-/// A random string sent to Apple (as its SHA-256 hex digest) and to our own backend (raw) —
-/// the backend re-hashes it and checks it against the identity token's own nonce claim, which
-/// is how Sign in with Apple defends against a stolen/replayed token being reused.
+/// Sent to Apple as its SHA-256 digest and to the backend raw, so the backend can re-hash and match it against the identity token's nonce claim to defend against token replay.
 String _generateNonce([int length = 32]) {
   const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
   final random = Random.secure();
@@ -20,8 +18,7 @@ String _generateNonce([int length = 32]) {
 
 String _sha256Hex(String input) => sha256.convert(utf8.encode(input)).toString();
 
-/// Result of a successful sign-in — isNewUser lets the caller drop a brand-new account
-/// straight into Edit Profile instead of an empty screen.
+/// isNewUser lets the caller drop a brand-new account straight into Edit Profile instead of an empty screen.
 class SignInResult {
   const SignInResult({required this.userId, required this.isNewUser});
 
@@ -29,9 +26,7 @@ class SignInResult {
   final bool isNewUser;
 }
 
-/// Wraps the Google Sign-In SDK + backend token exchange + secure token storage.
-/// A [ChangeNotifier] so screens built before a login-gate fires (e.g. the Trips tab, mounted
-/// while still anonymous) can react once sign-in completes elsewhere in the app.
+/// A [ChangeNotifier] so screens mounted before a login-gate fires (e.g. the Trips tab while still anonymous) can react once sign-in completes elsewhere.
 class AuthRepository extends ChangeNotifier {
   AuthRepository({
     required this.googleIosClientId,
@@ -58,8 +53,6 @@ class AuthRepository extends ChangeNotifier {
     _googleInitialized = true;
   }
 
-  /// Runs the Google sign-in flow and exchanges the resulting ID token with the backend.
-  /// Throws with a message suitable to show the user on failure.
   Future<SignInResult> signInWithGoogle() async {
     await _ensureGoogleInitialized();
 
@@ -89,11 +82,7 @@ class AuthRepository extends ChangeNotifier {
     return SignInResult(userId: result.userId, isNewUser: result.isNewUser);
   }
 
-  /// Runs the native Sign in with Apple flow and exchanges the resulting identity token with
-  /// the backend. email/givenName/familyName only ever come back non-null on a diver's very
-  /// first authorization ever — later sign-ins omit them, which is fine: the backend only
-  /// seeds the user row from these hints on account creation (see LoginOrRegister), never
-  /// overwrites on later logins, so there's nothing for this method to cache/persist locally.
+  /// email/givenName/familyName come back non-null only on a diver's very first Apple authorization; later sign-ins omit them, which is fine since the backend only seeds those fields on account creation.
   Future<SignInResult> signInWithApple() async {
     final rawNonce = _generateNonce();
 
@@ -137,13 +126,9 @@ class AuthRepository extends ChangeNotifier {
     return SignInResult(userId: result.userId, isNewUser: result.isNewUser);
   }
 
-  /// Sends a one-time login code to the given email — the app's own passwordless flow, kept
-  /// alongside (not replacing) Google/Apple. Unlike admin/'s clicked-link flow, the code is
-  /// typed back in by the diver, so there's no separate "consume a link" entry point needed.
+  /// Unlike admin/'s clicked-link flow, the code is typed back in by the diver, so there's no separate "consume a link" entry point needed.
   Future<void> startEmailLogin(String email) => _api.startEmailLogin(email);
 
-  /// Verifies a code from startEmailLogin and persists the resulting session — same shape as
-  /// signInWithGoogle/signInWithApple otherwise.
   Future<SignInResult> verifyEmailLogin(String email, String code) async {
     final result = await _api.verifyEmailLogin(email, code);
     await _tokens.save(
@@ -156,12 +141,7 @@ class AuthRepository extends ChangeNotifier {
     return SignInResult(userId: result.userId, isNewUser: result.isNewUser);
   }
 
-  /// Returns a currently-valid access token, transparently refreshing it if it's expired (or
-  /// close to it). Returns null if there's no session at all, the refresh token was genuinely
-  /// rejected (revoked/expired/reused — stored tokens are cleared so the caller can prompt
-  /// login), or the refresh request merely failed to go through (network error, timeout, 5xx —
-  /// stored tokens are left alone, since `accessTokenExpiresAt` is still in the past the very
-  /// next call will simply try refreshing again; nothing here was actually invalidated).
+  /// Returns null both when the refresh token is genuinely rejected (tokens cleared, caller should prompt login) and when the refresh request merely fails to go through (tokens left alone so the next call retries).
   Future<String?> getValidAccessToken() async {
     final stored = await _tokens.read();
     if (stored == null) return null;
@@ -189,12 +169,10 @@ class AuthRepository extends ChangeNotifier {
     }
   }
 
-  /// The signed-in user's id, if any — does not attempt a refresh, just reads what's stored.
+  /// Does not attempt a refresh, just reads what's stored.
   Future<String?> currentUserId() async => (await _tokens.read())?.userId;
 
-  /// "Dive out" — revokes the session on the backend (best-effort) and signs out of the native
-  /// Google session too, so a later login shows the account picker again instead of silently
-  /// resuming. Local tokens are always cleared regardless of whether the network calls succeed.
+  /// Local tokens are always cleared regardless of whether the best-effort backend/Google sign-out calls succeed.
   Future<void> signOut() async {
     final stored = await _tokens.read();
     if (stored != null) {
@@ -205,11 +183,7 @@ class AuthRepository extends ChangeNotifier {
       }
     }
     try {
-      // Timeout, not just try/catch: GoogleSignIn.instance.signOut() on an instance that
-      // was never initialize()'d this session (a diver who signed in via Apple, or now the
-      // email passwordless flow, never touches GoogleSignIn at all) doesn't throw — it
-      // hangs indefinitely awaiting an initialization that's never coming, which would
-      // silently stall this entire method (tokens never cleared, "Dive out" looks broken).
+      // Timeout needed: on an instance never initialize()'d (Apple/email sign-in never touches GoogleSignIn), signOut() hangs indefinitely instead of throwing.
       await GoogleSignIn.instance.signOut().timeout(const Duration(seconds: 5));
     } catch (_) {
       // best-effort
@@ -218,10 +192,7 @@ class AuthRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Permanently anonymizes the account server-side. Unlike [signOut], the backend call is
-  /// NOT best-effort — local state is only cleared once it genuinely succeeds, so a failure
-  /// propagates to the caller and the session stays intact (nothing to silently recover from
-  /// if the account wasn't actually deleted).
+  /// Unlike [signOut], the backend call is NOT best-effort — local state is only cleared once it genuinely succeeds, so a failure leaves the session intact.
   Future<void> deleteAccount() async {
     final accessToken = await getValidAccessToken();
     if (accessToken == null) {
