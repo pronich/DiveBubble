@@ -13,7 +13,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get introSubtitle =>
-      'Encuentra viajes de buceo, conoce a tus buddies y organiza la logística juntos.';
+      'Crea viajes de buceo, conoce a tus buddies y organiza la logística juntos.';
 
   @override
   String get diveIn => 'Entrar';

@@ -13,7 +13,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get introSubtitle =>
-      'Finde Tauchtrips, triff deine Buddys und plant die Logistik gemeinsam.';
+      'Erstelle Tauchtrips, triff deine Buddys und plant die Logistik gemeinsam.';
 
   @override
   String get diveIn => 'Loslegen';
