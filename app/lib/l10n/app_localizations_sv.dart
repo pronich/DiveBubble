@@ -1070,4 +1070,110 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get deleteAccountRow => 'Ta bort konto';
+
+  @override
+  String get noExpensesYet => 'Inga utgifter än';
+
+  @override
+  String get logSharedCostBody =>
+      'Registrera en delad kostnad så att alla vet vad de är skyldiga.';
+
+  @override
+  String get addExpenseCta => 'Lägg till utgift';
+
+  @override
+  String get addExpenseTitle => 'Lägg till utgift';
+
+  @override
+  String get editExpenseTitle => 'Redigera utgift';
+
+  @override
+  String get allSettledUp => 'Allt är reglerat';
+
+  @override
+  String get allSettledUpPeriod => 'Allt är reglerat.';
+
+  @override
+  String youAreOwedAmount(String amount) {
+    return 'Du får $amount';
+  }
+
+  @override
+  String youOweAmount(String amount) {
+    return 'Du är skyldig $amount';
+  }
+
+  @override
+  String youOweName(String name) {
+    return 'Du är skyldig $name';
+  }
+
+  @override
+  String nameOwesYou(String name) {
+    return '$name är skyldig dig';
+  }
+
+  @override
+  String paidByAndDate(String name, String date) {
+    return 'Betalat av $name · $date';
+  }
+
+  @override
+  String get balanceTitle => 'Saldo';
+
+  @override
+  String get markSettled => 'Markera som reglerad';
+
+  @override
+  String couldNotSettle(String error) {
+    return 'Kunde inte reglera: $error';
+  }
+
+  @override
+  String get titleFieldLabel => 'Titel';
+
+  @override
+  String get amountLabel => 'Belopp';
+
+  @override
+  String get paidByLabel => 'Betalat av';
+
+  @override
+  String get splitEqual => 'Lika';
+
+  @override
+  String get splitShares => 'Andelar';
+
+  @override
+  String get splitExact => 'Exakt';
+
+  @override
+  String get splitBetweenLabel => 'Dela mellan';
+
+  @override
+  String get fullyAssigned => 'Helt fördelat';
+
+  @override
+  String remainingToAssign(String amount) {
+    return 'Kvar att fördela: $amount';
+  }
+
+  @override
+  String get fillTitleAmountParticipant =>
+      'Fyll i en titel, ett belopp och minst en deltagare.';
+
+  @override
+  String get enterExactAmountForEveryone =>
+      'Ange ett exakt belopp för alla valda.';
+
+  @override
+  String get exactAmountsMustAddUp =>
+      'De exakta beloppen måste summera till totalbeloppet.';
+
+  @override
+  String get deleteExpenseTitle => 'Ta bort den här utgiften?';
+
+  @override
+  String get deleteExpenseBody =>
+      'Den tas bort från saldot för alla. Detta kan inte ångras.';
 }

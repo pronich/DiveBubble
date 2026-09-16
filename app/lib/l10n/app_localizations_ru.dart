@@ -1080,4 +1080,110 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get deleteAccountRow => 'Удалить аккаунт';
+
+  @override
+  String get noExpensesYet => 'Пока нет расходов';
+
+  @override
+  String get logSharedCostBody =>
+      'Запишите общий расход, чтобы все знали, сколько с кого причитается.';
+
+  @override
+  String get addExpenseCta => 'Добавить расход';
+
+  @override
+  String get addExpenseTitle => 'Добавить расход';
+
+  @override
+  String get editExpenseTitle => 'Изменить расход';
+
+  @override
+  String get allSettledUp => 'Все в расчёте';
+
+  @override
+  String get allSettledUpPeriod => 'Все в расчёте.';
+
+  @override
+  String youAreOwedAmount(String amount) {
+    return 'Вам должны $amount';
+  }
+
+  @override
+  String youOweAmount(String amount) {
+    return 'Вы должны $amount';
+  }
+
+  @override
+  String youOweName(String name) {
+    return 'Вы должны $name';
+  }
+
+  @override
+  String nameOwesYou(String name) {
+    return '$name должен(на) вам';
+  }
+
+  @override
+  String paidByAndDate(String name, String date) {
+    return 'Оплатил(а) $name · $date';
+  }
+
+  @override
+  String get balanceTitle => 'Баланс';
+
+  @override
+  String get markSettled => 'Отметить оплаченным';
+
+  @override
+  String couldNotSettle(String error) {
+    return 'Не удалось отметить: $error';
+  }
+
+  @override
+  String get titleFieldLabel => 'Название';
+
+  @override
+  String get amountLabel => 'Сумма';
+
+  @override
+  String get paidByLabel => 'Кто оплатил';
+
+  @override
+  String get splitEqual => 'Поровну';
+
+  @override
+  String get splitShares => 'По долям';
+
+  @override
+  String get splitExact => 'Точно';
+
+  @override
+  String get splitBetweenLabel => 'Разделить между';
+
+  @override
+  String get fullyAssigned => 'Вся сумма распределена';
+
+  @override
+  String remainingToAssign(String amount) {
+    return 'Осталось распределить: $amount';
+  }
+
+  @override
+  String get fillTitleAmountParticipant =>
+      'Укажите название, сумму и хотя бы одного участника.';
+
+  @override
+  String get enterExactAmountForEveryone =>
+      'Укажите точную сумму для всех выбранных участников.';
+
+  @override
+  String get exactAmountsMustAddUp =>
+      'Точные суммы должны совпадать с общей суммой.';
+
+  @override
+  String get deleteExpenseTitle => 'Удалить этот расход?';
+
+  @override
+  String get deleteExpenseBody =>
+      'Он будет удалён из баланса для всех. Это необратимо.';
 }

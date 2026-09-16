@@ -1064,4 +1064,109 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get deleteAccountRow => 'Delete account';
+
+  @override
+  String get noExpensesYet => 'No expenses yet';
+
+  @override
+  String get logSharedCostBody =>
+      'Log a shared cost so everyone knows what they owe.';
+
+  @override
+  String get addExpenseCta => 'Add expense';
+
+  @override
+  String get addExpenseTitle => 'Add Expense';
+
+  @override
+  String get editExpenseTitle => 'Edit Expense';
+
+  @override
+  String get allSettledUp => 'All settled up';
+
+  @override
+  String get allSettledUpPeriod => 'All settled up.';
+
+  @override
+  String youAreOwedAmount(String amount) {
+    return 'You are owed $amount';
+  }
+
+  @override
+  String youOweAmount(String amount) {
+    return 'You owe $amount';
+  }
+
+  @override
+  String youOweName(String name) {
+    return 'You owe $name';
+  }
+
+  @override
+  String nameOwesYou(String name) {
+    return '$name owes you';
+  }
+
+  @override
+  String paidByAndDate(String name, String date) {
+    return 'Paid by $name · $date';
+  }
+
+  @override
+  String get balanceTitle => 'Balance';
+
+  @override
+  String get markSettled => 'Mark settled';
+
+  @override
+  String couldNotSettle(String error) {
+    return 'Could not settle: $error';
+  }
+
+  @override
+  String get titleFieldLabel => 'Title';
+
+  @override
+  String get amountLabel => 'Amount';
+
+  @override
+  String get paidByLabel => 'Paid by';
+
+  @override
+  String get splitEqual => 'Equal';
+
+  @override
+  String get splitShares => 'Shares';
+
+  @override
+  String get splitExact => 'Exact';
+
+  @override
+  String get splitBetweenLabel => 'Split between';
+
+  @override
+  String get fullyAssigned => 'Fully assigned';
+
+  @override
+  String remainingToAssign(String amount) {
+    return 'Remaining to assign: $amount';
+  }
+
+  @override
+  String get fillTitleAmountParticipant =>
+      'Fill in a title, an amount, and at least one participant.';
+
+  @override
+  String get enterExactAmountForEveryone =>
+      'Enter an exact amount for everyone selected.';
+
+  @override
+  String get exactAmountsMustAddUp => 'Exact amounts must add up to the total.';
+
+  @override
+  String get deleteExpenseTitle => 'Delete this expense?';
+
+  @override
+  String get deleteExpenseBody =>
+      'This removes it from the balance for everyone. This can\'t be undone.';
 }

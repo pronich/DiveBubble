@@ -1959,6 +1959,180 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete account'**
   String get deleteAccountRow;
+
+  /// Empty-state title on the Expenses tab.
+  ///
+  /// In en, this message translates to:
+  /// **'No expenses yet'**
+  String get noExpensesYet;
+
+  /// Empty-state subtitle on the Expenses tab with no expenses yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a shared cost so everyone knows what they owe.'**
+  String get logSharedCostBody;
+
+  /// Empty-state CTA button on the Expenses tab.
+  ///
+  /// In en, this message translates to:
+  /// **'Add expense'**
+  String get addExpenseCta;
+
+  /// Add-expense page title and its submit button.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Expense'**
+  String get addExpenseTitle;
+
+  /// Edit-expense page title.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Expense'**
+  String get editExpenseTitle;
+
+  /// Balance card label when the diver's net position is zero.
+  ///
+  /// In en, this message translates to:
+  /// **'All settled up'**
+  String get allSettledUp;
+
+  /// Empty state inside the balance detail sheet once nothing is left to settle.
+  ///
+  /// In en, this message translates to:
+  /// **'All settled up.'**
+  String get allSettledUpPeriod;
+
+  /// Balance card label when the trip owes the diver money.
+  ///
+  /// In en, this message translates to:
+  /// **'You are owed {amount}'**
+  String youAreOwedAmount(String amount);
+
+  /// Balance card label when the diver owes the trip money.
+  ///
+  /// In en, this message translates to:
+  /// **'You owe {amount}'**
+  String youOweAmount(String amount);
+
+  /// Balance detail sheet settlement row, when the diver is the one who owes.
+  ///
+  /// In en, this message translates to:
+  /// **'You owe {name}'**
+  String youOweName(String name);
+
+  /// Balance detail sheet settlement row, when the other person owes the diver.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} owes you'**
+  String nameOwesYou(String name);
+
+  /// Expense row subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid by {name} · {date}'**
+  String paidByAndDate(String name, String date);
+
+  /// Balance detail sheet title.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance'**
+  String get balanceTitle;
+
+  /// Button that records a suggested transfer as paid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark settled'**
+  String get markSettled;
+
+  /// Snackbar shown when marking a settlement fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not settle: {error}'**
+  String couldNotSettle(String error);
+
+  /// Expense title field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Title'**
+  String get titleFieldLabel;
+
+  /// Expense amount field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get amountLabel;
+
+  /// Expense payer dropdown label.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid by'**
+  String get paidByLabel;
+
+  /// Expense split-type segmented button option (canonical backend value 'equal' is unaffected).
+  ///
+  /// In en, this message translates to:
+  /// **'Equal'**
+  String get splitEqual;
+
+  /// Expense split-type segmented button option (canonical backend value 'shares' is unaffected).
+  ///
+  /// In en, this message translates to:
+  /// **'Shares'**
+  String get splitShares;
+
+  /// Expense split-type segmented button option (canonical backend value 'exact' is unaffected).
+  ///
+  /// In en, this message translates to:
+  /// **'Exact'**
+  String get splitExact;
+
+  /// Section label above the participant checklist on the add/edit expense page.
+  ///
+  /// In en, this message translates to:
+  /// **'Split between'**
+  String get splitBetweenLabel;
+
+  /// Shown when an exact split's per-person amounts add up to the total.
+  ///
+  /// In en, this message translates to:
+  /// **'Fully assigned'**
+  String get fullyAssigned;
+
+  /// Shown when an exact split's per-person amounts don't yet add up to the total.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining to assign: {amount}'**
+  String remainingToAssign(String amount);
+
+  /// Validation error when saving an expense with missing required fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill in a title, an amount, and at least one participant.'**
+  String get fillTitleAmountParticipant;
+
+  /// Validation error for an incomplete exact split.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an exact amount for everyone selected.'**
+  String get enterExactAmountForEveryone;
+
+  /// Validation error when an exact split's amounts don't sum to the expense total.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact amounts must add up to the total.'**
+  String get exactAmountsMustAddUp;
+
+  /// Delete-expense confirmation dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this expense?'**
+  String get deleteExpenseTitle;
+
+  /// Delete-expense confirmation dialog body.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes it from the balance for everyone. This can\'t be undone.'**
+  String get deleteExpenseBody;
 }
 
 class _AppLocalizationsDelegate

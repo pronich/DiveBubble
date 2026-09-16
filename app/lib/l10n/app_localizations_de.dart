@@ -1074,4 +1074,110 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get deleteAccountRow => 'Konto löschen';
+
+  @override
+  String get noExpensesYet => 'Noch keine Ausgaben';
+
+  @override
+  String get logSharedCostBody =>
+      'Erfasse eine gemeinsame Ausgabe, damit jeder weiß, was er schuldet.';
+
+  @override
+  String get addExpenseCta => 'Ausgabe hinzufügen';
+
+  @override
+  String get addExpenseTitle => 'Ausgabe hinzufügen';
+
+  @override
+  String get editExpenseTitle => 'Ausgabe bearbeiten';
+
+  @override
+  String get allSettledUp => 'Alles ausgeglichen';
+
+  @override
+  String get allSettledUpPeriod => 'Alles ausgeglichen.';
+
+  @override
+  String youAreOwedAmount(String amount) {
+    return 'Dir werden $amount geschuldet';
+  }
+
+  @override
+  String youOweAmount(String amount) {
+    return 'Du schuldest $amount';
+  }
+
+  @override
+  String youOweName(String name) {
+    return 'Du schuldest $name';
+  }
+
+  @override
+  String nameOwesYou(String name) {
+    return '$name schuldet dir';
+  }
+
+  @override
+  String paidByAndDate(String name, String date) {
+    return 'Bezahlt von $name · $date';
+  }
+
+  @override
+  String get balanceTitle => 'Bilanz';
+
+  @override
+  String get markSettled => 'Als ausgeglichen markieren';
+
+  @override
+  String couldNotSettle(String error) {
+    return 'Ausgleichen fehlgeschlagen: $error';
+  }
+
+  @override
+  String get titleFieldLabel => 'Titel';
+
+  @override
+  String get amountLabel => 'Betrag';
+
+  @override
+  String get paidByLabel => 'Bezahlt von';
+
+  @override
+  String get splitEqual => 'Gleich';
+
+  @override
+  String get splitShares => 'Anteile';
+
+  @override
+  String get splitExact => 'Genau';
+
+  @override
+  String get splitBetweenLabel => 'Aufteilen zwischen';
+
+  @override
+  String get fullyAssigned => 'Vollständig zugewiesen';
+
+  @override
+  String remainingToAssign(String amount) {
+    return 'Noch zuzuweisen: $amount';
+  }
+
+  @override
+  String get fillTitleAmountParticipant =>
+      'Gib einen Titel, einen Betrag und mindestens einen Teilnehmer an.';
+
+  @override
+  String get enterExactAmountForEveryone =>
+      'Gib für jeden Ausgewählten einen genauen Betrag ein.';
+
+  @override
+  String get exactAmountsMustAddUp =>
+      'Die genauen Beträge müssen der Gesamtsumme entsprechen.';
+
+  @override
+  String get deleteExpenseTitle => 'Diese Ausgabe löschen?';
+
+  @override
+  String get deleteExpenseBody =>
+      'Sie wird für alle aus der Bilanz entfernt. Das kann nicht rückgängig gemacht werden.';
 }
