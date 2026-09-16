@@ -1121,10 +1121,20 @@ class _InfoTile extends StatelessWidget {
             children: [
               Icon(icon, size: 13, color: theme.colorScheme.onSurfaceVariant),
               const SizedBox(width: 4),
-              Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              // A longer translated label (e.g. Russian "ПРОДОЛЖИТЕЛЬНОСТЬ") can outgrow
+              // this tile's half-row width — shrink to fit on one line instead of
+              // overflowing, same fix as the Dive Log detail page's own stat tiles.
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
               ),
             ],
