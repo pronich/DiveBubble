@@ -1707,5 +1707,246 @@
   "bookingCodeHint": "e.g. 8XK2NPQ4",
   "@bookingCodeHint": {
     "description": "Join-by-code dialog field hint text — kept as a Latin-alphanumeric example code in every locale, since real booking codes are generated in that same format regardless of app language."
+  },
+
+  "managePhotos": "Manage photos",
+  "@managePhotos": {
+    "description": "Photo hero pill and Manage Photos page title."
+  },
+  "editButtonLabel": "Edit",
+  "@editButtonLabel": {
+    "description": "Photo hero pill that opens Edit Trip, organizer-only."
+  },
+  "peopleTabLabel": "People",
+  "@peopleTabLabel": {
+    "description": "Bubble Info tab label."
+  },
+  "mediaTabLabel": "Media",
+  "@mediaTabLabel": {
+    "description": "Bubble Info tab label."
+  },
+  "filesTabLabel": "Files",
+  "@filesTabLabel": {
+    "description": "Bubble Info tab label."
+  },
+  "linksTabLabel": "Links",
+  "@linksTabLabel": {
+    "description": "Bubble Info tab label."
+  },
+  "meetingPointSectionLabel": "MEETING POINT",
+  "@meetingPointSectionLabel": {
+    "description": "All-caps section label on the trip info block."
+  },
+  "aboutThisDive": "About this dive",
+  "@aboutThisDive": {
+    "description": "Trip description section heading."
+  },
+  "levelSectionLabel": "LEVEL",
+  "@levelSectionLabel": {
+    "description": "All-caps info-tile label on the trip info grid."
+  },
+  "depthSectionLabel": "DEPTH",
+  "@depthSectionLabel": {
+    "description": "All-caps info-tile label on the trip info grid."
+  },
+  "divesSectionLabel": "DIVES",
+  "@divesSectionLabel": {
+    "description": "All-caps info-tile label on the trip info grid."
+  },
+  "durationSectionLabel": "DURATION",
+  "@durationSectionLabel": {
+    "description": "All-caps info-tile label on the trip info grid."
+  },
+  "depthExactMeters": "{value} m",
+  "@depthExactMeters": {
+    "description": "Trip depth info tile when min and max depth match.",
+    "placeholders": {
+      "value": {
+        "type": "int"
+      }
+    }
+  },
+  "depthRangeMeters": "{min}–{max} m",
+  "@depthRangeMeters": {
+    "description": "Trip depth info tile for a min/max range.",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "depthUpToMeters": "Up to {max} m",
+  "@depthUpToMeters": {
+    "description": "Trip depth info tile when only a max depth is set.",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "depthMinPlusMeters": "{min}+ m",
+  "@depthMinPlusMeters": {
+    "description": "Trip depth info tile when only a min depth is set.",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "diveCountExactPlural": "{n, plural, one{{n} dive} other{{n} dives}}",
+  "@diveCountExactPlural": {
+    "description": "Trip dive-count info tile when min and max dive count match.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "diveCountRangeDives": "{min}–{max} dives",
+  "@diveCountRangeDives": {
+    "description": "Trip dive-count info tile for a min/max range.",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "diveCountUpToDives": "Up to {max} dives",
+  "@diveCountUpToDives": {
+    "description": "Trip dive-count info tile when only a max is set.",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "diveCountMinPlusDives": "{min}+ dives",
+  "@diveCountMinPlusDives": {
+    "description": "Trip dive-count info tile when only a min is set.",
+    "placeholders": {
+      "min": {
+        "type": "int"
+      }
+    }
+  },
+  "durationDaysPlural": "{days, plural, one{{days} day} other{{days} days}}",
+  "@durationDaysPlural": {
+    "description": "Trip duration info tile.",
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "diveCenterLabel": "Dive center",
+  "@diveCenterLabel": {
+    "description": "Role label under a dive center's name — trip organizer card and dive center detail card."
+  },
+  "bookNowLabel": "Book now",
+  "@bookNowLabel": {
+    "description": "Button that opens a business trip's external booking URL, no price shown."
+  },
+  "bookNowWithPrice": "Book now — {price} {currency}",
+  "@bookNowWithPrice": {
+    "description": "Button that opens a business trip's external booking URL, with its price.",
+    "placeholders": {
+      "price": {
+        "type": "String"
+      },
+      "currency": {
+        "type": "String"
+      }
+    }
+  },
+  "iHaveABookingCode": "I have a booking code",
+  "@iHaveABookingCode": {
+    "description": "Button that opens the join-by-code dialog from a business trip."
+  },
+  "privateTripAskOrganizer": "This is a private trip — ask the organizer for an invite code or link.",
+  "@privateTripAskOrganizer": {
+    "description": "Explanatory text on a private trip a diver hasn't joined."
+  },
+  "iHaveAnInviteCode": "I have an invite code",
+  "@iHaveAnInviteCode": {
+    "description": "Button that opens the join-by-code dialog from a private trip."
+  },
+  "inviteCodeSectionLabel": "INVITE CODE",
+  "@inviteCodeSectionLabel": {
+    "description": "All-caps label above the organizer-only booking code."
+  },
+  "shareInviteTooltip": "Share invite",
+  "@shareInviteTooltip": {
+    "description": "Tooltip on the share-icon button next to the booking code."
+  },
+  "shareInviteLink": "Share invite link",
+  "@shareInviteLink": {
+    "description": "Booking-code actions sheet option."
+  },
+  "copyInviteLink": "Copy invite link",
+  "@copyInviteLink": {
+    "description": "Booking-code actions sheet option."
+  },
+  "copyBookingCode": "Copy booking code",
+  "@copyBookingCode": {
+    "description": "Booking-code actions sheet option."
+  },
+  "unmute": "Unmute",
+  "@unmute": {
+    "description": "Action pill on Bubble Info, when the Bubble is currently muted."
+  },
+  "mute": "Mute",
+  "@mute": {
+    "description": "Action pill on Bubble Info, when the Bubble is currently unmuted."
+  },
+  "tripCancelledSnackbar": "Trip cancelled",
+  "@tripCancelledSnackbar": {
+    "description": "Snackbar shown right after an organizer cancels their trip."
+  },
+  "diveInToBubble": "Dive in to Bubble",
+  "@diveInToBubble": {
+    "description": "Button on a joined trip's page that opens its Bubble chat."
+  },
+  "participantsJoinedPlural": "{count, plural, one{{count} person joined} other{{count} people joined}}",
+  "@participantsJoinedPlural": {
+    "description": "Participant count under the organizer card, trip has no seat cap.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "participantsJoinedOfMaxPlural": "{count, plural, one{{count} person out of {max} joined} other{{count} people out of {max} joined}}",
+  "@participantsJoinedOfMaxPlural": {
+    "description": "Participant count under the organizer card, trip has a seat cap.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "agencyLabel": "Agency",
+  "@agencyLabel": {
+    "description": "Dive center detail card info row label."
+  },
+  "websiteLabel": "Website",
+  "@websiteLabel": {
+    "description": "Dive center detail card info row label."
+  },
+  "phoneLabel": "Phone",
+  "@phoneLabel": {
+    "description": "Dive center detail card info row label."
+  },
+  "emailLabel": "Email",
+  "@emailLabel": {
+    "description": "Dive center detail card info row label."
   }
 }

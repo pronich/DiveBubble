@@ -1255,4 +1255,179 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get bookingCodeHint => 'z. B. 8XK2NPQ4';
+
+  @override
+  String get managePhotos => 'Fotos verwalten';
+
+  @override
+  String get editButtonLabel => 'Bearbeiten';
+
+  @override
+  String get peopleTabLabel => 'Personen';
+
+  @override
+  String get mediaTabLabel => 'Medien';
+
+  @override
+  String get filesTabLabel => 'Dateien';
+
+  @override
+  String get linksTabLabel => 'Links';
+
+  @override
+  String get meetingPointSectionLabel => 'TREFFPUNKT';
+
+  @override
+  String get aboutThisDive => 'Über diesen Tauchgang';
+
+  @override
+  String get levelSectionLabel => 'LEVEL';
+
+  @override
+  String get depthSectionLabel => 'TIEFE';
+
+  @override
+  String get divesSectionLabel => 'TAUCHGÄNGE';
+
+  @override
+  String get durationSectionLabel => 'DAUER';
+
+  @override
+  String depthExactMeters(int value) {
+    return '$value m';
+  }
+
+  @override
+  String depthRangeMeters(int min, int max) {
+    return '$min–$max m';
+  }
+
+  @override
+  String depthUpToMeters(int max) {
+    return 'Bis zu $max m';
+  }
+
+  @override
+  String depthMinPlusMeters(int min) {
+    return '$min+ m';
+  }
+
+  @override
+  String diveCountExactPlural(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Tauchgänge',
+      one: '$n Tauchgang',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String diveCountRangeDives(int min, int max) {
+    return '$min–$max Tauchgänge';
+  }
+
+  @override
+  String diveCountUpToDives(int max) {
+    return 'Bis zu $max Tauchgänge';
+  }
+
+  @override
+  String diveCountMinPlusDives(int min) {
+    return '$min+ Tauchgänge';
+  }
+
+  @override
+  String durationDaysPlural(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days Tage',
+      one: '$days Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get diveCenterLabel => 'Tauchcenter';
+
+  @override
+  String get bookNowLabel => 'Jetzt buchen';
+
+  @override
+  String bookNowWithPrice(String price, String currency) {
+    return 'Jetzt buchen — $price $currency';
+  }
+
+  @override
+  String get iHaveABookingCode => 'Ich habe einen Buchungscode';
+
+  @override
+  String get privateTripAskOrganizer =>
+      'Dies ist ein privater Trip — bitte den Organisator um einen Einladungscode oder -link.';
+
+  @override
+  String get iHaveAnInviteCode => 'Ich habe einen Einladungscode';
+
+  @override
+  String get inviteCodeSectionLabel => 'EINLADUNGSCODE';
+
+  @override
+  String get shareInviteTooltip => 'Einladung teilen';
+
+  @override
+  String get shareInviteLink => 'Einladungslink teilen';
+
+  @override
+  String get copyInviteLink => 'Einladungslink kopieren';
+
+  @override
+  String get copyBookingCode => 'Buchungscode kopieren';
+
+  @override
+  String get unmute => 'Ton an';
+
+  @override
+  String get mute => 'Stummschalten';
+
+  @override
+  String get tripCancelledSnackbar => 'Trip storniert';
+
+  @override
+  String get diveInToBubble => 'Zum Bubble';
+
+  @override
+  String participantsJoinedPlural(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Personen beigetreten',
+      one: '$count Person beigetreten',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String participantsJoinedOfMaxPlural(int count, int max) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count von $max Personen beigetreten',
+      one: '$count von $max Person beigetreten',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get agencyLabel => 'Verband';
+
+  @override
+  String get websiteLabel => 'Website';
+
+  @override
+  String get phoneLabel => 'Telefon';
+
+  @override
+  String get emailLabel => 'E-Mail';
 }
