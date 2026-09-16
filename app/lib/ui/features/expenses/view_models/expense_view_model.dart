@@ -36,9 +36,11 @@ class ExpenseViewModel extends ChangeNotifier {
   // checklist, and every name shown throughout this tab.
   List<Profile> get participants => _participants.values.toList();
 
-  String displayName(String userId) {
-    if (userId == currentUserId) return 'You';
-    return _participants[userId]?.displayName ?? 'Diver';
+  // Callers pass in the already-localized fallback words (see AppLocalizations.you/.diver) —
+  // this ViewModel stays free of any UI/l10n import, matching the rest of the app's layering.
+  String displayName(String userId, {required String youLabel, required String diverLabel}) {
+    if (userId == currentUserId) return youLabel;
+    return _participants[userId]?.displayName ?? diverLabel;
   }
 
   bool _isLoading = false;

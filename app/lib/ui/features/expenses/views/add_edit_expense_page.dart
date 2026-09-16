@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/expense.dart';
 import '../../../../domain/entities/profile.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/calendar_picker_sheet.dart';
 import '../utils/expense_format.dart';
@@ -82,12 +83,13 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final amountMinor = parseExpenseAmountMinor(_amountController.text);
     final canDelete = widget.isEdit && widget.existing!.createdBy == widget.viewModel.currentUserId;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isEdit ? 'Edit Expense' : 'Add Expense'),
+        title: Text(widget.isEdit ? l10n.editExpenseTitle : l10n.addExpenseTitle),
         actions: [
           if (canDelete)
             IconButton(icon: const Icon(Icons.delete_outline), onPressed: _confirmDelete),
@@ -98,31 +100,31 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
         children: [
           TextField(
             controller: _titleController,
-            decoration: const InputDecoration(labelText: 'Title'),
+            decoration: InputDecoration(labelText: l10n.titleFieldLabel),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _amountController,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Amount', prefixText: '¤ '),
+            decoration: InputDecoration(labelText: l10n.amountLabel, prefixText: '¤ '),
           ),
           const SizedBox(height: 12),
           InkWell(
             onTap: _pickDate,
             child: InputDecorator(
-              decoration: const InputDecoration(labelText: 'Date'),
+              decoration: InputDecoration(labelText: l10n.dateLabel),
               child: Text(formatShortDate(_occurredAt)),
             ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: _payerUserId,
-            decoration: const InputDecoration(labelText: 'Paid by'),
+            decoration: InputDecoration(labelText: l10n.paidByLabel),
             items: widget.viewModel.participants
                 .map(
                   (p) => DropdownMenuItem(
                     value: p.id,
-                    child: Text(widget.viewModel.displayName(p.id)),
+                    child: Text(widget.viewModel.displayName(p.id, youLabel: l10n.you, diverLabel: l10n.diver)),
                   ),
                 )
                 .toList(),
@@ -130,16 +132,16 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
           ),
           const SizedBox(height: 16),
           SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'equal', label: Text('Equal')),
-              ButtonSegment(value: 'shares', label: Text('Shares')),
-              ButtonSegment(value: 'exact', label: Text('Exact')),
+            segments: [
+              ButtonSegment(value: 'equal', label: Text(l10n.splitEqual)),
+              ButtonSegment(value: 'shares', label: Text(l10n.splitShares)),
+              ButtonSegment(value: 'exact', label: Text(l10n.splitExact)),
             ],
             selected: {_splitType},
             onSelectionChanged: (s) => setState(() => _splitType = s.first),
           ),
           const SizedBox(height: 16),
-          Text('Split between', style: theme.textTheme.titleSmall),
+          Text(l10n.splitBetweenLabel, style: theme.textTheme.titleSmall),
           ...widget.viewModel.participants.map(_buildParticipantRow),
           if (_splitType == 'exact') ...[
             const SizedBox(height: 8),
@@ -158,7 +160,7 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(widget.isEdit ? 'Save changes' : 'Add Expense'),
+                : Text(widget.isEdit ? l10n.saveChanges : l10n.addExpenseTitle),
           ),
         ],
       ),
@@ -166,6 +168,7 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
   }
 
   Widget _buildParticipantRow(Profile p) {
+    final l10n = AppLocalizations.of(context);
     final userId = p.id;
     final selected = _selected.contains(userId);
     return Padding(
@@ -183,7 +186,7 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
               }
             }),
           ),
-          Expanded(child: Text(widget.viewModel.displayName(userId))),
+          Expanded(child: Text(widget.viewModel.displayName(userId, youLabel: l10n.you, diverLabel: l10n.diver))),
           if (_splitType == 'shares' && selected) _buildShareStepper(userId),
           if (_splitType == 'exact' && selected)
             SizedBox(
@@ -225,9 +228,10 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
     }
     final remaining = totalMinor - assigned;
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final ok = remaining == 0;
     return Text(
-      ok ? 'Fully assigned' : 'Remaining to assign: ${formatExpenseAmount(remaining)}',
+      ok ? l10n.fullyAssigned : l10n.remainingToAssign(formatExpenseAmount(remaining)),
       style: theme.textTheme.bodySmall?.copyWith(
         color: ok ? Colors.green : theme.colorScheme.error,
       ),
@@ -246,10 +250,11 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final title = _titleController.text.trim();
     final amountMinor = parseExpenseAmountMinor(_amountController.text);
     if (title.isEmpty || amountMinor == null || amountMinor <= 0 || _selected.isEmpty) {
-      setState(() => _error = 'Fill in a title, an amount, and at least one participant.');
+      setState(() => _error = l10n.fillTitleAmountParticipant);
       return;
     }
 
@@ -265,14 +270,14 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
         for (final id in _selected) {
           final amt = parseExpenseAmountMinor(_exactControllers[id]?.text ?? '');
           if (amt == null) {
-            setState(() => _error = 'Enter an exact amount for everyone selected.');
+            setState(() => _error = l10n.enterExactAmountForEveryone);
             return;
           }
           sum += amt;
           exactShares.add(ExpenseShareInput(userId: id, amountMinor: amt));
         }
         if (sum != amountMinor) {
-          setState(() => _error = 'Exact amounts must add up to the total.');
+          setState(() => _error = l10n.exactAmountsMustAddUp);
           return;
         }
         shares = exactShares;
@@ -307,21 +312,20 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
   }
 
   Future<void> _confirmDelete() async {
+    final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete this expense?'),
-        content: const Text(
-          'This removes it from the balance for everyone. This can\'t be undone.',
-        ),
+        title: Text(l10n.deleteExpenseTitle),
+        content: Text(l10n.deleteExpenseBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text(l10n.delete, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),

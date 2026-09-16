@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../domain/entities/expense.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/empty_state_view.dart';
 import '../utils/expense_format.dart';
@@ -33,12 +34,13 @@ class _ExpenseViewState extends State<ExpenseView> {
     return ListenableBuilder(
       listenable: viewModel,
       builder: (context, _) {
+        final l10n = AppLocalizations.of(context);
         if (viewModel.isLoading && viewModel.expenses.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
         final error = viewModel.error;
         if (error != null) {
-          return Center(child: Text('Error: $error'));
+          return Center(child: Text(l10n.errorWithMessage(error)));
         }
 
         final expenses = viewModel.expenses;
@@ -50,11 +52,11 @@ class _ExpenseViewState extends State<ExpenseView> {
                 child: expenses.isEmpty
                     ? EmptyStateView(
                         icon: Icons.receipt_long_outlined,
-                        title: 'No expenses yet',
+                        title: l10n.noExpensesYet,
                         subtitle: isCancelled
-                            ? 'This trip has been cancelled.'
-                            : 'Log a shared cost so everyone knows what they owe.',
-                        ctaLabel: isCancelled ? null : 'Add expense',
+                            ? l10n.tripCancelledSimple
+                            : l10n.logSharedCostBody,
+                        ctaLabel: isCancelled ? null : l10n.addExpenseCta,
                         onCtaPressed: isCancelled ? null : () => _openAdd(context),
                       )
                     : ListView.separated(
@@ -104,14 +106,15 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final myBalance = viewModel.myBalanceMinor;
     final settled = myBalance == 0;
     final owedToMe = myBalance > 0;
     final label = settled
-        ? 'All settled up'
+        ? l10n.allSettledUp
         : owedToMe
-        ? 'You are owed ${formatExpenseAmount(myBalance)}'
-        : 'You owe ${formatExpenseAmount(-myBalance)}';
+        ? l10n.youAreOwedAmount(formatExpenseAmount(myBalance))
+        : l10n.youOweAmount(formatExpenseAmount(-myBalance));
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -153,11 +156,15 @@ class _ExpenseRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return ListTile(
       onTap: onTap,
       title: Text(expense.title),
       subtitle: Text(
-        'Paid by ${viewModel.displayName(expense.payerUserId)} · ${formatShortDate(expense.occurredAt)}',
+        l10n.paidByAndDate(
+          viewModel.displayName(expense.payerUserId, youLabel: l10n.you, diverLabel: l10n.diver),
+          formatShortDate(expense.occurredAt),
+        ),
       ),
       trailing: Text(
         formatExpenseAmount(expense.amountMinor),
@@ -230,7 +237,7 @@ class _ExpenseBalanceSheetState extends State<_ExpenseBalanceSheet> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Balance', style: Theme.of(context).textTheme.titleLarge),
+                  Text(AppLocalizations.of(context).balanceTitle, style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 12),
                   if (settlements.isEmpty)
                     // A short, empty-looking sheet reads as a rendering glitch rather than a
@@ -247,7 +254,7 @@ class _ExpenseBalanceSheetState extends State<_ExpenseBalanceSheet> {
                             color: Theme.of(context).colorScheme.primary,
                           ),
                           const SizedBox(height: 12),
-                          const Text('All settled up.'),
+                          Text(AppLocalizations.of(context).allSettledUpPeriod),
                         ],
                       ),
                     )
@@ -273,11 +280,11 @@ class _SettlementRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final iOwe = settlement.fromUserId == viewModel.currentUserId;
     final otherUserId = iOwe ? settlement.toUserId : settlement.fromUserId;
-    final label = iOwe
-        ? 'You owe ${viewModel.displayName(otherUserId)}'
-        : '${viewModel.displayName(otherUserId)} owes you';
+    final otherName = viewModel.displayName(otherUserId, youLabel: l10n.you, diverLabel: l10n.diver);
+    final label = iOwe ? l10n.youOweName(otherName) : l10n.nameOwesYou(otherName);
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -293,10 +300,10 @@ class _SettlementRow extends StatelessWidget {
               if (error != null && context.mounted) {
                 ScaffoldMessenger.of(
                   context,
-                ).showSnackBar(SnackBar(content: Text('Could not settle: $error')));
+                ).showSnackBar(SnackBar(content: Text(l10n.couldNotSettle(error))));
               }
             },
-            child: const Text('Mark settled'),
+            child: Text(l10n.markSettled),
           ),
         ],
       ),

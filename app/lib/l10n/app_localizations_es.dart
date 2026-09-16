@@ -1075,4 +1075,110 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get deleteAccountRow => 'Eliminar cuenta';
+
+  @override
+  String get noExpensesYet => 'Aún no hay gastos';
+
+  @override
+  String get logSharedCostBody =>
+      'Registra un gasto compartido para que todos sepan cuánto deben.';
+
+  @override
+  String get addExpenseCta => 'Añadir gasto';
+
+  @override
+  String get addExpenseTitle => 'Añadir gasto';
+
+  @override
+  String get editExpenseTitle => 'Editar gasto';
+
+  @override
+  String get allSettledUp => 'Todo saldado';
+
+  @override
+  String get allSettledUpPeriod => 'Todo saldado.';
+
+  @override
+  String youAreOwedAmount(String amount) {
+    return 'Te deben $amount';
+  }
+
+  @override
+  String youOweAmount(String amount) {
+    return 'Debes $amount';
+  }
+
+  @override
+  String youOweName(String name) {
+    return 'Le debes a $name';
+  }
+
+  @override
+  String nameOwesYou(String name) {
+    return '$name te debe';
+  }
+
+  @override
+  String paidByAndDate(String name, String date) {
+    return 'Pagado por $name · $date';
+  }
+
+  @override
+  String get balanceTitle => 'Balance';
+
+  @override
+  String get markSettled => 'Marcar como pagado';
+
+  @override
+  String couldNotSettle(String error) {
+    return 'No se pudo saldar: $error';
+  }
+
+  @override
+  String get titleFieldLabel => 'Título';
+
+  @override
+  String get amountLabel => 'Importe';
+
+  @override
+  String get paidByLabel => 'Pagado por';
+
+  @override
+  String get splitEqual => 'Igual';
+
+  @override
+  String get splitShares => 'Partes';
+
+  @override
+  String get splitExact => 'Exacto';
+
+  @override
+  String get splitBetweenLabel => 'Dividir entre';
+
+  @override
+  String get fullyAssigned => 'Completamente asignado';
+
+  @override
+  String remainingToAssign(String amount) {
+    return 'Pendiente de asignar: $amount';
+  }
+
+  @override
+  String get fillTitleAmountParticipant =>
+      'Indica un título, un importe y al menos un participante.';
+
+  @override
+  String get enterExactAmountForEveryone =>
+      'Introduce un importe exacto para cada seleccionado.';
+
+  @override
+  String get exactAmountsMustAddUp =>
+      'Los importes exactos deben sumar el total.';
+
+  @override
+  String get deleteExpenseTitle => '¿Eliminar este gasto?';
+
+  @override
+  String get deleteExpenseBody =>
+      'Se eliminará del balance para todos. Esto no se puede deshacer.';
 }
