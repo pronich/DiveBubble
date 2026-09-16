@@ -1028,9 +1028,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get languageSettingsTitle => 'Sprache';
 
   @override
-  String get systemDefault => 'Systemstandard';
-
-  @override
   String get guest => 'Gast';
 
   @override
@@ -1430,4 +1427,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get emailLabel => 'E-Mail';
+
+  @override
+  String systemDefaultWithLanguage(String name) {
+    return '$name (Systemstandard)';
+  }
+
+  @override
+  String get chooseYourLanguageTitle => 'Wähle deine Sprache';
+
+  @override
+  String get chooseYourLanguageBody =>
+      'Das kannst du später jederzeit in den Profileinstellungen ändern.';
 }

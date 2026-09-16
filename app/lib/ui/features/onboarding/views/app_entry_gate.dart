@@ -3,27 +3,38 @@ import 'package:flutter/material.dart';
 import '../../../../data/repositories/auth_repository.dart';
 import '../../../../data/repositories/profile_repository.dart';
 import '../../../../data/repositories/push_repository.dart';
+import '../../../../data/services/locale_controller.dart';
 import '../../../../data/services/onboarding_state_service.dart';
 import '../../../core/theme/app_gradients.dart';
 import 'intro_view.dart';
+import 'language_onboarding_page.dart';
 import 'static_splash_view.dart';
 
-enum _Phase { loading, intro, staticSplash, app }
+enum _Phase { loading, intro, languageSelect, staticSplash, app }
 
 /// Root gate: first-ever launch gets the animated bubble intro; returning users (already past
 /// intro) get a quick static "B" splash instead, then either way land on [rootShellBuilder].
+///
+/// The language-selection step (see [LanguageOnboardingPage]) is shown exactly once per
+/// device, regardless of which of those two paths a diver is on — a brand-new diver sees it
+/// right after the animated intro, and a diver who installed before this step ever existed
+/// sees it once, right after the static splash, on their first launch post-update. Both paths
+/// converge on the same [OnboardingStateService.markLanguagePromptSeen] flag, so neither one
+/// can show it twice.
 class AppEntryGate extends StatefulWidget {
   const AppEntryGate({
     super.key,
     required this.authRepository,
     required this.profileRepository,
     required this.pushRepository,
+    required this.localeController,
     required this.rootShellBuilder,
   });
 
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
   final PushRepository pushRepository;
+  final LocaleController localeController;
 
   /// currentUserId is the real signed-in user's id if logged in, or '' for an anonymous/browsing
   /// session — resolved fresh right before entering the app, not fixed at app startup, since
@@ -39,12 +50,23 @@ class _AppEntryGateState extends State<AppEntryGate> {
   _Phase _phase = _Phase.loading;
   String _currentUserId = '';
 
+  // Only meaningful on the returning-user path — a brand-new diver always sees the language
+  // step right after intro regardless of this flag (see _completeIntro).
+  bool _needsLanguagePromptAfterSplash = false;
+
   @override
   void initState() {
     super.initState();
-    _service.hasCompletedIntro().then((completed) {
+    _service.hasCompletedIntro().then((completed) async {
       if (!mounted) return;
-      setState(() => _phase = completed ? _Phase.staticSplash : _Phase.intro);
+      if (!completed) {
+        setState(() => _phase = _Phase.intro);
+        return;
+      }
+      final seenLanguagePrompt = await _service.hasSeenLanguagePrompt();
+      if (!mounted) return;
+      _needsLanguagePromptAfterSplash = !seenLanguagePrompt;
+      setState(() => _phase = _Phase.staticSplash);
     });
     // A login-gated action (ensureSignedIn) can sign the user in — or a session refresh can
     // fail and sign them out — long after _enterApp() already ran once. Without this,
@@ -80,10 +102,19 @@ class _AppEntryGateState extends State<AppEntryGate> {
 
   void _completeIntro() {
     _service.markIntroCompleted();
-    _enterApp();
+    setState(() => _phase = _Phase.languageSelect);
   }
 
   void _completeStaticSplash() {
+    if (_needsLanguagePromptAfterSplash) {
+      setState(() => _phase = _Phase.languageSelect);
+      return;
+    }
+    _enterApp();
+  }
+
+  void _completeLanguageSelect() {
+    _service.markLanguagePromptSeen();
     _enterApp();
   }
 
@@ -98,6 +129,11 @@ class _AppEntryGateState extends State<AppEntryGate> {
           profileRepository: widget.profileRepository,
           pushRepository: widget.pushRepository,
           onDone: _completeIntro,
+        );
+      case _Phase.languageSelect:
+        return LanguageOnboardingPage(
+          localeController: widget.localeController,
+          onDone: _completeLanguageSelect,
         );
       case _Phase.staticSplash:
         return StaticSplashView(onDone: _completeStaticSplash);

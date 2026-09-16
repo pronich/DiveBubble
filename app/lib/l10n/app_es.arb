@@ -29,7 +29,6 @@
   "notSet": "Sin definir",
   "certificationNumberOptional": "Número de certificación (opcional)",
   "saveAndContinue": "Guardar y continuar",
-
   "errorWithMessage": "Error: {error}",
   "cancel": "Cancelar",
   "delete": "Eliminar",
@@ -39,7 +38,6 @@
   "noMatches": "Sin coincidencias.",
   "share": "Compartir",
   "documentFallbackName": "Documento.pdf",
-
   "copiedToClipboard": "Copiado",
   "deleteThisMessageTitle": "¿Eliminar este mensaje?",
   "deleteThisMessageBody": "Esto no se puede deshacer: se eliminará para todos en este Bubble.",
@@ -88,22 +86,18 @@
   "helpedWithFindingTransport": "Encontrar transporte",
   "helpedWithFindingBuddy": "Encontrar buddy",
   "helpedWithNothingYet": "Nada aún",
-
   "couldNotSharePhoto": "No se pudo compartir la foto: {error}",
   "couldNotShareVideo": "No se pudo compartir el vídeo: {error}",
   "couldNotLoadVideo": "No se pudo cargar el vídeo",
-
   "couldNotLoadMedia": "No se pudo cargar el contenido multimedia: {error}",
   "noPhotosOrVideosSharedYet": "Aún no se han compartido fotos ni vídeos",
   "couldNotLoadFiles": "No se pudieron cargar los archivos: {error}",
   "noFilesSharedYet": "Aún no se han compartido archivos",
   "couldNotLoadLinks": "No se pudieron cargar los enlaces: {error}",
   "noLinksSharedYet": "Aún no se han compartido enlaces",
-
   "shareToABubble": "Compartir en un Bubble",
   "noBubblesYet": "Aún no hay Bubbles",
   "joinATripToShareInto": "Únete a un viaje para tener un Bubble en el que compartir.",
-
   "bubblesTabTitle": "Bubbles",
   "diveLogTabTitle": "Bitácora",
   "profileTabTitle": "Perfil",
@@ -113,12 +107,10 @@
   "startYourFirstBubbleBody": "Crea un viaje o únete con un código: chat, transporte y detalles del viaje en un solo lugar.",
   "createTrip": "Crear viaje",
   "joinTrip": "Unirse",
-
   "chatTabLabel": "Chat",
   "transportTabLabel": "Transporte",
   "buddyTabLabel": "Buddy",
   "expensesTabLabel": "Gastos",
-
   "archive": "Archivar",
   "unarchive": "Desarchivar",
   "cancelTrip": "Cancelar viaje",
@@ -132,15 +124,12 @@
   "cancelTripBody": "Todos los participantes conservan el Bubble para ver el historial del chat, pero nadie, ni siquiera tú, podrá enviar mensajes, unirse ni organizar transporte. Esto no se puede deshacer.",
   "neverMind": "No, gracias",
   "couldNotCancel": "No se pudo cancelar: {error}",
-
   "cancelledStatus": "Cancelado",
   "pastStatus": "Pasado",
   "activeStatus": "Activo",
-
   "archivedChats": "Chats archivados",
   "noArchivedChats": "No hay chats archivados",
   "archivedChatsEmptyBody": "Los Bubbles que archives aparecerán aquí; desliza o desarchívalos para recuperarlos.",
-
   "typeOfferRide": "Ofrezco un viaje en coche",
   "typeShareRental": "Comparto un alquiler",
   "carCancelledByOrganizer": "Este coche fue cancelado por el organizador.",
@@ -162,7 +151,6 @@
   "seatsOptional": "Plazas (opcional)",
   "detailsTimePickupOptional": "Detalles: hora, punto de recogida (opcional)",
   "add": "Añadir",
-
   "buddyGroupCancelledByOrganizer": "Este grupo de buddy fue cancelado por el organizador.",
   "noBuddyRequestsWereMade": "No se hicieron solicitudes de buddy",
   "beFirstToLookForBuddy": "Sé el primero en buscar un buddy",
@@ -177,7 +165,6 @@
   "leaveBuddyGroup": "Salir del grupo",
   "otherDiversWillSeeRequest": "Otros buceadores de este viaje verán tu solicitud y podrán unirse.",
   "request": "Enviar",
-
   "about": "Acerca de",
   "versionLabel": "Versión {version}",
   "gearLockerTitle": "Equipo",
@@ -307,7 +294,6 @@
   "done": "Listo",
   "searchLanguages": "Buscar idiomas",
   "languageSettingsTitle": "Idioma",
-  "systemDefault": "Predeterminado del sistema",
   "guest": "Invitado",
   "certificationsSectionTitle": "Certificaciones",
   "update": "Actualizar",
@@ -322,7 +308,6 @@
   "deleteAccountBody": "Esto anonimiza tu cuenta de forma permanente y cancela cualquier viaje que organices. Esto no se puede deshacer.",
   "couldNotDeleteAccount": "No se pudo eliminar la cuenta: {error}",
   "deleteAccountRow": "Eliminar cuenta",
-
   "noExpensesYet": "Aún no hay gastos",
   "logSharedCostBody": "Registra un gasto compartido para que todos sepan cuánto deben.",
   "addExpenseCta": "Añadir gasto",
@@ -352,7 +337,6 @@
   "exactAmountsMustAddUp": "Los importes exactos deben sumar el total.",
   "deleteExpenseTitle": "¿Eliminar este gasto?",
   "deleteExpenseBody": "Se eliminará del balance para todos. Esto no se puede deshacer.",
-
   "editTripTitle": "Editar viaje",
   "uploadUpToNPhotos": "Sube hasta {max} fotos.",
   "titleIsRequired": "El título es obligatorio",
@@ -376,7 +360,6 @@
   "bookingCodeDialogBody": "¿Reservaste un viaje con un centro de buceo en su propio sitio? Introduce el código que te dieron para unirte a su Bubble aquí.",
   "bookingCodeLabel": "Código de reserva",
   "bookingCodeHint": "p. ej. 8XK2NPQ4",
-
   "managePhotos": "Gestionar fotos",
   "editButtonLabel": "Editar",
   "peopleTabLabel": "Personas",
@@ -418,5 +401,8 @@
   "agencyLabel": "Agencia",
   "websiteLabel": "Sitio web",
   "phoneLabel": "Teléfono",
-  "emailLabel": "Correo"
+  "emailLabel": "Correo",
+  "systemDefaultWithLanguage": "{name} (predeterminado del sistema)",
+  "chooseYourLanguageTitle": "Elige tu idioma",
+  "chooseYourLanguageBody": "Siempre puedes cambiarlo más tarde en los ajustes del perfil."
 }

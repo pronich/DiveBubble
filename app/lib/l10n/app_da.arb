@@ -29,7 +29,6 @@
   "notSet": "Ikke angivet",
   "certificationNumberOptional": "Certificeringsnummer (valgfrit)",
   "saveAndContinue": "Gem og fortsæt",
-
   "errorWithMessage": "Fejl: {error}",
   "cancel": "Annuller",
   "delete": "Slet",
@@ -39,7 +38,6 @@
   "noMatches": "Ingen resultater.",
   "share": "Del",
   "documentFallbackName": "Dokument.pdf",
-
   "copiedToClipboard": "Kopieret",
   "deleteThisMessageTitle": "Slet denne besked?",
   "deleteThisMessageBody": "Dette kan ikke fortrydes — den fjernes for alle i dette Bubble.",
@@ -88,22 +86,18 @@
   "helpedWithFindingTransport": "Finde transport",
   "helpedWithFindingBuddy": "Finde buddy",
   "helpedWithNothingYet": "Intet endnu",
-
   "couldNotSharePhoto": "Kunne ikke dele foto: {error}",
   "couldNotShareVideo": "Kunne ikke dele video: {error}",
   "couldNotLoadVideo": "Kunne ikke indlæse video",
-
   "couldNotLoadMedia": "Kunne ikke indlæse medier: {error}",
   "noPhotosOrVideosSharedYet": "Ingen fotos eller videoer delt endnu",
   "couldNotLoadFiles": "Kunne ikke indlæse filer: {error}",
   "noFilesSharedYet": "Ingen filer delt endnu",
   "couldNotLoadLinks": "Kunne ikke indlæse links: {error}",
   "noLinksSharedYet": "Ingen links delt endnu",
-
   "shareToABubble": "Del til et Bubble",
   "noBubblesYet": "Ingen Bubbles endnu",
   "joinATripToShareInto": "Tilmeld dig en tur for at få et Bubble at dele til.",
-
   "bubblesTabTitle": "Bubbles",
   "diveLogTabTitle": "Dykkerlog",
   "profileTabTitle": "Profil",
@@ -113,12 +107,10 @@
   "startYourFirstBubbleBody": "Opret en tur, eller tilmeld dig med en kode — chat, transport og turdetaljer samlet ét sted.",
   "createTrip": "Opret tur",
   "joinTrip": "Deltag",
-
   "chatTabLabel": "Chat",
   "transportTabLabel": "Transport",
   "buddyTabLabel": "Buddy",
   "expensesTabLabel": "Udgifter",
-
   "archive": "Arkivér",
   "unarchive": "Fjern fra arkiv",
   "cancelTrip": "Aflys tur",
@@ -132,15 +124,12 @@
   "cancelTripBody": "Alle deltagere beholder Bubble'en for at se chathistorikken, men ingen — heller ikke dig — kan sende beskeder, tilmelde sig eller arrangere transport længere. Dette kan ikke fortrydes.",
   "neverMind": "Fortryd",
   "couldNotCancel": "Kunne ikke aflyse: {error}",
-
   "cancelledStatus": "Aflyst",
   "pastStatus": "Afsluttet",
   "activeStatus": "Aktiv",
-
   "archivedChats": "Arkiverede chats",
   "noArchivedChats": "Ingen arkiverede chats",
   "archivedChatsEmptyBody": "Bubbles, du arkiverer, vises her — swipe eller fjern fra arkiv for at hente en tilbage.",
-
   "typeOfferRide": "Tilbyder et lift",
   "typeShareRental": "Deler en lejebil",
   "carCancelledByOrganizer": "Denne bil blev aflyst af arrangøren.",
@@ -162,7 +151,6 @@
   "seatsOptional": "Pladser (valgfrit)",
   "detailsTimePickupOptional": "Detaljer — tidspunkt, afhentningssted (valgfrit)",
   "add": "Tilføj",
-
   "buddyGroupCancelledByOrganizer": "Denne buddy-gruppe blev aflyst af arrangøren.",
   "noBuddyRequestsWereMade": "Der blev ikke lavet buddy-anmodninger",
   "beFirstToLookForBuddy": "Vær den første til at lede efter en buddy",
@@ -177,7 +165,6 @@
   "leaveBuddyGroup": "Forlad gruppe",
   "otherDiversWillSeeRequest": "Andre dykkere på denne tur ser din anmodning og kan tilslutte sig.",
   "request": "Send",
-
   "about": "Om appen",
   "versionLabel": "Version {version}",
   "gearLockerTitle": "Udstyrsskab",
@@ -307,7 +294,6 @@
   "done": "Færdig",
   "searchLanguages": "Søg sprog",
   "languageSettingsTitle": "Sprog",
-  "systemDefault": "Systemstandard",
   "guest": "Gæst",
   "certificationsSectionTitle": "Certificeringer",
   "update": "Opdater",
@@ -322,7 +308,6 @@
   "deleteAccountBody": "Dette anonymiserer permanent din konto og aflyser alle ture, du arrangerer. Dette kan ikke fortrydes.",
   "couldNotDeleteAccount": "Kunne ikke slette konto: {error}",
   "deleteAccountRow": "Slet konto",
-
   "noExpensesYet": "Ingen udgifter endnu",
   "logSharedCostBody": "Registrer en delt udgift, så alle ved, hvad de skylder.",
   "addExpenseCta": "Tilføj udgift",
@@ -352,7 +337,6 @@
   "exactAmountsMustAddUp": "De præcise beløb skal give summen af det samlede beløb.",
   "deleteExpenseTitle": "Slet denne udgift?",
   "deleteExpenseBody": "Den fjernes fra balancen for alle. Dette kan ikke fortrydes.",
-
   "editTripTitle": "Rediger tur",
   "uploadUpToNPhotos": "Upload op til {max} fotos.",
   "titleIsRequired": "Titel er påkrævet",
@@ -376,7 +360,6 @@
   "bookingCodeDialogBody": "Har du booket en tur hos et dykkercenter på deres egen side? Indtast koden, du fik, for at deltage i dens Bubble her.",
   "bookingCodeLabel": "Bookingkode",
   "bookingCodeHint": "f.eks. 8XK2NPQ4",
-
   "managePhotos": "Administrer fotos",
   "editButtonLabel": "Rediger",
   "peopleTabLabel": "Personer",
@@ -418,5 +401,8 @@
   "agencyLabel": "Organisation",
   "websiteLabel": "Website",
   "phoneLabel": "Telefon",
-  "emailLabel": "E-mail"
+  "emailLabel": "E-mail",
+  "systemDefaultWithLanguage": "{name} (systemstandard)",
+  "chooseYourLanguageTitle": "Vælg dit sprog",
+  "chooseYourLanguageBody": "Du kan altid ændre dette senere i profilindstillingerne."
 }

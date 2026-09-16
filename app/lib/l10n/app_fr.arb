@@ -294,7 +294,6 @@
   "done": "Terminé",
   "searchLanguages": "Rechercher des langues",
   "languageSettingsTitle": "Langue",
-  "systemDefault": "Par défaut du système",
   "guest": "Invité",
   "certificationsSectionTitle": "Certifications",
   "update": "Mettre à jour",
@@ -402,5 +401,8 @@
   "agencyLabel": "Organisme",
   "websiteLabel": "Site web",
   "phoneLabel": "Téléphone",
-  "emailLabel": "E-mail"
+  "emailLabel": "E-mail",
+  "systemDefaultWithLanguage": "{name} (par défaut du système)",
+  "chooseYourLanguageTitle": "Choisis ta langue",
+  "chooseYourLanguageBody": "Tu pourras toujours changer ça plus tard dans les réglages du profil."
 }

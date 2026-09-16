@@ -29,7 +29,6 @@
   "notSet": "Inte angivet",
   "certificationNumberOptional": "Certifieringsnummer (valfritt)",
   "saveAndContinue": "Spara och fortsätt",
-
   "errorWithMessage": "Fel: {error}",
   "cancel": "Avbryt",
   "delete": "Ta bort",
@@ -39,7 +38,6 @@
   "noMatches": "Inga träffar.",
   "share": "Dela",
   "documentFallbackName": "Dokument.pdf",
-
   "copiedToClipboard": "Kopierat",
   "deleteThisMessageTitle": "Ta bort det här meddelandet?",
   "deleteThisMessageBody": "Detta kan inte ångras — det tas bort för alla i detta Bubble.",
@@ -88,22 +86,18 @@
   "helpedWithFindingTransport": "Hitta transport",
   "helpedWithFindingBuddy": "Hitta buddy",
   "helpedWithNothingYet": "Inget än",
-
   "couldNotSharePhoto": "Kunde inte dela foto: {error}",
   "couldNotShareVideo": "Kunde inte dela video: {error}",
   "couldNotLoadVideo": "Kunde inte läsa in video",
-
   "couldNotLoadMedia": "Kunde inte läsa in media: {error}",
   "noPhotosOrVideosSharedYet": "Inga foton eller videor delade än",
   "couldNotLoadFiles": "Kunde inte läsa in filer: {error}",
   "noFilesSharedYet": "Inga filer delade än",
   "couldNotLoadLinks": "Kunde inte läsa in länkar: {error}",
   "noLinksSharedYet": "Inga länkar delade än",
-
   "shareToABubble": "Dela till ett Bubble",
   "noBubblesYet": "Inga Bubbles än",
   "joinATripToShareInto": "Gå med i en resa för att få ett Bubble att dela till.",
-
   "bubblesTabTitle": "Bubbles",
   "diveLogTabTitle": "Dykloggbok",
   "profileTabTitle": "Profil",
@@ -113,12 +107,10 @@
   "startYourFirstBubbleBody": "Skapa en resa eller gå med via en kod — chatt, transport och resedetaljer på ett ställe.",
   "createTrip": "Skapa resa",
   "joinTrip": "Gå med",
-
   "chatTabLabel": "Chatt",
   "transportTabLabel": "Transport",
   "buddyTabLabel": "Buddy",
   "expensesTabLabel": "Utgifter",
-
   "archive": "Arkivera",
   "unarchive": "Återställ från arkiv",
   "cancelTrip": "Ställ in resa",
@@ -132,15 +124,12 @@
   "cancelTripBody": "Alla deltagare behåller Bubble för att se chatthistoriken, men ingen — inte heller du — kan längre skicka meddelanden, gå med eller ordna transport. Detta kan inte ångras.",
   "neverMind": "Strunt i det",
   "couldNotCancel": "Kunde inte ställa in: {error}",
-
   "cancelledStatus": "Inställd",
   "pastStatus": "Avslutad",
   "activeStatus": "Aktiv",
-
   "archivedChats": "Arkiverade chattar",
   "noArchivedChats": "Inga arkiverade chattar",
   "archivedChatsEmptyBody": "Bubbles du arkiverar visas här — svep eller återställ för att få tillbaka en.",
-
   "typeOfferRide": "Erbjuder skjuts",
   "typeShareRental": "Delar en hyrbil",
   "carCancelledByOrganizer": "Den här bilen ställdes in av arrangören.",
@@ -162,7 +151,6 @@
   "seatsOptional": "Platser (valfritt)",
   "detailsTimePickupOptional": "Detaljer — tid, upphämtningsplats (valfritt)",
   "add": "Lägg till",
-
   "buddyGroupCancelledByOrganizer": "Den här buddygruppen ställdes in av arrangören.",
   "noBuddyRequestsWereMade": "Inga buddyförfrågningar gjordes",
   "beFirstToLookForBuddy": "Bli först med att leta efter en buddy",
@@ -177,7 +165,6 @@
   "leaveBuddyGroup": "Lämna gruppen",
   "otherDiversWillSeeRequest": "Andra dykare på den här resan ser din förfrågan och kan ansluta sig.",
   "request": "Skicka",
-
   "about": "Om appen",
   "versionLabel": "Version {version}",
   "gearLockerTitle": "Utrustningsskåp",
@@ -307,7 +294,6 @@
   "done": "Klar",
   "searchLanguages": "Sök språk",
   "languageSettingsTitle": "Språk",
-  "systemDefault": "Systemstandard",
   "guest": "Gäst",
   "certificationsSectionTitle": "Certifieringar",
   "update": "Uppdatera",
@@ -322,7 +308,6 @@
   "deleteAccountBody": "Detta anonymiserar ditt konto permanent och ställer in alla resor du arrangerar. Detta kan inte ångras.",
   "couldNotDeleteAccount": "Kunde inte ta bort kontot: {error}",
   "deleteAccountRow": "Ta bort konto",
-
   "noExpensesYet": "Inga utgifter än",
   "logSharedCostBody": "Registrera en delad kostnad så att alla vet vad de är skyldiga.",
   "addExpenseCta": "Lägg till utgift",
@@ -352,7 +337,6 @@
   "exactAmountsMustAddUp": "De exakta beloppen måste summera till totalbeloppet.",
   "deleteExpenseTitle": "Ta bort den här utgiften?",
   "deleteExpenseBody": "Den tas bort från saldot för alla. Detta kan inte ångras.",
-
   "editTripTitle": "Redigera resa",
   "uploadUpToNPhotos": "Ladda upp upp till {max} foton.",
   "titleIsRequired": "Titel krävs",
@@ -376,7 +360,6 @@
   "bookingCodeDialogBody": "Bokade du en resa hos ett dykcenter på deras egen webbplats? Ange koden du fick för att gå med i deras Bubble här.",
   "bookingCodeLabel": "Bokningskod",
   "bookingCodeHint": "t.ex. 8XK2NPQ4",
-
   "managePhotos": "Hantera foton",
   "editButtonLabel": "Redigera",
   "peopleTabLabel": "Personer",
@@ -418,5 +401,8 @@
   "agencyLabel": "Organisation",
   "websiteLabel": "Webbplats",
   "phoneLabel": "Telefon",
-  "emailLabel": "E-post"
+  "emailLabel": "E-post",
+  "systemDefaultWithLanguage": "{name} (systemstandard)",
+  "chooseYourLanguageTitle": "Välj ditt språk",
+  "chooseYourLanguageBody": "Du kan alltid ändra detta senare i profilinställningarna."
 }
