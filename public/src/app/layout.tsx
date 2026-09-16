@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s — DiveBubble",
   },
   description:
-    "DiveBubble is the simplest way to discover local dive trips, meet the group, and coordinate everything from rides to surface intervals.",
+    "DiveBubble is the simplest way to organize dive trips, find your buddy, coordinate every detail, and split the costs.",
 };
 
 export default function RootLayout({

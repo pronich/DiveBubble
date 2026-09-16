@@ -5,16 +5,20 @@ import { Footer } from "@/components/Footer";
 
 const FEATURES = [
   {
-    title: "Discover",
-    body: "Weekend shore dives, cold-water wrecks, and reef trips near you.",
+    title: "Organize",
+    body: "Create the trip, set the plan, and invite your dive buddies.",
+  },
+  {
+    title: "Find buddies",
+    body: "See who's diving, their certs, and their experience before you go.",
   },
   {
     title: "Coordinate",
     body: "Share rides, gear, and the plan — right in the trip chat.",
   },
   {
-    title: "Meet buddies",
-    body: "See who's diving, their certs, and their experience before you go.",
+    title: "Split expenses",
+    body: "Track who paid for what and settle up — no spreadsheets.",
   },
 ];
 
@@ -34,8 +38,8 @@ export default function IndividualsPage() {
                 Every dive is better with a buddy.
               </h1>
               <p className="mt-6 max-w-md text-white/75">
-                DiveBubble is the simplest way to discover local dive trips, meet the group, and coordinate
-                everything from rides to surface intervals — all in one calm little app.
+                DiveBubble is the simplest way to organize dive trips, find your buddy, coordinate every
+                detail, and split the costs — all in one calm little app.
               </p>
               <div className="mt-8">
                 <DownloadSection />
@@ -69,7 +73,7 @@ export default function IndividualsPage() {
             </div>
           </div>
 
-          <div className="mt-16 grid gap-4 sm:grid-cols-3">
+          <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map((f) => (
               <div key={f.title} className="rounded-2xl bg-white/10 p-6">
                 <h3 className="font-serif text-lg font-semibold">{f.title}</h3>
