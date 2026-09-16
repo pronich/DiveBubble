@@ -1176,4 +1176,78 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String get deleteExpenseBody =>
       'Den tas bort från saldot för alla. Detta kan inte ångras.';
+
+  @override
+  String get editTripTitle => 'Redigera resa';
+
+  @override
+  String uploadUpToNPhotos(int max) {
+    return 'Ladda upp upp till $max foton.';
+  }
+
+  @override
+  String get titleIsRequired => 'Titel krävs';
+
+  @override
+  String get locationIsRequired => 'Plats krävs';
+
+  @override
+  String get dateIsRequired => 'Datum krävs';
+
+  @override
+  String get meetingTimeLabel => 'Mötestid';
+
+  @override
+  String get meetingTimeIsRequired => 'Mötestid krävs';
+
+  @override
+  String get endDateOptionalLabel => 'Slutdatum (valfritt, flerdagarsresor)';
+
+  @override
+  String get meetingPointOptionalLabel => 'Mötesplats (valfritt)';
+
+  @override
+  String get descriptionOptionalLabel => 'Beskrivning (valfritt)';
+
+  @override
+  String get requiredLevelLabel => 'Nödvändig nivå';
+
+  @override
+  String get openToAll => 'Öppen för alla';
+
+  @override
+  String get minDepthMLabel => 'Min. djup (m)';
+
+  @override
+  String get maxDepthMLabel => 'Max. djup (m)';
+
+  @override
+  String get minDivesLabel => 'Min. dyk';
+
+  @override
+  String get maxDivesLabel => 'Max. dyk';
+
+  @override
+  String onlyNPhotosAllowed(int max) {
+    return 'Endast $max foton tillåtna per resa';
+  }
+
+  @override
+  String get selectADate => 'Välj ett datum';
+
+  @override
+  String get selectATime => 'Välj en tid';
+
+  @override
+  String get enterBookingCodeTitle => 'Ange bokningskod';
+
+  @override
+  String get bookingCodeDialogBody =>
+      'Bokade du en resa hos ett dykcenter på deras egen webbplats? Ange koden du fick för att gå med i deras Bubble här.';
+
+  @override
+  String get bookingCodeLabel => 'Bokningskod';
+
+  @override
+  String get bookingCodeHint => 't.ex. 8XK2NPQ4';
 }

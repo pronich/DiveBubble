@@ -1173,4 +1173,78 @@ class AppLocalizationsDa extends AppLocalizations {
   @override
   String get deleteExpenseBody =>
       'Den fjernes fra balancen for alle. Dette kan ikke fortrydes.';
+
+  @override
+  String get editTripTitle => 'Rediger tur';
+
+  @override
+  String uploadUpToNPhotos(int max) {
+    return 'Upload op til $max fotos.';
+  }
+
+  @override
+  String get titleIsRequired => 'Titel er påkrævet';
+
+  @override
+  String get locationIsRequired => 'Sted er påkrævet';
+
+  @override
+  String get dateIsRequired => 'Dato er påkrævet';
+
+  @override
+  String get meetingTimeLabel => 'Mødetidspunkt';
+
+  @override
+  String get meetingTimeIsRequired => 'Mødetidspunkt er påkrævet';
+
+  @override
+  String get endDateOptionalLabel => 'Slutdato (valgfrit, ture med flere dage)';
+
+  @override
+  String get meetingPointOptionalLabel => 'Mødested (valgfrit)';
+
+  @override
+  String get descriptionOptionalLabel => 'Beskrivelse (valgfrit)';
+
+  @override
+  String get requiredLevelLabel => 'Krævet niveau';
+
+  @override
+  String get openToAll => 'Åben for alle';
+
+  @override
+  String get minDepthMLabel => 'Min. dybde (m)';
+
+  @override
+  String get maxDepthMLabel => 'Maks. dybde (m)';
+
+  @override
+  String get minDivesLabel => 'Min. dyk';
+
+  @override
+  String get maxDivesLabel => 'Maks. dyk';
+
+  @override
+  String onlyNPhotosAllowed(int max) {
+    return 'Kun $max fotos tilladt pr. tur';
+  }
+
+  @override
+  String get selectADate => 'Vælg en dato';
+
+  @override
+  String get selectATime => 'Vælg et tidspunkt';
+
+  @override
+  String get enterBookingCodeTitle => 'Indtast bookingkode';
+
+  @override
+  String get bookingCodeDialogBody =>
+      'Har du booket en tur hos et dykkercenter på deres egen side? Indtast koden, du fik, for at deltage i dens Bubble her.';
+
+  @override
+  String get bookingCodeLabel => 'Bookingkode';
+
+  @override
+  String get bookingCodeHint => 'f.eks. 8XK2NPQ4';
 }

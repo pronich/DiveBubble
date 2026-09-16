@@ -1181,4 +1181,79 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get deleteExpenseBody =>
       'Se eliminará del balance para todos. Esto no se puede deshacer.';
+
+  @override
+  String get editTripTitle => 'Editar viaje';
+
+  @override
+  String uploadUpToNPhotos(int max) {
+    return 'Sube hasta $max fotos.';
+  }
+
+  @override
+  String get titleIsRequired => 'El título es obligatorio';
+
+  @override
+  String get locationIsRequired => 'La ubicación es obligatoria';
+
+  @override
+  String get dateIsRequired => 'La fecha es obligatoria';
+
+  @override
+  String get meetingTimeLabel => 'Hora de encuentro';
+
+  @override
+  String get meetingTimeIsRequired => 'La hora de encuentro es obligatoria';
+
+  @override
+  String get endDateOptionalLabel =>
+      'Fecha de fin (opcional, viajes de varios días)';
+
+  @override
+  String get meetingPointOptionalLabel => 'Punto de encuentro (opcional)';
+
+  @override
+  String get descriptionOptionalLabel => 'Descripción (opcional)';
+
+  @override
+  String get requiredLevelLabel => 'Nivel requerido';
+
+  @override
+  String get openToAll => 'Abierto a todos';
+
+  @override
+  String get minDepthMLabel => 'Profundidad mín. (m)';
+
+  @override
+  String get maxDepthMLabel => 'Profundidad máx. (m)';
+
+  @override
+  String get minDivesLabel => 'Inmersiones mín.';
+
+  @override
+  String get maxDivesLabel => 'Inmersiones máx.';
+
+  @override
+  String onlyNPhotosAllowed(int max) {
+    return 'Solo se permiten $max fotos por viaje';
+  }
+
+  @override
+  String get selectADate => 'Selecciona una fecha';
+
+  @override
+  String get selectATime => 'Selecciona una hora';
+
+  @override
+  String get enterBookingCodeTitle => 'Introduce el código de reserva';
+
+  @override
+  String get bookingCodeDialogBody =>
+      '¿Reservaste un viaje con un centro de buceo en su propio sitio? Introduce el código que te dieron para unirte a su Bubble aquí.';
+
+  @override
+  String get bookingCodeLabel => 'Código de reserva';
+
+  @override
+  String get bookingCodeHint => 'p. ej. 8XK2NPQ4';
 }

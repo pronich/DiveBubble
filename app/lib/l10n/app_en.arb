@@ -1604,5 +1604,108 @@
   "deleteExpenseBody": "This removes it from the balance for everyone. This can't be undone.",
   "@deleteExpenseBody": {
     "description": "Delete-expense confirmation dialog body."
+  },
+
+  "editTripTitle": "Edit trip",
+  "@editTripTitle": {
+    "description": "Create/Edit Trip page title when editing an existing trip."
+  },
+  "uploadUpToNPhotos": "Upload up to {max} photos.",
+  "@uploadUpToNPhotos": {
+    "description": "Hint above the photo grid on trip creation.",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "titleIsRequired": "Title is required",
+  "@titleIsRequired": {
+    "description": "Trip creation validation error."
+  },
+  "locationIsRequired": "Location is required",
+  "@locationIsRequired": {
+    "description": "Trip creation validation error."
+  },
+  "dateIsRequired": "Date is required",
+  "@dateIsRequired": {
+    "description": "Trip creation validation error."
+  },
+  "meetingTimeLabel": "Meeting time",
+  "@meetingTimeLabel": {
+    "description": "Trip creation field label."
+  },
+  "meetingTimeIsRequired": "Meeting time is required",
+  "@meetingTimeIsRequired": {
+    "description": "Trip creation validation error."
+  },
+  "endDateOptionalLabel": "End date (optional, multi-day trips)",
+  "@endDateOptionalLabel": {
+    "description": "Trip creation field label."
+  },
+  "meetingPointOptionalLabel": "Meeting point (optional)",
+  "@meetingPointOptionalLabel": {
+    "description": "Trip creation field label."
+  },
+  "descriptionOptionalLabel": "Description (optional)",
+  "@descriptionOptionalLabel": {
+    "description": "Trip creation field label."
+  },
+  "requiredLevelLabel": "Required level",
+  "@requiredLevelLabel": {
+    "description": "Trip creation field label."
+  },
+  "openToAll": "Open to all",
+  "@openToAll": {
+    "description": "Trip creation's 'no minimum certification level' option."
+  },
+  "minDepthMLabel": "Min depth (m)",
+  "@minDepthMLabel": {
+    "description": "Trip creation field label."
+  },
+  "maxDepthMLabel": "Max depth (m)",
+  "@maxDepthMLabel": {
+    "description": "Trip creation field label."
+  },
+  "minDivesLabel": "Min dives",
+  "@minDivesLabel": {
+    "description": "Trip creation field label."
+  },
+  "maxDivesLabel": "Max dives",
+  "@maxDivesLabel": {
+    "description": "Trip creation field label."
+  },
+  "onlyNPhotosAllowed": "Only {max} photos allowed per trip",
+  "@onlyNPhotosAllowed": {
+    "description": "Snackbar shown when picking more trip photos than the per-trip limit.",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "selectADate": "Select a date",
+  "@selectADate": {
+    "description": "Placeholder on an unset date field."
+  },
+  "selectATime": "Select a time",
+  "@selectATime": {
+    "description": "Placeholder on an unset time field."
+  },
+  "enterBookingCodeTitle": "Enter booking code",
+  "@enterBookingCodeTitle": {
+    "description": "Join-by-code dialog title."
+  },
+  "bookingCodeDialogBody": "Booked a dive-center trip on their own site? Enter the code they gave you to join its Bubble here.",
+  "@bookingCodeDialogBody": {
+    "description": "Join-by-code dialog explanatory body."
+  },
+  "bookingCodeLabel": "Booking code",
+  "@bookingCodeLabel": {
+    "description": "Join-by-code dialog field label."
+  },
+  "bookingCodeHint": "e.g. 8XK2NPQ4",
+  "@bookingCodeHint": {
+    "description": "Join-by-code dialog field hint text — kept as a Latin-alphanumeric example code in every locale, since real booking codes are generated in that same format regardless of app language."
   }
 }

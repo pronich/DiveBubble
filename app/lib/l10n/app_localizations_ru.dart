@@ -1186,4 +1186,79 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get deleteExpenseBody =>
       'Он будет удалён из баланса для всех. Это необратимо.';
+
+  @override
+  String get editTripTitle => 'Изменить трип';
+
+  @override
+  String uploadUpToNPhotos(int max) {
+    return 'Загрузите до $max фото.';
+  }
+
+  @override
+  String get titleIsRequired => 'Укажите название';
+
+  @override
+  String get locationIsRequired => 'Укажите место';
+
+  @override
+  String get dateIsRequired => 'Укажите дату';
+
+  @override
+  String get meetingTimeLabel => 'Время встречи';
+
+  @override
+  String get meetingTimeIsRequired => 'Укажите время встречи';
+
+  @override
+  String get endDateOptionalLabel =>
+      'Дата окончания (необязательно, для многодневных трипов)';
+
+  @override
+  String get meetingPointOptionalLabel => 'Место встречи (необязательно)';
+
+  @override
+  String get descriptionOptionalLabel => 'Описание (необязательно)';
+
+  @override
+  String get requiredLevelLabel => 'Требуемый уровень';
+
+  @override
+  String get openToAll => 'Без ограничений';
+
+  @override
+  String get minDepthMLabel => 'Мин. глубина (м)';
+
+  @override
+  String get maxDepthMLabel => 'Макс. глубина (м)';
+
+  @override
+  String get minDivesLabel => 'Мин. дайвов';
+
+  @override
+  String get maxDivesLabel => 'Макс. дайвов';
+
+  @override
+  String onlyNPhotosAllowed(int max) {
+    return 'Можно загрузить не более $max фото на трип';
+  }
+
+  @override
+  String get selectADate => 'Выберите дату';
+
+  @override
+  String get selectATime => 'Выберите время';
+
+  @override
+  String get enterBookingCodeTitle => 'Введите код брони';
+
+  @override
+  String get bookingCodeDialogBody =>
+      'Забронировали трип у дайв-центра на их сайте? Введите код, который вам дали, чтобы присоединиться к его Bubble.';
+
+  @override
+  String get bookingCodeLabel => 'Код брони';
+
+  @override
+  String get bookingCodeHint => 'например, 8XK2NPQ4';
 }

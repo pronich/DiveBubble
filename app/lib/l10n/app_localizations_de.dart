@@ -1180,4 +1180,79 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get deleteExpenseBody =>
       'Sie wird für alle aus der Bilanz entfernt. Das kann nicht rückgängig gemacht werden.';
+
+  @override
+  String get editTripTitle => 'Trip bearbeiten';
+
+  @override
+  String uploadUpToNPhotos(int max) {
+    return 'Lade bis zu $max Fotos hoch.';
+  }
+
+  @override
+  String get titleIsRequired => 'Titel ist erforderlich';
+
+  @override
+  String get locationIsRequired => 'Ort ist erforderlich';
+
+  @override
+  String get dateIsRequired => 'Datum ist erforderlich';
+
+  @override
+  String get meetingTimeLabel => 'Treffzeit';
+
+  @override
+  String get meetingTimeIsRequired => 'Treffzeit ist erforderlich';
+
+  @override
+  String get endDateOptionalLabel =>
+      'Enddatum (optional, für mehrtägige Trips)';
+
+  @override
+  String get meetingPointOptionalLabel => 'Treffpunkt (optional)';
+
+  @override
+  String get descriptionOptionalLabel => 'Beschreibung (optional)';
+
+  @override
+  String get requiredLevelLabel => 'Erforderliches Level';
+
+  @override
+  String get openToAll => 'Offen für alle';
+
+  @override
+  String get minDepthMLabel => 'Min. Tiefe (m)';
+
+  @override
+  String get maxDepthMLabel => 'Max. Tiefe (m)';
+
+  @override
+  String get minDivesLabel => 'Min. Tauchgänge';
+
+  @override
+  String get maxDivesLabel => 'Max. Tauchgänge';
+
+  @override
+  String onlyNPhotosAllowed(int max) {
+    return 'Nur $max Fotos pro Trip erlaubt';
+  }
+
+  @override
+  String get selectADate => 'Datum auswählen';
+
+  @override
+  String get selectATime => 'Uhrzeit auswählen';
+
+  @override
+  String get enterBookingCodeTitle => 'Buchungscode eingeben';
+
+  @override
+  String get bookingCodeDialogBody =>
+      'Hast du einen Trip direkt auf der Website eines Tauchcenters gebucht? Gib den Code ein, den du erhalten hast, um seinem Bubble beizutreten.';
+
+  @override
+  String get bookingCodeLabel => 'Buchungscode';
+
+  @override
+  String get bookingCodeHint => 'z. B. 8XK2NPQ4';
 }

@@ -2133,6 +2133,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This removes it from the balance for everyone. This can\'t be undone.'**
   String get deleteExpenseBody;
+
+  /// Create/Edit Trip page title when editing an existing trip.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit trip'**
+  String get editTripTitle;
+
+  /// Hint above the photo grid on trip creation.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload up to {max} photos.'**
+  String uploadUpToNPhotos(int max);
+
+  /// Trip creation validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Title is required'**
+  String get titleIsRequired;
+
+  /// Trip creation validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is required'**
+  String get locationIsRequired;
+
+  /// Trip creation validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Date is required'**
+  String get dateIsRequired;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting time'**
+  String get meetingTimeLabel;
+
+  /// Trip creation validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting time is required'**
+  String get meetingTimeIsRequired;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'End date (optional, multi-day trips)'**
+  String get endDateOptionalLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting point (optional)'**
+  String get meetingPointOptionalLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Description (optional)'**
+  String get descriptionOptionalLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Required level'**
+  String get requiredLevelLabel;
+
+  /// Trip creation's 'no minimum certification level' option.
+  ///
+  /// In en, this message translates to:
+  /// **'Open to all'**
+  String get openToAll;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Min depth (m)'**
+  String get minDepthMLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Max depth (m)'**
+  String get maxDepthMLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Min dives'**
+  String get minDivesLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Max dives'**
+  String get maxDivesLabel;
+
+  /// Snackbar shown when picking more trip photos than the per-trip limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Only {max} photos allowed per trip'**
+  String onlyNPhotosAllowed(int max);
+
+  /// Placeholder on an unset date field.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a date'**
+  String get selectADate;
+
+  /// Placeholder on an unset time field.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a time'**
+  String get selectATime;
+
+  /// Join-by-code dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter booking code'**
+  String get enterBookingCodeTitle;
+
+  /// Join-by-code dialog explanatory body.
+  ///
+  /// In en, this message translates to:
+  /// **'Booked a dive-center trip on their own site? Enter the code they gave you to join its Bubble here.'**
+  String get bookingCodeDialogBody;
+
+  /// Join-by-code dialog field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking code'**
+  String get bookingCodeLabel;
+
+  /// Join-by-code dialog field hint text — kept as a Latin-alphanumeric example code in every locale, since real booking codes are generated in that same format regardless of app language.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 8XK2NPQ4'**
+  String get bookingCodeHint;
 }
 
 class _AppLocalizationsDelegate

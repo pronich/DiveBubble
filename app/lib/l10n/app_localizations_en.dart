@@ -1169,4 +1169,78 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get deleteExpenseBody =>
       'This removes it from the balance for everyone. This can\'t be undone.';
+
+  @override
+  String get editTripTitle => 'Edit trip';
+
+  @override
+  String uploadUpToNPhotos(int max) {
+    return 'Upload up to $max photos.';
+  }
+
+  @override
+  String get titleIsRequired => 'Title is required';
+
+  @override
+  String get locationIsRequired => 'Location is required';
+
+  @override
+  String get dateIsRequired => 'Date is required';
+
+  @override
+  String get meetingTimeLabel => 'Meeting time';
+
+  @override
+  String get meetingTimeIsRequired => 'Meeting time is required';
+
+  @override
+  String get endDateOptionalLabel => 'End date (optional, multi-day trips)';
+
+  @override
+  String get meetingPointOptionalLabel => 'Meeting point (optional)';
+
+  @override
+  String get descriptionOptionalLabel => 'Description (optional)';
+
+  @override
+  String get requiredLevelLabel => 'Required level';
+
+  @override
+  String get openToAll => 'Open to all';
+
+  @override
+  String get minDepthMLabel => 'Min depth (m)';
+
+  @override
+  String get maxDepthMLabel => 'Max depth (m)';
+
+  @override
+  String get minDivesLabel => 'Min dives';
+
+  @override
+  String get maxDivesLabel => 'Max dives';
+
+  @override
+  String onlyNPhotosAllowed(int max) {
+    return 'Only $max photos allowed per trip';
+  }
+
+  @override
+  String get selectADate => 'Select a date';
+
+  @override
+  String get selectATime => 'Select a time';
+
+  @override
+  String get enterBookingCodeTitle => 'Enter booking code';
+
+  @override
+  String get bookingCodeDialogBody =>
+      'Booked a dive-center trip on their own site? Enter the code they gave you to join its Bubble here.';
+
+  @override
+  String get bookingCodeLabel => 'Booking code';
+
+  @override
+  String get bookingCodeHint => 'e.g. 8XK2NPQ4';
 }
