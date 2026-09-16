@@ -1024,9 +1024,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String get languageSettingsTitle => 'Språk';
 
   @override
-  String get systemDefault => 'Systemstandard';
-
-  @override
   String get guest => 'Gäst';
 
   @override
@@ -1425,4 +1422,16 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get emailLabel => 'E-post';
+
+  @override
+  String systemDefaultWithLanguage(String name) {
+    return '$name (systemstandard)';
+  }
+
+  @override
+  String get chooseYourLanguageTitle => 'Välj ditt språk';
+
+  @override
+  String get chooseYourLanguageBody =>
+      'Du kan alltid ändra detta senare i profilinställningarna.';
 }

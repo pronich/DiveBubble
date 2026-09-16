@@ -4,7 +4,6 @@
   "@appTitle": {
     "description": "The application's name, shown as the OS task-switcher/home-screen label. Not user-visible in-app UI — kept here mainly to prove the gen-l10n pipeline end to end before the real string-extraction pass (see the translations plan)."
   },
-
   "introSubtitle": "Find dive trips, meet your buddies, and plan the logistics together.",
   "@introSubtitle": {
     "description": "Subtitle under the DiveBubble wordmark on the animated first-run intro screen."
@@ -122,7 +121,6 @@
   "@saveAndContinue": {
     "description": "Button that saves the certifications onboarding step."
   },
-
   "errorWithMessage": "Error: {error}",
   "@errorWithMessage": {
     "description": "Generic inline error display, reused across many screens.",
@@ -164,7 +162,6 @@
   "@documentFallbackName": {
     "description": "Placeholder filename shown when a PDF attachment has no filename of its own."
   },
-
   "copiedToClipboard": "Copied",
   "@copiedToClipboard": {
     "description": "Snackbar shown after copying a message's text."
@@ -397,7 +394,6 @@
   "@helpedWithNothingYet": {
     "description": "Feedback 'what helped' checklist option label, exclusive with the others (the value sent to the backend stays the fixed English canonical string)."
   },
-
   "couldNotSharePhoto": "Could not share photo: {error}",
   "@couldNotSharePhoto": {
     "description": "Snackbar shown when sharing a photo attachment fails.",
@@ -420,7 +416,6 @@
   "@couldNotLoadVideo": {
     "description": "Shown in place of a video attachment that failed to load."
   },
-
   "couldNotLoadMedia": "Could not load media: {error}",
   "@couldNotLoadMedia": {
     "description": "Shown when Bubble Info's Media tab fails to load.",
@@ -460,7 +455,6 @@
   "@noLinksSharedYet": {
     "description": "Empty state for Bubble Info's Links tab."
   },
-
   "shareToABubble": "Share to a Bubble",
   "@shareToABubble": {
     "description": "Title of the Share-to-DiveBubble Bubble picker screen."
@@ -473,7 +467,6 @@
   "@joinATripToShareInto": {
     "description": "Empty state subtitle on the Bubble picker."
   },
-
   "bubblesTabTitle": "Bubbles",
   "@bubblesTabTitle": {
     "description": "Bubbles bottom-nav tab label and My Trips screen title."
@@ -510,7 +503,6 @@
   "@joinTrip": {
     "description": "Button on the My Trips header that opens the join-by-code dialog."
   },
-
   "chatTabLabel": "Chat",
   "@chatTabLabel": {
     "description": "Pill tab label inside a Bubble."
@@ -527,7 +519,6 @@
   "@expensesTabLabel": {
     "description": "Pill tab label inside a Bubble."
   },
-
   "archive": "Archive",
   "@archive": {
     "description": "Long-press menu action on a Bubbles-list row."
@@ -600,7 +591,6 @@
       }
     }
   },
-
   "cancelledStatus": "Cancelled",
   "@cancelledStatus": {
     "description": "Trip-row status pill."
@@ -613,7 +603,6 @@
   "@activeStatus": {
     "description": "Trip-row status pill."
   },
-
   "archivedChats": "Archived Chats",
   "@archivedChats": {
     "description": "Title of the Archived Chats screen, also shown on its pinned/reveal row in My Trips."
@@ -626,7 +615,6 @@
   "@archivedChatsEmptyBody": {
     "description": "Empty-state subtitle on the Archived Chats screen."
   },
-
   "typeOfferRide": "Offering a ride",
   "@typeOfferRide": {
     "description": "Transport offer type label/choice-chip."
@@ -719,7 +707,6 @@
   "@add": {
     "description": "Submit button when adding a transport offer."
   },
-
   "buddyGroupCancelledByOrganizer": "This buddy group was cancelled by the organizer.",
   "@buddyGroupCancelledByOrganizer": {
     "description": "Snackbar shown when the buddy group you were viewing/in gets dissolved by its organizer."
@@ -781,7 +768,6 @@
   "@request": {
     "description": "Submit button when creating a buddy request."
   },
-
   "about": "About",
   "@about": {
     "description": "About page title and Profile settings row label."
@@ -1385,10 +1371,6 @@
   "@languageSettingsTitle": {
     "description": "App-language settings page title and its Profile settings row label."
   },
-  "systemDefault": "System default",
-  "@systemDefault": {
-    "description": "Option to follow the device's own locale rather than overriding it."
-  },
   "guest": "Guest",
   "@guest": {
     "description": "Placeholder name shown on the signed-out Profile tab."
@@ -1450,7 +1432,6 @@
   "@deleteAccountRow": {
     "description": "Delete-account row label on Profile."
   },
-
   "noExpensesYet": "No expenses yet",
   "@noExpensesYet": {
     "description": "Empty-state title on the Expenses tab."
@@ -1605,7 +1586,6 @@
   "@deleteExpenseBody": {
     "description": "Delete-expense confirmation dialog body."
   },
-
   "editTripTitle": "Edit trip",
   "@editTripTitle": {
     "description": "Create/Edit Trip page title when editing an existing trip."
@@ -1708,7 +1688,6 @@
   "@bookingCodeHint": {
     "description": "Join-by-code dialog field hint text — kept as a Latin-alphanumeric example code in every locale, since real booking codes are generated in that same format regardless of app language."
   },
-
   "managePhotos": "Manage photos",
   "@managePhotos": {
     "description": "Photo hero pill and Manage Photos page title."
@@ -1948,5 +1927,22 @@
   "emailLabel": "Email",
   "@emailLabel": {
     "description": "Dive center detail card info row label."
+  },
+  "systemDefaultWithLanguage": "{name} (System default)",
+  "@systemDefaultWithLanguage": {
+    "description": "Language picker's 'follow the device' option, naming which language that currently resolves to.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chooseYourLanguageTitle": "Choose your language",
+  "@chooseYourLanguageTitle": {
+    "description": "Onboarding language-selection step heading."
+  },
+  "chooseYourLanguageBody": "You can always change this later in Profile settings.",
+  "@chooseYourLanguageBody": {
+    "description": "Onboarding language-selection step body copy."
   }
 }

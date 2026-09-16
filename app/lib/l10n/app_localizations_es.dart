@@ -1029,9 +1029,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get languageSettingsTitle => 'Idioma';
 
   @override
-  String get systemDefault => 'Predeterminado del sistema';
-
-  @override
   String get guest => 'Invitado';
 
   @override
@@ -1431,4 +1428,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get emailLabel => 'Correo';
+
+  @override
+  String systemDefaultWithLanguage(String name) {
+    return '$name (predeterminado del sistema)';
+  }
+
+  @override
+  String get chooseYourLanguageTitle => 'Elige tu idioma';
+
+  @override
+  String get chooseYourLanguageBody =>
+      'Siempre puedes cambiarlo más tarde en los ajustes del perfil.';
 }

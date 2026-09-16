@@ -448,6 +448,7 @@ class _MyAppState extends State<MyApp> {
           authRepository: _authRepository,
           profileRepository: _profileRepository,
           pushRepository: _pushRepository,
+          localeController: _localeController,
           rootShellBuilder: (context, currentUserId) => RootShell(
             tripRepository: _tripRepository,
             chatRepository: _chatRepository,

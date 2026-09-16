@@ -29,7 +29,6 @@
   "notSet": "Не указано",
   "certificationNumberOptional": "Номер сертификата (необязательно)",
   "saveAndContinue": "Сохранить и продолжить",
-
   "errorWithMessage": "Ошибка: {error}",
   "cancel": "Отмена",
   "delete": "Удалить",
@@ -39,7 +38,6 @@
   "noMatches": "Совпадений нет.",
   "share": "Поделиться",
   "documentFallbackName": "Документ.pdf",
-
   "copiedToClipboard": "Скопировано",
   "deleteThisMessageTitle": "Удалить это сообщение?",
   "deleteThisMessageBody": "Это необратимо — сообщение будет удалено для всех в этом Bubble.",
@@ -88,22 +86,18 @@
   "helpedWithFindingTransport": "Поиск транспорта",
   "helpedWithFindingBuddy": "Поиск бадди",
   "helpedWithNothingYet": "Пока ничего",
-
   "couldNotSharePhoto": "Не удалось поделиться фото: {error}",
   "couldNotShareVideo": "Не удалось поделиться видео: {error}",
   "couldNotLoadVideo": "Не удалось загрузить видео",
-
   "couldNotLoadMedia": "Не удалось загрузить медиа: {error}",
   "noPhotosOrVideosSharedYet": "Пока нет фото или видео",
   "couldNotLoadFiles": "Не удалось загрузить файлы: {error}",
   "noFilesSharedYet": "Пока нет файлов",
   "couldNotLoadLinks": "Не удалось загрузить ссылки: {error}",
   "noLinksSharedYet": "Пока нет ссылок",
-
   "shareToABubble": "Поделиться в Bubble",
   "noBubblesYet": "Пока нет Bubbles",
   "joinATripToShareInto": "Присоединитесь к трипу, чтобы получить Bubble, в который можно поделиться.",
-
   "bubblesTabTitle": "Bubbles",
   "diveLogTabTitle": "Дайвлог",
   "profileTabTitle": "Профиль",
@@ -113,12 +107,10 @@
   "startYourFirstBubbleBody": "Создайте трип или присоединитесь по коду — чат, транспорт и детали трипа в одном месте.",
   "createTrip": "Создать трип",
   "joinTrip": "Присоединиться",
-
   "chatTabLabel": "Чат",
   "transportTabLabel": "Транспорт",
   "buddyTabLabel": "Бадди",
   "expensesTabLabel": "Расходы",
-
   "archive": "В архив",
   "unarchive": "Из архива",
   "cancelTrip": "Отменить трип",
@@ -132,15 +124,12 @@
   "cancelTripBody": "У всех участников останется доступ к истории чата, но никто — включая вас — не сможет отправлять сообщения, присоединяться или организовывать транспорт. Это необратимо.",
   "neverMind": "Не сейчас",
   "couldNotCancel": "Не удалось отменить: {error}",
-
   "cancelledStatus": "Отменён",
   "pastStatus": "Прошёл",
   "activeStatus": "Активен",
-
   "archivedChats": "Архивные чаты",
   "noArchivedChats": "Нет архивных чатов",
   "archivedChatsEmptyBody": "Bubbles, которые вы архивируете, появятся здесь — смахните или разархивируйте, чтобы вернуть обратно.",
-
   "typeOfferRide": "Предлагаю место в машине",
   "typeShareRental": "Делюсь арендой",
   "carCancelledByOrganizer": "Эта машина была отменена организатором.",
@@ -162,7 +151,6 @@
   "seatsOptional": "Мест (необязательно)",
   "detailsTimePickupOptional": "Детали — время, место встречи (необязательно)",
   "add": "Добавить",
-
   "buddyGroupCancelledByOrganizer": "Эта группа бадди была отменена организатором.",
   "noBuddyRequestsWereMade": "Запросов на бадди не было",
   "beFirstToLookForBuddy": "Будьте первым, кто ищет бадди",
@@ -177,7 +165,6 @@
   "leaveBuddyGroup": "Покинуть группу",
   "otherDiversWillSeeRequest": "Другие дайверы на этом трипе увидят ваш запрос и смогут присоединиться.",
   "request": "Отправить",
-
   "about": "О приложении",
   "versionLabel": "Версия {version}",
   "gearLockerTitle": "Снаряжение",
@@ -307,7 +294,6 @@
   "done": "Готово",
   "searchLanguages": "Поиск языков",
   "languageSettingsTitle": "Язык",
-  "systemDefault": "Как в системе",
   "guest": "Гость",
   "certificationsSectionTitle": "Сертификации",
   "update": "Изменить",
@@ -322,7 +308,6 @@
   "deleteAccountBody": "Это необратимо анонимизирует ваш аккаунт и отменит все организованные вами трипы. Это необратимо.",
   "couldNotDeleteAccount": "Не удалось удалить аккаунт: {error}",
   "deleteAccountRow": "Удалить аккаунт",
-
   "noExpensesYet": "Пока нет расходов",
   "logSharedCostBody": "Запишите общий расход, чтобы все знали, сколько с кого причитается.",
   "addExpenseCta": "Добавить расход",
@@ -352,7 +337,6 @@
   "exactAmountsMustAddUp": "Точные суммы должны совпадать с общей суммой.",
   "deleteExpenseTitle": "Удалить этот расход?",
   "deleteExpenseBody": "Он будет удалён из баланса для всех. Это необратимо.",
-
   "editTripTitle": "Изменить трип",
   "uploadUpToNPhotos": "Загрузите до {max} фото.",
   "titleIsRequired": "Укажите название",
@@ -376,7 +360,6 @@
   "bookingCodeDialogBody": "Забронировали трип у дайв-центра на их сайте? Введите код, который вам дали, чтобы присоединиться к его Bubble.",
   "bookingCodeLabel": "Код брони",
   "bookingCodeHint": "например, 8XK2NPQ4",
-
   "managePhotos": "Фото",
   "editButtonLabel": "Изменить",
   "peopleTabLabel": "Участники",
@@ -418,5 +401,8 @@
   "agencyLabel": "Агентство",
   "websiteLabel": "Сайт",
   "phoneLabel": "Телефон",
-  "emailLabel": "Почта"
+  "emailLabel": "Почта",
+  "systemDefaultWithLanguage": "{name} (как в системе)",
+  "chooseYourLanguageTitle": "Выберите язык",
+  "chooseYourLanguageBody": "Это всегда можно изменить позже в настройках профиля."
 }

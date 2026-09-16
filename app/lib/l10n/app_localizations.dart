@@ -1872,12 +1872,6 @@ abstract class AppLocalizations {
   /// **'Language'**
   String get languageSettingsTitle;
 
-  /// Option to follow the device's own locale rather than overriding it.
-  ///
-  /// In en, this message translates to:
-  /// **'System default'**
-  String get systemDefault;
-
   /// Placeholder name shown on the signed-out Profile tab.
   ///
   /// In en, this message translates to:
@@ -2525,6 +2519,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Email'**
   String get emailLabel;
+
+  /// Language picker's 'follow the device' option, naming which language that currently resolves to.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (System default)'**
+  String systemDefaultWithLanguage(String name);
+
+  /// Onboarding language-selection step heading.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your language'**
+  String get chooseYourLanguageTitle;
+
+  /// Onboarding language-selection step body copy.
+  ///
+  /// In en, this message translates to:
+  /// **'You can always change this later in Profile settings.'**
+  String get chooseYourLanguageBody;
 }
 
 class _AppLocalizationsDelegate

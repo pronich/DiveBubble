@@ -29,7 +29,6 @@
   "notSet": "Nicht festgelegt",
   "certificationNumberOptional": "Zertifikatsnummer (optional)",
   "saveAndContinue": "Speichern und weiter",
-
   "errorWithMessage": "Fehler: {error}",
   "cancel": "Abbrechen",
   "delete": "Löschen",
@@ -39,7 +38,6 @@
   "noMatches": "Keine Treffer.",
   "share": "Teilen",
   "documentFallbackName": "Dokument.pdf",
-
   "copiedToClipboard": "Kopiert",
   "deleteThisMessageTitle": "Diese Nachricht löschen?",
   "deleteThisMessageBody": "Das kann nicht rückgängig gemacht werden — sie wird für alle in diesem Bubble entfernt.",
@@ -88,22 +86,18 @@
   "helpedWithFindingTransport": "Transport finden",
   "helpedWithFindingBuddy": "Buddy finden",
   "helpedWithNothingYet": "Noch nichts",
-
   "couldNotSharePhoto": "Foto konnte nicht geteilt werden: {error}",
   "couldNotShareVideo": "Video konnte nicht geteilt werden: {error}",
   "couldNotLoadVideo": "Video konnte nicht geladen werden",
-
   "couldNotLoadMedia": "Medien konnten nicht geladen werden: {error}",
   "noPhotosOrVideosSharedYet": "Noch keine Fotos oder Videos geteilt",
   "couldNotLoadFiles": "Dateien konnten nicht geladen werden: {error}",
   "noFilesSharedYet": "Noch keine Dateien geteilt",
   "couldNotLoadLinks": "Links konnten nicht geladen werden: {error}",
   "noLinksSharedYet": "Noch keine Links geteilt",
-
   "shareToABubble": "In einem Bubble teilen",
   "noBubblesYet": "Noch keine Bubbles",
   "joinATripToShareInto": "Tritt einem Trip bei, um einen Bubble zum Teilen zu haben.",
-
   "bubblesTabTitle": "Bubbles",
   "diveLogTabTitle": "Logbuch",
   "profileTabTitle": "Profil",
@@ -113,12 +107,10 @@
   "startYourFirstBubbleBody": "Erstelle einen Trip oder tritt mit einem Code bei — Chat, Transport und Trip-Details an einem Ort.",
   "createTrip": "Trip erstellen",
   "joinTrip": "Trip beitreten",
-
   "chatTabLabel": "Chat",
   "transportTabLabel": "Transport",
   "buddyTabLabel": "Buddy",
   "expensesTabLabel": "Ausgaben",
-
   "archive": "Archivieren",
   "unarchive": "Aus Archiv holen",
   "cancelTrip": "Trip stornieren",
@@ -132,15 +124,12 @@
   "cancelTripBody": "Alle Teilnehmer behalten den Bubble, um den Chatverlauf zu sehen, aber niemand — auch du nicht — kann noch Nachrichten senden, beitreten oder Transport organisieren. Das kann nicht rückgängig gemacht werden.",
   "neverMind": "Doch nicht",
   "couldNotCancel": "Stornieren fehlgeschlagen: {error}",
-
   "cancelledStatus": "Storniert",
   "pastStatus": "Vergangen",
   "activeStatus": "Aktiv",
-
   "archivedChats": "Archivierte Chats",
   "noArchivedChats": "Keine archivierten Chats",
   "archivedChatsEmptyBody": "Bubbles, die du archivierst, erscheinen hier — wische oder hole sie aus dem Archiv, um sie zurückzuholen.",
-
   "typeOfferRide": "Biete eine Mitfahrgelegenheit an",
   "typeShareRental": "Teile einen Mietwagen",
   "carCancelledByOrganizer": "Dieses Auto wurde vom Organisator storniert.",
@@ -162,7 +151,6 @@
   "seatsOptional": "Plätze (optional)",
   "detailsTimePickupOptional": "Details — Uhrzeit, Abholort (optional)",
   "add": "Hinzufügen",
-
   "buddyGroupCancelledByOrganizer": "Diese Buddy-Gruppe wurde vom Organisator storniert.",
   "noBuddyRequestsWereMade": "Es wurden keine Buddy-Anfragen gestellt",
   "beFirstToLookForBuddy": "Sei der Erste, der einen Buddy sucht",
@@ -177,7 +165,6 @@
   "leaveBuddyGroup": "Gruppe verlassen",
   "otherDiversWillSeeRequest": "Andere Taucher auf diesem Trip sehen deine Anfrage und können sich anschließen.",
   "request": "Senden",
-
   "about": "Über die App",
   "versionLabel": "Version {version}",
   "gearLockerTitle": "Ausrüstung",
@@ -307,7 +294,6 @@
   "done": "Fertig",
   "searchLanguages": "Sprachen suchen",
   "languageSettingsTitle": "Sprache",
-  "systemDefault": "Systemstandard",
   "guest": "Gast",
   "certificationsSectionTitle": "Zertifizierungen",
   "update": "Aktualisieren",
@@ -322,7 +308,6 @@
   "deleteAccountBody": "Dies anonymisiert dein Konto dauerhaft und storniert alle von dir organisierten Trips. Das kann nicht rückgängig gemacht werden.",
   "couldNotDeleteAccount": "Konto konnte nicht gelöscht werden: {error}",
   "deleteAccountRow": "Konto löschen",
-
   "noExpensesYet": "Noch keine Ausgaben",
   "logSharedCostBody": "Erfasse eine gemeinsame Ausgabe, damit jeder weiß, was er schuldet.",
   "addExpenseCta": "Ausgabe hinzufügen",
@@ -352,7 +337,6 @@
   "exactAmountsMustAddUp": "Die genauen Beträge müssen der Gesamtsumme entsprechen.",
   "deleteExpenseTitle": "Diese Ausgabe löschen?",
   "deleteExpenseBody": "Sie wird für alle aus der Bilanz entfernt. Das kann nicht rückgängig gemacht werden.",
-
   "editTripTitle": "Trip bearbeiten",
   "uploadUpToNPhotos": "Lade bis zu {max} Fotos hoch.",
   "titleIsRequired": "Titel ist erforderlich",
@@ -376,7 +360,6 @@
   "bookingCodeDialogBody": "Hast du einen Trip direkt auf der Website eines Tauchcenters gebucht? Gib den Code ein, den du erhalten hast, um seinem Bubble beizutreten.",
   "bookingCodeLabel": "Buchungscode",
   "bookingCodeHint": "z. B. 8XK2NPQ4",
-
   "managePhotos": "Fotos verwalten",
   "editButtonLabel": "Bearbeiten",
   "peopleTabLabel": "Personen",
@@ -418,5 +401,8 @@
   "agencyLabel": "Verband",
   "websiteLabel": "Website",
   "phoneLabel": "Telefon",
-  "emailLabel": "E-Mail"
+  "emailLabel": "E-Mail",
+  "systemDefaultWithLanguage": "{name} (Systemstandard)",
+  "chooseYourLanguageTitle": "Wähle deine Sprache",
+  "chooseYourLanguageBody": "Das kannst du später jederzeit in den Profileinstellungen ändern."
 }

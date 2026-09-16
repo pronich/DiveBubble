@@ -1034,9 +1034,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get languageSettingsTitle => 'Язык';
 
   @override
-  String get systemDefault => 'Как в системе';
-
-  @override
   String get guest => 'Гость';
 
   @override
@@ -1444,4 +1441,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get emailLabel => 'Почта';
+
+  @override
+  String systemDefaultWithLanguage(String name) {
+    return '$name (как в системе)';
+  }
+
+  @override
+  String get chooseYourLanguageTitle => 'Выберите язык';
+
+  @override
+  String get chooseYourLanguageBody =>
+      'Это всегда можно изменить позже в настройках профиля.';
 }

@@ -2,20 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../data/services/locale_controller.dart';
 import '../../../../l10n/app_localizations.dart';
-
-/// Native names, deliberately never translated — a diver needs to recognize their own
-/// language's name even when the current UI language isn't it. Keyed by locale code, unlike
-/// [null]'s "System default" (see LocaleController's own doc comment on this convention),
-/// which does follow the current UI language.
-const _nativeLocaleNames = <String, String>{
-  'en': 'English',
-  'ru': 'Русский',
-  'es': 'Español',
-  'de': 'Deutsch',
-  'da': 'Dansk',
-  'sv': 'Svenska',
-  'fr': 'Français',
-};
+import '../../../core/formatting/locale_display.dart';
 
 class LanguageSettingsPage extends StatelessWidget {
   const LanguageSettingsPage({super.key, required this.localeController});
@@ -35,13 +22,13 @@ class LanguageSettingsPage extends StatelessWidget {
           return ListView(
             children: [
               _LanguageTile(
-                label: AppLocalizations.of(context).systemDefault,
+                label: AppLocalizations.of(context).systemDefaultWithLanguage(nativeNameFor(resolvedSystemLocale())),
                 selected: selected == null,
                 onTap: () => localeController.setLocale(null),
               ),
               for (final locale in AppLocalizations.supportedLocales)
                 _LanguageTile(
-                  label: _nativeLocaleNames[locale.languageCode] ?? locale.languageCode,
+                  label: nativeNameFor(locale),
                   selected: selected == locale.languageCode,
                   onTap: () => localeController.setLocale(locale),
                 ),
