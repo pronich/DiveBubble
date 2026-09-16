@@ -1186,4 +1186,262 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get deleteExpenseBody =>
       'Он будет удалён из баланса для всех. Это необратимо.';
+
+  @override
+  String get editTripTitle => 'Изменить трип';
+
+  @override
+  String uploadUpToNPhotos(int max) {
+    return 'Загрузите до $max фото.';
+  }
+
+  @override
+  String get titleIsRequired => 'Укажите название';
+
+  @override
+  String get locationIsRequired => 'Укажите место';
+
+  @override
+  String get dateIsRequired => 'Укажите дату';
+
+  @override
+  String get meetingTimeLabel => 'Время встречи';
+
+  @override
+  String get meetingTimeIsRequired => 'Укажите время встречи';
+
+  @override
+  String get endDateOptionalLabel =>
+      'Дата окончания (необязательно, для многодневных трипов)';
+
+  @override
+  String get meetingPointOptionalLabel => 'Место встречи (необязательно)';
+
+  @override
+  String get descriptionOptionalLabel => 'Описание (необязательно)';
+
+  @override
+  String get requiredLevelLabel => 'Требуемый уровень';
+
+  @override
+  String get openToAll => 'Без ограничений';
+
+  @override
+  String get minDepthMLabel => 'Мин. глубина (м)';
+
+  @override
+  String get maxDepthMLabel => 'Макс. глубина (м)';
+
+  @override
+  String get minDivesLabel => 'Мин. дайвов';
+
+  @override
+  String get maxDivesLabel => 'Макс. дайвов';
+
+  @override
+  String onlyNPhotosAllowed(int max) {
+    return 'Можно загрузить не более $max фото на трип';
+  }
+
+  @override
+  String get selectADate => 'Выберите дату';
+
+  @override
+  String get selectATime => 'Выберите время';
+
+  @override
+  String get enterBookingCodeTitle => 'Введите код брони';
+
+  @override
+  String get bookingCodeDialogBody =>
+      'Забронировали трип у дайв-центра на их сайте? Введите код, который вам дали, чтобы присоединиться к его Bubble.';
+
+  @override
+  String get bookingCodeLabel => 'Код брони';
+
+  @override
+  String get bookingCodeHint => 'например, 8XK2NPQ4';
+
+  @override
+  String get managePhotos => 'Управление фото';
+
+  @override
+  String get editButtonLabel => 'Изменить';
+
+  @override
+  String get peopleTabLabel => 'Участники';
+
+  @override
+  String get mediaTabLabel => 'Медиа';
+
+  @override
+  String get filesTabLabel => 'Файлы';
+
+  @override
+  String get linksTabLabel => 'Ссылки';
+
+  @override
+  String get meetingPointSectionLabel => 'МЕСТО ВСТРЕЧИ';
+
+  @override
+  String get aboutThisDive => 'Об этом дайве';
+
+  @override
+  String get levelSectionLabel => 'УРОВЕНЬ';
+
+  @override
+  String get depthSectionLabel => 'ГЛУБИНА';
+
+  @override
+  String get divesSectionLabel => 'ДАЙВЫ';
+
+  @override
+  String get durationSectionLabel => 'ПРОДОЛЖИТЕЛЬНОСТЬ';
+
+  @override
+  String depthExactMeters(int value) {
+    return '$value м';
+  }
+
+  @override
+  String depthRangeMeters(int min, int max) {
+    return '$min–$max м';
+  }
+
+  @override
+  String depthUpToMeters(int max) {
+    return 'До $max м';
+  }
+
+  @override
+  String depthMinPlusMeters(int min) {
+    return 'От $min м';
+  }
+
+  @override
+  String diveCountExactPlural(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n дайва',
+      many: '$n дайвов',
+      few: '$n дайва',
+      one: '$n дайв',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String diveCountRangeDives(int min, int max) {
+    return '$min–$max дайвов';
+  }
+
+  @override
+  String diveCountUpToDives(int max) {
+    return 'До $max дайвов';
+  }
+
+  @override
+  String diveCountMinPlusDives(int min) {
+    return 'От $min дайвов';
+  }
+
+  @override
+  String durationDaysPlural(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days дня',
+      many: '$days дней',
+      few: '$days дня',
+      one: '$days день',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get diveCenterLabel => 'Дайв-центр';
+
+  @override
+  String get bookNowLabel => 'Забронировать';
+
+  @override
+  String bookNowWithPrice(String price, String currency) {
+    return 'Забронировать — $price $currency';
+  }
+
+  @override
+  String get iHaveABookingCode => 'У меня есть код брони';
+
+  @override
+  String get privateTripAskOrganizer =>
+      'Это приватный трип — попросите у организатора код или ссылку для приглашения.';
+
+  @override
+  String get iHaveAnInviteCode => 'У меня есть код приглашения';
+
+  @override
+  String get inviteCodeSectionLabel => 'КОД ПРИГЛАШЕНИЯ';
+
+  @override
+  String get shareInviteTooltip => 'Поделиться приглашением';
+
+  @override
+  String get shareInviteLink => 'Поделиться ссылкой';
+
+  @override
+  String get copyInviteLink => 'Скопировать ссылку';
+
+  @override
+  String get copyBookingCode => 'Скопировать код брони';
+
+  @override
+  String get unmute => 'Включить звук';
+
+  @override
+  String get mute => 'Отключить звук';
+
+  @override
+  String get tripCancelledSnackbar => 'Трип отменён';
+
+  @override
+  String get diveInToBubble => 'Перейти в Bubble';
+
+  @override
+  String participantsJoinedPlural(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Присоединилось $count человека',
+      many: 'Присоединилось $count человек',
+      few: 'Присоединилось $count человека',
+      one: 'Присоединился $count человек',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String participantsJoinedOfMaxPlural(int count, int max) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Присоединилось $count из $max',
+      many: 'Присоединилось $count из $max',
+      few: 'Присоединилось $count из $max',
+      one: 'Присоединился $count из $max',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get agencyLabel => 'Агентство';
+
+  @override
+  String get websiteLabel => 'Сайт';
+
+  @override
+  String get phoneLabel => 'Телефон';
+
+  @override
+  String get emailLabel => 'Почта';
 }

@@ -6,6 +6,7 @@ import 'package:geocoding/geocoding.dart';
 
 import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/calendar_picker_sheet.dart';
 import '../../../core/widgets/photo_manager_grid.dart';
@@ -98,8 +99,9 @@ class _CreateTripPageState extends State<CreateTripPage> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.existingTrip != null;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(isEditing ? 'Edit trip' : 'Create trip')),
+      appBar: AppBar(title: Text(isEditing ? l10n.editTripTitle : l10n.createTrip)),
       body: ListenableBuilder(
         listenable: widget.viewModel,
         builder: (context, _) {
@@ -110,7 +112,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Text(
-                    'Upload up to $_maxTripPhotos photos.',
+                    l10n.uploadUpToNPhotos(_maxTripPhotos),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ),
@@ -129,8 +131,8 @@ class _CreateTripPageState extends State<CreateTripPage> {
                 controller: _titleController,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  labelText: 'Title',
-                  errorText: _showTitleError ? 'Title is required' : null,
+                  labelText: l10n.titleFieldLabel,
+                  errorText: _showTitleError ? l10n.titleIsRequired : null,
                 ),
                 onChanged: (value) {
                   if (_showTitleError && value.trim().isNotEmpty) setState(() => _showTitleError = false);
@@ -141,8 +143,8 @@ class _CreateTripPageState extends State<CreateTripPage> {
                 controller: _locationController,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  labelText: 'Location',
-                  errorText: _showLocationError ? 'Location is required' : null,
+                  labelText: l10n.locationLabel,
+                  errorText: _showLocationError ? l10n.locationIsRequired : null,
                 ),
                 onChanged: (value) {
                   if (_showLocationError && value.trim().isNotEmpty) setState(() => _showLocationError = false);
@@ -150,9 +152,9 @@ class _CreateTripPageState extends State<CreateTripPage> {
               ),
               const SizedBox(height: 12),
               _DatePickerField(
-                label: 'Date',
+                label: l10n.dateLabel,
                 value: _startDate,
-                errorText: _showDateError ? 'Date is required' : null,
+                errorText: _showDateError ? l10n.dateIsRequired : null,
                 onPick: (date) => setState(() {
                   _startDate = date;
                   _showDateError = false;
@@ -164,9 +166,9 @@ class _CreateTripPageState extends State<CreateTripPage> {
               ),
               const SizedBox(height: 12),
               _TimePickerField(
-                label: 'Meeting time',
+                label: l10n.meetingTimeLabel,
                 value: _startTimeOfDay,
-                errorText: _showTimeError ? 'Meeting time is required' : null,
+                errorText: _showTimeError ? l10n.meetingTimeIsRequired : null,
                 onPick: (time) => setState(() {
                   _startTimeOfDay = time;
                   _showTimeError = false;
@@ -174,7 +176,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
               ),
               const SizedBox(height: 12),
               _DatePickerField(
-                label: 'End date (optional, multi-day trips)',
+                label: l10n.endDateOptionalLabel,
                 value: _endDate,
                 minimumDate: _startDate,
                 onPick: (date) => setState(() => _endDate = date),
@@ -184,23 +186,23 @@ class _CreateTripPageState extends State<CreateTripPage> {
               TextField(
                 controller: _meetingPointController,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(labelText: 'Meeting point (optional)'),
+                decoration: InputDecoration(labelText: l10n.meetingPointOptionalLabel),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _descriptionController,
                 textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(labelText: 'Description (optional)'),
+                decoration: InputDecoration(labelText: l10n.descriptionOptionalLabel),
                 maxLines: 3,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String?>(
                 initialValue: _minCertification,
-                decoration: const InputDecoration(labelText: 'Required level'),
+                decoration: InputDecoration(labelText: l10n.requiredLevelLabel),
                 style: Theme.of(context).textTheme.bodyLarge,
-                hint: const Text('Open to all'),
+                hint: Text(l10n.openToAll),
                 items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('Open to all')),
+                  DropdownMenuItem<String?>(value: null, child: Text(l10n.openToAll)),
                   ...kCertificationLevels.map((level) => DropdownMenuItem<String?>(value: level, child: Text(level))),
                 ],
                 onChanged: (value) => setState(() => _minCertification = value),
@@ -211,7 +213,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
                   Expanded(
                     child: TextField(
                       controller: _depthMinController,
-                      decoration: const InputDecoration(labelText: 'Min depth (m)'),
+                      decoration: InputDecoration(labelText: l10n.minDepthMLabel),
                       keyboardType: TextInputType.number,
                     ),
                   ),
@@ -219,7 +221,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
                   Expanded(
                     child: TextField(
                       controller: _depthMaxController,
-                      decoration: const InputDecoration(labelText: 'Max depth (m)'),
+                      decoration: InputDecoration(labelText: l10n.maxDepthMLabel),
                       keyboardType: TextInputType.number,
                     ),
                   ),
@@ -231,7 +233,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
                   Expanded(
                     child: TextField(
                       controller: _diveCountMinController,
-                      decoration: const InputDecoration(labelText: 'Min dives'),
+                      decoration: InputDecoration(labelText: l10n.minDivesLabel),
                       keyboardType: TextInputType.number,
                     ),
                   ),
@@ -239,7 +241,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
                   Expanded(
                     child: TextField(
                       controller: _diveCountMaxController,
-                      decoration: const InputDecoration(labelText: 'Max dives'),
+                      decoration: InputDecoration(labelText: l10n.maxDivesLabel),
                       keyboardType: TextInputType.number,
                     ),
                   ),
@@ -248,19 +250,19 @@ class _CreateTripPageState extends State<CreateTripPage> {
               const SizedBox(height: 12),
               TextField(
                 controller: _maxParticipantsController,
-                decoration: const InputDecoration(labelText: 'Seats (optional)'),
+                decoration: InputDecoration(labelText: l10n.seatsOptional),
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 24),
               if (widget.viewModel.error != null) ...[
-                Text('Error: ${widget.viewModel.error}', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                Text(l10n.errorWithMessage(widget.viewModel.error!), style: TextStyle(color: Theme.of(context).colorScheme.error)),
                 const SizedBox(height: 12),
               ],
               ElevatedButton(
                 onPressed: widget.viewModel.isSubmitting ? null : _submit,
                 child: widget.viewModel.isSubmitting
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text(isEditing ? 'Save changes' : 'Create trip'),
+                    : Text(isEditing ? l10n.saveChanges : l10n.createTrip),
               ),
             ],
           );
@@ -277,7 +279,9 @@ class _CreateTripPageState extends State<CreateTripPage> {
       final room = _maxTripPhotos - _photoPaths.length;
       setState(() => _photoPaths = [..._photoPaths, ...picked.take(room)]);
       if (picked.length > room) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Only $_maxTripPhotos photos allowed per trip')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).onlyNPhotosAllowed(_maxTripPhotos))));
       }
     } finally {
       if (mounted) setState(() => _isPickingPhotos = false);
@@ -378,6 +382,7 @@ Future<DateTime?> _showWheelPicker(
   return showModalBottomSheet<DateTime>(
     context: context,
     builder: (context) {
+      final l10n = AppLocalizations.of(context);
       return SafeArea(
         child: SizedBox(
           height: 260,
@@ -386,8 +391,8 @@ Future<DateTime?> _showWheelPicker(
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  CupertinoButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-                  CupertinoButton(onPressed: () => Navigator.of(context).pop(selected), child: const Text('Done')),
+                  CupertinoButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.cancel)),
+                  CupertinoButton(onPressed: () => Navigator.of(context).pop(selected), child: Text(l10n.done)),
                 ],
               ),
               Expanded(
@@ -439,7 +444,7 @@ class _DatePickerField extends StatelessWidget {
               ? IconButton(icon: const Icon(Icons.clear), onPressed: onClear)
               : const Icon(Icons.calendar_today_outlined),
         ),
-        child: Text(value != null ? formatShortDate(value!) : 'Select a date'),
+        child: Text(value != null ? formatShortDate(value!) : AppLocalizations.of(context).selectADate),
       ),
     );
   }
@@ -471,7 +476,7 @@ class _TimePickerField extends StatelessWidget {
           errorText: errorText,
           suffixIcon: const Icon(Icons.access_time_outlined),
         ),
-        child: Text(value != null ? value!.format(context) : 'Select a time'),
+        child: Text(value != null ? value!.format(context) : AppLocalizations.of(context).selectATime),
       ),
     );
   }

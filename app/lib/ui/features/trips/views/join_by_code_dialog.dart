@@ -4,6 +4,7 @@ import '../../../../data/services/error_codes.dart';
 
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../../l10n/app_localizations.dart';
 
 /// Shared entry point for redeeming a business trip's booking code — used both from
 /// Explore's header ("Join trip", no specific trip in context — the code alone resolves
@@ -54,8 +55,9 @@ class _JoinByCodeDialogState extends State<_JoinByCodeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return AlertDialog(
-      title: const Text('Enter booking code'),
+      title: Text(l10n.enterBookingCodeTitle),
       // Off by default — on a small screen the keyboard (autofocus below triggers it
       // immediately) can shrink the available height enough that the content column no
       // longer fits, and without this the TextField itself is what silently collapses to
@@ -65,13 +67,13 @@ class _JoinByCodeDialogState extends State<_JoinByCodeDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Booked a dive-center trip on their own site? Enter the code they gave you to join its Bubble here.'),
+          Text(l10n.bookingCodeDialogBody),
           const SizedBox(height: 16),
           TextField(
             controller: _controller,
             autofocus: true,
             textCapitalization: TextCapitalization.characters,
-            decoration: const InputDecoration(labelText: 'Booking code', hintText: 'e.g. 8XK2NPQ4'),
+            decoration: InputDecoration(labelText: l10n.bookingCodeLabel, hintText: l10n.bookingCodeHint),
             onSubmitted: (_) => _submit(),
           ),
           if (_error != null) ...[
@@ -81,12 +83,12 @@ class _JoinByCodeDialogState extends State<_JoinByCodeDialog> {
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l10n.cancel)),
         FilledButton(
           onPressed: _isSubmitting ? null : _submit,
           child: _isSubmitting
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Join'),
+              : Text(l10n.join),
         ),
       ],
     );

@@ -132,6 +132,10 @@ class _AddEditExpensePageState extends State<AddEditExpensePage> {
           ),
           const SizedBox(height: 16),
           SegmentedButton<String>(
+            // The built-in checkmark on the selected segment eats into its width, which
+            // wrapped a longer translation (e.g. Russian "По долям") onto a second line —
+            // dropped so all three segments size consistently regardless of selection.
+            showSelectedIcon: false,
             segments: [
               ButtonSegment(value: 'equal', label: Text(l10n.splitEqual)),
               ButtonSegment(value: 'shares', label: Text(l10n.splitShares)),

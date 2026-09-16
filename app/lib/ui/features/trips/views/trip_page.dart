@@ -21,6 +21,7 @@ import '../../../../domain/entities/media_item.dart';
 import '../../../../domain/entities/dive_center.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/trip.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/assets/app_assets.dart';
 import '../../../core/auth/ensure_signed_in.dart';
 import '../../../core/formatting/date_format.dart';
@@ -214,7 +215,7 @@ class _TripPageState extends State<TripPage>
 
           final error = widget.viewModel.error;
           if (error != null) {
-            return Center(child: Text('Error: $error'));
+            return Center(child: Text(AppLocalizations.of(context).errorWithMessage(error)));
           }
 
           final trip = widget.viewModel.trip;
@@ -361,23 +362,23 @@ class _TripPageState extends State<TripPage>
                           child: InkWell(
                             borderRadius: BorderRadius.circular(20),
                             onTap: () => _openManagePhotos(context),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
                                 horizontal: 14,
                                 vertical: 8,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.photo_library_outlined,
                                     color: Colors.white,
                                     size: 18,
                                   ),
-                                  SizedBox(width: 6),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    'Manage photos',
-                                    style: TextStyle(
+                                    AppLocalizations.of(context).managePhotos,
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -409,23 +410,23 @@ class _TripPageState extends State<TripPage>
                             child: InkWell(
                               borderRadius: BorderRadius.circular(20),
                               onTap: () => _openEditTrip(context, trip),
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
                                   vertical: 8,
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
+                                    const Icon(
                                       Icons.edit_outlined,
                                       color: Colors.white,
                                       size: 18,
                                     ),
-                                    SizedBox(width: 6),
+                                    const SizedBox(width: 6),
                                     Text(
-                                      'Edit',
-                                      style: TextStyle(
+                                      AppLocalizations.of(context).editButtonLabel,
+                                      style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -514,13 +515,14 @@ class _TripPageState extends State<TripPage>
 
           if (widget.openedFromConversation) {
             _ensureBubbleContentLoaded(trip.id);
+            final l10n = AppLocalizations.of(context);
             final tabBar = TabBar(
               controller: _tabController,
-              tabs: const [
-                Tab(text: 'People'),
-                Tab(text: 'Media'),
-                Tab(text: 'Files'),
-                Tab(text: 'Links'),
+              tabs: [
+                Tab(text: l10n.peopleTabLabel),
+                Tab(text: l10n.mediaTabLabel),
+                Tab(text: l10n.filesTabLabel),
+                Tab(text: l10n.linksTabLabel),
               ],
             );
             return NestedScrollView(
@@ -676,12 +678,12 @@ class _TripPageState extends State<TripPage>
   }
 
   String _participantsText(Trip trip) {
+    final l10n = AppLocalizations.of(context);
     final count = trip.participantCount;
-    final people = count == 1 ? 'person' : 'people';
     if (trip.maxParticipants != null) {
-      return '$count $people out of ${trip.maxParticipants} joined';
+      return l10n.participantsJoinedOfMaxPlural(count, trip.maxParticipants!);
     }
-    return '$count $people joined';
+    return l10n.participantsJoinedPlural(count);
   }
 }
 
@@ -788,7 +790,7 @@ class _PeopleTabState extends State<PeopleTab> {
     if (_error != null) {
       return Center(
         child: Text(
-          'Error: $_error',
+          AppLocalizations.of(context).errorWithMessage(_error!),
           style: TextStyle(color: theme.colorScheme.error),
         ),
       );
@@ -826,12 +828,13 @@ class _PeopleTabState extends State<PeopleTab> {
         for (final userId in _userIds!)
           Builder(
             builder: (context) {
+              final l10n = AppLocalizations.of(context);
               final profile = _profiles[userId];
               final baseName = (profile?.displayName?.isNotEmpty ?? false)
                   ? profile!.displayName!
-                  : 'Diver';
+                  : l10n.diver;
               final name = (profile?.isProductObserver ?? false)
-                  ? '$baseName | Product Observer'
+                  ? '$baseName | ${l10n.productObserver}'
                   : baseName;
               return _PersonRow(
                 avatar: CircleAvatar(
@@ -905,7 +908,7 @@ class _PersonRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  'Organizer',
+                  AppLocalizations.of(context).organizerLabel,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onPrimaryContainer,
                     fontWeight: FontWeight.w600,
@@ -932,6 +935,7 @@ class _TripInfoBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
@@ -972,7 +976,7 @@ class _TripInfoBlock extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'MEETING POINT',
+            l10n.meetingPointSectionLabel,
             style: theme.textTheme.labelSmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -992,7 +996,7 @@ class _TripInfoBlock extends StatelessWidget {
           _InfoGrid(trip: trip),
           if (trip.description != null) ...[
             const SizedBox(height: 20),
-            Text('About this dive', style: theme.textTheme.labelLarge),
+            Text(l10n.aboutThisDive, style: theme.textTheme.labelLarge),
             const SizedBox(height: 6),
             Text(trip.description!, style: theme.textTheme.bodyMedium),
           ],
@@ -1009,24 +1013,27 @@ class _InfoGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final depthText = _depthText(trip, l10n);
+    final diveCountText = _diveCountText(trip, l10n);
     final tiles = <Widget>[
       _InfoTile(
         icon: Icons.badge_outlined,
-        label: 'LEVEL',
+        label: l10n.levelSectionLabel,
         value: certificationLevelAbbreviation(trip.minCertification),
       ),
-      if (_depthText(trip) != null)
-        _InfoTile(icon: Icons.waves, label: 'DEPTH', value: _depthText(trip)!),
-      if (_diveCountText(trip) != null)
+      if (depthText != null)
+        _InfoTile(icon: Icons.waves, label: l10n.depthSectionLabel, value: depthText),
+      if (diveCountText != null)
         _InfoTile(
           icon: Icons.scuba_diving_outlined,
-          label: 'DIVES',
-          value: _diveCountText(trip)!,
+          label: l10n.divesSectionLabel,
+          value: diveCountText,
         ),
       _InfoTile(
         icon: Icons.schedule,
-        label: 'DURATION',
-        value: _durationText(trip),
+        label: l10n.durationSectionLabel,
+        value: _durationText(trip, l10n),
       ),
     ];
 
@@ -1050,39 +1057,39 @@ class _InfoGrid extends StatelessWidget {
     return Column(children: rows);
   }
 
-  static String? _depthText(Trip trip) {
+  static String? _depthText(Trip trip, AppLocalizations l10n) {
     final min = trip.depthMinM;
     final max = trip.depthMaxM;
     if (min == null && max == null) return null;
     if (min != null && max != null) {
-      if (min == max) return '$min m';
-      return '$min–$max m';
+      if (min == max) return l10n.depthExactMeters(min);
+      return l10n.depthRangeMeters(min, max);
     }
-    if (max != null) return 'Up to $max m';
-    return '$min+ m';
+    if (max != null) return l10n.depthUpToMeters(max);
+    return l10n.depthMinPlusMeters(min!);
   }
 
-  static String? _diveCountText(Trip trip) {
+  static String? _diveCountText(Trip trip, AppLocalizations l10n) {
     final min = trip.diveCountMin;
     final max = trip.diveCountMax;
     if (min == null && max == null) return null;
     if (min != null && max != null) {
-      if (min == max) return min == 1 ? '1 dive' : '$min dives';
-      return '$min–$max dives';
+      if (min == max) return l10n.diveCountExactPlural(min);
+      return l10n.diveCountRangeDives(min, max);
     }
-    if (max != null) return 'Up to $max dives';
-    return '$min+ dives';
+    if (max != null) return l10n.diveCountUpToDives(max);
+    return l10n.diveCountMinPlusDives(min!);
   }
 
-  static String _durationText(Trip trip) {
+  static String _durationText(Trip trip, AppLocalizations l10n) {
     final end = trip.endDate;
-    if (end == null) return '1 day';
+    if (end == null) return l10n.durationDaysPlural(1);
     final start = trip.startTime.toLocal();
     final endLocal = end.toLocal();
     final startDate = DateTime(start.year, start.month, start.day);
     final endDateOnly = DateTime(endLocal.year, endLocal.month, endLocal.day);
     final days = endDateOnly.difference(startDate).inDays + 1;
-    return days == 1 ? '1 day' : '$days days';
+    return l10n.durationDaysPlural(days);
   }
 }
 
@@ -1114,10 +1121,20 @@ class _InfoTile extends StatelessWidget {
             children: [
               Icon(icon, size: 13, color: theme.colorScheme.onSurfaceVariant),
               const SizedBox(width: 4),
-              Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              // A longer translated label (e.g. Russian "ПРОДОЛЖИТЕЛЬНОСТЬ") can outgrow
+              // this tile's half-row width — shrink to fit on one line instead of
+              // overflowing, same fix as the Dive Log detail page's own stat tiles.
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1160,6 +1177,7 @@ class _OrganizerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final dc = diveCenter;
 
     if (dc != null) {
@@ -1198,7 +1216,7 @@ class _OrganizerCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Dive center',
+                      l10n.diveCenterLabel,
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -1214,7 +1232,7 @@ class _OrganizerCard extends StatelessWidget {
 
     final name = (profile?.displayName?.isNotEmpty ?? false)
         ? profile!.displayName!
-        : 'Organizer';
+        : l10n.organizerLabel;
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -1257,7 +1275,7 @@ class _OrganizerCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  isOrganizer ? 'Organizer · You' : 'Organizer',
+                  isOrganizer ? l10n.organizerYou : l10n.organizerLabel,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -1302,7 +1320,7 @@ class _InviteJoinButton extends StatelessWidget {
                 height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Text('Join'),
+            : Text(AppLocalizations.of(context).join),
       ),
     );
   }
@@ -1337,7 +1355,7 @@ class _JoinButton extends StatelessWidget {
                 height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Text('Join'),
+            : Text(AppLocalizations.of(context).join),
       ),
     );
   }
@@ -1386,11 +1404,12 @@ class _BookNowSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final url = trip.bookingUrl ?? diveCenter?.website;
     final priceMinor = trip.priceMinor;
     final label = priceMinor != null
-        ? 'Book now — ${(priceMinor / 100).toStringAsFixed(2)} ${trip.currency}'
-        : 'Book now';
+        ? l10n.bookNowWithPrice((priceMinor / 100).toStringAsFixed(2), trip.currency)
+        : l10n.bookNowLabel;
 
     return Column(
       children: [
@@ -1422,7 +1441,7 @@ class _BookNowSection extends StatelessWidget {
               diveCenterRepository: diveCenterRepository,
               expenseRepository: expenseRepository,
             ),
-            child: const Text('I have a booking code'),
+            child: Text(AppLocalizations.of(context).iHaveABookingCode),
           ),
         ),
       ],
@@ -1520,7 +1539,7 @@ class _PrivateJoinSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'This is a private trip — ask the organizer for an invite code or link.',
+          AppLocalizations.of(context).privateTripAskOrganizer,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -1539,7 +1558,7 @@ class _PrivateJoinSection extends StatelessWidget {
             diveCenterRepository: diveCenterRepository,
             expenseRepository: expenseRepository,
           ),
-          child: const Text('I have an invite code'),
+          child: Text(AppLocalizations.of(context).iHaveAnInviteCode),
         ),
       ],
     );
@@ -1571,7 +1590,7 @@ class _BookingCodeRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'INVITE CODE',
+                AppLocalizations.of(context).inviteCodeSectionLabel,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -1590,7 +1609,7 @@ class _BookingCodeRow extends StatelessWidget {
         IconButton(
           key: _actionButtonKey,
           icon: const Icon(Icons.ios_share),
-          tooltip: 'Share invite',
+          tooltip: AppLocalizations.of(context).shareInviteTooltip,
           onPressed: () => _showBookingCodeActionsSheet(
             context,
             bookingCode,
@@ -1611,29 +1630,32 @@ Future<void> _showBookingCodeActionsSheet(
 ) async {
   final action = await showModalBottomSheet<_BookingCodeAction>(
     context: context,
-    builder: (context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.ios_share),
-            title: const Text('Share invite link'),
-            onTap: () =>
-                Navigator.of(context).pop(_BookingCodeAction.shareLink),
-          ),
-          ListTile(
-            leading: const Icon(Icons.link_outlined),
-            title: const Text('Copy invite link'),
-            onTap: () => Navigator.of(context).pop(_BookingCodeAction.copyLink),
-          ),
-          ListTile(
-            leading: const Icon(Icons.tag_outlined),
-            title: const Text('Copy booking code'),
-            onTap: () => Navigator.of(context).pop(_BookingCodeAction.copyCode),
-          ),
-        ],
-      ),
-    ),
+    builder: (context) {
+      final l10n = AppLocalizations.of(context);
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.ios_share),
+              title: Text(l10n.shareInviteLink),
+              onTap: () =>
+                  Navigator.of(context).pop(_BookingCodeAction.shareLink),
+            ),
+            ListTile(
+              leading: const Icon(Icons.link_outlined),
+              title: Text(l10n.copyInviteLink),
+              onTap: () => Navigator.of(context).pop(_BookingCodeAction.copyLink),
+            ),
+            ListTile(
+              leading: const Icon(Icons.tag_outlined),
+              title: Text(l10n.copyBookingCode),
+              onTap: () => Navigator.of(context).pop(_BookingCodeAction.copyCode),
+            ),
+          ],
+        ),
+      );
+    },
   );
   if (action == null || !context.mounted) return;
 
@@ -1659,7 +1681,7 @@ Future<void> _showBookingCodeActionsSheet(
   if (!context.mounted) return;
   ScaffoldMessenger.of(
     context,
-  ).showSnackBar(const SnackBar(content: Text('Copied')));
+  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).copiedToClipboard)));
 }
 
 /// Quick-actions row shown only on the Specific view (opened from inside a Bubble) —
@@ -1679,6 +1701,7 @@ class _ActionPillsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Row(
       children: [
         Expanded(
@@ -1686,7 +1709,7 @@ class _ActionPillsRow extends StatelessWidget {
             icon: viewModel.isMuted
                 ? Icons.notifications_off_outlined
                 : Icons.notifications_none,
-            label: viewModel.isMuted ? 'Unmute' : 'Mute',
+            label: viewModel.isMuted ? l10n.unmute : l10n.mute,
             onTap: viewModel.toggleMute,
           ),
         ),
@@ -1695,7 +1718,7 @@ class _ActionPillsRow extends StatelessWidget {
           Expanded(
             child: _ActionPill(
               icon: Icons.logout,
-              label: 'Leave',
+              label: l10n.leave,
               destructive: true,
               busy: viewModel.isLeaving,
               onTap: () => _handleLeave(context, viewModel),
@@ -1706,7 +1729,7 @@ class _ActionPillsRow extends StatelessWidget {
           Expanded(
             child: _ActionPill(
               icon: Icons.cancel_outlined,
-              label: 'Cancel',
+              label: l10n.cancel,
               destructive: true,
               busy: viewModel.isCancelling,
               onTap: () => _handleCancel(context, viewModel),
@@ -1724,17 +1747,16 @@ class _ActionPillsRow extends StatelessWidget {
 /// existing post-return reload already picks up the trip disappearing — no extra
 /// callback needed here.
 Future<void> _handleLeave(BuildContext context, TripViewModel viewModel) async {
+  final l10n = AppLocalizations.of(context);
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Leave this Bubble?'),
-      content: const Text(
-        "You'll lose your spot and can rejoin later if there's room.",
-      ),
+      title: Text(l10n.leaveBubbleTitle),
+      content: Text(l10n.leaveBubbleBody),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
+          child: Text(l10n.cancel),
         ),
         TextButton(
           style: AppButtonStyles.ghost.copyWith(
@@ -1743,7 +1765,7 @@ Future<void> _handleLeave(BuildContext context, TripViewModel viewModel) async {
             ),
           ),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Leave'),
+          child: Text(l10n.leave),
         ),
       ],
     ),
@@ -1767,18 +1789,16 @@ Future<void> _handleCancel(
   BuildContext context,
   TripViewModel viewModel,
 ) async {
+  final l10n = AppLocalizations.of(context);
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Cancel this trip?'),
-      content: const Text(
-        "Every participant keeps the Bubble to see the chat history, but no one — including you — "
-        "can send messages, join, or arrange transport anymore. This can't be undone.",
-      ),
+      title: Text(l10n.cancelTripTitle),
+      content: Text(l10n.cancelTripBody),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Never mind'),
+          child: Text(l10n.neverMind),
         ),
         TextButton(
           style: AppButtonStyles.ghost.copyWith(
@@ -1787,7 +1807,7 @@ Future<void> _handleCancel(
             ),
           ),
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Cancel trip'),
+          child: Text(l10n.cancelTrip),
         ),
       ],
     ),
@@ -1802,7 +1822,7 @@ Future<void> _handleCancel(
   }
   ScaffoldMessenger.of(
     context,
-  ).showSnackBar(const SnackBar(content: Text('Trip cancelled')));
+  ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).tripCancelledSnackbar)));
 }
 
 /// A single icon-over-label pill, Telegram Group-Info-style (video call / mute / search /
@@ -1879,24 +1899,25 @@ class _TripStatusPill extends StatelessWidget {
     final Color foreground;
     final theme = Theme.of(context);
     final semantic = Theme.of(context).extension<SemanticColors>()!;
+    final l10n = AppLocalizations.of(context);
 
     // Cancelled outranks Organizer/Joined — that's the one thing everyone in the Bubble
     // needs to see at a glance, organizer included, not just non-participants browsing in.
     if (trip.bookingStatus == 'cancelled') {
-      label = 'Cancelled';
+      label = l10n.cancelledStatus;
       background = theme.colorScheme.surfaceContainerHighest;
       foreground = theme.colorScheme.onSurfaceVariant;
     } else if (isOrganizer) {
       // Of course the organizer is "joined" — that label is more useful for everyone else.
-      label = 'Organizer';
+      label = l10n.organizerLabel;
       background = theme.colorScheme.primaryContainer;
       foreground = theme.colorScheme.onPrimaryContainer;
     } else if (trip.joined) {
-      label = 'Joined';
+      label = l10n.joinedStatus;
       background = semantic.successContainer;
       foreground = semantic.onSuccessContainer;
     } else if (trip.bookingStatus == 'full') {
-      label = 'Full';
+      label = l10n.fullStatus;
       background = semantic.infoContainer;
       foreground = semantic.onInfoContainer;
     } else {
@@ -1981,7 +2002,7 @@ class _DiveInButton extends StatelessWidget {
           tripRepository.markRead(trip.id).catchError((_) {});
         },
         icon: const Icon(Icons.chat_bubble_outline, size: 18),
-        label: const Text('Dive in to Bubble'),
+        label: Text(AppLocalizations.of(context).diveInToBubble),
       ),
     );
   }
@@ -2022,7 +2043,7 @@ class _ManagePhotosPageState extends State<_ManagePhotosPage> {
       if (paths.length > room && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Only $_maxTripPhotos photos allowed per trip'),
+            content: Text(AppLocalizations.of(context).onlyNPhotosAllowed(_maxTripPhotos)),
           ),
         );
       }
@@ -2043,16 +2064,17 @@ class _ManagePhotosPageState extends State<_ManagePhotosPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage photos'),
+        title: Text(l10n.managePhotos),
         // Not functionally different from the back button — every add/remove already
         // commits immediately — but "Save" reads as a clearer "I'm done here" than relying
         // on an implicit back-arrow, same reasoning as admin/'s matching dialog.
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Save'),
+            child: Text(l10n.save),
           ),
         ],
       ),
@@ -2068,7 +2090,7 @@ class _ManagePhotosPageState extends State<_ManagePhotosPage> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Text(
-                    'Upload up to $_maxTripPhotos photos.',
+                    l10n.uploadUpToNPhotos(_maxTripPhotos),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

@@ -2133,6 +2133,396 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This removes it from the balance for everyone. This can\'t be undone.'**
   String get deleteExpenseBody;
+
+  /// Create/Edit Trip page title when editing an existing trip.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit trip'**
+  String get editTripTitle;
+
+  /// Hint above the photo grid on trip creation.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload up to {max} photos.'**
+  String uploadUpToNPhotos(int max);
+
+  /// Trip creation validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Title is required'**
+  String get titleIsRequired;
+
+  /// Trip creation validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is required'**
+  String get locationIsRequired;
+
+  /// Trip creation validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Date is required'**
+  String get dateIsRequired;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting time'**
+  String get meetingTimeLabel;
+
+  /// Trip creation validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting time is required'**
+  String get meetingTimeIsRequired;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'End date (optional, multi-day trips)'**
+  String get endDateOptionalLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Meeting point (optional)'**
+  String get meetingPointOptionalLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Description (optional)'**
+  String get descriptionOptionalLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Required level'**
+  String get requiredLevelLabel;
+
+  /// Trip creation's 'no minimum certification level' option.
+  ///
+  /// In en, this message translates to:
+  /// **'Open to all'**
+  String get openToAll;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Min depth (m)'**
+  String get minDepthMLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Max depth (m)'**
+  String get maxDepthMLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Min dives'**
+  String get minDivesLabel;
+
+  /// Trip creation field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Max dives'**
+  String get maxDivesLabel;
+
+  /// Snackbar shown when picking more trip photos than the per-trip limit.
+  ///
+  /// In en, this message translates to:
+  /// **'Only {max} photos allowed per trip'**
+  String onlyNPhotosAllowed(int max);
+
+  /// Placeholder on an unset date field.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a date'**
+  String get selectADate;
+
+  /// Placeholder on an unset time field.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a time'**
+  String get selectATime;
+
+  /// Join-by-code dialog title.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter booking code'**
+  String get enterBookingCodeTitle;
+
+  /// Join-by-code dialog explanatory body.
+  ///
+  /// In en, this message translates to:
+  /// **'Booked a dive-center trip on their own site? Enter the code they gave you to join its Bubble here.'**
+  String get bookingCodeDialogBody;
+
+  /// Join-by-code dialog field label.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking code'**
+  String get bookingCodeLabel;
+
+  /// Join-by-code dialog field hint text — kept as a Latin-alphanumeric example code in every locale, since real booking codes are generated in that same format regardless of app language.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 8XK2NPQ4'**
+  String get bookingCodeHint;
+
+  /// Photo hero pill and Manage Photos page title.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage photos'**
+  String get managePhotos;
+
+  /// Photo hero pill that opens Edit Trip, organizer-only.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get editButtonLabel;
+
+  /// Bubble Info tab label.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get peopleTabLabel;
+
+  /// Bubble Info tab label.
+  ///
+  /// In en, this message translates to:
+  /// **'Media'**
+  String get mediaTabLabel;
+
+  /// Bubble Info tab label.
+  ///
+  /// In en, this message translates to:
+  /// **'Files'**
+  String get filesTabLabel;
+
+  /// Bubble Info tab label.
+  ///
+  /// In en, this message translates to:
+  /// **'Links'**
+  String get linksTabLabel;
+
+  /// All-caps section label on the trip info block.
+  ///
+  /// In en, this message translates to:
+  /// **'MEETING POINT'**
+  String get meetingPointSectionLabel;
+
+  /// Trip description section heading.
+  ///
+  /// In en, this message translates to:
+  /// **'About this dive'**
+  String get aboutThisDive;
+
+  /// All-caps info-tile label on the trip info grid.
+  ///
+  /// In en, this message translates to:
+  /// **'LEVEL'**
+  String get levelSectionLabel;
+
+  /// All-caps info-tile label on the trip info grid.
+  ///
+  /// In en, this message translates to:
+  /// **'DEPTH'**
+  String get depthSectionLabel;
+
+  /// All-caps info-tile label on the trip info grid.
+  ///
+  /// In en, this message translates to:
+  /// **'DIVES'**
+  String get divesSectionLabel;
+
+  /// All-caps info-tile label on the trip info grid.
+  ///
+  /// In en, this message translates to:
+  /// **'DURATION'**
+  String get durationSectionLabel;
+
+  /// Trip depth info tile when min and max depth match.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} m'**
+  String depthExactMeters(int value);
+
+  /// Trip depth info tile for a min/max range.
+  ///
+  /// In en, this message translates to:
+  /// **'{min}–{max} m'**
+  String depthRangeMeters(int min, int max);
+
+  /// Trip depth info tile when only a max depth is set.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to {max} m'**
+  String depthUpToMeters(int max);
+
+  /// Trip depth info tile when only a min depth is set.
+  ///
+  /// In en, this message translates to:
+  /// **'{min}+ m'**
+  String depthMinPlusMeters(int min);
+
+  /// Trip dive-count info tile when min and max dive count match.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{{n} dive} other{{n} dives}}'**
+  String diveCountExactPlural(int n);
+
+  /// Trip dive-count info tile for a min/max range.
+  ///
+  /// In en, this message translates to:
+  /// **'{min}–{max} dives'**
+  String diveCountRangeDives(int min, int max);
+
+  /// Trip dive-count info tile when only a max is set.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to {max} dives'**
+  String diveCountUpToDives(int max);
+
+  /// Trip dive-count info tile when only a min is set.
+  ///
+  /// In en, this message translates to:
+  /// **'{min}+ dives'**
+  String diveCountMinPlusDives(int min);
+
+  /// Trip duration info tile.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, one{{days} day} other{{days} days}}'**
+  String durationDaysPlural(int days);
+
+  /// Role label under a dive center's name — trip organizer card and dive center detail card.
+  ///
+  /// In en, this message translates to:
+  /// **'Dive center'**
+  String get diveCenterLabel;
+
+  /// Button that opens a business trip's external booking URL, no price shown.
+  ///
+  /// In en, this message translates to:
+  /// **'Book now'**
+  String get bookNowLabel;
+
+  /// Button that opens a business trip's external booking URL, with its price.
+  ///
+  /// In en, this message translates to:
+  /// **'Book now — {price} {currency}'**
+  String bookNowWithPrice(String price, String currency);
+
+  /// Button that opens the join-by-code dialog from a business trip.
+  ///
+  /// In en, this message translates to:
+  /// **'I have a booking code'**
+  String get iHaveABookingCode;
+
+  /// Explanatory text on a private trip a diver hasn't joined.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a private trip — ask the organizer for an invite code or link.'**
+  String get privateTripAskOrganizer;
+
+  /// Button that opens the join-by-code dialog from a private trip.
+  ///
+  /// In en, this message translates to:
+  /// **'I have an invite code'**
+  String get iHaveAnInviteCode;
+
+  /// All-caps label above the organizer-only booking code.
+  ///
+  /// In en, this message translates to:
+  /// **'INVITE CODE'**
+  String get inviteCodeSectionLabel;
+
+  /// Tooltip on the share-icon button next to the booking code.
+  ///
+  /// In en, this message translates to:
+  /// **'Share invite'**
+  String get shareInviteTooltip;
+
+  /// Booking-code actions sheet option.
+  ///
+  /// In en, this message translates to:
+  /// **'Share invite link'**
+  String get shareInviteLink;
+
+  /// Booking-code actions sheet option.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy invite link'**
+  String get copyInviteLink;
+
+  /// Booking-code actions sheet option.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy booking code'**
+  String get copyBookingCode;
+
+  /// Action pill on Bubble Info, when the Bubble is currently muted.
+  ///
+  /// In en, this message translates to:
+  /// **'Unmute'**
+  String get unmute;
+
+  /// Action pill on Bubble Info, when the Bubble is currently unmuted.
+  ///
+  /// In en, this message translates to:
+  /// **'Mute'**
+  String get mute;
+
+  /// Snackbar shown right after an organizer cancels their trip.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip cancelled'**
+  String get tripCancelledSnackbar;
+
+  /// Button on a joined trip's page that opens its Bubble chat.
+  ///
+  /// In en, this message translates to:
+  /// **'Dive in to Bubble'**
+  String get diveInToBubble;
+
+  /// Participant count under the organizer card, trip has no seat cap.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} person joined} other{{count} people joined}}'**
+  String participantsJoinedPlural(int count);
+
+  /// Participant count under the organizer card, trip has a seat cap.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} person out of {max} joined} other{{count} people out of {max} joined}}'**
+  String participantsJoinedOfMaxPlural(int count, int max);
+
+  /// Dive center detail card info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Agency'**
+  String get agencyLabel;
+
+  /// Dive center detail card info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Website'**
+  String get websiteLabel;
+
+  /// Dive center detail card info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get phoneLabel;
+
+  /// Dive center detail card info row label.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get emailLabel;
 }
 
 class _AppLocalizationsDelegate

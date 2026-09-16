@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../domain/entities/dive_center.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../core/utils/external_url.dart';
 import '../../profile/views/profile_overview_card.dart';
 
@@ -44,6 +45,7 @@ class DiveCenterOverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final dc = diveCenter;
 
     return Column(
@@ -75,7 +77,7 @@ class DiveCenterOverviewCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(dc.name, style: theme.textTheme.titleLarge),
-                  Text('Dive center', style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  Text(l10n.diveCenterLabel, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                   if (dc.location?.isNotEmpty ?? false) ...[
                     const SizedBox(height: 4),
                     Row(
@@ -99,7 +101,7 @@ class DiveCenterOverviewCard extends StatelessWidget {
         if (dc.description?.isNotEmpty ?? false) ...[
           const SizedBox(height: 24),
           InputDecorator(
-            decoration: const InputDecoration(labelText: 'About'),
+            decoration: InputDecoration(labelText: l10n.about),
             child: SizedBox(
               height: 60,
               child: SingleChildScrollView(child: Text(dc.description!, style: theme.textTheme.bodyMedium)),
@@ -116,23 +118,23 @@ class DiveCenterOverviewCard extends StatelessWidget {
             children: [
               if (dc.agency?.isNotEmpty ?? false) ...[
                 ProfileInfoRow(
-                  label: 'Agency',
+                  label: l10n.agencyLabel,
                   value: (dc.agencyDetail?.isNotEmpty ?? false) ? '${dc.agency} · ${dc.agencyDetail}' : dc.agency!,
                 ),
                 const Divider(height: 1),
               ],
-              ProfileInfoRow(label: 'Languages', value: dc.languages.isNotEmpty ? dc.languages : '—'),
+              ProfileInfoRow(label: l10n.languagesLabel, value: dc.languages.isNotEmpty ? dc.languages : '—'),
               if (dc.website?.isNotEmpty ?? false) ...[
                 const Divider(height: 1),
-                _LinkRow(label: 'Website', value: dc.website!, onTap: () => launchUrl(externalUri(dc.website!), mode: LaunchMode.externalApplication)),
+                _LinkRow(label: l10n.websiteLabel, value: dc.website!, onTap: () => launchUrl(externalUri(dc.website!), mode: LaunchMode.externalApplication)),
               ],
               if (dc.phone?.isNotEmpty ?? false) ...[
                 const Divider(height: 1),
-                _LinkRow(label: 'Phone', value: dc.phone!, onTap: () => launchUrl(Uri(scheme: 'tel', path: dc.phone!))),
+                _LinkRow(label: l10n.phoneLabel, value: dc.phone!, onTap: () => launchUrl(Uri(scheme: 'tel', path: dc.phone!))),
               ],
               if (dc.email?.isNotEmpty ?? false) ...[
                 const Divider(height: 1),
-                _LinkRow(label: 'Email', value: dc.email!, onTap: () => launchUrl(Uri(scheme: 'mailto', path: dc.email!))),
+                _LinkRow(label: l10n.emailLabel, value: dc.email!, onTap: () => launchUrl(Uri(scheme: 'mailto', path: dc.email!))),
               ],
               // No "Member since" here — that's when this dive center joined the platform,
               // not how long it's actually operated, and showing it reads as "brand new
