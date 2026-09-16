@@ -32,8 +32,7 @@ class UsersViewModel extends ChangeNotifier {
     }
   }
 
-  // Returns null on success, or an error message to show — mirrors app/'s
-  // TransportViewModel.join() pattern (scoped failures shouldn't blow away the whole list).
+  // Returns null on success, or an error message to show — a scoped failure shouldn't blow away the whole list.
   Future<String?> removeMember(String userId) async {
     try {
       await _repository.removeMember(diveCenterId, userId);

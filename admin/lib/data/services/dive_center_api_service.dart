@@ -8,9 +8,7 @@ import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
 import 'multipart_upload.dart';
 
-/// Thrown when a member search by email finds no matching DiveBubble account — a distinct
-/// type (not a generic Exception) so the Invite dialog can show "they need to sign up
-/// first" instead of a raw error, matching backend's 404 "no account found for that email".
+/// A distinct type (not a generic Exception) so the Invite dialog can show "they need to sign up first" instead of a raw error.
 class MemberNotFoundException implements Exception {
   const MemberNotFoundException();
 }
@@ -120,8 +118,7 @@ class DiveCenterApiService {
     return list.map((e) => DiveCenterMember.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  // Prefix-email lookup, owner-only on the backend — not a user directory. Used to
-  // confirm "is this the right person" before actually adding them via addMember below.
+  // Prefix-email lookup, owner-only on the backend (not a user directory) — confirms "is this the right person" before addMember.
   Future<MemberPreview> searchMemberByEmail(String diveCenterId, String email) async {
     final uri = Uri.parse('$baseUrl/dive-centers/$diveCenterId/members/search').replace(queryParameters: {'email': email});
     final res = await _client.get(uri, headers: await _authHeaders());
@@ -134,8 +131,7 @@ class DiveCenterApiService {
     return MemberPreview.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Also how an existing member's role changes — the backend upserts, so re-adding with a
-  // different role just updates it (see divecenter.Repository.AddMember's own comment).
+  // Also how an existing member's role changes — the backend upserts, so re-adding with a different role just updates it.
   Future<void> addMember(String diveCenterId, String userId, String role) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/dive-centers/$diveCenterId/members'),
@@ -147,9 +143,7 @@ class DiveCenterApiService {
     }
   }
 
-  // Counterpart to addMember for an email with no DiveBubble account yet — called when
-  // searchMemberByEmail throws MemberNotFoundException. No pending-list to reconcile with
-  // (see CLAUDE.md) — a failure here is a real error, not swallowed.
+  // Counterpart to addMember for an email with no DiveBubble account yet, called after searchMemberByEmail throws MemberNotFoundException.
   Future<void> inviteMember(String diveCenterId, String email, String role) async {
     final res = await _client.post(
       Uri.parse('$baseUrl/dive-centers/$diveCenterId/invitations'),
@@ -174,8 +168,7 @@ class DiveCenterApiService {
       headers: await _authHeaders(),
     );
     if (res.statusCode != 204) {
-      // Surfaces backend's own message (e.g. "cannot remove the last owner", 409) directly
-      // rather than a raw status dump — the caller shows this in a SnackBar as-is.
+      // Surfaces backend's own message (e.g. "cannot remove the last owner") directly — the caller shows this in a SnackBar as-is.
       String message = 'removeMember failed: ${res.statusCode}';
       try {
         final decoded = jsonDecode(res.body) as Map<String, dynamic>;

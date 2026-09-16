@@ -22,9 +22,7 @@ class CreateTripPage extends StatefulWidget {
   final CreateTripViewModel viewModel;
   final ValueChanged<Trip> onCreated;
 
-  // Non-null means this page is editing an existing trip — the form is seeded from it and
-  // photos are left out entirely (managed from Trip Page's own gallery instead, same split
-  // admin/'s edit form already uses).
+  // Non-null means this page is editing an existing trip; photos are left out entirely and managed from Trip Page's own gallery instead.
   final Trip? existingTrip;
 
   @override
@@ -68,16 +66,11 @@ class _CreateTripPageState extends State<CreateTripPage> {
     _diveCountMinController.text = trip.diveCountMin?.toString() ?? '';
     _diveCountMaxController.text = trip.diveCountMax?.toString() ?? '';
     _maxParticipantsController.text = trip.maxParticipants?.toString() ?? '';
-    // startTime: .toLocal() first — it's a precise instant, and the pickers below operate in
-    // (and _submit rebuilds from) local wall-clock time, same convention as everywhere else
-    // this gets displayed (see date_format.dart, trip_page.dart).
+    // startTime: .toLocal() first, since the pickers below operate in local wall-clock time.
     final localStart = trip.startTime.toLocal();
     _startDate = DateTime(localStart.year, localStart.month, localStart.day);
     _startTimeOfDay = TimeOfDay.fromDateTime(localStart);
-    // endDate: a pure calendar date, always UTC-midnight from the API (see
-    // trip_api_service.dart's own comment on why) — take its Y/M/D as-is, not .toLocal()'d
-    // (which could shift the calendar day for negative-offset timezones), matching how
-    // _submit rebuilds a UTC-midnight from local Y/M/D in the other direction.
+    // endDate is always UTC-midnight from the API — take its Y/M/D as-is, not .toLocal()'d, which could shift the calendar day for negative-offset timezones.
     _endDate = trip.endDate == null ? null : DateTime(trip.endDate!.year, trip.endDate!.month, trip.endDate!.day);
     _minCertification = trip.minCertification;
   }
@@ -158,9 +151,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
                 onPick: (date) => setState(() {
                   _startDate = date;
                   _showDateError = false;
-                  // A previously picked end date can now sit before the new start date —
-                  // clearing it here is what stops "end date is before the start date"
-                  // from only surfacing as a raw server error at submit time.
+                  // Clears a now-invalid end date here, so "end date is before the start date" doesn't only surface as a raw server error at submit time.
                   if (_endDate != null && _endDate!.isBefore(date)) _endDate = null;
                 }),
               ),
@@ -309,9 +300,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
       _startTimeOfDay!.minute,
     );
 
-    // Best-effort forward-geocode — prefer the meeting point (more precise) over the
-    // general location. Any failure (no results, no network) just leaves lat/lng null;
-    // never blocks trip creation.
+    // Best-effort forward-geocode, preferring the meeting point over the general location; any failure just leaves lat/lng null and never blocks trip creation.
     double? latitude;
     double? longitude;
     try {
@@ -340,16 +329,12 @@ class _CreateTripPageState extends State<CreateTripPage> {
       maxParticipants: _intOrNull(_maxParticipantsController),
       latitude: latitude,
       longitude: longitude,
-      // Always private for now — Explore (public discovery) is hidden for the B2C pivot, so
-      // there's no surface where a public trip would actually be found.
+      // Always private for now — Explore (public discovery) is hidden for the B2C pivot.
       isPrivate: true,
     );
 
     if (trip != null) {
-      // Sequential, not parallel — the backend assigns each photo's position as "current
-      // row count" at insert time, so concurrent uploads could race for the same position.
-      // Also awaited in full before navigating away — Trip Page's own TripViewModel.load()
-      // fetches fresh data on mount, so every photo needs to already be persisted by then.
+      // Sequential, not parallel: the backend assigns each photo's position by current row count at insert time, so concurrent uploads could race for the same position.
       for (final path in _photoPaths) {
         await widget.viewModel.uploadPhoto(trip.id, path);
       }
@@ -370,8 +355,7 @@ DateTime _roundUpToNextHour(DateTime time) {
   return DateTime(time.year, time.month, time.day, time.hour + 1);
 }
 
-/// iOS-style wheel picker in a bottom sheet — Material's `showDatePicker`/`showTimePicker`
-/// dialogs read as a jarring overlay on top of the field; this matches native iOS pickers instead.
+/// Matches native iOS pickers, since Material's showDatePicker/showTimePicker dialogs read as a jarring overlay on top of the field.
 Future<DateTime?> _showWheelPicker(
   BuildContext context, {
   required CupertinoDatePickerMode mode,
@@ -463,9 +447,7 @@ class _TimePickerField extends StatelessWidget {
     return InkWell(
       onTap: () async {
         final now = DateTime.now();
-        // No time picked yet -> start the wheel at the next clean hour, not the exact
-        // current minute (matches admin/'s own create-trip default) — a diver opening this
-        // at 14:37 almost certainly means "around 3pm", not literally :37.
+        // No time picked yet -> start the wheel at the next clean hour: a diver opening this at 14:37 almost certainly means "around 3pm", not literally :37.
         final initial = value != null ? DateTime(now.year, now.month, now.day, value!.hour, value!.minute) : _roundUpToNextHour(now);
         final picked = await _showWheelPicker(context, mode: CupertinoDatePickerMode.time, initialDateTime: initial);
         if (picked != null) onPick(TimeOfDay.fromDateTime(picked));

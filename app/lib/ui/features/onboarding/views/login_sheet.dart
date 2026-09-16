@@ -13,13 +13,10 @@ import '../../profile/view_models/profile_view_model.dart';
 import '../../profile/views/edit_profile_page.dart';
 import 'push_permission_page.dart';
 
-// What LoginSheet's own modal route resolves with — decided once, up front, so the
-// permission-chain screens (pushed after the sheet is already gone, see `show()`) never
-// need to re-check anything or fall back on a standalone/isNewUser split of their own.
+// Decided once, up front, so the permission-chain screens pushed after the sheet is gone never need to re-check anything themselves.
 typedef _SignInOutcome = ({bool isNewUser, bool needsPush});
 
-/// Google/Apple/email sign-in choice sheet, opened from anywhere a gated action needs a
-/// signed-in user.
+/// Opened from anywhere a gated action needs a signed-in user.
 class LoginSheet extends StatefulWidget {
   const LoginSheet({
     super.key,
@@ -39,11 +36,7 @@ class LoginSheet extends StatefulWidget {
     required ProfileRepository profileRepository,
     required PushRepository pushRepository,
   }) async {
-    // Captured before the sheet (and its own BuildContext) closes — the permission chain
-    // below pushes onto this only once the sheet is already gone. Pushing a full-screen
-    // route while a showModalBottomSheet route is still on the stack made iOS's push
-    // transition apply its outgoing-route parallax/scrim to the sheet itself, producing a
-    // broken half-sheet/half-page slide (the "slider" glitch seen on reinstall + log back in).
+    // Captured before the sheet closes: pushing a full-screen route while the bottom sheet route is still on the stack made iOS apply its parallax/scrim to the sheet, producing a broken half-sheet slide.
     final navigator = Navigator.of(context, rootNavigator: true);
     final outcome = await showModalBottomSheet<_SignInOutcome>(
       context: context,
@@ -90,15 +83,11 @@ enum _AuthProvider { google, apple }
 
 class _LoginSheetState extends State<LoginSheet> {
   bool _loading = false;
-  // Which provider button triggered the current _loading — Google/Apple share the one
-  // _loading flag (both get disabled together), but only the button actually pressed should
-  // show its own spinner instead of its static icon.
+  // Google/Apple share the one _loading flag (both disabled together), but only the button actually pressed should show its spinner.
   _AuthProvider? _pendingProvider;
   String? _error;
 
-  // Email/OTP is a small state machine inline in the same sheet rather than its own route —
-  // "enter email" then "enter the code we sent", both skippable back to the two provider
-  // buttons above via "Use a different sign-in method".
+  // Email/OTP is a small state machine inline in the same sheet rather than its own route: "enter email" then "enter the code we sent".
   bool _showEmailForm = false;
   bool _emailCodeSent = false;
   final _emailController = TextEditingController();
@@ -135,11 +124,7 @@ class _LoginSheetState extends State<LoginSheet> {
   }
 
   Future<void> _onSignedIn(SignInResult result) async {
-    // Checked for every sign-in, new account or returning — a returning diver's device can
-    // still have push undecided (new phone, reinstall), and a brand-new account isn't
-    // guaranteed to be undecided either (e.g. this device previously ran the app under a
-    // different account). The sign-in button's own spinner (_loading) stays up through this
-    // — it's a plain status read, no OS dialog involved, so there's nothing to show yet.
+    // Checked for every sign-in, new or returning — a returning diver's device can still have push undecided (new phone, reinstall).
     final pushSettings = await FirebaseMessaging.instance.getNotificationSettings();
     final needsPush = pushSettings.authorizationStatus == AuthorizationStatus.notDetermined;
     if (!mounted) return;
@@ -197,10 +182,7 @@ class _LoginSheetState extends State<LoginSheet> {
 
     return SafeArea(
       child: Padding(
-        // showModalBottomSheet doesn't push its content above the keyboard on its own —
-        // without viewInsets.bottom here, the email field (revealed after tapping
-        // "Continue with email") stayed anchored in place and ended up hidden underneath
-        // the keyboard instead of the sheet growing to make room for it.
+        // Without viewInsets.bottom here, the email field stayed hidden underneath the keyboard instead of the sheet growing to make room for it.
         padding: EdgeInsets.fromLTRB(24, 20, 24, 32 + MediaQuery.of(context).viewInsets.bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -233,9 +215,7 @@ class _LoginSheetState extends State<LoginSheet> {
             : const Icon(Icons.g_mobiledata, size: 26),
         label: Text(l10n.continueWithGoogle),
       ),
-      // Apple's native credential requires webAuthenticationOptions (Services ID + redirect
-      // URI) on Android, which we don't configure — Google Play has no equivalent-to-Apple's
-      // 5.1.1(v) requirement to offer it, so it's simplest to just hide the button there.
+      // Apple's native credential requires Android webAuthenticationOptions we don't configure, and Google Play has no equivalent 5.1.1(v) requirement, so it's simplest to hide the button there.
       if (defaultTargetPlatform == TargetPlatform.iOS) ...[
         const SizedBox(height: 12),
         ElevatedButton.icon(
@@ -265,9 +245,7 @@ class _LoginSheetState extends State<LoginSheet> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
-        // AutofillHints.oneTimeCode is what lets iOS/Android offer the code straight from
-        // Mail (or an SMS, if this were that) as a keyboard suggestion — same native
-        // mechanism as a text-message OTP field, just sourced from an email here.
+        // AutofillHints.oneTimeCode lets iOS/Android offer the code straight from Mail as a keyboard suggestion, same as a text-message OTP field.
         AutofillGroup(
           child: TextField(
             controller: _codeController,

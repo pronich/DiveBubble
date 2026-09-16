@@ -73,8 +73,7 @@ func handleReportMessage(svc *moderation.Service, messageSvc *message.Service, t
 			return
 		}
 
-		// No admin review UI yet — this log line is the review mechanism while the user base
-		// is small (`docker compose logs api | grep moderation:`), see internal/moderation.
+		// No admin review UI yet: this log line is the review mechanism while the user base is small.
 		log.Printf("moderation: message %s reported by %s (trip %s): reason=%q", messageID, userID, tripID, report.Reason)
 
 		writeJSON(w, http.StatusCreated, map[string]string{"id": report.ID.String()})

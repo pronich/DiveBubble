@@ -19,12 +19,7 @@ import '../../../core/widgets/empty_state_view.dart';
 import 'trip_conversation_page.dart';
 import 'trip_row.dart';
 
-/// Reached from Share-to-DiveBubble (see main.dart's _handleSharedMedia) — a Telegram-style
-/// "Share with" search-and-pick screen over the diver's joined Bubbles. Reuses TripRow (same
-/// list row as My Trips) with showBadges: false — this isn't the inbox, so unread counts/
-/// alert dots/the status pill don't apply, but everything else (thumbnail, title, location)
-/// is the same trip row the rest of the app already uses. The tap target opens straight into
-/// compose state rather than a plain chat view (see ChatView.initialAttachments).
+/// Reuses TripRow with showBadges: false, since this picker isn't the inbox; the tap target opens straight into compose state rather than a plain chat view.
 class ChooseBubblePage extends StatefulWidget {
   const ChooseBubblePage({
     super.key,

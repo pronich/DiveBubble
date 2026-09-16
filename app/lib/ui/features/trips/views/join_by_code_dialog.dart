@@ -6,10 +6,7 @@ import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// Shared entry point for redeeming a business trip's booking code — used both from
-/// Explore's header ("Join trip", no specific trip in context — the code alone resolves
-/// one) and from a business trip's own Trip Page (contextual, same flow). Returns the
-/// resolved trip on success, or null if the diver cancelled.
+/// Returns the resolved trip on success, or null if the diver cancelled.
 Future<Trip?> showJoinByCodeDialog(BuildContext context, TripRepository tripRepository) {
   return showDialog<Trip>(
     context: context,
@@ -58,10 +55,7 @@ class _JoinByCodeDialogState extends State<_JoinByCodeDialog> {
     final l10n = AppLocalizations.of(context);
     return AlertDialog(
       title: Text(l10n.enterBookingCodeTitle),
-      // Off by default — on a small screen the keyboard (autofocus below triggers it
-      // immediately) can shrink the available height enough that the content column no
-      // longer fits, and without this the TextField itself is what silently collapses to
-      // zero height while the title/actions stay visible, not the whole dialog.
+      // Off by default: without this, a shrunk keyboard-constrained height makes the TextField itself silently collapse to zero height rather than the whole dialog scrolling.
       scrollable: true,
       content: Column(
         mainAxisSize: MainAxisSize.min,

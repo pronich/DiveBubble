@@ -7,13 +7,7 @@ import '../../profile/view_models/profile_view_model.dart';
 import '../../profile/views/edit_profile_page.dart';
 import 'push_permission_page.dart';
 
-/// Explains why DiveBubble wants location before the OS permission dialog appears, rather
-/// than firing it silently later.
-///
-/// Unwired as of the B2C pivot (2026-09-15) — its "show nearby trips" pitch was Explore's,
-/// which is no longer reachable. [LoginSheet] no longer pushes this; [EditProfilePage]'s own
-/// auto-detect-on-first-open is now the only place location is ever requested. Left in place
-/// (not deleted) in case a location-driven feature returns and this is worth reactivating.
+/// Unwired as of the B2C pivot (2026-09-15) — its "show nearby trips" pitch was Explore's, which is no longer reachable. Left in place in case a location-driven feature returns.
 class LocationPermissionPage extends StatefulWidget {
   const LocationPermissionPage({
     super.key,
@@ -25,9 +19,7 @@ class LocationPermissionPage extends StatefulWidget {
 
   final ProfileRepository profileRepository;
   final PushRepository pushRepository;
-  // Whether push permission also needs asking — chains straight into PushPermissionPage
-  // instead of popping, so the two explanation screens slide one into the next instead of
-  // both landing back on whatever screen opened LoginSheet in between.
+  // Chains straight into PushPermissionPage instead of popping, so the two explanation screens slide one into the next.
   final bool needsPush;
   final bool isNewUser;
 
@@ -76,13 +68,9 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
 
   Future<void> _enableLocation() async {
     setState(() => _requesting = true);
-    // Triggers the OS permission dialog (see LocationService). Threaded forward as a
-    // prefill rather than relying on Edit Profile's own auto-detect — that's now skipped
-    // during onboarding specifically so tapping "Not now" here doesn't get silently
-    // re-asked a screen later (see EditProfilePage.initState's own comment).
+    // Threaded forward as a prefill instead of relying on Edit Profile's own auto-detect, which is skipped during onboarding so "Not now" doesn't get silently re-asked later.
     final resolved = await _locationService.currentCityCountry();
-    // Diver may have already tapped "Not now" and left while this was in flight — calling
-    // _finish() again here would push onto a Navigator that's no longer in the tree.
+    // Diver may have already tapped "Not now" and left while this was in flight — calling _finish() again would push onto a Navigator no longer in the tree.
     if (!mounted) return;
     setState(() => _requesting = false);
     await _finish(resolvedLocation: resolved);
@@ -117,9 +105,7 @@ class _LocationPermissionPageState extends State<LocationPermissionPage> {
                     : const Text('Continue'),
               ),
               const SizedBox(height: 8),
-              // Stays tappable even mid-request — currentCityCountry() has no hard upper
-              // bound (geocoding can stall), and a diver must always have a way out of this
-              // screen rather than waiting on it (see App Store Guideline 2.1(a) rejection).
+              // Stays tappable even mid-request — geocoding can stall, and a diver must always have a way out (App Store Guideline 2.1(a)).
               TextButton(onPressed: () => _finish(), child: const Text('Not now')),
               const SizedBox(height: 24),
             ],

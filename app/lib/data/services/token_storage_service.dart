@@ -14,8 +14,7 @@ class StoredAuthTokens {
   final String userId;
 }
 
-/// Persists real auth tokens in the platform keychain/keystore — unlike the anonymous stub id
-/// (`UserIdentityService`, plain `shared_preferences`), these are sensitive and must be encrypted at rest.
+/// Uses the platform keychain/keystore, unlike the anonymous stub id (`UserIdentityService`, plain `shared_preferences`), since these are sensitive and must be encrypted at rest.
 class TokenStorageService {
   static const _storage = FlutterSecureStorage();
   static const _kAccessToken = 'auth_access_token';

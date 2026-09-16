@@ -19,8 +19,7 @@ func NewService(repo *Repository) *Service {
 	return &Service{Repo: repo}
 }
 
-// Create takes no fields to validate — a buddy request is just "I want a buddy for this
-// trip", nothing else to fill in.
+// Create takes no fields to validate since a buddy request is just "I want a buddy for this trip", nothing else to fill in.
 func (s *Service) Create(ctx context.Context, tripID, userID uuid.UUID) (Request, error) {
 	return s.Repo.Create(ctx, CreateParams{TripID: tripID, UserID: userID})
 }
@@ -29,8 +28,7 @@ func (s *Service) List(ctx context.Context, tripID, callerUserID uuid.UUID) ([]R
 	return s.Repo.ListByTrip(ctx, tripID, callerUserID)
 }
 
-// Join returns the request joined — callers use it (specifically its UserID, the request's
-// creator) to notify them that someone joined, without a second fetch.
+// Join returns the joined request so callers can notify its creator (UserID) without a second fetch.
 func (s *Service) Join(ctx context.Context, requestID, userID uuid.UUID) (Request, error) {
 	req, err := s.Repo.GetByID(ctx, requestID)
 	if err != nil {
@@ -58,8 +56,7 @@ func (s *Service) Join(ctx context.Context, requestID, userID uuid.UUID) (Reques
 	if err != nil {
 		return Request{}, err
 	}
-	// +1 for the creator — MaxMembers is the whole group's size, unlike transport's seats
-	// (which only ever counted passengers, never the driver).
+	// +1 accounts for the creator, since MaxMembers is the whole group's size, unlike transport's seats which only ever counted passengers.
 	if 1+count >= MaxMembers {
 		return Request{}, ErrFull
 	}
@@ -73,15 +70,12 @@ func (s *Service) ListJoins(ctx context.Context, requestID uuid.UUID) ([]uuid.UU
 	return s.Repo.ListJoins(ctx, requestID)
 }
 
-// Leave lets a joined diver step out of a single buddy group — the request itself (and its
-// chat) carries on for whoever's left. Deleting a non-existent join is a harmless no-op.
+// Leave lets a joined diver step out of a single buddy group; the request and its chat carry on for whoever's left, and leaving a non-existent join is a harmless no-op.
 func (s *Service) Leave(ctx context.Context, requestID, userID uuid.UUID) error {
 	return s.Repo.Leave(ctx, requestID, userID)
 }
 
-// Dissolve is the creator cancelling their own buddy request outright — deletes the request,
-// cascading its joins and chat history. Only the creator may dissolve; anyone else gets
-// ErrForbidden.
+// Dissolve lets only the creator cancel their own buddy request outright, deleting it and cascading its joins and chat history; anyone else gets ErrForbidden.
 func (s *Service) Dissolve(ctx context.Context, requestID, userID uuid.UUID) error {
 	req, err := s.Repo.GetByID(ctx, requestID)
 	if err != nil {
@@ -93,10 +87,7 @@ func (s *Service) Dissolve(ctx context.Context, requestID, userID uuid.UUID) err
 	return s.Repo.DeleteRequest(ctx, requestID)
 }
 
-// HandleUserLeavingTrip mirrors transport's — drops this user's joins (frees the spot they
-// held), and dissolves any request *they* created on this trip (a request with its creator
-// gone no longer makes sense). Everyone who'd joined a dissolved request gets a buddy_alerts
-// row; HandleUserLeavingTrip returns those user IDs so callers can push-notify them.
+// HandleUserLeavingTrip drops this user's joins and dissolves any request they created on this trip, giving everyone who'd joined a dissolved request a buddy_alerts row and returning their IDs so callers can push-notify them.
 func (s *Service) HandleUserLeavingTrip(ctx context.Context, tripID, userID uuid.UUID) ([]uuid.UUID, error) {
 	if err := s.Repo.RemoveUserJoinsInTrip(ctx, tripID, userID); err != nil {
 		return nil, err

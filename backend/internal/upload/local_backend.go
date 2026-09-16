@@ -6,8 +6,7 @@ import (
 	"path/filepath"
 )
 
-// LocalBackend stores uploaded images on local disk — dev-only (see backend/.gitignore),
-// and the fallback when Spaces isn't configured (see server.go).
+// LocalBackend stores uploaded images on local disk; dev-only, and the fallback when Spaces isn't configured.
 type LocalBackend struct {
 	BaseDir       string
 	PublicBaseURL string

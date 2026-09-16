@@ -136,8 +136,7 @@ class _StatTile extends StatelessWidget {
       children: [
         Text(value, style: theme.textTheme.titleMedium),
         const SizedBox(height: 2),
-        // A longer translated label (e.g. Russian "Продолжительность") can outgrow this
-        // tile's third-of-a-row width — shrink to fit on one line instead of wrapping.
+        // A longer translated label can outgrow this tile's third-of-a-row width — shrink to fit on one line instead of wrapping.
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
@@ -183,10 +182,7 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-/// Picks a joined trip and posts a short text summary of this dive into its Bubble chat —
-/// no attachment/rich-card, just a formatted message using the same sendMessage endpoint
-/// every other chat message goes through, so the other participants see it exactly like any
-/// text message (no special rendering needed on the receiving end).
+/// No attachment/rich-card — just a formatted message through the same sendMessage endpoint, so it renders like any other text message.
 class _ShareToBubbleSheet extends StatefulWidget {
   const _ShareToBubbleSheet({
     required this.entry,

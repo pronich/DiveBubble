@@ -24,17 +24,13 @@ import '../../trips/views/trip_detail_page.dart';
 import '../view_models/bubbles_view_model.dart';
 import 'transport_tab.dart';
 
-// Same grouping window as app/'s ChatView — consecutive messages from the same sender on
-// the same day collapse into one visual cluster as long as the gap stays under this.
+// Consecutive same-sender messages on the same day collapse into one visual cluster as long as the gap stays under this.
 const _groupingWindow = Duration(minutes: 5);
 
-// Fixed 8-emoji set, same as app/'s ChatView — one reaction per user per message (Messenger
-// semantics, see BubblesViewModel.reactToMessage).
+// One reaction per user per message (Messenger semantics, see BubblesViewModel.reactToMessage).
 const _reactionEmojis = ['❤️', '😅', '😁', '🙃', '😢', '😮', '😡', '👌'];
 
-/// Body-only (embedded in AdminShell). Named "Bubbles" (not "Messages") to match the app's
-/// own branding — a joined trip *is* its chat there too (see CLAUDE.md's Navigation / IA
-/// section), so this screen is literally the same concept from the organization's side.
+/// Named "Bubbles" (not "Messages") to match app/'s branding — a joined trip is literally its chat there too.
 class BubblesPage extends StatefulWidget {
   const BubblesPage({
     super.key,
@@ -59,39 +55,21 @@ class BubblesPage extends StatefulWidget {
   final RealtimeService realtimeService;
   final String diveCenterId;
 
-  // Suffixed onto a colleague's name ("Name | DiveCenterName") so a staff member reading a
-  // teammate's reply can tell at a glance it's a colleague, not a diver — same "| Dive
-  // Center" attribution app/ already shows divers. Static for this page's lifetime, same as
-  // diveCenterId — a Company-name edit while Bubbles is already built won't retroactively
-  // update it (same precedent as AdminShell's own _companyName vs. `late final _pages` split).
+  // Suffixed onto a colleague's name ("Name | DiveCenterName") so a staff reply reads as a colleague's, not a diver's — static for this page's lifetime, so a later Company-name edit won't retroactively update it.
   final String diveCenterName;
 
   final Future<String?> Function() getCurrentUserId;
 
-  // Set by TripDetailPage's "Dive into Bubble" button (via AdminShell._diveIntoBubble) — a
-  // non-null value here means "select this trip's conversation", consumed once and reset
-  // back to null by this page (see _onOpenTripIdChanged). A ValueNotifier, not just
-  // ValueListenable, since this page also writes the reset back.
+  // Set by TripDetailPage's "Dive into Bubble" button to select that trip's conversation, then reset to null once consumed (see _onOpenTripIdChanged) — a ValueNotifier since this page also writes the reset back.
   final ValueNotifier<String?> openTripId;
 
-  // Tapping the conversation header pushes TripDetailPage (see _Conversation) — its own
-  // "Dive into Bubble" button calls this to pop back here, same round-trip AdminShell wires
-  // up from the Trips tab.
+  // Tapping the conversation header pushes TripDetailPage; its "Dive into Bubble" button calls this to pop back here.
   final ValueChanged<String> onDiveIntoBubble;
 
-  // Reported every time BubblesViewModel's trip list changes — AdminShell forwards this
-  // into a ValueNotifier its sidebar listens to, so the Bubbles nav icon can show a dot
-  // even while a different section is active (this page isn't visible then, but its
-  // ViewModel keeps existing and notifying — see AdminShell's `late final _pages`).
+  // Forwarded by AdminShell into a sidebar ValueNotifier, so the Bubbles nav icon can show a dot even while this page isn't the active section.
   final ValueChanged<bool> onMentionStateChanged;
 
-  // AdminShell keeps every section alive in an IndexedStack built exactly once (`late final
-  // _pages`, see its own comment on why) — so this widget's own constructor args, and
-  // therefore a plain `isActive: selectedIndex == 1` bool, would only ever be evaluated at
-  // that first build and never again. A ValueListenable sidesteps that: AdminShell mutates
-  // the same notifier on every tab switch, and this page listens to it directly instead of
-  // relying on widget rebuilds — reloading trips whenever the tab flips from inactive to
-  // active, so a trip created while on the Trips tab shows up here without a manual refresh.
+  // AdminShell builds every section once in an IndexedStack, so a plain `isActive` bool constructor arg would only ever see its value at that first build — this ValueListenable lets AdminShell push tab-switch changes directly, reloading trips when the tab becomes active.
   final ValueListenable<int> selectedTabIndex;
 
   static const _tabIndex = 1;
@@ -178,9 +156,7 @@ class _BubblesPageState extends State<BubblesPage> {
     }
   }
 
-  // Same breakpoint as AdminShell's own sidebar-to-drawer switch — a permanent 320px inbox
-  // pane alongside a conversation is just as cramped on a phone-width browser as a 260px
-  // sidebar was.
+  // Same breakpoint as AdminShell's sidebar-to-drawer switch — a permanent 320px inbox pane alongside a conversation is just as cramped on a phone-width browser.
   static const _mobileBreakpoint = 760.0;
 
   @override
@@ -206,9 +182,7 @@ class _BubblesPageState extends State<BubblesPage> {
         );
 
         if (MediaQuery.sizeOf(context).width < _mobileBreakpoint) {
-          // One pane at a time — the inbox list until a Bubble is selected, then the
-          // conversation full-width with a back button (see _Conversation.onBack) to
-          // return, Telegram-Web-mobile style rather than a permanently split view.
+          // One pane at a time, Telegram-Web-mobile style, rather than a permanently split view.
           return vm.selectedTripId == null
               ? _Inbox(viewModel: vm, onSelect: vm.selectTrip)
               : _Conversation(
@@ -386,9 +360,7 @@ class _Conversation extends StatefulWidget {
   final String diveCenterName;
   final ValueChanged<String> onDiveIntoBubble;
 
-  // Mobile layout only (see BubblesPage.build) — renders a back button in the header that
-  // returns to the full-width inbox list. Null on desktop, where the inbox stays visible
-  // alongside the conversation and there's nothing to "go back" to.
+  // Null on desktop, where the inbox stays visible alongside the conversation and there's nothing to "go back" to.
   final VoidCallback? onBack;
 
   @override
@@ -404,33 +376,24 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
   bool _isNearBottom = true;
   bool _showNewMessagesPill = false;
 
-  // One instance per open Bubble, recreated whenever the selected trip changes (see build's
-  // trip.id != _lastTripId check) — same "per-trip, not shared across the whole tab" shape
-  // as app/'s own TransportViewModel, unlike BubblesViewModel itself.
+  // Per-trip, not shared across the whole tab, unlike BubblesViewModel itself — recreated whenever the selected trip changes (see build's trip.id != _lastTripId check).
   TransportViewModel? _transportViewModel;
 
-  // Cleared on send (see _handleSend) and whenever the selected trip changes (build's
-  // trip.id != _lastTripId check) — a picked-but-unsent photo shouldn't follow the staff
-  // member into a different Bubble.
+  // Cleared on send and on trip switch — a picked-but-unsent photo shouldn't follow the staff member into a different Bubble.
   List<PickedChatAttachment> _pendingAttachments = [];
   bool _isPickingAttachment = false;
 
-  // Set by a message row's Reply button (see _MessageRow.onReply) — cleared on send or
-  // cancel, and whenever the selected trip changes, same lifecycle as _pendingAttachments.
+  // Set by a message row's Reply button — cleared on send, cancel, or trip switch, same lifecycle as _pendingAttachments.
   ChatMessage? _replyingTo;
 
-  // Briefly flashed on the bubble _scrollToMessage lands on, then cleared — same pattern as
-  // app/'s own ChatView.
+  // Briefly flashed on the bubble _scrollToMessage lands on, then cleared.
   String? _highlightedMessageId;
   Timer? _highlightTimer;
 
-  // Every diver on the selected trip, refreshed on trip switch (see build) — no dive-center
-  // entry here (unlike app/'s own mention list): admin/ staff mentioning "the dive center"
-  // makes no sense when staff already are the dive center.
+  // No dive-center entry here (unlike app/'s mention list) — admin/ staff mentioning "the dive center" makes no sense when staff already are the dive center.
   List<String> _participantNames = [];
 
-  // Index of the '@' that opened the currently-active mention token in widget.controller's
-  // text, or -1 when no mention is being typed right now (see _onComposerTextChanged).
+  // Index of the '@' that opened the currently-active mention token, or -1 when no mention is being typed (see _onComposerTextChanged).
   int _mentionTokenStart = -1;
   List<String> _mentionMatches = [];
 
@@ -458,8 +421,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     }
   }
 
-  // Telegram-style: typing '@' always opens the participant list, live-filtered as more
-  // characters follow — same convention as app/'s own ChatView composer.
+  // Telegram-style: typing '@' always opens the participant list, live-filtered as more characters follow.
   void _onComposerTextChanged() {
     final text = widget.controller.text;
     final cursor = widget.controller.selection.baseOffset;
@@ -482,9 +444,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     });
   }
 
-  // Scans backward from the cursor for an '@' that starts the current word (at the very start
-  // of the text, or preceded by whitespace) — hitting whitespace first, or no '@' at all, means
-  // no mention is currently being typed.
+  // Scans backward for an '@' starting the current word — hitting whitespace first, or no '@' at all, means no mention is being typed.
   int _activeMentionStart(String text, int cursor) {
     for (var i = cursor - 1; i >= 0; i--) {
       final char = text[i];
@@ -555,11 +515,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     }
   }
 
-  // No realtime for transport offers yet (only chat has Centrifugo wired up) — an offer
-  // created from app/ while this Bubble is already open on the web wouldn't otherwise show
-  // up here without a full page reload. Reloading whenever the Transport tab is switched to
-  // is the same "REST-only, reload-on-select" stopgap Bubbles' own chat started with before
-  // it got realtime — cheap, and covers the actual reported case (staff checking the tab).
+  // No realtime for transport offers yet, so an offer created elsewhere wouldn't otherwise show up here — reload on every Transport tab switch as a cheap stopgap.
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
     if (_tabController.index == 1) {
@@ -593,10 +549,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     );
   }
 
-  // Reversed list (see build) means index 0 is the newest message — near-bottom means that
-  // item is currently among the visible ones, not a precise pixel threshold
-  // (scrollable_positioned_list doesn't expose raw scroll-offset pixels the way a plain
-  // ScrollController did — same tradeoff app/'s own ChatView made).
+  // Reversed list means index 0 is the newest message — near-bottom means that item is visible, not a precise pixel threshold, since scrollable_positioned_list doesn't expose raw scroll-offset pixels.
   void _onScroll() {
     final nearBottom = _itemPositionsListener.itemPositions.value.any((p) => p.index == 0);
     if (nearBottom == _isNearBottom && !(nearBottom && _showNewMessagesPill)) return;
@@ -606,8 +559,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     });
   }
 
-  // Reversed list means the bottom/newest message is item index 0 — jumpTo/scrollTo(index: 0)
-  // always lands exactly there, same guarantee the old pixel-offset-0 approach relied on.
+  // Reversed list means the bottom/newest message is item index 0 — jumpTo/scrollTo(index: 0) always lands exactly there.
   void _scrollToBottom({required bool animate}) {
     if (!_itemScrollController.isAttached) return;
     if (animate) {
@@ -617,9 +569,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
     }
   }
 
-  // Jumps to and briefly highlights an arbitrary earlier message — tapping a reply's quoted
-  // strip (see _MessageRow.onTapReplyPreview). Recomputes reversedItems fresh rather than
-  // caching it, since the display-item list only otherwise exists inside build()'s scope.
+  // Recomputes reversedItems fresh rather than caching it, since the display-item list only otherwise exists inside build()'s scope.
   void _scrollToMessage(String messageId) {
     final reversedItems = _buildDisplayItems(widget.viewModel.messages).reversed.toList();
     final index = reversedItems.indexWhere((item) => item.message?.id == messageId);
@@ -655,8 +605,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
 
     final cancelled = trip.bookingStatus == 'cancelled';
 
-    // Switching to a different Bubble entirely — reset local scroll/pill state and snap to
-    // its bottom without animating (there's nothing to animate from, it's a fresh list).
+    // Snap to bottom without animating on a Bubble switch — there's nothing to animate from, it's a fresh list.
     if (trip.id != _lastTripId) {
       _lastTripId = trip.id;
       _lastMessageCount = 0;
@@ -825,8 +774,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Typing '@' opens this list; tapping a row inserts "@Display Name "
-                          // and closes it — same convention as app/'s own composer.
+                          // Tapping a row inserts "@Display Name " and closes the list.
                           if (_mentionTokenStart != -1 && _mentionMatches.isNotEmpty) ...[
                             Container(
                               constraints: const BoxConstraints(maxHeight: 180),
@@ -911,10 +859,7 @@ class _ConversationState extends State<_Conversation> with SingleTickerProviderS
                               ),
                               const SizedBox(width: 4),
                               Expanded(
-                                // Enter alone sends (and is swallowed here so it never lands as a
-                                // newline first); Shift+Enter falls through to the TextField and
-                                // inserts a newline normally — needs keyboardType: multiline, since a
-                                // single-line field never lets Enter produce a newline to begin with.
+                                // Enter alone sends and is swallowed before it can land as a newline; Shift+Enter falls through to the TextField's own newline handling.
                                 child: Focus(
                                   onKeyEvent: (node, event) {
                                     if (event is KeyDownEvent &&
@@ -1049,9 +994,7 @@ class _NewMessagesPill extends StatelessWidget {
   }
 }
 
-/// One cluster boundary is forced by a sender change, a gap over [_groupingWindow], or a
-/// calendar-day change (which also emits a date separator ahead of it) — same rules as
-/// app/'s ChatView.
+/// A cluster boundary is forced by a sender change, a gap over [_groupingWindow], or a calendar-day change (which also emits a date separator ahead of it).
 class _MessageCluster {
   _MessageCluster(this.day, ChatMessage first) : messages = [first];
   final DateTime day;
@@ -1138,9 +1081,7 @@ class _DateSeparator extends StatelessWidget {
   }
 }
 
-/// Own messages never carry a name/avatar; everyone else's reserve a fixed-width avatar
-/// gutter so bubbles line up whether or not this particular row shows the avatar — same
-/// layout convention as app/'s ChatView._MessageRow.
+/// Everyone else's messages reserve a fixed-width avatar gutter (own messages never carry one) so bubbles line up whether or not this particular row shows the avatar.
 class _MessageRow extends StatefulWidget {
   const _MessageRow({
     super.key,
@@ -1164,20 +1105,14 @@ class _MessageRow extends StatefulWidget {
   final bool isLastInCluster;
   final MyProfile? profile;
 
-  // Suffixed onto a colleague's name below ("Name | DiveCenterName") — same attribution
-  // app/ already shows divers, reused here so a staff member reading a teammate's reply
-  // knows at a glance it's a colleague, not a diver, without needing a separate bubble color.
+  // Suffixed onto a colleague's name below ("Name | DiveCenterName") so a staff reply reads as a colleague's, not a diver's, without needing a separate bubble color.
   final String diveCenterName;
 
-  // Resolved from message.replyToId by _ConversationState (null if replyToId is unset, or the
-  // original fell outside the loaded history) — a quoted preview renders above the bubble when
-  // set; tapping it calls onTapReplyPreview (see _ConversationState._scrollToMessage).
+  // Resolved by _ConversationState — null if replyToId is unset or the original fell outside the loaded history. A quoted preview renders above the bubble when set.
   final ChatMessage? repliedTo;
   final MyProfile? repliedToProfile;
 
-  // True for the ~1.2s after a reply-preview tap lands this row in view (see
-  // _ConversationState._scrollToMessage) — briefly flashes the bubble so it's obvious which
-  // message the jump landed on.
+  // True for ~1.2s after a reply-preview tap lands this row in view — briefly flashes the bubble so the jump target is obvious.
   final bool isHighlighted;
 
   final VoidCallback onReply;
@@ -1191,8 +1126,7 @@ class _MessageRow extends StatefulWidget {
 class _MessageRowState extends State<_MessageRow> {
   bool _hovering = false;
 
-  // Web has no long-press — a hover-reveal icon (see build's reactButton) opens this small
-  // anchored picker instead of app/'s bespoke long-press overlay+reaction row.
+  // Web has no long-press — a hover-reveal icon opens this small anchored picker instead of app/'s long-press overlay+reaction row.
   Future<void> _openReactionPicker(BuildContext buttonContext) async {
     final box = buttonContext.findRenderObject() as RenderBox;
     final overlay = Overlay.of(buttonContext).context.findRenderObject() as RenderBox;
@@ -1236,8 +1170,7 @@ class _MessageRowState extends State<_MessageRow> {
 
     final baseName = (widget.profile?.displayName?.isNotEmpty ?? false) ? widget.profile!.displayName! : 'Diver';
     final name = (isColleague && widget.diveCenterName.isNotEmpty) ? '$baseName | ${widget.diveCenterName}' : baseName;
-    // A colleague's name always shows, even mid-cluster — unlike a diver's, where only the
-    // first message in a cluster needs it (see _buildClusters).
+    // A colleague's name always shows, even mid-cluster — unlike a diver's, where only the first message in a cluster needs it.
     final showName = !isOwn && (widget.isFirstInCluster || isColleague);
 
     final repliedTo = widget.repliedTo;
@@ -1249,8 +1182,7 @@ class _MessageRowState extends State<_MessageRow> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // A diver flagged this one for staff attention — surfaced here so scrolling
-          // history makes it obvious which messages were actually meant to be noticed.
+          // A diver flagged this one for staff attention.
           if (message.mentionsDiveCenter && widget.diveCenterName.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
@@ -1317,10 +1249,7 @@ class _MessageRowState extends State<_MessageRow> {
       ),
     );
 
-    // AnimatedContainer color-flash for _scrollToMessage's landing highlight — transparent
-    // to isHighlighted's own tertiaryContainer-tinted overlay otherwise.
-    // Double-tap-to-reply, Telegram/WhatsApp-style — a quicker path than hovering for the
-    // reply icon (see replyButton below), which still works too.
+    // Flashes color for _scrollToMessage's landing highlight, and adds Telegram/WhatsApp-style double-tap-to-reply on top of the reply icon below.
     final highlightedBubble = GestureDetector(
       onDoubleTap: widget.onReply,
       child: AnimatedContainer(
@@ -1402,12 +1331,7 @@ class _MessageRowState extends State<_MessageRow> {
   }
 }
 
-/// Photo/PDF attachments on a received or sent message — a small thumbnail grid for images,
-/// a filename chip for PDFs (opens in a new browser tab either way, no in-admin preview page).
-/// "❤️ 3 😂 1" under a bubble that has any reactions — tapping a pill is a one-tap shortcut to
-/// add that same reaction yourself (same toggle semantics as the picker: tapping your own
-/// current reaction again removes it). Sorted by _reactionEmojis' own fixed order so the row
-/// doesn't visually reshuffle as counts change.
+/// "❤️ 3 😂 1" row under a bubble — tapping a pill is a one-tap shortcut to toggle that same reaction yourself, sorted by _reactionEmojis' fixed order so the row doesn't reshuffle as counts change.
 class _ReactionSummary extends StatelessWidget {
   const _ReactionSummary({required this.reactions, required this.color, this.onTap});
 
@@ -1446,6 +1370,7 @@ class _ReactionSummary extends StatelessWidget {
   }
 }
 
+/// Opens in a new browser tab either way — no in-admin preview page.
 class _MessageAttachments extends StatelessWidget {
   const _MessageAttachments({required this.attachments, required this.onColor});
 
@@ -1502,13 +1427,9 @@ class _MessageAttachments extends StatelessWidget {
   }
 }
 
-/// Message text with its timestamp trailing inline on the same line — like WhatsApp/Telegram,
-/// not stacked on its own row below. A zero-opacity copy of the timestamp is appended as a
-/// [WidgetSpan] so the paragraph's line-wrapping reserves room for it (falling to a new line
-/// if the last line is already full); the real, visible timestamp is then drawn on top at the
-/// bottom-right corner via [Stack]+[Positioned], landing in that reserved space.
 final _urlPattern = RegExp(r'(https?:\/\/\S+|www\.\S+)', caseSensitive: false);
 
+/// A zero-opacity copy of the timestamp is appended as a [WidgetSpan] to reserve line-wrapping room for it, then the real timestamp is drawn on top via [Stack]+[Positioned], so it trails the text inline like WhatsApp/Telegram instead of sitting on its own row.
 class _MessageBody extends StatefulWidget {
   const _MessageBody({required this.body, required this.time, required this.color});
 

@@ -6,8 +6,7 @@ import '../../../../data/repositories/push_repository.dart';
 import '../../../../data/services/push_preferences.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// Master on/off only for now — category toggles (messages, trip updates, transport) land
-/// here once there's more than one event worth distinguishing in the UI.
+/// Master on/off only for now — category toggles land here once there's more than one event worth distinguishing.
 class NotificationsSettingsPage extends StatefulWidget {
   const NotificationsSettingsPage({super.key, required this.pushRepository});
 
@@ -20,12 +19,9 @@ class NotificationsSettingsPage extends StatefulWidget {
 class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
   bool _loading = true;
   bool _enabled = true;
-  // OS-level denial can't be reversed from inside the app (no re-prompt) — surfaced as a
-  // disabled switch with an explanatory subtitle rather than silently failing on tap.
+  // OS-level denial can't be reversed from inside the app, so this surfaces a disabled switch with an explanatory subtitle rather than silently failing on tap.
   bool _deniedAtOSLevel = false;
-  // Never asked on this device (a new phone or reinstall resets this independently of our
-  // own stored preference) — unlike denied, requestPermission() can still show the OS prompt
-  // here, so the switch stays tappable instead of redirecting to system settings.
+  // Unlike denied, requestPermission() can still show the OS prompt here, so the switch stays tappable instead of redirecting to system settings.
   bool _notDeterminedAtOSLevel = false;
 
   @override
@@ -43,8 +39,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
     setState(() {
       _deniedAtOSLevel = denied;
       _notDeterminedAtOSLevel = notDetermined;
-      // Only genuinely "on" once the OS has actually authorized it — otherwise no token was
-      // ever registered and nothing would arrive, regardless of our own stored preference.
+      // Only genuinely "on" once the OS has actually authorized it, regardless of our stored preference.
       _enabled = storedEnabled && !denied && !notDetermined;
       _loading = false;
     });
@@ -84,8 +79,7 @@ class _NotificationsSettingsPageState extends State<NotificationsSettingsPage> {
         try {
           await widget.pushRepository.unregisterToken(token);
         } catch (_) {
-          // Best-effort — the local preference flag (already saved above) is what actually
-          // stops main.dart from re-registering, so this failing isn't fatal either way.
+          // Best-effort — the local preference flag saved above is what actually stops main.dart from re-registering.
         }
       }
     }

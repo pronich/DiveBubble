@@ -8,10 +8,7 @@ import '../../../../domain/entities/media_item.dart';
 import '../../../../domain/entities/my_profile.dart';
 import '../../../core/formatting/date_format.dart';
 
-/// People/Media/Files/Links tab bodies for TripDetailPage — mirrors app/'s Bubble Info tabs
-/// (chat_content_tabs.dart, trip_page.dart's PeopleTab), ported rather than shared since
-/// admin/ has no shared code with app/ yet (see CLAUDE.md). No tap-to-profile-card here —
-/// admin has no diver-id-card viewer, this is a read-only roster for staff.
+/// No tap-to-profile-card here — admin has no diver-id-card viewer, this is a read-only roster for staff.
 class PeopleTab extends StatefulWidget {
   const PeopleTab({super.key, required this.tripId, required this.tripRepository, required this.profileRepository, required this.diveCenterName});
 

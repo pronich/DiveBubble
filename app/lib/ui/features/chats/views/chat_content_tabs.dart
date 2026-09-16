@@ -10,10 +10,7 @@ import '../../../core/widgets/video_thumbnail_placeholder.dart';
 import 'attachment_image_preview_page.dart';
 import 'attachment_video_preview_page.dart';
 
-/// Media/Files/Links tab bodies for Bubble Info — shared by TripPage's People/Media/Files/Links
-/// tab bar (reached from either the Bubble title or avatar; see trip_conversation_page.dart).
-/// Media/Files are keyed per-attachment now (MediaItem), not per-message — a message can carry
-/// several attachments (see ChatMessage.attachments).
+/// Keyed per-attachment (MediaItem), not per-message, since a message can carry several attachments.
 
 class MediaTab extends StatelessWidget {
   const MediaTab({super.key, required this.future});
@@ -45,8 +42,7 @@ class MediaTab extends StatelessWidget {
           itemCount: items.length,
           itemBuilder: (context, index) {
             final attachment = items[index].attachment;
-            // .url is always non-null here — every server-sent attachment has one, only a
-            // not-yet-uploaded pending item (never true for anything from this tab) doesn't.
+            // Always non-null here — only a not-yet-uploaded pending item lacks a url, and that never reaches this tab.
             final url = attachment.url!;
             final isVideo = attachment.type == 'video';
             return GestureDetector(
@@ -93,11 +89,7 @@ class FilesTab extends StatelessWidget {
           return Center(child: Text(AppLocalizations.of(context).noFilesSharedYet));
         }
         return ListView.separated(
-          // Explicit, even though zero — ListView auto-inserts MediaQuery.padding (status bar
-          // + home indicator insets) as top/bottom padding whenever padding is left null (see
-          // ScrollView.buildSlivers in the Flutter SDK). MediaTab/PeopleTab already pass their
-          // own explicit padding and never hit this; this list didn't, which is what showed up
-          // as a large gap above the first row.
+          // Explicit zero: ListView otherwise auto-inserts MediaQuery.padding as top/bottom padding, which showed up as a large gap above the first row.
           padding: EdgeInsets.zero,
           itemCount: items.length,
           separatorBuilder: (context, _) => const Divider(height: 1),
@@ -142,8 +134,7 @@ class LinksTab extends StatelessWidget {
           return Center(child: Text(AppLocalizations.of(context).noLinksSharedYet));
         }
         return ListView.separated(
-          // See FilesTab's own comment — same fix, same reason (ListView auto-inserts
-          // MediaQuery.padding as top/bottom padding when padding is left null).
+          // See FilesTab's comment — same fix, same reason.
           padding: EdgeInsets.zero,
           itemCount: items.length,
           separatorBuilder: (context, _) => const Divider(height: 1),

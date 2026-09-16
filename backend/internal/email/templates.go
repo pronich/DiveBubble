@@ -1,23 +1,12 @@
 package email
 
-// Resend template aliases + their variable keys, configured in Resend's own dashboard —
-// this package only ever refers to them by these constants, never builds the email content
-// itself (see Service.SendTemplate's own doc comment). TemplateInvitation isn't wired up to
-// any handler yet — staff invitation by email (for someone who doesn't have a DiveBubble
-// account yet) is still deferred past MVP, same as CLAUDE.md's Membership API notes — the
-// alias is just reserved here ahead of that round.
+// Resend template aliases and their variable keys, referenced only by these constants (see Service.SendTemplate); TemplateInvitation is reserved but not yet wired to any handler since staff invitation by email is deferred past MVP.
 const (
 	TemplateMagicLink = "divebubble-signin"
 	TemplateOTP       = "divebubble-mobile-signin"
-	// TemplateInvitation fires when a dive-center owner invites an email with no DiveBubble
-	// account yet (see divecenter.Service.InviteMember) — no invite-specific link/token, the
-	// CTA is a static link to admin.divebubble.io, since a normal sign-in with the invited
-	// email is itself the proof needed (see divecenter.Service.AcceptInvitations).
+	// TemplateInvitation fires when a dive-center owner invites an email with no DiveBubble account yet; its CTA is a static admin.divebubble.io link since a normal sign-in with that email is itself the proof (see divecenter.Service.AcceptInvitations).
 	TemplateInvitation = "invitation-divebubble"
-	// TemplateWelcome fires once, right after a brand-new account's very first sign-in
-	// (isNewUser == true) — regardless of which of the three providers created it. No
-	// variables: unlike TemplateInvitation, there's no name to interpolate reliably across
-	// all three providers (email/OTP sign-up never has one), so the template stays generic.
+	// TemplateWelcome fires once on a brand-new account's first sign-in (isNewUser == true) regardless of provider, with no variables since email/OTP sign-up never has a reliable name to interpolate.
 	TemplateWelcome = "divebubble-welcome"
 
 	VarMagicLink      = "magic_link"

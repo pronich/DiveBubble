@@ -4,11 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'error_codes.dart';
 
-/// Shared by every multipart file-upload call site (avatar, trip photo, certification/specialty
-/// photos, chat attachments) — one multipart POST with a single "file" field, matching the
-/// backend's upload.Service.Save/SaveAttachment contract. Returns the decoded JSON body on
-/// success. Not image-specific despite older call sites' names — nothing here assumes the file
-/// is an image.
+/// Not image-specific despite older call sites' names — nothing here assumes the file is an image.
 Future<Map<String, dynamic>> uploadFile(
   Uri uri, {
   required String filePath,
@@ -25,8 +21,7 @@ Future<Map<String, dynamic>> uploadFile(
   return jsonDecode(response.body) as Map<String, dynamic>;
 }
 
-// Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
-// message to show, or passes it through unchanged if it's not one this file knows about yet.
+// Server errors come back as {"error": "<code>"}; describeErrorCode maps it to a message or passes it through unchanged if unrecognized.
 String? _extractError(String body) {
   try {
     final decoded = jsonDecode(body);

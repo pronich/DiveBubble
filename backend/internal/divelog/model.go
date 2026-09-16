@@ -13,8 +13,7 @@ const (
 	SourceImported Source = "imported"
 )
 
-// ProfileSample is one point on the depth/temperature graph — only ever present on an
-// imported entry, never a manual one (there's no instrument data to build it from).
+// ProfileSample is one point on the depth/temperature graph, present only on imported entries since manual ones have no instrument data to build it from.
 type ProfileSample struct {
 	OffsetSeconds int      `json:"offsetSeconds"`
 	DepthM        float64  `json:"depthM"`

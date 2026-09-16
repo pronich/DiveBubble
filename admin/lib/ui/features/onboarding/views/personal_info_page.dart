@@ -6,15 +6,7 @@ import '../../../../domain/certification_level.dart';
 import '../../../core/widgets/pick_image.dart';
 import '../view_models/personal_info_view_model.dart';
 
-/// First step of the new-account onboarding chain (isNewUser only — see RootGate) —
-/// pushed before OnboardingPage's dive-center step. displayName/avatarUrl are usually
-/// already seeded from the Google identity by the time this renders (see backend's
-/// LoginOrRegister), so this is mostly a confirm-and-add-detail step rather than a blank
-/// form: it prefills from GET /me and lets the new owner set up their own personal diver
-/// profile (name/photo/location/bio/dive count/certification/languages) — full parity
-/// with what AccountPage's Edit-profile + Level dialogs collect later, not just a name/
-/// location/bio subset, so a new dive-center owner who's also a diver doesn't have to
-/// revisit this same information twice right after finishing onboarding.
+/// Collects the same full profile fields as AccountPage's Edit-profile + Level dialogs (not just name/location/bio), so a new dive-center owner who's also a diver doesn't have to revisit this information twice after onboarding.
 class PersonalInfoPage extends StatefulWidget {
   const PersonalInfoPage({super.key, required this.profileRepository, required this.onDone});
 

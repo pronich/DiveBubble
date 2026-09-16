@@ -28,14 +28,12 @@ class BuddyView extends StatefulWidget {
 
   final BuddyViewModel viewModel;
 
-  /// Needed only once the diver is in a group (see myRequest) — builds that group's own
-  /// ChatView, reusing the exact same repository/service the main Bubble chat uses.
+  /// Needed only once the diver is in a group, to build that group's own ChatView.
   final ChatRepository chatRepository;
   final RealtimeService realtimeService;
   final TripRepository tripRepository;
 
-  /// See ChatView.isCancelled — same source of truth (TripConversationPage), same idea:
-  /// existing requests/joins stay visible, but nothing new can be created or joined.
+  /// Mirrors ChatView.isCancelled: existing requests/joins stay visible, but nothing new can be created or joined.
   final bool isCancelled;
 
   @override
@@ -44,28 +42,15 @@ class BuddyView extends StatefulWidget {
 
 class _BuddyViewState extends State<BuddyView>
     with AutomaticKeepAliveClientMixin {
-  // Same reasoning as ChatView/TransportView — TabBarView disposes offscreen tabs by
-  // default, which otherwise re-triggers a full request reload every time this tab scrolls
-  // back into view.
+  // Prevents TabBarView from disposing this offscreen tab, which would otherwise re-trigger a full request reload every time it scrolls back into view.
   @override
   bool get wantKeepAlive => true;
 
-  // Cached purely so the same ChatViewModel (and its realtime subscription) survives
-  // rebuilds triggered by the shared BuddyViewModel's notifyListeners() while showing the
-  // same group — NOT a disposal owner. ChatView.dispose() already disposes whatever
-  // ChatViewModel it's given (see chat_view_model.dart) whenever its Element unmounts, which
-  // happens automatically on every transition away from it (back to the list, to a different
-  // group, or this whole page going away) since that's always a widget-type change at this
-  // position in the tree. Disposing it again here would double-dispose and crash — see the
-  // same bug hit (and fixed) in transport_view.dart's _ensureCarChatViewModel.
+  // Cache only, NOT a disposal owner — ChatView.dispose() already disposes it on every unmount, so disposing it again here would double-dispose and crash (see transport_view.dart's _ensureCarChatViewModel for the same bug).
   ChatViewModel? _buddyChatViewModel;
   String? _buddyChatRequestId;
 
-  // No load() call here anymore — TripConversationPage.initState loads this ViewModel
-  // eagerly (myRequest/hasUnreadMessages need to be ready before this tab is ever built,
-  // since TabBarView doesn't build an offscreen page). A second load from here used to be
-  // redundant at best; at worst its isLoading flash could unmount a live ChatView without
-  // resetting _buddyChatRequestId (see the isLoading-branch guard in build() below).
+  // No load() call here: TripConversationPage.initState already loads this ViewModel eagerly, and a second load here could unmount a live ChatView mid-flash without resetting _buddyChatRequestId.
 
   ChatViewModel _ensureBuddyChatViewModel(BuddyRequest request) {
     if (_buddyChatRequestId != request.id) {
@@ -84,10 +69,7 @@ class _BuddyViewState extends State<BuddyView>
     return _buddyChatViewModel!;
   }
 
-  // The creator cancelled this group while we were viewing it — the request's gone
-  // server-side. Just refresh the list; myRequest will be null after, which swaps ChatView
-  // out for the requests list on the next build and disposes the ChatViewModel via its own
-  // dispose().
+  // Refreshing makes myRequest null, which swaps ChatView out for the requests list and disposes the ChatViewModel via its own dispose().
   void _onBuddyDissolved() {
     widget.viewModel.load();
     if (mounted) {
@@ -106,11 +88,7 @@ class _BuddyViewState extends State<BuddyView>
       listenable: widget.viewModel,
       builder: (context, _) {
         final l10n = AppLocalizations.of(context);
-        // Only the very first load (no requests cached yet) shows the full-screen spinner —
-        // a background refresh while a group chat is already open must NOT swap it out for a
-        // spinner: that would unmount the live ChatView (disposing its ChatViewModel) without
-        // resetting _buddyChatRequestId, so the next build would hand ChatView a disposed
-        // instance.
+        // Only the very first load shows the full-screen spinner: a background refresh while a group chat is open must not swap it out, or ChatView would end up disposed without resetting _buddyChatRequestId.
         if (widget.viewModel.isLoading && widget.viewModel.requests.isEmpty) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -124,8 +102,7 @@ class _BuddyViewState extends State<BuddyView>
 
         final myRequest = widget.viewModel.myRequest;
         if (myRequest != null) {
-          // No FAB while in a group — "Request a buddy" doesn't apply once you're already
-          // committed to one (a diver can only be in one buddy group per trip).
+          // No FAB while in a group — a diver can only be in one buddy group per trip.
           return Scaffold(
             body: ChatView(
               viewModel: _ensureBuddyChatViewModel(myRequest),
@@ -134,13 +111,7 @@ class _BuddyViewState extends State<BuddyView>
           );
         }
 
-        // No active group right now — whatever ChatView was showing one (if any) has already
-        // unmounted and disposed its ChatViewModel by rendering here instead (see the
-        // myRequest branch above). Clearing the cache means the *next* time a group chat
-        // renders — even for the very same request, e.g. leave then rejoin —
-        // _ensureBuddyChatViewModel builds a fresh instance instead of handing back the stale
-        // disposed one (matching request.id alone isn't enough to know the old ChatViewModel
-        // is still alive).
+        // Clearing the cache here ensures the next group chat (even a rejoin of the same request.id) gets a fresh ChatViewModel instead of the one already disposed above.
         _buddyChatRequestId = null;
         _buddyChatViewModel = null;
 
@@ -198,10 +169,7 @@ class _BuddyViewState extends State<BuddyView>
   }
 }
 
-/// Public entry point so the ⓘ affordance on the Buddy tab itself (TripConversationPage) can
-/// open the same sheet a diver already in a group would reach by tapping its row in the
-/// list — that's the same sheet, just also reachable one level higher up once you're in it
-/// and the list is replaced by the chat.
+/// Lets the ⓘ affordance on TripConversationPage open the same sheet a diver in a group would reach via the list, which is otherwise replaced by the chat.
 void showBuddyRequestDetailSheet(
   BuildContext context, {
   required String requestId,
@@ -311,8 +279,7 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
   String? _actionError;
   bool _isActing = false;
 
-  // Null once the request's gone from the list — dissolved (by us or the creator, live via
-  // realtime while this sheet was open) or, for a joiner, left.
+  // Null once the request's gone from the list — dissolved or left, possibly live via realtime while this sheet is open.
   BuddyRequest? get _request {
     final requests = widget.viewModel.requests;
     final index = requests.indexWhere((r) => r.id == widget.requestId);
@@ -327,8 +294,7 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
     if (request != null) _loadProfile(request.userId);
   }
 
-  // Best-effort, one-at-a-time — a profile fetch failing just leaves that row on the
-  // generic "Diver" fallback rather than blocking the rest of the sheet.
+  // Best-effort — a failed fetch just leaves that row on the generic "Diver" fallback rather than blocking the rest of the sheet.
   Future<void> _loadProfile(String userId) async {
     if (_profiles.containsKey(userId)) return;
     try {
@@ -377,9 +343,7 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
     if (error != null) {
       setState(() => _joinError = error);
     } else {
-      // Close the sheet so the now-joined group's chat (myRequest swaps in automatically via
-      // BuddyView's ListenableBuilder) is immediately visible, instead of leaving this sheet
-      // sitting on top of it.
+      // Close the sheet so the now-joined group's chat, swapped in automatically via BuddyView's ListenableBuilder, is immediately visible.
       Navigator.of(context).pop();
     }
   }
@@ -397,8 +361,7 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
             final l10n = AppLocalizations.of(context);
             final request = _request;
             if (request == null) {
-              // Gone (dissolved, or we just left it) while this sheet was open — close it
-              // next frame rather than rendering against a missing request.
+              // Gone while this sheet was open — close it next frame rather than rendering against a missing request.
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted && Navigator.of(context).canPop())
                   Navigator.of(context).pop();
@@ -408,8 +371,7 @@ class _BuddyRequestDetailSheetState extends State<_BuddyRequestDetailSheet> {
             // +1 for the creator — maxMembers is the whole group's size, not just joiners.
             final isFull = 1 + request.joinedCount >= request.maxMembers;
             final isCreator = request.userId == widget.viewModel.currentUserId;
-            // A diver can only be in one buddy group per trip — don't offer a Join button
-            // on other requests once they've already joined one.
+            // A diver can only be in one buddy group per trip, so hide Join once they've joined one.
             final hasGroupElsewhere =
                 !request.joined &&
                 widget.viewModel.requests.any((r) => r.joined);
@@ -709,9 +671,7 @@ class _JoinButton extends StatelessWidget {
   }
 }
 
-/// No fields to fill in — just a one-tap confirmation, same "tap FAB → sheet → confirm"
-/// convention as everywhere else in the app, guarding against an accidental tap at near-zero
-/// extra cost since there's nothing to fill in.
+/// No fields to fill in — this exists only to guard the FAB tap against an accidental confirmation.
 class _AddBuddyRequestSheet extends StatefulWidget {
   const _AddBuddyRequestSheet({required this.viewModel});
 

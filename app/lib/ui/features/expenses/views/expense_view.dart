@@ -22,8 +22,7 @@ class _ExpenseViewState extends State<ExpenseView> {
   @override
   void initState() {
     super.initState();
-    // Same "each tab loads itself on mount" pattern as TransportView/BuddyView — TabBarView
-    // builds every tab eagerly, so this fires once the Bubble opens, not on first visit.
+    // Same "each tab loads itself on mount" pattern as TransportView/BuddyView, since TabBarView builds every tab eagerly.
     widget.viewModel.load();
   }
 
@@ -206,9 +205,7 @@ class _ExpenseBalanceSheetState extends State<_ExpenseBalanceSheet> {
     super.dispose();
   }
 
-  // Settling the last debt from a "Mark settled" tap inside this very sheet would otherwise
-  // leave it sitting open showing "All settled up." with nothing left to do — auto-close
-  // shortly after instead of making the diver swipe it away themselves.
+  // Auto-closes shortly after the last debt settles, rather than leaving the sheet sitting open showing "All settled up." with nothing left to do.
   void _onViewModelChanged() {
     if (_closing || widget.viewModel.mySettlements.isNotEmpty) return;
     _closing = true;
@@ -226,11 +223,7 @@ class _ExpenseBalanceSheetState extends State<_ExpenseBalanceSheet> {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            // Column shrink-wraps to its widest child's intrinsic width by default (only
-            // mainAxisSize governs the vertical axis) — without forcing full width here, the
-            // sheet's own Material surface shrinks right along with it, which is exactly the
-            // "squished horizontally" card the empty/settled state (just an icon + one line)
-            // was rendering as.
+            // Forces full width — Column otherwise shrink-wraps to its widest child, which squished the sheet horizontally for the empty/settled state (just an icon + one line).
             child: SizedBox(
               width: double.infinity,
               child: Column(
@@ -240,10 +233,7 @@ class _ExpenseBalanceSheetState extends State<_ExpenseBalanceSheet> {
                   Text(AppLocalizations.of(context).balanceTitle, style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 12),
                   if (settlements.isEmpty)
-                    // A short, empty-looking sheet reads as a rendering glitch rather than a
-                    // deliberate "you're done here" state — this fills the same footprint a
-                    // settlement row would, so it never flashes as a squashed sliver on its
-                    // way to auto-closing (see _onViewModelChanged).
+                    // Fills the same footprint a settlement row would, so it never flashes as a squashed sliver on its way to auto-closing.
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: Column(

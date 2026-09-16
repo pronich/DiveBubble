@@ -31,9 +31,7 @@ type CreateManualInput struct {
 	Notes           *string
 }
 
-// cleanText trims whitespace and turns an empty result into nil — shared by every text
-// field (Country, SiteName) across create/update so an all-whitespace input is stored as
-// "not set" rather than an empty string.
+// cleanText trims whitespace and turns an empty result into nil, shared by Country/SiteName across create/update so an all-whitespace input is stored as "not set" rather than an empty string.
 func cleanText(s *string) *string {
 	if s == nil {
 		return nil
@@ -48,10 +46,7 @@ func cleanText(s *string) *string {
 	return &trimmed
 }
 
-// Some dive computer export tools (Oceanic+ among them) write their own internal site
-// record key into UDDF's site name field instead of the diver-facing name — e.g.
-// "site_6a8ade1b7070f27" or a bare UUID — rather than surface that as a "dive site" a
-// human never actually typed, treat it the same as no site name at all.
+// Some dive computer export tools (Oceanic+ among them) write their own internal site record key into UDDF's site name field instead of the diver-facing name (e.g. "site_6a8ade1b7070f27" or a bare UUID), so treat anything matching that shape as no site name at all.
 var internalIDPattern = regexp.MustCompile(`(?i)^[a-z]*_?[0-9a-f]{10,}$`)
 var uuidPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
@@ -59,11 +54,7 @@ func looksLikeInternalID(s string) bool {
 	return internalIDPattern.MatchString(s) || uuidPattern.MatchString(s)
 }
 
-// CreateManual is the "no file, just numbers" add path — no profile_samples, ever (see
-// Entry.ProfileSamples' own doc comment on why that's gated by Source rather than a
-// separate flag). A manual entry with the diver's own re-typed timestamp colliding with an
-// existing one surfaces as a genuine error (onConflictSkip=false) rather than silently
-// vanishing, unlike an import's dedup.
+// CreateManual is the "no file, just numbers" add path with no profile_samples ever (gated by Source, see Entry.ProfileSamples), and a colliding re-typed timestamp surfaces as a genuine error (onConflictSkip=false) rather than silently vanishing like an import's dedup.
 func (s *Service) CreateManual(ctx context.Context, userID uuid.UUID, input CreateManualInput) (Entry, error) {
 	if input.DivedAt.IsZero() {
 		return Entry{}, ErrInvalidArgument
@@ -83,19 +74,13 @@ func (s *Service) CreateManual(ctx context.Context, userID uuid.UUID, input Crea
 	return created, err
 }
 
-// ImportResult reports what an UDDF import actually did — the app surfaces "N new, M
-// already logged" from this rather than assuming every dive in the file was fresh.
+// ImportResult reports what an UDDF import did, letting the app surface "N new, M already logged" rather than assuming every dive in the file was fresh.
 type ImportResult struct {
 	Imported int
 	Skipped  int
 }
 
-// Import sniffs the file's actual content (never the filename/extension, which is
-// unreliable — Diving Log 6's own SQLite export is literally named "....sql" despite not
-// being SQL text at all) to pick a parser, then inserts every dive it finds, silently
-// skipping any whose dived_at exactly matches an entry this diver already has (see the
-// migration's unique index) — a diver re-exporting "everything" after already importing
-// once shouldn't end up with duplicates of dives they'd previously logged.
+// Import sniffs the file's actual content (not its filename/extension, since Diving Log 6's SQLite export is literally named ".sql") to pick a parser, then silently skips any dive whose dived_at exactly matches one this diver already has so re-exporting "everything" doesn't create duplicates.
 func (s *Service) Import(ctx context.Context, userID uuid.UUID, data []byte) (ImportResult, error) {
 	entries, err := parseImportFile(data)
 	if err != nil {
@@ -129,9 +114,7 @@ func (s *Service) GetByID(ctx context.Context, id uuid.UUID) (Entry, error) {
 	return s.Repo.GetByID(ctx, id)
 }
 
-// UpdateInput mirrors CreateManualInput — the app sends the full set of editable fields on
-// every update (unchanged fields just carry their existing value back), including for an
-// imported entry, where in practice only SiteName/Notes are exposed as editable in the UI.
+// UpdateInput mirrors CreateManualInput; the app always sends the full set of editable fields on update, including for an imported entry where only SiteName/Notes are actually exposed as editable in the UI.
 type UpdateInput struct {
 	DivedAt         time.Time
 	MaxDepthM       *float64
@@ -142,8 +125,7 @@ type UpdateInput struct {
 	Notes           *string
 }
 
-// Update is owner-only, same as Delete — Source and ProfileSamples are never touched here,
-// only Repository.Update's fixed column set.
+// Update is owner-only like Delete, touching only Repository.Update's fixed column set and never Source or ProfileSamples.
 func (s *Service) Update(ctx context.Context, id, callerUserID uuid.UUID, input UpdateInput) (Entry, error) {
 	existing, err := s.Repo.GetByID(ctx, id)
 	if err != nil {
@@ -165,8 +147,7 @@ func (s *Service) Update(ctx context.Context, id, callerUserID uuid.UUID, input 
 	return s.Repo.Update(ctx, id, existing)
 }
 
-// Delete is owner-only — a dive log is personal, unlike a trip expense there's no "any
-// participant" concept to extend it to.
+// Delete is owner-only, since a dive log is personal with no "any participant" concept to extend it to, unlike a trip expense.
 func (s *Service) Delete(ctx context.Context, id, callerUserID uuid.UUID) error {
 	e, err := s.Repo.GetByID(ctx, id)
 	if err != nil {

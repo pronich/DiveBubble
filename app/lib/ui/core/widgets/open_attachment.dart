@@ -4,11 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../data/services/attachment_cache_service.dart';
 
-/// Downloads (if needed) and opens a chat PDF attachment in-app — QuickLook on iOS
-/// (UIDocumentInteractionController.presentPreview, same chrome Mail uses for attachments:
-/// share, markup, page nav, no "open in Safari"/browser escape hatch) and the OS's registered
-/// viewer in place on Android. Reuses the same cached local file used everywhere else. Shared
-/// by the chat bubble and Chat Info's Files tab.
+/// QuickLook on iOS (no "open in Safari" escape hatch), the OS's registered viewer on Android. Reuses the same cached local file used everywhere else.
 Future<void> openAttachmentInApp(BuildContext context, String url) async {
   try {
     final file = await AttachmentCacheService.getFile(url);
@@ -20,8 +16,7 @@ Future<void> openAttachmentInApp(BuildContext context, String url) async {
   }
 }
 
-/// Opens a plain web URL (e.g. a link shared in chat text) in the browser. Shows a SnackBar on
-/// failure — distinct from [openAttachmentInApp], which stays in-app.
+/// Distinct from [openAttachmentInApp], which stays in-app.
 Future<void> launchUrlExternally(BuildContext context, String url) async {
   try {
     final opened = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -32,8 +27,7 @@ Future<void> launchUrlExternally(BuildContext context, String url) async {
   }
 }
 
-/// "123 KB" / "4.2 MB" style label — null input (unknown size) yields null, not a placeholder
-/// string, so callers can decide whether to omit the row entirely.
+/// Null input yields null, not a placeholder string, so callers can decide whether to omit the row entirely.
 String? formatAttachmentFileSize(int? bytes) {
   if (bytes == null) return null;
   if (bytes < 1024) return '$bytes B';

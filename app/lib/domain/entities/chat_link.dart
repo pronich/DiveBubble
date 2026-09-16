@@ -1,5 +1,4 @@
-/// One URL extracted from a chat message's text (the Links tab in Chat Info) — read-only,
-/// server-derived, never constructed from user input directly.
+/// Read-only, server-derived; never constructed from user input directly.
 class ChatLink {
   const ChatLink({
     required this.messageId,

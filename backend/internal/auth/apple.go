@@ -21,11 +21,7 @@ import (
 const appleJWKSURL = "https://appleid.apple.com/auth/keys"
 const appleIssuer = "https://appleid.apple.com"
 
-// AppleIdentity is the subset of a verified Apple identity token's claims we care about.
-// Email/EmailVerified only ever carry a value on the token itself if Apple chose to include
-// them there — the more reliable source (and the only source for the user's name) is the
-// out-of-band credential the client gets alongside the token, only on the *first*
-// authorization ever — see handleAuthApple's own doc comment.
+// AppleIdentity is the subset of a verified Apple identity token's claims we care about; Email/EmailVerified are unreliable since the only trustworthy source for email and name is the out-of-band credential Apple sends alongside the token on first authorization only (see handleAuthApple).
 type AppleIdentity struct {
 	Sub           string
 	Email         string
@@ -39,10 +35,7 @@ type appleClaims struct {
 	jwt.RegisteredClaims
 }
 
-// AppleKeySet caches Apple's JWKS (its RS256 public keys, keyed by "kid") in memory, with a
-// TTL — refreshed lazily rather than on a background timer. If a token references a kid we
-// don't have cached, we force one refresh and retry before giving up, which tolerates Apple
-// rotating its signing keys without needing a backend restart.
+// AppleKeySet lazily caches Apple's JWKS RS256 keys with a TTL, forcing one refresh-and-retry on an unknown kid so Apple can rotate its signing keys without needing a backend restart.
 type AppleKeySet struct {
 	mu         sync.Mutex
 	keys       map[string]*rsa.PublicKey
@@ -113,8 +106,7 @@ func (s *AppleKeySet) refresh(ctx context.Context) error {
 	return nil
 }
 
-// key returns the cached key for kid, refreshing first if the cache is empty/stale, or once
-// more (forced) if kid still isn't found — Apple can rotate keys between our refreshes.
+// key returns the cached key for kid, forcing one refresh-and-retry if it's missing or stale since Apple can rotate keys between our refreshes.
 func (s *AppleKeySet) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
 	s.mu.Lock()
 	stale := s.keys == nil || time.Since(s.fetchedAt) > s.ttl
@@ -140,10 +132,7 @@ func (s *AppleKeySet) key(ctx context.Context, kid string) (*rsa.PublicKey, erro
 	return k, nil
 }
 
-// VerifyAppleIdentityToken validates signature, issuer, audience and expiry, then checks
-// rawNonce against the token's own nonce claim. audience is the app's bundle id
-// (APPLE_AUDIENCE, e.g. io.divebubble.app — the App ID, not a Services ID; DiveBubble has no
-// web Sign in with Apple flow).
+// VerifyAppleIdentityToken validates signature, issuer, audience and expiry then checks rawNonce, where audience is the app's bundle id (APPLE_AUDIENCE), not a Services ID, since DiveBubble has no web Sign in with Apple flow.
 func (s *AppleKeySet) VerifyAppleIdentityToken(ctx context.Context, idTokenString, audience, rawNonce string) (AppleIdentity, error) {
 	var claims appleClaims
 	token, err := jwt.ParseWithClaims(idTokenString, &claims, func(t *jwt.Token) (any, error) {
@@ -182,10 +171,7 @@ func (s *AppleKeySet) VerifyAppleIdentityToken(ctx context.Context, idTokenStrin
 	return identity, nil
 }
 
-// verifyAppleNonce hashes rawNonce (client → backend) and compares it against tokenNonce
-// (the nonce claim Apple embedded, which is the SHA-256 digest the client sent *Apple* — see
-// the client's own nonce-generation comment). Accepts both hex and base64url encodings of the
-// digest, tolerant of either convention on the client side.
+// verifyAppleNonce hashes rawNonce and compares it to tokenNonce in both hex and base64url encodings, since clients aren't consistent about which digest encoding they send Apple.
 func verifyAppleNonce(rawNonce, tokenNonce string) error {
 	if rawNonce == "" || tokenNonce == "" {
 		return errors.New("apple nonce missing")

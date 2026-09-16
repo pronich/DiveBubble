@@ -13,8 +13,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_gradients.dart';
 import 'login_sheet.dart';
 
-/// Animated first-run intro: bubbles rise from the bottom of the screen and assemble into the
-/// brand "B" mark, then the title/description/CTA fade in underneath. Tap anywhere to skip ahead.
+/// Bubbles rise and assemble into the brand "B" mark, then the title/description/CTA fade in underneath. Tap anywhere to skip ahead.
 class IntroView extends StatefulWidget {
   const IntroView({
     super.key,
@@ -151,8 +150,7 @@ class _IntroContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // White/inverted styling — this content sits on the dark AppGradients.brand backdrop,
-    // not the usual light bgBase, so the app-wide dark-on-light text/button theme reads illegibly here.
+    // White/inverted styling: this sits on the dark AppGradients.brand backdrop where the app-wide dark-on-light theme would read illegibly.
     return Column(
       children: [
         Text(
@@ -198,7 +196,6 @@ class _IntroContent extends StatelessWidget {
 }
 
 /// Random per-bubble motion parameters for one of the 24 bubbles that form the logo mark.
-/// Resolved into a screen position each frame via [resolve].
 class _TargetBubbleParams {
   _TargetBubbleParams({
     required this.tStart,
@@ -211,8 +208,7 @@ class _TargetBubbleParams {
   });
 
   factory _TargetBubbleParams.random(math.Random rnd) => _TargetBubbleParams(
-    // Stay part of the rising wall for a while before peeling off — long enough that
-    // assembly doesn't read as an abrupt "collapse" into the letter.
+    // Long enough that assembly doesn't read as an abrupt "collapse" into the letter.
     tStart: 0.30 + rnd.nextDouble() * 0.25,
     assembleDuration: 0.35,
     swayAmp: 8 + rnd.nextDouble() * 16,
@@ -257,8 +253,7 @@ class _TargetBubbleParams {
   }
 }
 
-/// Random per-bubble motion parameters for the extra decorative bubbles that just rise and fade —
-/// atmosphere only, they never form part of the logo.
+/// Extra decorative bubbles that just rise and fade — atmosphere only, never part of the logo.
 class _DecoBubbleParams {
   _DecoBubbleParams({
     required this.startXFraction,
@@ -272,8 +267,7 @@ class _DecoBubbleParams {
   factory _DecoBubbleParams.random(math.Random rnd) => _DecoBubbleParams(
     startXFraction: rnd.nextDouble(),
     startYOffset: 20 + rnd.nextDouble() * 200,
-    // How far above the screen's top edge this bubble ends up at t=1 — independent of
-    // screen height so it scales correctly across device sizes (see resolve()).
+    // Independent of screen height so it scales correctly across device sizes.
     extraAboveTop: 150 + rnd.nextDouble() * 250,
     swayAmp: 6 + rnd.nextDouble() * 14,
     swayPhase: rnd.nextDouble() * 2 * math.pi,

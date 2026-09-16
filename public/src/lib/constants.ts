@@ -4,8 +4,7 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://api.divebubbl
 
 export const SUPPORT_EMAIL = "support@divebubble.io";
 
-// Same legal entity as foreignreader_public's Privacy/Terms pages — one person operates
-// both, no separate company set up for DiveBubble yet.
+// Same legal entity as foreignreader_public — no separate company set up for DiveBubble yet.
 export const COMPANY = {
   legalName: "NP Platforms",
   legalForm: "a Danish sole proprietorship",

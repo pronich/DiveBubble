@@ -24,10 +24,7 @@ func registerExpenseRoutes(mux *http.ServeMux, svc *expense.Service, tripSvc *tr
 	mux.HandleFunc("DELETE /trips/{id}/expenses/{expenseId}", withAuth(authIssuer, handleDeleteExpense(svc, tripSvc)))
 }
 
-// requireExpenseInTrip is requireParticipant (trip-level) plus an expense-level check —
-// unlike transport's requireOfferAccess, there's no further per-expense membership subset:
-// any trip participant may read/edit any expense, only Delete is more restrictive (enforced
-// in expense.Service.Delete itself, since it needs CreatedBy which this already has in hand).
+// requireExpenseInTrip is requireParticipant plus an expense-level check; unlike transport's requireOfferAccess, any trip participant may read/edit any expense (only Delete is more restrictive).
 func requireExpenseInTrip(w http.ResponseWriter, r *http.Request, svc *expense.Service, tripID uuid.UUID, expenseIDStr string) (expense.Expense, bool) {
 	expenseID, err := uuid.Parse(expenseIDStr)
 	if err != nil {
@@ -56,9 +53,7 @@ type expenseShareRequest struct {
 	AmountMinor *int64    `json:"amountMinor,omitempty"`
 }
 
-// toSplitInput interprets the request's shares list according to splitType — equal only
-// needs the participant ids, shares needs each one's share count, exact needs each one's
-// exact amount. A missing field for the chosen mode is a client bug, reported as 400.
+// toSplitInput interprets reqShares according to splitType; a missing field for the chosen mode is a client bug, reported as 400.
 func toSplitInput(splitType expense.SplitType, reqShares []expenseShareRequest) (expense.SplitInput, error) {
 	switch splitType {
 	case expense.SplitEqual:
@@ -260,8 +255,7 @@ func handleUpdateExpense(svc *expense.Service, tripSvc *trip.Service) func(http.
 	}
 }
 
-// handleDeleteExpense is creator-only (expense.Service.Delete enforces it) — anyone else
-// gets 403, matching transport's Dissolve pattern.
+// handleDeleteExpense is creator-only; anyone else gets 403, matching transport's Dissolve pattern.
 func handleDeleteExpense(svc *expense.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
@@ -329,9 +323,7 @@ type createSettlementRequest struct {
 	AmountMinor int64     `json:"amountMinor"`
 }
 
-// handleCreateSettlement records a payment in either direction relative to the caller — any
-// participant can mark a suggested transfer settled, not just the one paying it off, per the
-// product decision that this feature has no stricter permission model than editing an expense.
+// handleCreateSettlement lets any participant mark a suggested transfer settled, not just the one paying it off.
 func handleCreateSettlement(svc *expense.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)

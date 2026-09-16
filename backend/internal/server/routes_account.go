@@ -14,8 +14,7 @@ func registerAccountRoutes(mux *http.ServeMux, svc *account.Service, authIssuer 
 	mux.HandleFunc("DELETE /me", withAuth(authIssuer, handleDeleteAccount(svc)))
 }
 
-// handleDeleteAccount never swallows the error — the client only clears its local session
-// (tokens, native Google session) once this genuinely succeeds, so a 500 here must reach it.
+// handleDeleteAccount never swallows the error, since the client only clears its local session once this genuinely succeeds.
 func handleDeleteAccount(svc *account.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		if err := svc.DeleteAccount(r.Context(), userID); err != nil {

@@ -27,8 +27,7 @@ func NewTokenIssuer(secret string, accessTokenTTL time.Duration) (*TokenIssuer, 
 	return &TokenIssuer{secret: []byte(s), accessTokenTTL: accessTokenTTL}, nil
 }
 
-// accessClaims is the payload for backend-issued access tokens.
-// Sid is the auth_sessions row id, so a refresh can revoke the exact session an access token came from.
+// accessClaims is the payload for backend-issued access tokens; Sid is the auth_sessions row id so a refresh can revoke the exact session it came from.
 type accessClaims struct {
 	Sid string `json:"sid"`
 	jwt.RegisteredClaims

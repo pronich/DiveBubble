@@ -36,9 +36,7 @@ type CreateParams struct {
 	Shares      []Share
 }
 
-// Create inserts the expense and its per-participant shares in one transaction — a half-
-// written expense (row present, no shares) would silently break every balance computed
-// afterward, so this either lands both or neither.
+// Create inserts the expense and its per-participant shares in one transaction, since a half-written expense (row present, no shares) would silently break every balance computed afterward.
 func (r *Repository) Create(ctx context.Context, p CreateParams) (Expense, error) {
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -75,9 +73,7 @@ type UpdateParams struct {
 	Shares      []Share
 }
 
-// Update replaces the expense's fields and its entire share set (simpler and less error-prone
-// than diffing old vs new shares — a trip has at most a handful of participants, so a full
-// delete+reinsert is cheap).
+// Update replaces the expense's fields and its entire share set via delete+reinsert, simpler and less error-prone than diffing old vs new shares given a trip's small participant count.
 func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (Expense, error) {
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -143,9 +139,7 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (Expense, error)
 	return e, nil
 }
 
-// ListByTrip returns every expense on the trip, most recent transaction date first (ties
-// broken by entry order), with shares populated — same batch-not-N+1 shape as
-// message.Repository.ListAttachmentsByMessageIDs.
+// ListByTrip returns every expense on the trip, most recent transaction date first (ties broken by entry order), with shares batched in rather than fetched N+1 (same shape as message.Repository.ListAttachmentsByMessageIDs).
 func (r *Repository) ListByTrip(ctx context.Context, tripID uuid.UUID) ([]Expense, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT `+expenseColumns+` FROM trip_expenses WHERE trip_id = $1 ORDER BY occurred_at DESC, created_at DESC

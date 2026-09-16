@@ -4,13 +4,7 @@ import '../../../../domain/certification_level.dart';
 import '../../../../domain/entities/profile.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// Shared Overview block (avatar/name/location, bio, dive count + level stats,
-/// languages/member-since) — used both for the diver's own Profile screen and for
-/// viewing another diver's public profile (organizer/participant taps).
-///
-/// [onEditProfile] null hides the Edit button (public view). [onLevelStatTap] null makes
-/// the Level tile non-interactive — an empty level then just shows "—" instead of the
-/// owner-only "Add certificate" prompt, since that CTA makes no sense on someone else's profile.
+/// [onEditProfile] null hides the Edit button (public view); [onLevelStatTap] null makes the Level tile non-interactive since the "Add certificate" CTA makes no sense on someone else's profile.
 class ProfileOverviewCard extends StatelessWidget {
   const ProfileOverviewCard({
     super.key,
@@ -26,15 +20,11 @@ class ProfileOverviewCard extends StatelessWidget {
   final VoidCallback? onEditProfile;
   final VoidCallback? onLevelStatTap;
 
-  /// Null hides the camera badge entirely — same posture as [onEditProfile]: only the
-  /// diver's own Profile screen passes this, not the public/diver-ID-card usage.
+  /// Null hides the camera badge entirely; only the diver's own Profile screen passes this, not the public/diver-ID-card usage.
   final VoidCallback? onAvatarTap;
   final bool isUploadingAvatar;
 
-  /// The diver's own Profile screen passes ProfileViewModel.totalDiveCount here (diveCount
-  /// plus however many are in the Dive Log) — profile.diveCount alone under-counts once
-  /// anything's logged. Null falls back to profile.diveCount as-is, since the public/
-  /// diver-ID-card usage has no access to someone else's private Dive Log to add in.
+  /// Null falls back to profile.diveCount as-is, since the public/diver-ID-card usage has no access to someone else's private Dive Log to add in.
   final int? diveCountOverride;
 
   bool get _hasLevel => profile.certificationLevel?.isNotEmpty ?? false;
@@ -63,8 +53,7 @@ class ProfileOverviewCard extends StatelessWidget {
                         ? null
                         : Icon(Icons.person, size: 40, color: theme.colorScheme.onSecondaryContainer),
                   ),
-                  // Purely decorative now — the whole circle above is the tap target
-                  // (item 2: tapping only this badge felt too small a target to hit).
+                  // Purely decorative — the whole circle above is the tap target, since tapping only this badge felt too small a target to hit.
                   if (onAvatarTap != null)
                     Positioned(
                       right: -2,

@@ -6,8 +6,7 @@ import '../../domain/entities/transport_offer.dart';
 import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
 
-// Staff only ever creates/lists offers and looks at who joined — never "joins" one
-// themselves, unlike app/'s own TransportApiService, so there's no joinOffer/getHasAlert here.
+// Staff only creates/lists offers and sees who joined — never joins one themselves, so there's no joinOffer/getHasAlert here.
 class TransportApiService {
   TransportApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
       : _client = client ?? http.Client();

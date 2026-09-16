@@ -1,5 +1,4 @@
-// Plain class, same pragmatic call as ChatMessage/MyProfile — mirrors backend's
-// mediaItemResponse (routes_message.go). One row per attachment, not per message.
+// One row per attachment, not per message — a message with multiple attachments yields multiple MediaItems.
 class MediaItem {
   const MediaItem({
     required this.messageId,

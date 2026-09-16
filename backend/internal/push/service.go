@@ -1,12 +1,4 @@
-// Package push sends Firebase Cloud Messaging notifications. Deliberately minimal for now —
-// one event type (new chat message), no notification categories/preferences yet (see
-// CLAUDE.md's push notifications section for the fuller plan this is the first slice of).
-//
-// Talks to the FCM v1 HTTP API directly via an OAuth2-authenticated client, rather than
-// pulling in firebase.google.com/go/v4 — that SDK drags in Firestore/Storage/Monitoring/
-// OpenTelemetry-operations-go as transitive deps we never use, which is too heavy a Docker
-// build for the small droplet this runs on (see CLAUDE.md's push notifications section for
-// the "no space left on device" incident this replaced).
+// Package push sends FCM notifications via the raw v1 HTTP API instead of firebase.google.com/go/v4, whose transitive deps were too heavy for this droplet's Docker build.
 package push
 
 import (
@@ -25,16 +17,12 @@ const fcmScope = "https://www.googleapis.com/auth/firebase.messaging"
 
 type Service struct {
 	repo *Repository
-	// httpClient is nil when no credentials are configured — every send becomes a silent
-	// no-op rather than an error, same pattern as upload.Service's Spaces-vs-local split.
+	// httpClient is nil when no credentials are configured, making every send a silent no-op instead of an error.
 	httpClient *http.Client
 	projectID  string
 }
 
-// New builds a Service. credentialsJSON == "" disables push entirely (local dev default) —
-// this is not an error, since push infra shouldn't block the rest of the API from running.
-// Takes the service account JSON content directly (not a file path) so it's just another
-// env var, same as every other secret in this project.
+// New builds a Service; an empty credentialsJSON disables push without erroring, since push infra shouldn't block the rest of the API from starting.
 func New(ctx context.Context, repo *Repository, credentialsJSON string) (*Service, error) {
 	if credentialsJSON == "" {
 		log.Print("push: FIREBASE_CREDENTIALS_JSON not set, push notifications disabled")
@@ -59,36 +47,26 @@ func New(ctx context.Context, repo *Repository, credentialsJSON string) (*Servic
 	return &Service{repo: repo, httpClient: jwtConfig.Client(ctx), projectID: creds.ProjectID}, nil
 }
 
-// RegisterToken associates a device's FCM token with the signed-in user, called by the
-// client on login/token refresh.
+// RegisterToken associates a device's FCM token with the signed-in user, called on login or token refresh.
 func (s *Service) RegisterToken(ctx context.Context, userID uuid.UUID, platform, token string) error {
 	return s.repo.Upsert(ctx, userID, platform, token)
 }
 
-// UnregisterToken is the master-off path from NotificationsSettingsPage — removing the row
-// is what actually stops sends, there's no separate "enabled" flag on push_tokens to flip.
+// UnregisterToken removes the token row, since push_tokens has no separate "enabled" flag to flip.
 func (s *Service) UnregisterToken(ctx context.Context, userID uuid.UUID, token string) error {
 	return s.repo.DeleteTokenForUser(ctx, userID, token)
 }
 
 type Notification struct {
 	Title string
-	// Subtitle renders as a smaller line between title and body — only a real, separate line
-	// on iOS (via the APNs alert override in sendOne); FCM's Android notification payload has
-	// no equivalent field, so Android folds it into the title instead of dropping it.
+	// Subtitle is a real separate line only on iOS (via the APNs override in sendOne); Android has no equivalent field so it gets folded into the title.
 	Subtitle string
 	Body     string
-	// Data is delivered alongside the notification for the client to act on when the user
-	// taps it (e.g. tripId, to deep-link into the right Bubble) — see CLAUDE.md.
+	// Data lets the client deep-link (e.g. into the right Bubble) when the user taps the notification.
 	Data map[string]string
 }
 
-// SendToUsers fans a notification out to every device registered to the given users.
-// Best-effort: errors are logged, never returned, since a failed push must never fail
-// the request that triggered it (matches the existing realtime.Publisher.Publish pattern
-// in routes_message.go). FCM's v1 API takes one token per HTTP call (no server-side
-// multicast like the legacy API) — fine at this project's scale, a trip's Bubble is a
-// handful of recipients, not thousands.
+// SendToUsers fans a notification out to every device registered to the given users, best-effort: errors are only logged since a failed push must never fail the triggering request.
 func (s *Service) SendToUsers(ctx context.Context, userIDs []uuid.UUID, n Notification) {
 	if s == nil || s.httpClient == nil || len(userIDs) == 0 {
 		return
@@ -134,8 +112,7 @@ type fcmNotification struct {
 	Body  string `json:"body"`
 }
 
-// fcmApnsConfig overrides the alert shown on iOS — needed only for Subtitle, which has no
-// equivalent in fcmNotification above (that block is title/body only, shared with Android).
+// fcmApnsConfig overrides the alert shown on iOS, needed only because Subtitle has no equivalent field in fcmNotification.
 type fcmApnsConfig struct {
 	Payload fcmApnsPayload `json:"payload"`
 }
@@ -160,13 +137,9 @@ type fcmErrorResponse struct {
 	} `json:"error"`
 }
 
-// sendOne posts a single message and reports whether the token is dead (unregistered /
-// not found) so the caller can prune it — anything else is just logged, not pruned, since
-// e.g. a transient quota or server error doesn't mean the token itself is bad.
+// sendOne posts a single message and reports whether the token is dead so the caller can prune it; other errors (e.g. transient quota issues) don't imply the token itself is bad.
 func (s *Service) sendOne(ctx context.Context, token string, n Notification) (dead bool, err error) {
-	// Android has no subtitle field to put this in — folded into the title as the least-bad
-	// fallback rather than silently dropping the category. iOS gets a real separate line via
-	// the apns override below.
+	// Android has no subtitle field, so it's folded into the title rather than dropped.
 	androidTitle := n.Title
 	if n.Subtitle != "" {
 		androidTitle = n.Title + " · " + n.Subtitle
@@ -178,8 +151,7 @@ func (s *Service) sendOne(ctx context.Context, token string, n Notification) (de
 		Data:         n.Data,
 	}
 	if n.Subtitle != "" {
-		// Overrides the alert for iOS specifically — the shared Notification block above still
-		// covers Android (and acts as the FCM-required fallback if this were ever missing).
+		// Overrides the alert for iOS only; the shared Notification block above still covers Android.
 		msg.APNS = &fcmApnsConfig{Payload: fcmApnsPayload{Aps: fcmApnsAps{
 			Alert: fcmApnsAlert{Title: n.Title, Subtitle: n.Subtitle, Body: n.Body},
 		}}}

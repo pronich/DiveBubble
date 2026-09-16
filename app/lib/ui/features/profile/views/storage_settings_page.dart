@@ -4,8 +4,7 @@ import '../../../../data/services/attachment_cache_service.dart';
 import '../../../../data/services/error_codes.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// Lets a diver free up disk space by wiping the local chat-attachment cache — the files
-/// themselves are still on the server, so anything opened again is simply re-downloaded.
+/// Wipes only the local chat-attachment cache — files stay on the server, so anything opened again is simply re-downloaded.
 class StorageSettingsPage extends StatefulWidget {
   const StorageSettingsPage({super.key});
 
@@ -34,8 +33,7 @@ class _StorageSettingsPageState extends State<StorageSettingsPage> {
     setState(() => _isClearing = true);
     try {
       await AttachmentCacheService.clearCache();
-      // Covers anything an already-open preview loaded via Image.file — disk cache alone
-      // wouldn't evict that from Flutter's own in-memory image cache.
+      // Covers anything an already-open preview loaded via Image.file, which the disk-cache clear alone wouldn't evict from Flutter's in-memory image cache.
       PaintingBinding.instance.imageCache.clear();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.cacheCleared)));

@@ -5,8 +5,7 @@ import '../../../../data/services/error_codes.dart';
 import '../../../../data/repositories/trip_repository.dart';
 import '../../../../domain/entities/trip.dart';
 
-/// Simpler sibling to MyTripsViewModel — no realtime subscriptions (see ArchiveRevealList's
-/// own doc comment on why the archived-vs-live tradeoff was made), just load + unarchive.
+/// Simpler sibling to MyTripsViewModel — no realtime subscriptions here, just load + unarchive.
 class ArchivedTripsViewModel extends ChangeNotifier {
   ArchivedTripsViewModel({required TripRepository repository}) : _repository = repository;
 

@@ -48,8 +48,7 @@ abstract final class AppTheme {
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.bgBase,
         foregroundColor: AppColors.textPrimary,
-        // Pin surfaceTint off and elevation constant — M3 defaults tint the bar with
-        // ColorScheme.primary once content scrolls under it, which read as a color change.
+        // Pinned off: M3 defaults tint the bar with ColorScheme.primary once content scrolls under it, which read as a color change.
         surfaceTintColor: Colors.transparent,
         shadowColor: Colors.black.withValues(alpha: 0.08),
         elevation: 2,
@@ -133,9 +132,7 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: AppColors.borderFocused, width: 1.5),
         ),
-        // Explicit, not left to InputDecorator's fallback default — TextField and
-        // DropdownButtonFormField resolve a missing errorBorder differently, which made the
-        // same errorText render a red outline on one and nothing on the other.
+        // Explicit because TextField and DropdownButtonFormField resolve a missing errorBorder differently, which made the same errorText render a red outline on one and nothing on the other.
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: AppColors.error, width: 1.5),

@@ -38,11 +38,7 @@ func scanEntry(row interface{ Scan(...any) error }, e *Entry) error {
 	return nil
 }
 
-// Create inserts one entry. onConflictSkip controls the import-vs-manual-add dedup behavior:
-// a manual add should always insert (or surface a genuine conflict as an error — a diver
-// manually re-entering the exact same timestamp twice is presumably a mistake worth seeing),
-// while an import silently skips a dive already logged at that exact dived_at (see the
-// migration's unique index) rather than erroring the whole batch out.
+// Create inserts one entry; onConflictSkip=false lets a manual duplicate timestamp surface as a genuine error, while true (imports) silently skips a dive already logged at that dived_at rather than erroring the whole batch.
 func (r *Repository) Create(ctx context.Context, e Entry, onConflictSkip bool) (Entry, bool, error) {
 	samplesJSON, err := json.Marshal(e.ProfileSamples)
 	if err != nil {
@@ -69,8 +65,7 @@ func (r *Repository) Create(ctx context.Context, e Entry, onConflictSkip bool) (
 
 	if err := scanEntry(row, &out); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// Only reachable when onConflictSkip suppressed the insert — a real duplicate on
-			// a non-deduped manual add would instead surface as a unique-constraint error.
+			// Only reachable when onConflictSkip suppressed the insert; a real duplicate on a non-deduped manual add instead surfaces as a unique-constraint error.
 			return Entry{}, false, nil
 		}
 		return Entry{}, false, err
@@ -78,10 +73,7 @@ func (r *Repository) Create(ctx context.Context, e Entry, onConflictSkip bool) (
 	return out, true, nil
 }
 
-// Update replaces every editable field (never source, avg_depth_m, or profile_samples,
-// which are fixed at creation — avg_depth_m is only ever known by an importer, there's no
-// manual-entry UI for it) — the app only ever sends country/siteName/notes changes for an
-// imported entry, and the full set for a manual one, but this doesn't itself distinguish the two.
+// Update replaces every editable field but never source, avg_depth_m, or profile_samples, which are fixed at creation since avg_depth_m is only ever known by an importer with no manual-entry UI for it.
 func (r *Repository) Update(ctx context.Context, id uuid.UUID, e Entry) (Entry, error) {
 	var out Entry
 	if err := scanEntry(r.DB.QueryRowContext(ctx, `

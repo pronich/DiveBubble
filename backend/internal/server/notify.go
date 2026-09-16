@@ -10,11 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// TripRecipientIDs is everyone with access to a trip — participants always, plus a business
-// trip's dive center staff. Shared by every trip-level push notification (cancelled, details
-// changed, participant joined, feedback prompt); message pushes have their own narrower rule
-// (see notifyNewMessage's mention gate in routes_message.go) so they don't use this directly.
-// Exported so the feedback-prompt scan job in main.go (package main) can reuse it too.
+// TripRecipientIDs is everyone with access to a trip (participants plus, for business trips, dive center staff); exported so main.go's feedback-prompt scan job can reuse it.
 func TripRecipientIDs(ctx context.Context, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, t trip.Trip) []uuid.UUID {
 	recipients, err := tripSvc.ListParticipantUserIDs(ctx, t.ID.String())
 	if err != nil {
@@ -45,8 +41,7 @@ func dedupeUsers(ids []uuid.UUID) []uuid.UUID {
 	return out
 }
 
-// excludeUser filters in place — safe because dedupeUsers above (the only realistic caller)
-// always hands back a freshly allocated slice, never one another caller still holds onto.
+// excludeUser filters in place, safe only because its callers always pass a freshly allocated slice.
 func excludeUser(ids []uuid.UUID, exclude uuid.UUID) []uuid.UUID {
 	out := ids[:0]
 	for _, id := range ids {
@@ -57,8 +52,7 @@ func excludeUser(ids []uuid.UUID, exclude uuid.UUID) []uuid.UUID {
 	return out
 }
 
-// excludeUsers is excludeUser for a set — used to subtract a trip's muted users from a
-// message push's recipients (see notifyNewMessage). Safe to call with a nil/empty exclude set.
+// excludeUsers is excludeUser for a set, safe to call with a nil/empty exclude set.
 func excludeUsers(ids []uuid.UUID, exclude []uuid.UUID) []uuid.UUID {
 	if len(exclude) == 0 {
 		return ids

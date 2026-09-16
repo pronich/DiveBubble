@@ -55,8 +55,7 @@ type messageResponse struct {
 	IsDiveCenterStaff  bool      `json:"isDiveCenterStaff"`
 	MentionsDiveCenter bool      `json:"mentionsDiveCenter"`
 	Kind               string    `json:"kind"`
-	// FeedbackProvided is per-viewer (has the requesting user submitted trip feedback yet) —
-	// only meaningful when Kind is message.KindFeedbackPrompt, false/ignored otherwise.
+	// FeedbackProvided is per-viewer and only meaningful when Kind is message.KindFeedbackPrompt.
 	FeedbackProvided bool                               `json:"feedbackProvided"`
 	Attachments      []attachmentResponse               `json:"attachments"`
 	ReplyToID        *string                            `json:"replyToId,omitempty"`
@@ -85,13 +84,7 @@ type attachmentResponse struct {
 	DurationSeconds *int   `json:"durationSeconds,omitempty"`
 }
 
-// toMessageResponse blanks Body/Attachments whenever the message is soft-deleted — the DB row
-// still holds the real content (see message.Repository.SoftDelete's own comment), but nothing
-// downstream of this function should ever see it, so every response path (list, send, delete's
-// own realtime republish) is guaranteed redacted rather than relying on each caller to remember.
-// Normalizes both attachment eras into one list: m.Attachments (chat_message_attachments, see
-// migration 000054) if populated, else a single-item list synthesized from the legacy
-// AttachmentURL/Type/Filename/SizeBytes scalar columns for a message sent before that migration.
+// toMessageResponse blanks Body/Attachments for a soft-deleted message (the DB row still holds the real content) and normalizes both attachment eras into one list.
 func toMessageResponse(m message.Message, isDiveCenterStaff, feedbackProvided bool, reactions map[string]message.ReactionSummary) messageResponse {
 	body := m.Body
 	attachments := toAttachmentResponses(m)
@@ -146,9 +139,7 @@ func toAttachmentResponses(m message.Message) []attachmentResponse {
 	return []attachmentResponse{}
 }
 
-// attachmentRequest is one item in sendMessageRequest.Attachments (and the offer/buddy chat
-// send requests) — the client uploads each file via POST .../messages/attachment first (see
-// handleUploadMessageAttachment), then passes the returned fields back here unchanged.
+// attachmentRequest carries back the fields the client got from uploading the file via POST .../messages/attachment first.
 type attachmentRequest struct {
 	URL             string `json:"url"`
 	Type            string `json:"type"`
@@ -168,9 +159,7 @@ func toAttachments(reqs []attachmentRequest) []message.Attachment {
 	return out
 }
 
-// toAttachments (method form) returns nil when no URL was sent (a plain text message) — used
-// by the offer/buddy chat send paths, which only ever accept the one attachment embedded
-// directly in their request type (unlike main chat's Attachments list on sendMessageRequest).
+// toAttachments (method form) returns nil when no URL was sent, since the offer/buddy chat paths only ever accept one embedded attachment, unlike main chat's Attachments list.
 func (a attachmentRequest) toAttachments() []message.Attachment {
 	if a.URL == "" {
 		return nil
@@ -178,9 +167,7 @@ func (a attachmentRequest) toAttachments() []message.Attachment {
 	return []message.Attachment{{URL: a.URL, Type: a.Type, Filename: a.Filename, SizeBytes: a.SizeBytes, DurationSeconds: a.DurationSeconds}}
 }
 
-// requireParticipant is shared by message/transport/participants handlers — access means
-// either joined normally (trip_participants) or being the trip's organizer (HasAccess also
-// covers dive-center staff, who never get a trip_participants row for their own center's trips).
+// requireParticipant treats access as joined normally, being the organizer, or dive-center staff, none of whom get a trip_participants row for their own center's trips.
 func requireParticipant(w http.ResponseWriter, r *http.Request, tripSvc *trip.Service, tripID string, userID uuid.UUID) (uuid.UUID, bool) {
 	parsed, hasAccess, err := tripSvc.HasAccess(r.Context(), tripID, userID)
 	if err != nil {
@@ -198,8 +185,7 @@ func requireParticipant(w http.ResponseWriter, r *http.Request, tripSvc *trip.Se
 	return parsed, true
 }
 
-// diveCenterStaffChecker memoizes IsMember lookups across a batch of messages so a
-// history list with many senders doesn't re-check the same user id repeatedly.
+// diveCenterStaffChecker memoizes IsMember lookups so a history list with many senders doesn't re-check the same user id repeatedly.
 type diveCenterStaffChecker struct {
 	diveCenterSvc *divecenter.Service
 	diveCenterID  uuid.NullUUID
@@ -244,8 +230,7 @@ func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterS
 			return
 		}
 
-		// Best-effort — a lookup failure here must not break the whole chat load, so on error
-		// this just falls back to "nothing blocked" rather than failing the request.
+		// Best-effort: a lookup failure falls back to "nothing blocked" rather than failing the whole chat load.
 		blocked, err := moderationSvc.ListBlockedUserIDs(r.Context(), userID)
 		if err != nil {
 			log.Printf("list messages: could not load blocked users for %s: %v", userID, err)
@@ -265,8 +250,7 @@ func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterS
 			messages = filtered
 		}
 
-		// One per-trip fact for the viewer, not per-message — computed once regardless of how
-		// many feedback_prompt rows exist (normally at most one).
+		// One per-trip fact for the viewer, not per-message, computed once regardless of how many feedback_prompt rows exist.
 		hasFeedback, err := tripSvc.HasFeedback(r.Context(), tripID.String(), userID)
 		if err != nil {
 			log.Printf("list messages: could not check feedback state for trip:%s: %v", tripID, err)
@@ -277,9 +261,7 @@ func handleListMessages(svc *message.Service, tripSvc *trip.Service, diveCenterS
 		for i, m := range messages {
 			ids[i] = m.ID
 		}
-		// Best-effort — same reasoning as the blocked-users lookup above: a reactions fetch
-		// failing shouldn't break the whole chat load, just show messages with no reaction
-		// pills until the next successful list.
+		// Best-effort, same reasoning as the blocked-users lookup above: fall back to no reaction pills rather than failing the load.
 		reactionsByMessage, err := svc.ListReactionsForMessages(r.Context(), ids, userID)
 		if err != nil {
 			log.Printf("list messages: could not load reactions for trip:%s: %v", tripID, err)
@@ -303,9 +285,7 @@ type sendMessageRequest struct {
 	Attachments        []attachmentRequest `json:"attachments,omitempty"`
 }
 
-// replyToID parses the optional ReplyToID string into a uuid.NullUUID — an unparsable value
-// is treated the same as "not a reply" here; Service.Send does the actual existence/same-trip
-// validation and rejects a genuinely bad id with ErrInvalidArgument.
+// replyToID treats an unparsable value the same as "not a reply"; Service.Send does the actual existence/same-trip validation.
 func (req sendMessageRequest) replyToID() uuid.NullUUID {
 	if req.ReplyToID == nil {
 		return uuid.NullUUID{}
@@ -329,8 +309,7 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
-		// Cancelled trips are read-only — history stays visible (handleListMessages is
-		// untouched), but the input is effectively closed server-side too, not just in the UI.
+		// Cancelled trips are read-only: input is closed server-side too, not just in the UI.
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
 				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
@@ -347,8 +326,7 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 			return
 		}
 
-		// A mention only means something on a business trip — there's no dive center to
-		// notify on an individual one, so the flag is silently dropped rather than erroring.
+		// A mention only means something on a business trip, so the flag is silently dropped rather than erroring on an individual one.
 		mentionsDiveCenter := req.MentionsDiveCenter && t.DiveCenterID.Valid
 		m, err := svc.Send(r.Context(), tripID, userID, message.Scope{}, req.Body, mentionsDiveCenter, toAttachments(req.Attachments), req.replyToID())
 		if err != nil {
@@ -368,8 +346,7 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 			}
 		}
 		resp := toMessageResponse(m, isDiveCenterStaff, false, nil)
-		// Best-effort — sending implies you've read up to now, so this keeps your own
-		// message from ever showing up in your own unread count.
+		// Best-effort: sending implies you've read up to now, keeping your own message out of your own unread count.
 		_ = tripSvc.MarkRead(r.Context(), tripID.String(), userID)
 		// Best-effort — REST already persisted the message, realtime push is not required for correctness.
 		if pubErr := publisher.Publish(r.Context(), "trip:"+tripID.String(), resp); pubErr != nil {
@@ -382,10 +359,7 @@ func handleSendMessage(svc *message.Service, tripSvc *trip.Service, diveCenterSv
 	}
 }
 
-// handleDeleteMessage soft-deletes a message — author-only (Service.Delete's own ownership
-// check covers that; no separate requireParticipant needed, since being the author already
-// implies past trip access, and the trip id for the realtime republish comes off the returned
-// row itself rather than needing to be parsed from the URL too).
+// handleDeleteMessage needs no separate requireParticipant, since being the author (Service.Delete's own check) already implies past trip access.
 func handleDeleteMessage(svc *message.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		messageID, err := uuid.Parse(r.PathValue("messageId"))
@@ -405,8 +379,7 @@ func handleDeleteMessage(svc *message.Service, publisher *realtime.Publisher) fu
 		}
 
 		resp := toMessageResponse(m, false, false, nil)
-		// Best-effort — the delete itself already succeeded above; a failed publish just means
-		// other participants see the redacted message on their next list refresh instead of live.
+		// Best-effort: the delete already succeeded above, so a failed publish just delays the redaction to the next list refresh.
 		if pubErr := publisher.Publish(r.Context(), "trip:"+m.TripID.String(), resp); pubErr != nil {
 			log.Printf("realtime publish failed for trip:%s: %v", m.TripID, pubErr)
 		}
@@ -424,10 +397,7 @@ type reactionResponse struct {
 	Reactions map[string]reactionSummaryResponse `json:"reactions"`
 }
 
-// handleSetReaction upserts the caller's reaction (one per user per message — Messenger
-// semantics, see migration 000055) on a message from any of the three chat scopes (main,
-// offer, buddy) — the URL only ever carries the trip id, so this works the same regardless of
-// which chat the target message actually belongs to.
+// handleSetReaction upserts one reaction per user per message, from any of the three chat scopes, since the URL only ever carries the trip id regardless of which chat the message belongs to.
 func handleSetReaction(svc *message.Service, tripSvc *trip.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
@@ -465,8 +435,7 @@ func handleSetReaction(svc *message.Service, tripSvc *trip.Service, publisher *r
 	}
 }
 
-// handleRemoveReaction removes the caller's own reaction from a message, if any — idempotent,
-// same "no error either way" shape as the rest of this package's delete-ish endpoints.
+// handleRemoveReaction is idempotent, same "no error either way" shape as this package's other delete-ish endpoints.
 func handleRemoveReaction(svc *message.Service, tripSvc *trip.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
@@ -493,16 +462,7 @@ func handleRemoveReaction(svc *message.Service, tripSvc *trip.Service, publisher
 	}
 }
 
-// publishReactionUpdate broadcasts only the viewer-independent per-emoji counts — ReactedByMe
-// is per-viewer and a Centrifugo publish is one shared payload for every subscriber, so it can
-// only ever be correct for the one viewer it was computed for. Unlike a full message republish
-// (fine for e.g. delete, where every field is viewer-independent), reactions need a distinct
-// event shape the app merges in specially — see ChatViewModel's realtime handler, which keeps
-// each emoji's own locally-known reactedByMe and only takes the incoming count. Published on
-// whichever channel actually matches the message's own chat scope (mirrors handleSendMessage/
-// handleSendOfferMessage/handleSendBuddyMessage's own three-way channel choice) — the reaction
-// endpoints only take a trip id in their URL, so the message's own Offer/BuddyRequestID (from
-// Service.SetReaction/RemoveReaction's returned Message) is what decides this, not the URL.
+// publishReactionUpdate broadcasts only per-emoji counts, never the per-viewer ReactedByMe, and on whichever channel matches the message's own chat scope, since the reaction endpoints' URL only ever carries a trip id.
 func publishReactionUpdate(ctx context.Context, publisher *realtime.Publisher, m message.Message, reactions map[string]message.ReactionSummary) {
 	channel := "trip:" + m.TripID.String()
 	if m.OfferID.Valid {
@@ -523,11 +483,7 @@ func publishReactionUpdate(ctx context.Context, publisher *realtime.Publisher, m
 	}
 }
 
-// notifyNewMessage pushes the new message to everyone with access to the trip except its
-// sender — trip participants always, plus a business trip's dive center staff only when the
-// message explicitly mentions the dive center (see CLAUDE.md's Notifications Stage 1.5 — the
-// mention flag exists specifically so every diver message doesn't push every staff member;
-// staff who aren't mentioned still see it via admin/'s own in-app unread badge, just not a push).
+// notifyNewMessage includes a business trip's dive center staff only when the message explicitly mentions the dive center, so not every diver message pushes every staff member.
 func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *profile.Service, tripSvc *trip.Service, diveCenterSvc *divecenter.Service, t trip.Trip, m message.Message, senderID uuid.UUID) {
 	recipients, err := tripSvc.ListParticipantUserIDs(ctx, t.ID.String())
 	if err != nil {
@@ -548,8 +504,7 @@ func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *pr
 	} else {
 		recipients = excludeUsers(recipients, mutedIDs)
 	}
-	// Archived stays fully functional (unread count still climbs) but never pushes — same
-	// posture as muted, just a separate flag since archiving and muting are independent.
+	// Archived stays fully functional (unread count still climbs) but never pushes, same posture as muted via a separate, independent flag.
 	if archivedIDs, err := tripSvc.ListArchivedUserIDs(ctx, t.ID); err != nil {
 		log.Printf("push: could not list archived users for trip:%s: %v", t.ID, err)
 	} else {
@@ -564,9 +519,7 @@ func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *pr
 		senderName = sender.DisplayName.String
 	}
 
-	// Title/Subtitle/Body: which Bubble, which chat within it, who said what — same three-tier
-	// shape notifyNewOfferMessage/notifyNewBuddyMessage use, so a diver can tell at a glance
-	// which of a trip's chats a push is about instead of just "something changed on this trip".
+	// Same three-tier Title/Subtitle/Body shape as notifyNewOfferMessage/notifyNewBuddyMessage, so a diver can tell at a glance which of a trip's chats a push is about.
 	pushSvc.SendToUsers(ctx, recipients, push.Notification{
 		Title:    t.Title,
 		Subtitle: "Chat",
@@ -575,9 +528,7 @@ func notifyNewMessage(ctx context.Context, pushSvc *push.Service, profileSvc *pr
 	})
 }
 
-// pushBodyFor falls back to a label when the message is attachment-only (empty body) — an
-// empty push notification body would otherwise look broken. Checks the new multi-attachment
-// list first, falling back to the legacy scalar column for a pre-migration-000054 message.
+// pushBodyFor falls back to a label when the message is attachment-only, since an empty push notification body would otherwise look broken.
 func pushBodyFor(m message.Message) string {
 	body := truncateForPush(m.Body)
 	if body != "" {
@@ -631,9 +582,7 @@ func parseLimitParam(r *http.Request, def, max int) int {
 	return n
 }
 
-// mediaItemResponse is one grid entry for the Media/Files tab — a slimmer shape than
-// messageResponse (no reply/reactions/staff context, none of which the grid needs), one per
-// attachment rather than per message. attachments is always exactly one item.
+// mediaItemResponse is one grid entry for the Media/Files tab, one per attachment rather than per message, deliberately slimmer than messageResponse.
 type mediaItemResponse struct {
 	MessageID  uuid.UUID          `json:"messageId"`
 	UserID     uuid.UUID          `json:"userId"`
@@ -652,10 +601,7 @@ func toMediaItemResponse(item message.MediaItem) mediaItemResponse {
 	}
 }
 
-// attachmentTypesForQuery maps the tab's ?type= query param to the set of attachment types it
-// should return — "media" (image+video, the Media tab) and "pdf" (the Files tab) are the only
-// two the app ever requests; the bare "image"/"video" values from before this stage still work
-// too, in case an older client build is still in the wild for a bit.
+// attachmentTypesForQuery keeps accepting the older bare "image"/"video" values in case an older client build is still in the wild.
 func attachmentTypesForQuery(raw string) ([]string, bool) {
 	switch raw {
 	case "media":
@@ -667,8 +613,7 @@ func attachmentTypesForQuery(raw string) ([]string, bool) {
 	}
 }
 
-// handleListMessageAttachments backs the Media ("type=media") and Files ("type=pdf") tabs —
-// main trip chat only (v1 scope), newest first, cursor-paginated via ?before=<RFC3339>.
+// handleListMessageAttachments backs the Media/Files tabs, main trip chat only (v1 scope), newest first, cursor-paginated via ?before=<RFC3339>.
 func handleListMessageAttachments(svc *message.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
@@ -709,14 +654,11 @@ type linkResponse struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-// urlPattern mirrors the Postgres prefilter in ListLinksByTrip; trailingPunctuation strips
-// characters a URL is unlikely to end with but that commonly follow one in prose ("see
-// https://x.com/plan.", "(https://x.com/plan)").
+// urlPattern mirrors the Postgres prefilter in ListLinksByTrip; trailingPunctuation strips characters that commonly follow a URL in prose (e.g. "see https://x.com/plan.").
 var urlPattern = regexp.MustCompile(`https?://\S+`)
 var trailingPunctuation = ".,)]!?\"'"
 
-// handleListMessageLinks backs the Links tab — every URL mentioned in main-chat message text
-// (not uploaded files), newest first, cursor-paginated via ?before=<RFC3339>.
+// handleListMessageLinks backs the Links tab: every URL mentioned in main-chat message text (not uploaded files), newest first, cursor-paginated via ?before=<RFC3339>.
 func handleListMessageLinks(svc *message.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
@@ -752,8 +694,7 @@ func handleListMessageLinks(svc *message.Service, tripSvc *trip.Service) func(ht
 	}
 }
 
-// truncateForPush keeps push payloads small — cuts on a rune boundary since message bodies
-// aren't guaranteed ASCII.
+// truncateForPush cuts on a rune boundary since message bodies aren't guaranteed ASCII.
 func truncateForPush(body string) string {
 	const maxRunes = 150
 	runes := []rune(body)

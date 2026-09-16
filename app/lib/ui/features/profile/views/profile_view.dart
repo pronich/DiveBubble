@@ -47,16 +47,14 @@ class ProfileView extends StatefulWidget {
 
   final AuthRepository authRepository;
   final ProfileRepository profileRepository;
-  // Shared with the DiveLog tab (see RootShell) — not built here, so a dive logged from
-  // either tab shows up in both without a second fetch.
+  // Shared with the DiveLog tab, not built here, so a dive logged from either tab shows up in both without a second fetch.
   final ProfileViewModel viewModel;
   final TripRepository tripRepository;
   final ChatRepository chatRepository;
   final PushRepository pushRepository;
   final LocaleController localeController;
 
-  /// Whether this is the currently-selected bottom-nav tab. RootShell's IndexedStack keeps
-  /// ProfileView alive when another tab is selected, so this is how it notices tab switches.
+  /// RootShell's IndexedStack keeps ProfileView alive when another tab is selected, so this is how it notices tab switches.
   final bool isActive;
 
   @override
@@ -84,8 +82,7 @@ class _ProfileViewState extends State<ProfileView> {
   @override
   void didUpdateWidget(ProfileView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Leaving the tab collapses the specialties stack back down, so it doesn't stay
-    // expanded (widget state survives IndexedStack) when the user returns later.
+    // Leaving the tab collapses the specialties stack, so it doesn't stay expanded (state survives IndexedStack) when the user returns later.
     if (oldWidget.isActive && !widget.isActive && _specialtiesExpanded) {
       setState(() => _specialtiesExpanded = false);
     }
@@ -135,12 +132,7 @@ class _ProfileViewState extends State<ProfileView> {
               location: _guestLocation,
               localeController: widget.localeController,
               onDiveIn: () async {
-                // notifyListeners() (and thus _refresh, via the authRepository listener
-                // above) fires the moment sign-in itself completes — before LoginSheet's
-                // own onboarding chain (location/push/certificates) has written anything.
-                // Awaiting here and reloading once the whole sheet closes is what actually
-                // picks up the fully-onboarded profile, instead of the early, still-mostly-
-                // empty snapshot from right after sign-in.
+                // The authRepository listener's _refresh fires the moment sign-in completes, before LoginSheet's onboarding chain has written anything; awaiting here and reloading once the sheet closes picks up the fully-onboarded profile instead.
                 final signedIn = await LoginSheet.show(
                   context,
                   authRepository: widget.authRepository,
@@ -342,8 +334,7 @@ class _SignedInBody extends StatelessWidget {
     }
   }
 
-  // "Look at it vs change it" separation — same precedent CardPhotoPicker uses for
-  // cert/specialty photos — rather than jumping straight into the image picker on tap.
+  // "Look at it vs change it" separation, same precedent CardPhotoPicker uses, rather than jumping straight into the image picker on tap.
   Future<void> _showAvatarOptions(BuildContext context) async {
     final hasAvatar = profile.avatarUrl?.isNotEmpty ?? false;
     final l10n = AppLocalizations.of(context);
@@ -518,8 +509,7 @@ class _SignedInBody extends StatelessWidget {
   }
 }
 
-/// Visual break between the profile card and the settings-style rows below it —
-/// wider gap plus a full-width divider, rather than just another spaced-out card.
+/// Wider gap plus a full-width divider, rather than just another spaced-out card.
 class _SettingsDivider extends StatelessWidget {
   const _SettingsDivider();
 
@@ -554,8 +544,7 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
-/// Deliberately plain/unobtrusive — a diver signing out isn't a destructive action, so it
-/// doesn't get the alarm treatment a real "delete" action would.
+/// Deliberately plain/unobtrusive — signing out isn't a destructive action.
 class _DiveOutRow extends StatelessWidget {
   const _DiveOutRow({required this.onDiveOut});
 
@@ -572,9 +561,7 @@ class _DiveOutRow extends StatelessWidget {
   }
 }
 
-/// Destructive styling (theme.colorScheme.error), unlike _DiveOutRow's deliberately muted
-/// treatment — this is permanent and affects trips the diver organized, so it earns the
-/// alarm treatment sign-out doesn't get.
+/// Destructive styling, unlike _DiveOutRow: this is permanent and affects trips the diver organized.
 class _DeleteAccountRow extends StatefulWidget {
   const _DeleteAccountRow({required this.onDeleteAccount});
 
@@ -631,9 +618,7 @@ class _DeleteAccountRowState extends State<_DeleteAccountRow> {
   }
 }
 
-/// Sub-section label inside Certifications (Level/Specialties) — an optional trailing
-/// action ("Update" text button or "+" icon), same idea as the compact quick-action
-/// pattern used in Explore's header.
+/// An optional trailing action ("Update" text button or "+" icon).
 class _SubHeader extends StatelessWidget {
   const _SubHeader({required this.title, this.trailing});
 

@@ -8,13 +8,7 @@ import '../../../core/theme/app_theme.dart';
 
 enum TripRowAction { archive, unarchive, leave, cancel }
 
-/// Long-press menu for a Bubbles-list row — Archive (or Unarchive, from inside the Archive
-/// itself) plus Leave/Cancel, same actions and confirmation copy as the Bubble's own
-/// _ActionPillsRow (trip_page.dart), just reachable without opening the Bubble first.
-/// Deliberately skips Leave/Cancel for business trips: telling "am I this dive center's
-/// organizer" apart from "am I just a diver on their trip" needs the same membership check
-/// _ActionPillsRow's host (TripViewModel) already does — not worth re-deriving here for a
-/// quick menu when staff already have Cancel inside the Bubble (or admin/) either way.
+/// Deliberately skips Leave/Cancel for business trips: telling organizer staff apart from a plain diver needs a membership check not worth re-deriving for this quick menu.
 Future<void> showTripRowActionsSheet(
   BuildContext context, {
   required Trip trip,

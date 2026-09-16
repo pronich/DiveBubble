@@ -13,10 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// maxImportFileSize caps the raw upload (UDDF/CSV text, or a Diving Log 6 SQLite export) — a
-// dive log export, even with hundreds of dives and full depth/temperature profiles, is a few
-// MB at most; this just guards against an absurd or malformed upload rather than reflecting
-// any real file size for these formats.
+// maxImportFileSize just guards against an absurd or malformed upload; a real dive log export is a few MB at most.
 const maxImportFileSize = 10 << 20
 
 func registerDiveLogRoutes(mux *http.ServeMux, svc *divelog.Service, authIssuer *auth.TokenIssuer) {

@@ -72,11 +72,7 @@ func (r *Repository) Update(ctx context.Context, userID uuid.UUID, params Update
 	return scanProfile(row)
 }
 
-// ClearAvatar exists because UpdateParams' COALESCE pattern can only leave a field
-// unchanged or set it to a new value — a nil AvatarURL there means "don't touch it", so it
-// can never be used to null the column back out. No physical file is deleted here (same
-// "DB is source of truth, orphaned upload is accepted" stance as trip.RemovePhoto/
-// certification.Delete) — swappable for object storage cleanup later without callers changing.
+// ClearAvatar exists because UpdateParams' COALESCE pattern can never null the column back out (nil there means "don't touch it"); no physical file is deleted here, same "DB is source of truth" stance as trip.RemovePhoto/certification.Delete.
 func (r *Repository) ClearAvatar(ctx context.Context, userID uuid.UUID) (Profile, error) {
 	row := r.DB.QueryRowContext(ctx, `
 		UPDATE users SET avatar_url = NULL WHERE id = $1

@@ -64,10 +64,7 @@ func handleGetProfile(svc *profile.Service) func(http.ResponseWriter, *http.Requ
 	}
 }
 
-// publicProfileResponse is a trimmed projection of profileResponse — no certification
-// agency/number/photo/verified (private, only the diver themselves sees those) and no
-// specialties/gear at all. Signed in required (see registerProfileRoutes) — viewing another
-// diver's profile is an in-app interaction (organizer/participant taps), not open browsing.
+// publicProfileResponse omits certification agency/number/photo/verified, which stay private to the diver themselves.
 type publicProfileResponse struct {
 	ID                 uuid.UUID `json:"id"`
 	DisplayName        *string   `json:"displayName,omitempty"`

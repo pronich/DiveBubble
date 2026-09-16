@@ -1,12 +1,4 @@
-// Decorative floating bubbles over the brand-blue background — the same motif as app/'s logo
-// mark (logo_bubbles.dart) and intro animation, just static and scattered rather than
-// assembled into the "B" shape. Purely visual: aria-hidden, pointer-events-none, and fixed so
-// it doesn't affect page layout or scroll with content.
-//
-// Each bubble is a radial gradient (light near one edge, fading to transparent) plus a thin
-// rim and a small blurred specular highlight offset toward the light — a flat single-opacity
-// circle reads as a plain dot, this reads as an actual sphere, same "glossy highlight arc"
-// idea the real logo uses (see logo_bubbles.dart's own highlight paths).
+// Purely decorative echo of app/'s logo bubbles (logo_bubbles.dart) — the offset specular highlight is what makes each one read as a sphere instead of a flat dot.
 export function BubbleBackground() {
   const bubbles = [
     { top: "6%", left: "80%", size: 220, opacity: 0.16 },

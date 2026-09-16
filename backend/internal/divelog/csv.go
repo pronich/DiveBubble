@@ -10,12 +10,7 @@ import (
 
 var ErrInvalidCSV = errors.New("could not parse CSV file — check the column headers")
 
-// ParseCSV expects a header row naming (a subset of) DiveBubble's own documented column
-// template — date, time, country, site, max_depth_m, avg_depth_m, duration_min, min_temp_c,
-// notes — not an attempt to guess anyone else's export shape. "date" is the only required
-// column (matched by looksLikeCSV before this even runs); every other column is optional and
-// simply left nil on the resulting Entry if absent or blank for a given row. Column names
-// are matched case-insensitively and in any order.
+// ParseCSV expects DiveBubble's own documented column template (date required, everything else optional and left nil if absent), matched case-insensitively in any order, not an attempt to guess other exporters' shapes.
 func ParseCSV(data []byte) ([]Entry, error) {
 	reader := csv.NewReader(strings.NewReader(string(data)))
 	reader.FieldsPerRecord = -1 // rows may have trailing columns omitted
@@ -81,8 +76,7 @@ func ParseCSV(data []byte) ([]Entry, error) {
 	return entries, nil
 }
 
-// parseCSVDateTime accepts "YYYY-MM-DD" alone or with an "HH:MM" time column — treated as
-// UTC in the absence of any timezone info in a plain CSV, same fallback the UDDF parser uses.
+// parseCSVDateTime accepts "YYYY-MM-DD" alone or with "HH:MM", treated as UTC since a plain CSV carries no timezone info, same fallback the UDDF parser uses.
 func parseCSVDateTime(date, timeStr string) (time.Time, error) {
 	if timeStr == "" {
 		timeStr = "00:00"

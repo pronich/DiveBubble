@@ -8,9 +8,7 @@ import (
 
 var ErrInvalidUDDF = errors.New("could not parse UDDF file")
 
-// uddfDocument mirrors just the subset of the UDDF schema (uddf.org) this app cares about —
-// every other element (equipment, gasdefinitions, buddies, etc.) is simply ignored by
-// encoding/xml, not an exhaustive model of the format.
+// uddfDocument mirrors just the subset of the UDDF schema this app cares about; every other element (equipment, gasdefinitions, buddies, etc.) is simply ignored by encoding/xml.
 type uddfDocument struct {
 	DiveSite struct {
 		Site []struct {
@@ -50,8 +48,7 @@ type uddfDive struct {
 	} `xml:"informationafterdive"`
 }
 
-// ParsedDive is one dive extracted from a UDDF file, still in the file's own units —
-// ToEntry converts it into the app's Entry shape (Celsius, minutes, one user).
+// ParsedDive is one dive extracted from a UDDF file, still in the file's own units; ToEntry converts it into the app's Entry shape (Celsius, minutes, one user).
 type ParsedDive struct {
 	DivedAt        time.Time
 	MaxDepthM      *float64
@@ -64,9 +61,7 @@ type ParsedDive struct {
 	ProfileSamples []ProfileSample
 }
 
-// ParseUDDF extracts every <dive> in the file across all repetition groups. A file with no
-// recognizable dives (wrong format, or a UDDF export of something else, like equipment
-// definitions only) is reported as ErrInvalidUDDF rather than silently returning nothing.
+// ParseUDDF extracts every <dive> across all repetition groups, reporting ErrInvalidUDDF (not an empty result) for a file with no recognizable dives.
 func ParseUDDF(data []byte) ([]ParsedDive, error) {
 	var doc uddfDocument
 	if err := xml.Unmarshal(data, &doc); err != nil {
@@ -101,8 +96,7 @@ func ParseUDDF(data []byte) ([]ParsedDive, error) {
 	return dives, nil
 }
 
-// parseDive returns ok=false for a <dive> with no usable start time — everything else
-// (depth, duration, site) is optional and just left nil/empty when absent from the file.
+// parseDive returns ok=false only for a <dive> with no usable start time; everything else is optional and left nil/empty when absent.
 func parseDive(d uddfDive, siteNames map[string]string, siteLat, siteLon map[string]float64) (ParsedDive, bool) {
 	divedAt, err := parseUDDFTime(d.InformationBefore.DateTime)
 	if err != nil {
@@ -214,9 +208,7 @@ func (p ParsedDive) ToEntry() Entry {
 func kelvinToCelsius(k float64) float64 { return k - 273.15 }
 func celsiusToKelvin(c float64) float64 { return c + 273.15 }
 
-// parseUDDFTime accepts the two datetime shapes real-world exports actually produce: full
-// RFC3339 (with or without a timezone offset) and the bare "2006-01-02T15:04:05" some tools
-// emit without one — treated as UTC in that case, same fallback Subsurface itself uses.
+// parseUDDFTime accepts the two datetime shapes real-world exports produce, full RFC3339 and the bare "2006-01-02T15:04:05" (treated as UTC, same fallback Subsurface uses).
 func parseUDDFTime(s string) (time.Time, error) {
 	if s == "" {
 		return time.Time{}, errors.New("empty datetime")

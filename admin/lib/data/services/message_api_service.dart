@@ -11,10 +11,6 @@ import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
 import 'multipart_upload.dart';
 
-/// No realtime (Centrifugo) wiring yet — REST only, same reload-after-send shape as
-/// app/'s own chat before its realtime round landed. A diver's own app already gets live
-/// delivery; admin/ catching up is a deferred enhancement, not a correctness gap (see
-/// CLAUDE.md's Bubbles section).
 class MessageApiService {
   MessageApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
       : _client = client ?? http.Client();
@@ -70,8 +66,7 @@ class MessageApiService {
     return ChatMessage.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Uploads one file first (returning its url/type/filename/sizeBytes), then that result
-  // gets passed into sendMessage's attachments list — same two-step flow as app/'s own chat.
+  // Uploads the file first; the returned url/type/filename/sizeBytes then goes into sendMessage's attachments list.
   Future<ChatAttachment> uploadAttachment(String tripId, List<int> bytes, String filename) async {
     final json = await uploadImageBytes(
       Uri.parse('$baseUrl/trips/$tripId/messages/attachment'),
@@ -103,8 +98,7 @@ class MessageApiService {
     return list.map((e) => ChatLink.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  // Upserts the caller's own reaction (one per user per message, server-enforced) — returns
-  // the message's full updated reaction summary, same shape reactToMessage splices back in.
+  // One reaction per user per message (server-enforced) — returns the message's full updated reaction summary.
   Future<Map<String, ChatReaction>> setReaction(String tripId, String messageId, String emoji) async {
     final res = await _client.put(
       Uri.parse('$baseUrl/trips/$tripId/messages/$messageId/reaction'),

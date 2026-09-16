@@ -6,12 +6,7 @@ import '../../../core/assets/app_assets.dart';
 import '../../../core/formatting/date_format.dart';
 import '../../../core/theme/semantic_colors.dart';
 
-/// Thumbnail + title/date + location + status — the one trip-list row shared by My Trips
-/// (the inbox) and ChooseBubblePage (Share-to-DiveBubble's destination picker). The two used
-/// to keep independent, near-identical copies of this same layout; [showBadges] is the one
-/// real difference between them — the picker isn't showing what's new, just letting you pick
-/// where to send something, so unread counts/alert dots/the Past-Cancelled-Active pill don't
-/// apply there.
+/// Shared by My Trips and ChooseBubblePage; [showBadges] is the one real difference, since the picker isn't showing what's new.
 class TripRow extends StatelessWidget {
   const TripRow({
     required this.trip,
@@ -25,9 +20,7 @@ class TripRow extends StatelessWidget {
   final VoidCallback? onLongPress;
   final bool showBadges;
 
-  // Past once the trip's last calendar day (endDate if set, else startTime's day) has fully
-  // ended — not the moment startTime itself passes, which would flip a multi-day trip to Past
-  // on its first morning.
+  // Past once the trip's last calendar day fully ends, not the moment startTime passes, or a multi-day trip would flip to Past on its first morning.
   bool get _isPast {
     final lastDay = (trip.endDate ?? trip.startTime).toUtc();
     final cutoff = DateTime.utc(lastDay.year, lastDay.month, lastDay.day + 1);
@@ -167,10 +160,7 @@ class _UnreadBadge extends StatelessWidget {
   }
 }
 
-// Distinct from _UnreadBadge on purpose — a dissolved offer/request or an unread car-chat
-// message aren't the trip's general unread count, so they get their own visual language
-// (info, not the error-red unread pill). Lit by either condition; the row doesn't need to
-// tell them apart.
+// Distinct from _UnreadBadge on purpose: a dissolved offer/request or unread car-chat message isn't the trip's general unread count, so it gets its own (info, not error-red) visual language.
 class _TransportAlertDot extends StatelessWidget {
   const _TransportAlertDot();
 

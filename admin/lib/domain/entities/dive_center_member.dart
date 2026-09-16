@@ -1,5 +1,4 @@
-// Plain classes, not freezed — small enough (and admin-only) that a build_runner step
-// isn't worth it, same call as MyProfile.
+// Plain classes, not freezed — small enough (and admin-only) that a build_runner step isn't worth it.
 class DiveCenterMember {
   const DiveCenterMember({
     required this.userId,
@@ -30,8 +29,7 @@ class DiveCenterMember {
       );
 }
 
-// Preview shown before actually adding someone — see
-// DiveCenterApiService.searchMemberByEmail's own comment on why this is exact-email-only.
+// Preview shown before actually adding someone — see DiveCenterApiService.searchMemberByEmail for why this is exact-email-only.
 class MemberPreview {
   const MemberPreview({required this.userId, this.displayName, this.avatarUrl});
 

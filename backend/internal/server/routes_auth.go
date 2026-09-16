@@ -44,21 +44,14 @@ type googleAuthRequest struct {
 	IDToken string `json:"idToken"`
 }
 
-// appleAuthRequest — Email/FullName are out-of-band hints from the native
-// ASAuthorizationAppleIDCredential, present only on the very first authorization ever (Apple
-// doesn't repeat them on later sign-ins, and never puts them in the identity token itself).
-// Nonce is the *raw* nonce the client generated — the client sends Apple the SHA-256 hex
-// digest of it instead (see AppleKeySet.VerifyAppleIdentityToken's own nonce comment).
+// appleAuthRequest holds Email/FullName as one-time hints from ASAuthorizationAppleIDCredential, present only on the very first authorization ever.
 type appleAuthRequest struct {
 	IdentityToken string `json:"identityToken"`
-	Nonce         string `json:"nonce"`
-	Email         string `json:"email"`
-	FullName      string `json:"fullName"`
-	// AuthorizationCode is the native ASAuthorizationAppleIDCredential's one-time code —
-	// exchanged (best-effort, see handleAuthApple) for an Apple refresh token so DeleteAccount
-	// has something to revoke later. Optional: omitted, empty, or a failed exchange just means
-	// account deletion won't have an Apple token to revoke for this diver — sign-in itself
-	// never depends on it.
+	// Nonce is the raw nonce the client generated; the client sends Apple the SHA-256 hex digest of it instead.
+	Nonce    string `json:"nonce"`
+	Email    string `json:"email"`
+	FullName string `json:"fullName"`
+	// AuthorizationCode is exchanged best-effort for an Apple refresh token so DeleteAccount can revoke it later; sign-in never depends on it.
 	AuthorizationCode string `json:"authorizationCode"`
 }
 
@@ -80,9 +73,7 @@ type refreshResponse struct {
 	RefreshToken         string    `json:"refreshToken"`
 }
 
-// sendWelcomeEmail fires TemplateWelcome for a brand-new account — best-effort, same as the
-// Apple token exchange above: a failed/unset-Resend-key send must never fail sign-in itself.
-// No-op if to is empty (e.g. an Apple sign-up that never shared an email).
+// sendWelcomeEmail fires TemplateWelcome for a brand-new account, best-effort: a failed send must never fail sign-in itself.
 func sendWelcomeEmail(ctx context.Context, emailSvc *email.Service, userID uuid.UUID, to string) {
 	if to == "" {
 		return
@@ -92,10 +83,7 @@ func sendWelcomeEmail(ctx context.Context, emailSvc *email.Service, userID uuid.
 	}
 }
 
-// acceptDiveCenterInvitations auto-joins userID to any dive center that invited this email —
-// best-effort (logged, not propagated): a failure here must never block sign-in itself, unlike
-// the invite *send* on the owner's side (see handleInviteDiveCenterMember), which is a
-// different action at a different time with no pending-list fallback to fall back on.
+// acceptDiveCenterInvitations auto-joins userID to any dive center that invited this email, best-effort: a failure here must never block sign-in itself.
 func acceptDiveCenterInvitations(ctx context.Context, diveCenterSvc *divecenter.Service, userID uuid.UUID, email string) {
 	if err := diveCenterSvc.AcceptInvitations(ctx, userID, email); err != nil {
 		log.Printf("auth: accepting dive-center invitations failed for user %s: %v", userID, err)
@@ -187,8 +175,7 @@ func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, ses
 			return
 		}
 
-		// Prefer the token's own email over the credential hint if both are present — the
-		// token is the verified source; the hint is only ever useful when the token omits it.
+		// Prefer the token's own email over the credential hint, since the token is the verified source.
 		email := identity.Email
 		if email == "" {
 			email = req.Email
@@ -204,9 +191,7 @@ func handleAuthApple(cfg config.Config, identities *auth.IdentityRepository, ses
 		}
 		acceptDiveCenterInvitations(r.Context(), diveCenterSvc, userID, email)
 
-		// Best-effort: an Apple refresh token is only needed later, for DeleteAccount to
-		// revoke — a failure here (disabled client, network hiccup, Apple outage) must never
-		// block signing in.
+		// Best-effort: a failure exchanging the code must never block signing in.
 		if req.AuthorizationCode != "" {
 			if refreshToken, err := appleTokens.Exchange(r.Context(), req.AuthorizationCode); err != nil {
 				log.Printf("auth: apple token exchange failed for user %s: %v", userID, err)
@@ -256,11 +241,7 @@ type emailVerifyRequest struct {
 	Code  string `json:"code"`
 }
 
-// handleAuthEmailStart sends a login code to the given address — always 200 on a
-// well-formed email (there's no "account not found" case to hide the way a traditional
-// password-reset flow would have: LoginOrRegister creates the account transparently on
-// first verify, exactly like Google/Apple, so knowing "a code was just sent to X" reveals
-// nothing about whether X already had a DiveBubble account).
+// handleAuthEmailStart always 200s on a well-formed email, since accounts are created transparently on first verify, so there's no enumeration risk to protect against.
 func handleAuthEmailStart(cfg config.Config, emailCodes *auth.EmailCodeRepository, emailSvc *email.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
@@ -350,10 +331,7 @@ func handleAuthEmailVerify(cfg config.Config, identities *auth.IdentityRepositor
 			return
 		}
 
-		// LoginOrRegisterByEmail (not the plain LoginOrRegister every other provider uses)
-		// so a diver who already has a Google/Apple account under this same address links
-		// onto it instead of getting a second, disconnected account — see its own doc
-		// comment in internal/auth/identity.go.
+		// Uses LoginOrRegisterByEmail (not the plain LoginOrRegister every other provider uses) so a diver with an existing Google/Apple account under this address links onto it instead of getting a second account.
 		userID, isNewUser, err := identities.LoginOrRegisterByEmail(r.Context(), normalizedEmail)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
@@ -467,8 +445,6 @@ func handleAuthLogout(sessions *auth.SessionRepository) func(http.ResponseWriter
 	}
 }
 
-// bearerAuth validates the Authorization: Bearer <access token> header and passes the
-// authenticated user id + session id through to next.
 func bearerAuth(issuer *auth.TokenIssuer, next func(http.ResponseWriter, *http.Request, uuid.UUID, uuid.UUID)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		raw, ok := parseBearer(r.Header.Get("Authorization"))

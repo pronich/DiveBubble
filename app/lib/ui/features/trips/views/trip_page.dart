@@ -65,23 +65,17 @@ class TripPage extends StatefulWidget {
   final DiveCenterRepository diveCenterRepository;
   final ExpenseRepository expenseRepository;
 
-  /// True when reached by tapping the header of an already-open Bubble (chat) —
-  /// "Dive in to Bubble" would just navigate back into the conversation the diver is
-  /// already in, which reads as a broken loop rather than a useful action.
+  /// True when reached by tapping the header of an already-open Bubble, where "Dive in to Bubble" would just navigate back into the conversation, a broken loop.
   final bool openedFromConversation;
 
-  /// Set when this page was reached via an invite link (divebubble.io/join/{code}) — the
-  /// code that resolved this exact trip. Join skips straight to JoinByCode with it instead
-  /// of the per-trip-type button/dialog, since re-typing a code the diver already has via
-  /// the link would be redundant. See _InviteJoinButton.
+  /// Set when reached via an invite link — Join skips straight to JoinByCode with it instead of the per-trip-type button, since re-typing a code the diver already has would be redundant.
   final String? entryCode;
 
   @override
   State<TripPage> createState() => _TripPageState();
 }
 
-// Mirrors trip.MaxPhotosPerTrip server-side — hides/disables the "+" affordance once
-// reached instead of letting the diver hit the 409 the hard way.
+// Mirrors trip.MaxPhotosPerTrip server-side, hiding/disabling the "+" affordance instead of letting the diver hit the 409 the hard way.
 const _maxTripPhotos = 10;
 
 class _TripPageState extends State<TripPage>
@@ -89,15 +83,13 @@ class _TripPageState extends State<TripPage>
   final _photoPageController = PageController();
   int _currentPhotoIndex = 0;
 
-  // Only meaningful when widget.openedFromConversation (see build) — created unconditionally
-  // anyway since TabController's own lifecycle needs to exist across the whole State either way.
+  // Only meaningful when widget.openedFromConversation, but created unconditionally since its lifecycle needs to exist across the whole State either way.
   late final TabController _tabController = TabController(
     length: 4,
     vsync: this,
   );
 
-  // Lazily created once trip.id is known (unavailable until TripViewModel.load() resolves) —
-  // guarded by the null check in _ensureBubbleContentLoaded so a rebuild never refires these.
+  // Lazily created once trip.id is known; guarded by the null check in _ensureBubbleContentLoaded so a rebuild never refires these.
   ChatInfoViewModel? _chatInfoViewModel;
   Future<List<MediaItem>>? _mediaFuture;
   Future<List<MediaItem>>? _filesFuture;
@@ -115,16 +107,7 @@ class _TripPageState extends State<TripPage>
     _linksFuture = vm.loadLinks();
   }
 
-  // Drives the collapsing SliverAppBar's toolbar title (see build() — shared by both the
-  // general view's CustomScrollView and Bubble Info's NestedScrollView, same header
-  // structure either way): false while the in-flow title+badge block (_titleBlockKey) is
-  // still at least partly visible, true once it's scrolled fully behind the pinned header.
-  // Deliberately not relying on SliverAppBar's own built-in title fade — that only fades in
-  // with `floating: true` + a non-null `bottom` present, and even then only kicks in right at
-  // the end. Driving it off the in-flow block's own measured height (rather than just "the
-  // photo finished collapsing") is what stops the toolbar title and the in-flow title from
-  // ever both being on screen together — the photo can fully collapse into the toolbar well
-  // before the title block underneath it has scrolled out of view.
+  // Drives the collapsing SliverAppBar's toolbar title, off the in-flow title block's measured height rather than "the photo finished collapsing" — otherwise the toolbar title and in-flow title could briefly both be on screen, since the photo can fully collapse before the title block scrolls out of view.
   final _scrollController = ScrollController();
   final _titleBlockKey = GlobalKey();
   final ValueNotifier<bool> _showCollapsedTitle = ValueNotifier(false);
@@ -170,9 +153,7 @@ class _TripPageState extends State<TripPage>
     );
   }
 
-  // Unlike _openManagePhotos, this pushes a separate CreateTripViewModel (not
-  // widget.viewModel itself), so the trip shown here needs an explicit reload once it pops
-  // back rather than relying on a shared, already-notifying ViewModel instance.
+  // Unlike _openManagePhotos, this pushes a separate CreateTripViewModel, so the trip needs an explicit reload once it pops back rather than relying on a shared, already-notifying instance.
   Future<void> _openEditTrip(BuildContext context, Trip trip) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -192,20 +173,10 @@ class _TripPageState extends State<TripPage>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Captured here, above Scaffold — inside its body, extendBodyBehindAppBar makes a
-    // descendant SafeArea pad for the *whole* (transparent) AppBar's height rather than the
-    // real status-bar inset (Scaffold's own _BodyBuilder: extendBodyBehindAppBar computes
-    // padding.top as max(systemPadding, appBarHeight), and appBarHeight already includes the
-    // toolbar). photoHero's Edit pill uses this true value directly instead, so it lines up
-    // with the back button's row rather than sitting a full toolbar-height below it.
+    // Captured here, above Scaffold: extendBodyBehindAppBar would otherwise make a descendant SafeArea pad for the whole transparent AppBar height rather than the real status-bar inset, so photoHero's Edit pill uses this true value directly to line up with the back button's row.
     final systemTopPadding = MediaQuery.paddingOf(context).top;
     return Scaffold(
-      // Both modes now build their own SliverAppBar inside a scroll view (see headerSlivers
-      // below) rather than a separate Scaffold.appBar — that's what lets the photo run
-      // full-bleed behind the status bar with no extendBodyBehindAppBar padding quirks to
-      // work around, and what lets Bubble Info's pinned People/Media/Files/Links tab bar
-      // park correctly right below the collapsed header (stacked in the same sliver list,
-      // no manual offset math needed).
+      // Both modes build their own SliverAppBar inside a scroll view rather than Scaffold.appBar, letting the photo run full-bleed behind the status bar and Bubble Info's pinned tab bar park right below the collapsed header with no manual offset math.
       body: ListenableBuilder(
         listenable: widget.viewModel,
         builder: (context, _) {
@@ -225,8 +196,7 @@ class _TripPageState extends State<TripPage>
 
           final isOrganizer = widget.viewModel.isOrganizer;
 
-          // Shared by both branches below — Bubble Info reuses the exact same photo carousel
-          // Explore's own trip detail uses, rather than a separate circle-avatar treatment.
+          // Shared by both branches below — Bubble Info reuses the same photo carousel as the trip detail view, rather than a separate circle-avatar treatment.
           final photoHero = Builder(
             builder: (context) {
               final photos = widget.viewModel.photos;
@@ -246,13 +216,7 @@ class _TripPageState extends State<TripPage>
                             itemCount: photos.length,
                             onPageChanged: (i) =>
                                 setState(() => _currentPhotoIndex = i),
-                            // Tap-left/tap-right zones live *inside* each page (descendants
-                            // of PageView), not stacked on top of it — a GestureDetector
-                            // overlaying PageView from outside competes with its own drag
-                            // recognizer for the same pointer and swallows real swipes;
-                            // nested inside a page, Flutter's normal ancestor-scrollable/
-                            // descendant-tap disambiguation lets a drag fall through to the
-                            // PageView while a stationary tap still resolves here.
+                            // Tap zones live inside each page, not stacked on top of PageView, since an overlaying GestureDetector would compete with its drag recognizer and swallow real swipes.
                             itemBuilder: (context, i) => Stack(
                               fit: StackFit.expand,
                               children: [
@@ -310,10 +274,7 @@ class _TripPageState extends State<TripPage>
                             AppAssets.tripPlaceholder,
                             fit: BoxFit.cover,
                           ),
-                    // IgnorePointer is load-bearing: a bare DecoratedBox with no gesture
-                    // handling still claimed the hit test ahead of the PageView beneath it
-                    // in the Stack, silently swallowing every tap and swipe on the photo —
-                    // found by bisecting with temporary raw Listeners at each Stack layer.
+                    // IgnorePointer is load-bearing: a bare DecoratedBox still claimed the hit test ahead of the PageView beneath it, silently swallowing every tap and swipe on the photo.
                     const IgnorePointer(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
@@ -321,8 +282,7 @@ class _TripPageState extends State<TripPage>
                         ),
                       ),
                     ),
-                    // Dot page indicator — only worth showing once there's more than one
-                    // photo to swipe between.
+                    // Dot page indicator — only worth showing once there's more than one photo to swipe between.
                     if (photos.length > 1)
                       Positioned(
                         bottom: 16,
@@ -348,10 +308,7 @@ class _TripPageState extends State<TripPage>
                           ],
                         ),
                       ),
-                    // A single "Manage photos" entry point, not inline add/remove
-                    // controls on the slider itself — editing now happens in its own
-                    // grid (see _ManagePhotosPage), so this hero is a pure viewer for
-                    // every visitor, organizer included.
+                    // A single "Manage photos" entry point, not inline add/remove controls on the slider itself — editing happens in its own grid, so this hero is a pure viewer for everyone.
                     if (isOrganizer)
                       Positioned(
                         right: 16,
@@ -389,12 +346,7 @@ class _TripPageState extends State<TripPage>
                           ),
                         ),
                       ),
-                    // Edit trip — top-right, same translucent-pill treatment as "Manage
-                    // photos" below so it reads on any photo, but pinned under the status
-                    // bar/back button row rather than at the bottom (per Nikolai: this used
-                    // to live in the Bubble chat's own AppBar, moved here instead). Uses the
-                    // pre-captured systemTopPadding, not a SafeArea here — see build()'s own
-                    // comment on why a descendant SafeArea overshoots in this Scaffold.
+                    // Edit trip — pinned under the status bar/back button row using the pre-captured systemTopPadding, not a SafeArea, which would overshoot in this Scaffold.
                     if (isOrganizer && trip.bookingStatus != 'cancelled')
                       Positioned(
                         top: 0,
@@ -446,11 +398,7 @@ class _TripPageState extends State<TripPage>
 
           final photoHeight = MediaQuery.sizeOf(context).width * 3 / 4;
 
-          // Collapsing header + in-flow title/badge — identical in both the general
-          // (Explore-reached) view and Bubble Info now. _handleScroll drives the
-          // toolbar-title timing off _titleBlockKey's own measured height (see its own doc
-          // comment); _TripInfoBlock is the location/date/meeting-point/description content
-          // shared by both modes.
+          // Collapsing header + in-flow title/badge — identical in both the general view and Bubble Info now.
           final headerSlivers = <Widget>[
             ValueListenableBuilder<bool>(
               valueListenable: _showCollapsedTitle,
@@ -494,9 +442,7 @@ class _TripPageState extends State<TripPage>
                 ),
               ),
             ),
-            // Mute/Leave/Cancel — Bubble Info only, Telegram-Group-Info-style (see
-            // _ActionPillsRow's own doc comment). The general view has no equivalent
-            // affordance today; not something this unification changes.
+            // Mute/Leave/Cancel — Bubble Info only; the general view has no equivalent affordance today.
             if (widget.openedFromConversation)
               SliverToBoxAdapter(
                 child: Padding(
@@ -556,15 +502,7 @@ class _TripPageState extends State<TripPage>
             );
           }
 
-          // General (Explore-reached) view — no tabs, so a plain CustomScrollView rather than
-          // NestedScrollView (that machinery exists specifically to sync an outer collapsing
-          // header with an inner TabBarView's own per-tab scrolling, which only Bubble Info
-          // needs). Organizer card + participant count stay general-view-only — deliberately
-          // gated on *how this screen was reached*, not just trip.joined: Explore's preview
-          // never shows who's in the trip, even to an already-joined viewer, since the
-          // People/Media/Files/Links tabs (chat-derived, member-list-bearing) are reserved for
-          // the specific view reached from inside the Bubble. Two privacy postures for the
-          // same data, not two widgets.
+          // General view — no tabs, so a plain CustomScrollView; organizer card + participant count are deliberately gated on how this screen was reached, not just trip.joined, since the general preview never shows who's in the trip even to an already-joined viewer.
           return CustomScrollView(
             controller: _scrollController,
             slivers: [
@@ -606,8 +544,7 @@ class _TripPageState extends State<TripPage>
               ),
               SliverToBoxAdapter(
                 child: Padding(
-                  // Bottom-only: the last item (Join/Book now button) needs room above the
-                  // system nav bar — otherwise 3-button nav on Android overlaps it.
+                  // Bottom-only: the Join/Book now button needs room above the system nav bar, or 3-button nav on Android overlaps it.
                   padding: EdgeInsets.fromLTRB(
                     16,
                     24,
@@ -687,9 +624,7 @@ class _TripPageState extends State<TripPage>
   }
 }
 
-/// People/Media/Files/Links tab bar, pinned once scrolled up to meet the toolbar (see
-/// build()'s openedFromConversation branch) — everything above it (photo, title, mute/leave,
-/// dive info) scrolls away normally instead.
+/// Pinned once scrolled up to meet the toolbar; everything above it scrolls away normally.
 class _PinnedTabBarDelegate extends SliverPersistentHeaderDelegate {
   _PinnedTabBarDelegate({required this.tabBar, required this.backgroundColor});
 
@@ -722,10 +657,7 @@ class _PinnedTabBarDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-/// Flat participant list, Telegram-style — the organizer (individual diver or dive center)
-/// gets an "Organizer" pill next to their row instead of a separate card, so they never
-/// appear twice (previously: a standalone Organizer card *and*, if the organizer was a
-/// regular diver, an unlabeled second entry down in the plain participant list).
+/// The organizer gets an "Organizer" pill next to their row instead of a separate card, so they never appear twice in the list.
 class PeopleTab extends StatefulWidget {
   const PeopleTab({
     super.key,
@@ -743,10 +675,7 @@ class PeopleTab extends StatefulWidget {
   final ProfileRepository profileRepository;
   final String? creatorUserId;
 
-  /// Set for a business trip — the dive center's own identity is the organizer, not the
-  /// specific staff member who happened to create it (see CLAUDE.md's Business/dive centers
-  /// section). When set, the dive center gets its own pinned row; when null, the organizer
-  /// pill instead lands on whichever participant row matches [creatorUserId].
+  /// Set for a business trip: the dive center gets its own pinned row; when null, the organizer pill lands on whichever participant row matches [creatorUserId].
   final DiveCenter? organizerDiveCenter;
 
   @override
@@ -923,9 +852,7 @@ class _PersonRow extends StatelessWidget {
   }
 }
 
-/// Location/date/meeting-point/booking-code/info-grid/description — the one block genuinely
-/// shared between the general (Explore-reached) view and Bubble Info, now a single widget
-/// instead of two independently-maintained copies (see TripPage.build's unified header).
+/// The one block genuinely shared between the general view and Bubble Info, now a single widget instead of two independently-maintained copies.
 class _TripInfoBlock extends StatelessWidget {
   const _TripInfoBlock({required this.trip, required this.isOrganizer});
 
@@ -1121,9 +1048,7 @@ class _InfoTile extends StatelessWidget {
             children: [
               Icon(icon, size: 13, color: theme.colorScheme.onSurfaceVariant),
               const SizedBox(width: 4),
-              // A longer translated label (e.g. Russian "ПРОДОЛЖИТЕЛЬНОСТЬ") can outgrow
-              // this tile's half-row width — shrink to fit on one line instead of
-              // overflowing, same fix as the Dive Log detail page's own stat tiles.
+              // A longer translated label can outgrow this tile's half-row width — shrink to fit on one line instead of overflowing.
               Expanded(
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -1169,9 +1094,7 @@ class _OrganizerCard extends StatelessWidget {
   final String currentUserId;
   final ProfileRepository profileRepository;
 
-  /// Set for a business trip — the dive center's own identity is shown instead of the
-  /// specific staff member who happened to create it (see CLAUDE.md's Business/dive
-  /// centers section: the organization is the organizer, not one employee).
+  /// Set for a business trip: the dive center's identity is shown instead of the specific staff member who happened to create it.
   final DiveCenter? diveCenter;
 
   @override
@@ -1296,12 +1219,7 @@ class _OrganizerCard extends StatelessWidget {
   }
 }
 
-// Only rendered for the actionable case (open, not yet joined) — Joined/Full/Cancelled are
-// passive states shown as a pill next to the title instead (see _TripStatusPill).
-/// Reached via an invite link (widget.entryCode) — takes priority over _BookNowSection/
-/// _PrivateJoinSection/_JoinButton regardless of trip type, since the code that resolved
-/// this preview already IS the credential; re-typing it into the manual-entry dialog those
-/// use would be redundant. Always goes through JoinByCode, same as manual code entry.
+// Only rendered for the actionable open-not-joined case; takes priority over _BookNowSection/_PrivateJoinSection/_JoinButton since the code that resolved this preview already IS the credential.
 class _InviteJoinButton extends StatelessWidget {
   const _InviteJoinButton({required this.code, required this.viewModel});
 
@@ -1372,11 +1290,7 @@ class _JoinButton extends StatelessWidget {
   }
 }
 
-/// Replaces _JoinButton for business trips — we're a marketplace, not the ones taking the
-/// diver's money, so there's no direct Join here (see trip.Service.Join's own server-side
-/// rejection of this for business trips). "Book now" sends the diver to actually pay
-/// (trip.bookingUrl, falling back to the dive center's general website); "I have a booking
-/// code" is the way back in once they've got one — see CLAUDE.md's Booking Code flow section.
+/// Replaces _JoinButton for business trips — we're a marketplace, not the one taking the diver's money, so there's no direct Join here.
 class _BookNowSection extends StatelessWidget {
   const _BookNowSection({
     required this.trip,
@@ -1449,8 +1363,7 @@ class _BookNowSection extends StatelessWidget {
   }
 }
 
-/// Shared by _BookNowSection (business trips) and _PrivateJoinSection (private trips) —
-/// same "enter a code" recovery path either way, see CLAUDE.md's Booking Code flow section.
+/// Shared by _BookNowSection and _PrivateJoinSection — same "enter a code" recovery path either way.
 Future<void> _enterBookingCode({
   required BuildContext context,
   required Trip trip,
@@ -1474,9 +1387,7 @@ Future<void> _enterBookingCode({
   final resolved = await showJoinByCodeDialog(context, tripRepository);
   if (resolved == null) return;
 
-  // Same trip this page is already showing — just refresh in place. A code for a
-  // *different* trip (a mistaken paste, most likely) instead opens that trip directly,
-  // since there's nothing more useful to do with it from here.
+  // Same trip this page is already showing — just refresh in place. A code for a different trip opens that trip directly instead.
   if (resolved.id == trip.id) {
     await viewModel.load();
     return;
@@ -1506,9 +1417,7 @@ Future<void> _enterBookingCode({
   );
 }
 
-/// Replaces _JoinButton for private trips — same rejection of direct Join server-side as a
-/// business trip (trip.Service.Join), same recovery path (a code, here shared by the
-/// organizer rather than handed out after an external payment).
+/// Replaces _JoinButton for private trips — same server-side rejection of direct Join as a business trip, same code-recovery path, but shared by the organizer rather than handed out after an external payment.
 class _PrivateJoinSection extends StatelessWidget {
   const _PrivateJoinSection({
     required this.trip,
@@ -1567,16 +1476,13 @@ class _PrivateJoinSection extends StatelessWidget {
 
 const _joinLinkBaseUrl = 'https://divebubble.io/join/';
 
-/// Organizer-only view of a trip's booking code — the same code a private trip is gated on
-/// (see trip.Service.Join), or the code a business trip's dive-center staff would otherwise
-/// have to look up in admin/. Never shown to a non-organizer viewer.
+/// The same code a private trip is gated on, or the code business dive-center staff would otherwise look up in admin/. Never shown to a non-organizer viewer.
 class _BookingCodeRow extends StatelessWidget {
   _BookingCodeRow({required this.bookingCode});
 
   final String bookingCode;
 
-  // Anchors the share popover to this button on iPad/Mac (required there or it throws,
-  // harmless elsewhere) — same convention as attachment_image_preview_page.dart's own _share.
+  // Anchors the share popover to this button on iPad/Mac, required there or it throws, harmless elsewhere.
   final _actionButtonKey = GlobalKey();
 
   @override
@@ -1666,8 +1572,7 @@ Future<void> _showBookingCodeActionsSheet(
     case _BookingCodeAction.copyLink:
       await Clipboard.setData(ClipboardData(text: link));
     case _BookingCodeAction.shareLink:
-      // Anchors the share popover to the button on iPad/Mac — required there or it throws,
-      // harmless elsewhere (see ShareParams.sharePositionOrigin's own doc comment).
+      // Anchors the share popover to the button on iPad/Mac — required there or it throws, harmless elsewhere.
       final box =
           shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
       final origin = box == null
@@ -1684,10 +1589,7 @@ Future<void> _showBookingCodeActionsSheet(
   ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).copiedToClipboard)));
 }
 
-/// Quick-actions row shown only on the Specific view (opened from inside a Bubble) —
-/// Telegram Group-Info-style row of icon pills, replacing the old full-width Leave/Cancel
-/// buttons. Mute is always shown; Leave (joined, non-organizer) and Cancel (organizer, not
-/// already cancelled) are mutually exclusive, same gating the old buttons used.
+/// Mute is always shown; Leave (joined, non-organizer) and Cancel (organizer, not already cancelled) are mutually exclusive.
 class _ActionPillsRow extends StatelessWidget {
   const _ActionPillsRow({
     required this.viewModel,
@@ -1741,11 +1643,7 @@ class _ActionPillsRow extends StatelessWidget {
   }
 }
 
-/// On success, pops all the way back out of the Bubble; [MyTripsView]'s own
-/// `await Navigator.push(...)` around [TripConversationPage] resolves the moment that
-/// route is removed from the stack (popUntil pops it same as a direct pop), so its
-/// existing post-return reload already picks up the trip disappearing — no extra
-/// callback needed here.
+/// Pops all the way back out of the Bubble on success; MyTripsView's own post-return reload after its Navigator.push around TripConversationPage already picks up the trip disappearing.
 Future<void> _handleLeave(BuildContext context, TripViewModel viewModel) async {
   final l10n = AppLocalizations.of(context);
   final confirmed = await showDialog<bool>(
@@ -1781,10 +1679,7 @@ Future<void> _handleLeave(BuildContext context, TripViewModel viewModel) async {
   Navigator.of(context).popUntil((route) => route.isFirst);
 }
 
-/// Organizer-only — cancelling doesn't remove the organizer from anything: it stays on
-/// this page, the status pill flips to "Cancelled", and this pill itself disappears (see
-/// _ActionPillsRow's own `bookingStatus != 'cancelled'` guard) since there's nothing left
-/// to cancel. It's final: no reopen path exists.
+/// Organizer-only. Final: no reopen path exists once cancelled.
 Future<void> _handleCancel(
   BuildContext context,
   TripViewModel viewModel,
@@ -1825,9 +1720,7 @@ Future<void> _handleCancel(
   ).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).tripCancelledSnackbar)));
 }
 
-/// A single icon-over-label pill, Telegram Group-Info-style (video call / mute / search /
-/// more, stacked icon+text in a rounded container) — [_ActionPillsRow] lays two of these
-/// out evenly.
+/// A single icon-over-label pill — [_ActionPillsRow] lays two of these out evenly.
 class _ActionPill extends StatelessWidget {
   const _ActionPill({
     required this.icon,
@@ -1883,9 +1776,7 @@ class _ActionPill extends StatelessWidget {
   }
 }
 
-/// Passive status indicator next to the trip title — Organizer/Joined/Full/Cancelled.
-/// Nothing shown for the common "open, not yet joined" case, matching the app's
-/// quiet-by-default badges.
+/// Nothing shown for the common "open, not yet joined" case, matching the app's quiet-by-default badges.
 class _TripStatusPill extends StatelessWidget {
   const _TripStatusPill({required this.trip, required this.isOrganizer});
 
@@ -1901,8 +1792,7 @@ class _TripStatusPill extends StatelessWidget {
     final semantic = Theme.of(context).extension<SemanticColors>()!;
     final l10n = AppLocalizations.of(context);
 
-    // Cancelled outranks Organizer/Joined — that's the one thing everyone in the Bubble
-    // needs to see at a glance, organizer included, not just non-participants browsing in.
+    // Cancelled outranks Organizer/Joined — that's the one thing everyone in the Bubble needs to see at a glance, organizer included.
     if (trip.bookingStatus == 'cancelled') {
       label = l10n.cancelledStatus;
       background = theme.colorScheme.surfaceContainerHighest;
@@ -1941,8 +1831,7 @@ class _TripStatusPill extends StatelessWidget {
   }
 }
 
-/// Shown instead of the Join button once the diver has joined — takes them straight into
-/// the trip's chat rather than leaving them on a static "Joined" chip with nowhere to go.
+/// Takes the diver straight into the trip's chat rather than leaving them on a static "Joined" chip with nowhere to go.
 class _DiveInButton extends StatelessWidget {
   const _DiveInButton({
     required this.trip,
@@ -1997,8 +1886,7 @@ class _DiveInButton extends StatelessWidget {
               ),
             ),
           );
-          // Catches any messages that arrived while actively in the chat — the Bubbles
-          // list itself will pick up the corrected count next time it's opened.
+          // Catches any messages that arrived while actively in the chat; the Bubbles list picks up the corrected count next time it's opened.
           tripRepository.markRead(trip.id).catchError((_) {});
         },
         icon: const Icon(Icons.chat_bubble_outline, size: 18),
@@ -2008,9 +1896,7 @@ class _DiveInButton extends StatelessWidget {
   }
 }
 
-/// The organizer's actual photo-editing surface — a grid instead of one-at-a-time controls
-/// overlaid on the hero slider, with multi-select add (see pick_image.dart's
-/// pickMultipleImages) instead of picking one file per tap.
+/// A grid instead of one-at-a-time controls overlaid on the hero slider, with multi-select add instead of picking one file per tap.
 class _ManagePhotosPage extends StatefulWidget {
   const _ManagePhotosPage({required this.viewModel});
 
@@ -2030,8 +1916,7 @@ class _ManagePhotosPageState extends State<_ManagePhotosPage> {
       if (paths.isEmpty) return;
       final room = _maxTripPhotos - widget.viewModel.photos.length;
       for (final path in paths.take(room)) {
-        // Sequential, not parallel — same position-race reasoning as CreateTripPage's own
-        // multi-upload loop.
+        // Sequential, not parallel — same position-race reasoning as CreateTripPage's multi-upload loop.
         final error = await widget.viewModel.addPhoto(path);
         if (error != null && mounted) {
           ScaffoldMessenger.of(
@@ -2068,9 +1953,7 @@ class _ManagePhotosPageState extends State<_ManagePhotosPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.managePhotos),
-        // Not functionally different from the back button — every add/remove already
-        // commits immediately — but "Save" reads as a clearer "I'm done here" than relying
-        // on an implicit back-arrow, same reasoning as admin/'s matching dialog.
+        // Not functionally different from the back button, since every add/remove already commits immediately — "Save" just reads as a clearer "I'm done here".
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),

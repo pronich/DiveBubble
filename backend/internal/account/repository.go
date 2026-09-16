@@ -16,9 +16,7 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{DB: db}
 }
 
-// IsOwner reports the platform-level owner flag — distinct from dive_center_members.role,
-// which is scoped to a single center. Used to let owner accounts see test/demo content
-// (e.g. test dive centers' trips) hidden from everyone else in Explore.
+// IsOwner reports the platform-level owner flag (distinct from dive_center_members.role) that lets owner accounts see test/demo content hidden from everyone else in Explore.
 func (r *Repository) IsOwner(ctx context.Context, userID uuid.UUID) (bool, error) {
 	var isOwner bool
 	err := r.DB.QueryRowContext(ctx, `SELECT is_owner FROM users WHERE id = $1`, userID).Scan(&isOwner)
@@ -28,19 +26,7 @@ func (r *Repository) IsOwner(ctx context.Context, userID uuid.UUID) (bool, error
 	return isOwner, err
 }
 
-// DeleteAccount anonymizes a user rather than deleting the row — every existing FK
-// (trip_participants.user_id, chat_messages.user_id, trips.creator_user_id, etc.) stays
-// valid with zero cascade complexity, and other participants keep seeing "Deleted user" in
-// their trip/chat history instead of a broken reference. Only auth records (identities,
-// sessions) and genuinely private data (specialties, gear, dive-center memberships) are hard
-// deleted — those have no other participant relying on them. Individual trips this user
-// organized are cancelled, since there's no one left to act as their organizer; dive-center
-// trips are untouched (other staff remain valid organizers). Everything runs in one
-// transaction — a partial anonymization would be worse than none.
-//
-// Known accepted gap: if step 4 removes this user's last dive_center_members "owner" row,
-// nothing here prevents or repairs the resulting ownerless center — there's no
-// ownership-transfer flow yet. Not blocking deletion over it for v1.
+// DeleteAccount anonymizes the user instead of deleting the row so every FK referencing them stays valid, hard-deletes only auth and private data, cancels their individual trips, and runs it all in one transaction; it knowingly leaves a dive center ownerless if this removes the user's last owner row, since there's no ownership-transfer flow yet.
 func (r *Repository) DeleteAccount(ctx context.Context, userID uuid.UUID) error {
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {

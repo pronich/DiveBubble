@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-/// Shared by every image-upload affordance (avatar, trip photo, certification/specialty
-/// photos) — a small "Library or Camera" chooser, then a resized pick. Returns the local
-/// file path to hand to whichever repository upload method, or null if the diver backed out.
+/// Returns the local file path to hand to whichever repository upload method, or null if the diver backed out.
 Future<String?> pickImage(BuildContext context) async {
   final source = await showModalBottomSheet<ImageSource>(
     context: context,
@@ -31,9 +29,7 @@ Future<String?> pickImage(BuildContext context) async {
   return picked?.path;
 }
 
-/// Multi-select for the photo-grid manager (Create Trip, Trip Page gallery) — gallery-only,
-/// since there's no "take multiple photos" in one action with a camera. Returns local file
-/// paths, same as [pickImage]; empty if the diver picked nothing or backed out.
+/// Gallery-only, since there's no "take multiple photos" in one action with a camera.
 Future<List<String>> pickMultipleImages() async {
   final picked = await ImagePicker().pickMultiImage(maxWidth: 1600, imageQuality: 85);
   return picked.map((f) => f.path).toList();

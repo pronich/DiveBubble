@@ -1,15 +1,11 @@
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 
-/// Best-effort "city, country" from the device's current location — used only as a guest
-/// profile placeholder, so any failure (permission denied, services off, no result) just
-/// means no location shown rather than an error the user has to deal with.
+/// Used only as a guest profile placeholder, so any failure (permission denied, services off, no result) just means no location shown rather than an error.
 class LocationService {
   final _geocoding = Geocoding();
 
-  /// Raw device position — used by Explore's "Nearest" sort, which needs coordinates to
-  /// compute distance against, not a display string. Same permission handling as
-  /// [currentCityCountry]; any failure (permission denied, services off) returns null.
+  /// Used by Explore's "Nearest" sort, which needs coordinates rather than a display string.
   Future<Position?> currentPosition() async {
     try {
       if (!await Geolocator.isLocationServiceEnabled()) return null;
@@ -22,10 +18,7 @@ class LocationService {
         return null;
       }
 
-      // Without a time limit this can hang indefinitely waiting for a fix that never
-      // arrives — a fresh Android emulator with no location set is the easiest way to hit
-      // it, but a real device with poor GPS signal (indoors, cold start) can too, and every
-      // caller here disables its own "skip/not now" escape hatch while awaiting this.
+      // Without a time limit this can hang indefinitely waiting for a fix that never arrives (e.g. an Android emulator with no location set, or poor real-device GPS signal).
       return await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 10)),
       );
@@ -34,11 +27,7 @@ class LocationService {
     }
   }
 
-  /// True if this device has never been asked (or was asked and declined once, but could
-  /// still be re-asked) — deniedForever and already-granted are both false, since neither
-  /// benefits from prompting again. Used to decide whether a returning diver on a new
-  /// device/reinstall should see the "why" explanation before the OS dialog, same as a
-  /// brand-new account does (see LoginSheet).
+  /// True only for the re-askable "denied" state, not deniedForever or already-granted, since neither of those benefits from prompting again.
   Future<bool> permissionUndecided() async {
     final permission = await Geolocator.checkPermission();
     return permission == LocationPermission.denied;
@@ -49,9 +38,7 @@ class LocationService {
       final position = await currentPosition();
       if (position == null) return null;
 
-      // No built-in timeout on the geocoding call itself — without one, a stalled network
-      // (e.g. a sandboxed review environment) can hang this well past getCurrentPosition's
-      // own 10s limit above.
+      // No built-in timeout on the geocoding call itself, so a stalled network could otherwise hang this well past getCurrentPosition's own 10s limit above.
       final placemarks = await _geocoding
           .placemarkFromCoordinates(position.latitude, position.longitude)
           .timeout(const Duration(seconds: 10));

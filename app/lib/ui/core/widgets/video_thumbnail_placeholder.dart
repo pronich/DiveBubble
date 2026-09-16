@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Stands in for a video thumbnail everywhere one would normally show a decoded frame — chat
-/// grid cells, the composer's pending strip, a solo-video bubble, the Media tab — since
-/// generating a real frame per cell would mean spinning up a video decoder for every thumbnail
-/// on screen. A dark tile plus a centered play glyph is enough to read as "video" next to photo
-/// cells; the optional duration label makes it unambiguous. Full playback
-/// (attachment_video_preview_page.dart) is the only place that actually decodes the file.
+/// Avoids spinning up a video decoder per thumbnail cell just to show a frame; only the full preview page actually decodes.
 class VideoThumbnailPlaceholder extends StatelessWidget {
   const VideoThumbnailPlaceholder({super.key, required this.width, required this.height, this.durationSeconds});
 

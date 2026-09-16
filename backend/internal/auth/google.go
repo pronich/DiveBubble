@@ -18,14 +18,9 @@ type GoogleIdentity struct {
 	Picture       string
 }
 
-// VerifyGoogleIDToken validates the token's signature against Google's public keys and checks
-// its audience against every id in validAudiences (plural to allow a brief window where both an
-// old and new Web OAuth client id are accepted mid-migration — see GoogleServerClientIDs), then
-// extracts the claims we persist. Web OAuth client ids, not iOS ones — google_sign_in on the
-// client requests the ID token with serverClientId set to one of these.
+// VerifyGoogleIDToken validates the token against Google's keys and checks its audience against validAudiences (plural to accept both an old and new Web OAuth client id mid-migration), which must be Web OAuth client ids since google_sign_in requests the token with serverClientId set to one.
 func VerifyGoogleIDToken(ctx context.Context, idTokenString string, validAudiences []string) (GoogleIdentity, error) {
-	// Empty audience disables idtoken's own aud check — done manually below instead, against
-	// the whole list, since it only accepts a single audience per call.
+	// Empty audience disables idtoken's own aud check, done manually below against the whole list since idtoken only accepts a single audience per call.
 	payload, err := idtoken.Validate(ctx, idTokenString, "")
 	if err != nil {
 		return GoogleIdentity{}, err

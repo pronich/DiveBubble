@@ -6,20 +6,14 @@ import '../../../../domain/entities/dive_center.dart';
 import '../../../core/widgets/pick_image.dart';
 import '../view_models/company_view_model.dart';
 
-/// Body-only (embedded in AdminShell). No "founded year" / "divers reached" stats and no
-/// Danger Zone/Archive here — those were on the reference mockup but aren't real yet:
-/// founded/team-size were explicitly deferred at onboarding time (see CLAUDE.md), and
-/// archiving a dive center is a genuine feature (revoke access, hide trips) that deserves
-/// its own round rather than a decorative button with no backend behind it.
+/// No "founded year"/"divers reached" stats or Danger Zone/Archive — those were on the reference mockup but aren't real yet (deferred fields, and archiving deserves its own round rather than a decorative no-op button).
 class CompanyPage extends StatefulWidget {
   const CompanyPage({super.key, required this.diveCenter, required this.diveCenterRepository, this.onUpdated});
 
   final DiveCenter diveCenter;
   final DiveCenterRepository diveCenterRepository;
 
-  // Lets AdminShell keep its own sidebar copy (account-footer company name) in sync after a
-  // save — the ViewModel's own copy already reflects it, but nothing else in the shell
-  // watches this page's ViewModel.
+  // Lets AdminShell keep its sidebar's account-footer company name in sync — nothing else in the shell watches this page's ViewModel.
   final ValueChanged<DiveCenter>? onUpdated;
 
   @override

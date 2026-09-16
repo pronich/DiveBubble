@@ -13,15 +13,11 @@ abstract class Trip with _$Trip {
     String? creatorUserId,
     @Default(0) int participantCount,
     @Default(0) int unreadCount,
-    // A dissolved transport offer this diver had joined — see CLAUDE.md's Leave Bubble
-    // section. Cleared by visiting the Transport tab (see TransportViewModel.checkAlert).
+    // A dissolved transport offer this diver had joined; cleared by visiting the Transport tab (TransportViewModel.checkAlert).
     @Default(false) bool hasTransportAlert,
-    // Same idea as hasTransportAlert, for a dissolved buddy group this diver had joined —
-    // cleared by visiting the Buddy tab (see BuddyViewModel.checkAlert).
+    // Same idea as hasTransportAlert, for a dissolved buddy group; cleared by visiting the Buddy tab.
     @Default(false) bool hasBuddyAlert,
-    // True when the diver's own car/buddy-group chat has a message they haven't seen —
-    // distinct from the two Alert fields (a dissolved car/group). Survives just opening the
-    // Bubble (unlike unreadCount); only clears once they actually visit that tab.
+    // Distinct from the two Alert fields above (a dissolved car/group) — survives just opening the Bubble, only clears once the tab is actually visited.
     @Default(false) bool hasUnreadTransportMessages,
     @Default(false) bool hasUnreadBuddyMessages,
     DateTime? endDate,
@@ -35,22 +31,16 @@ abstract class Trip with _$Trip {
     String? bookingCode,
     int? maxParticipants,
     @Default('open') String bookingStatus,
-    // Fixed at creation, no edit path — see CreateTripPage's toggle and TripPage's
-    // _PrivateJoinSection. Excluded from Explore either way; join goes through the same
-    // booking-code gate as a business trip.
+    // Fixed at creation, no edit path — excluded from Explore either way, and join goes through the same booking-code gate as a business trip.
     @Default(false) bool isPrivate,
     String? photoUrl,
-    // Business fields — set when this trip was created from admin/, not the individual
-    // organizer flow. See CLAUDE.md's Business/dive centers section.
+    // Set when this trip was created from admin/, not the individual organizer flow.
     String? diveCenterId,
     int? priceMinor,
     @Default('DKK') String currency,
-    // The trip's own external checkout page — where a diver actually pays to get a
-    // bookingCode, since a business trip can't be joined directly (see TripPage's
-    // organizer-card-adjacent Book-now button and CLAUDE.md's Booking Code flow section).
+    // Where a diver actually pays to get a bookingCode, since a business trip can't be joined directly.
     String? bookingUrl,
-    // Best-effort forward-geocode of location/meetingPoint at creation time — powers
-    // Explore's "Nearest" sort (distance computed client-side). Null if geocoding failed.
+    // Best-effort forward-geocode of location/meetingPoint at creation time, powering Explore's "Nearest" sort; null if geocoding failed.
     double? latitude,
     double? longitude,
   }) = _Trip;

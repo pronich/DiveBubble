@@ -8,8 +8,7 @@ function Tag({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Renders as a plain (non-clickable) image while APP_LINKS_LIVE is off — see
-// src/config/appLaunch.ts — and becomes a real link the moment it flips on.
+// Non-clickable while APP_LINKS_LIVE (src/config/appLaunch.ts) is off, a real link once it flips on.
 export function StoreBadge({
   href,
   live,

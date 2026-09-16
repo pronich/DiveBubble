@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-/// Oceanic-style section separator — a horizontal dashed rule in the brand color,
-/// used to break Profile into Overview/Certifications/Gear sections without tabs.
+/// Used to break Profile into Overview/Certifications/Gear sections without tabs.
 class DashedDivider extends StatelessWidget {
   const DashedDivider({super.key, this.color = AppColors.buttonPrimary, this.thickness = 1});
 

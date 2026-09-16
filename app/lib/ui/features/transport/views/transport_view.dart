@@ -16,8 +16,7 @@ import '../../chats/views/chat_view.dart';
 import '../../profile/views/diver_id_card.dart';
 import '../view_models/transport_view_model.dart';
 
-// Canonical backend values — never translated. Only the displayed label goes through
-// _typeLabel below.
+// Canonical backend values, never translated — only the displayed label goes through _typeLabel below.
 const _transportTypes = ['offer_ride', 'share_rental'];
 
 const _typeIcons = {
@@ -44,19 +43,15 @@ class TransportView extends StatefulWidget {
 
   final TransportViewModel viewModel;
 
-  /// Needed only once the diver is in a car (see myOffer) — builds that car's own ChatView,
-  /// reusing the exact same repository/service the main Bubble chat uses.
+  /// Needed only once the diver is in a car, to build that car's own ChatView.
   final ChatRepository chatRepository;
   final RealtimeService realtimeService;
   final TripRepository tripRepository;
 
-  /// See ChatView.isCancelled — same source of truth (TripConversationPage), same idea:
-  /// existing offers/joins stay visible, but nothing new can be created or joined.
+  /// Mirrors ChatView.isCancelled: existing offers/joins stay visible, but nothing new can be created or joined.
   final bool isCancelled;
 
-  /// Same "Name | Dive Center" attribution precedent as ChatView.businessName — only ever
-  /// combined with offer.isDiveCenterStaff, so a regular diver's own offer never looks like
-  /// it came from the organization.
+  /// Only ever combined with offer.isDiveCenterStaff, so a regular diver's own offer never looks like it came from the organization.
   final String? businessName;
 
   @override
@@ -65,26 +60,15 @@ class TransportView extends StatefulWidget {
 
 class _TransportViewState extends State<TransportView>
     with AutomaticKeepAliveClientMixin {
-  // Same reasoning as ChatView — TabBarView disposes offscreen tabs by default, which
-  // otherwise re-triggers a full offer reload every time this tab scrolls back into view.
+  // Prevents TabBarView from disposing this offscreen tab, which would otherwise re-trigger a full offer reload every time it scrolls back into view.
   @override
   bool get wantKeepAlive => true;
 
-  // Cached purely so the same ChatViewModel (and its realtime subscription) survives
-  // rebuilds triggered by the shared TransportViewModel's notifyListeners() while showing
-  // the same car — NOT a disposal owner. ChatView.dispose() already disposes whatever
-  // ChatViewModel it's given (see chat_view_model.dart) whenever its Element unmounts, which
-  // happens automatically on every transition away from it (back to the list, to a different
-  // car, or this whole page going away) since that's always a widget-type change at this
-  // position in the tree. Disposing it again here would double-dispose and crash.
+  // Cache only, NOT a disposal owner — ChatView.dispose() already disposes it on every unmount, so disposing it again here would double-dispose and crash.
   ChatViewModel? _carChatViewModel;
   String? _carChatOfferId;
 
-  // No load() call here anymore — TripConversationPage.initState loads this ViewModel
-  // eagerly (myOffer/hasUnreadMessages need to be ready before this tab is ever built, since
-  // TabBarView doesn't build an offscreen page). A second load from here used to be
-  // redundant at best; at worst its isLoading flash could unmount a live ChatView without
-  // resetting _carChatOfferId (see the isLoading-branch guard in build() below).
+  // No load() call here: TripConversationPage.initState already loads this ViewModel eagerly, and a second load here could unmount a live ChatView mid-flash without resetting _carChatOfferId.
 
   ChatViewModel _ensureCarChatViewModel(TransportOffer offer) {
     if (_carChatOfferId != offer.id) {
@@ -103,9 +87,7 @@ class _TransportViewState extends State<TransportView>
     return _carChatViewModel!;
   }
 
-  // The creator cancelled this car while we were viewing it — the offer's gone server-side.
-  // Just refresh the list; myOffer will be null after, which swaps ChatView out for the
-  // offers list on the next build and disposes the car ChatViewModel via its own dispose().
+  // Refreshing makes myOffer null, which swaps ChatView out for the offers list and disposes the car ChatViewModel via its own dispose().
   void _onCarDissolved() {
     widget.viewModel.load();
     if (mounted) {
@@ -124,10 +106,7 @@ class _TransportViewState extends State<TransportView>
       listenable: widget.viewModel,
       builder: (context, _) {
         final l10n = AppLocalizations.of(context);
-        // Only the very first load (no offers cached yet) shows the full-screen spinner — a
-        // background refresh while a car chat is already open must NOT swap it out for a
-        // spinner: that would unmount the live ChatView (disposing its ChatViewModel) without
-        // resetting _carChatOfferId, so the next build would hand ChatView a disposed instance.
+        // Only the very first load shows the full-screen spinner: a background refresh while a car chat is open must not swap it out, or ChatView would end up disposed without resetting _carChatOfferId.
         if (widget.viewModel.isLoading && widget.viewModel.offers.isEmpty) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -141,8 +120,7 @@ class _TransportViewState extends State<TransportView>
 
         final myOffer = widget.viewModel.myOffer;
         if (myOffer != null) {
-          // No FAB while in a car — "Add transport info" doesn't apply once you're already
-          // committed to one (a diver can only book one ride per trip).
+          // No FAB while in a car — a diver can only book one ride per trip.
           return Scaffold(
             body: ChatView(
               viewModel: _ensureCarChatViewModel(myOffer),
@@ -151,12 +129,7 @@ class _TransportViewState extends State<TransportView>
           );
         }
 
-        // No active car right now — whatever ChatView was showing one (if any) has already
-        // unmounted and disposed its ChatViewModel by rendering here instead (see the myOffer
-        // branch above). Clearing the cache means the *next* time a car chat renders — even
-        // for the very same offer, e.g. leave then rejoin — _ensureCarChatViewModel builds a
-        // fresh instance instead of handing back the stale disposed one (matching offer.id
-        // alone isn't enough to know the old ChatViewModel is still alive).
+        // Clearing the cache here ensures the next car chat (even a rejoin of the same offer.id) gets a fresh ChatViewModel instead of the one already disposed above.
         _carChatOfferId = null;
         _carChatViewModel = null;
 
@@ -215,10 +188,7 @@ class _TransportViewState extends State<TransportView>
   }
 }
 
-/// Public entry point so the ⓘ affordance on the Transport tab itself (TripConversationPage)
-/// can open the same sheet a diver already in a car would reach by tapping its row in the
-/// list — that's the same sheet, just also reachable one level higher up once you're in it
-/// and the list is replaced by the chat.
+/// Lets the ⓘ affordance on TripConversationPage open the same sheet a diver in a car would reach via the list, which is otherwise replaced by the chat.
 void showTransportOfferDetailSheet(
   BuildContext context, {
   required String offerId,
@@ -339,9 +309,7 @@ class _TransportOfferDetailSheetState
   String? _actionError;
   bool _isActing = false;
 
-  // Null once the offer's gone from the list — dissolved (by us or the creator, live via
-  // realtime while this sheet was open) or, for a joiner, left. The old firstWhere(orElse:
-  // () => offers.first) fallback this replaces would throw on an empty list instead.
+  // Null once the offer's gone from the list — dissolved or left, possibly live via realtime while this sheet is open.
   TransportOffer? get _offer {
     final offers = widget.viewModel.offers;
     final index = offers.indexWhere((o) => o.id == widget.offerId);
@@ -356,8 +324,7 @@ class _TransportOfferDetailSheetState
     if (offer != null) _loadProfile(offer.userId);
   }
 
-  // Best-effort, one-at-a-time — a profile fetch failing just leaves that row on the
-  // generic "Diver" fallback rather than blocking the rest of the sheet.
+  // Best-effort — a failed fetch just leaves that row on the generic "Diver" fallback rather than blocking the rest of the sheet.
   Future<void> _loadProfile(String userId) async {
     if (_profiles.containsKey(userId)) return;
     try {
@@ -406,9 +373,7 @@ class _TransportOfferDetailSheetState
     if (error != null) {
       setState(() => _joinError = error);
     } else {
-      // Close the sheet so the now-joined car's chat (myOffer swaps in automatically via
-      // TransportView's ListenableBuilder) is immediately visible, instead of leaving this
-      // sheet sitting on top of it.
+      // Close the sheet so the now-joined car's chat, swapped in automatically via TransportView's ListenableBuilder, is immediately visible.
       Navigator.of(context).pop();
     }
   }
@@ -426,8 +391,7 @@ class _TransportOfferDetailSheetState
             final l10n = AppLocalizations.of(context);
             final offer = _offer;
             if (offer == null) {
-              // Gone (dissolved, or we just left it) while this sheet was open — close it
-              // next frame rather than rendering against a missing offer.
+              // Gone while this sheet was open — close it next frame rather than rendering against a missing offer.
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted && Navigator.of(context).canPop())
                   Navigator.of(context).pop();
@@ -437,8 +401,7 @@ class _TransportOfferDetailSheetState
             final isFull =
                 offer.seats != null && offer.joinedCount >= offer.seats!;
             final isOrganizer = offer.userId == widget.viewModel.currentUserId;
-            // A diver can only book one ride per trip — don't offer a Join button
-            // on other offers once they've already joined one.
+            // A diver can only book one ride per trip, so hide Join once they've joined one.
             final hasBookingElsewhere =
                 !offer.joined && widget.viewModel.offers.any((o) => o.joined);
 

@@ -13,10 +13,7 @@ import '../../../../domain/entities/profile.dart';
 import '../../../../domain/entities/specialty_certification.dart';
 
 class ProfileViewModel extends ChangeNotifier {
-  // specialtyRepository/gearRepository/diveLogRepository are optional — the throwaway
-  // ProfileViewModel LoginSheet builds just to open EditProfilePage during onboarding only
-  // ever calls submit(), so it doesn't need the full Certifications/Gear/DiveLog data wired
-  // through it.
+  // specialtyRepository/gearRepository/diveLogRepository are optional — the throwaway ProfileViewModel LoginSheet builds to open EditProfilePage during onboarding only ever calls submit().
   ProfileViewModel({
     required ProfileRepository repository,
     SpecialtyRepository? specialtyRepository,
@@ -44,10 +41,7 @@ class ProfileViewModel extends ChangeNotifier {
   List<DiveLogEntry> _diveLog = [];
   List<DiveLogEntry> get diveLog => _diveLog;
 
-  /// Profile.diveCount ("unlogged dives", see EditProfilePage) plus however many are
-  /// actually in the Dive Log — the number the profile's own "Dives" stat card should show,
-  /// since diveCount alone under-counts the moment a diver has logged anything (most visibly
-  /// once they've zeroed it out via "All my dives are logged" and it'd otherwise read 0).
+  /// diveCount alone under-counts once anything's logged (most visibly after zeroing it out via "All my dives are logged").
   int get totalDiveCount => (_profile?.diveCount ?? 0) + _diveLog.length;
 
   bool _isSubmittingDiveLog = false;
@@ -62,8 +56,7 @@ class ProfileViewModel extends ChangeNotifier {
   bool _isUploadingPhoto = false;
   bool get isUploadingPhoto => _isUploadingPhoto;
 
-  // Specialty photo tracks *which* card is uploading (unlike the shared flag above) since
-  // several specialty cards can be on screen at once — a shared bool would spin all of them.
+  // Tracks *which* card is uploading, since several specialty cards can be on screen at once and a shared bool would spin all of them.
   String? _uploadingSpecialtyId;
   String? get uploadingSpecialtyId => _uploadingSpecialtyId;
 
@@ -80,8 +73,7 @@ class ProfileViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Fired concurrently, then awaited in order — Future.wait's mixed-type list would
-      // otherwise need casts back out since specialties/gear are optional.
+      // Fired concurrently, then awaited in order — Future.wait's mixed-type list would need casts back out since specialties/gear are optional.
       final profileFuture = _repository.getProfile();
       final specialtiesFuture = _specialtyRepository?.fetchSpecialties() ?? Future.value(const []);
       final gearFuture = _gearRepository?.fetchGear() ?? Future.value(const []);
@@ -258,10 +250,7 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  /// True right after the diver's very first-ever dive log entry lands (manual or imported)
-  /// — the UI reads this once to prompt "update your unlogged-dives count in Edit Profile if
-  /// some of these were already counted there", then it's cleared so the prompt doesn't
-  /// repeat on every subsequent add.
+  /// Read once to prompt updating the unlogged-dives count in Edit Profile, then cleared so it doesn't repeat on every subsequent add.
   bool _justLoggedFirstEntry = false;
   bool consumeJustLoggedFirstEntry() {
     final v = _justLoggedFirstEntry;
@@ -302,10 +291,7 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  /// Returns null (and reloads the log) on success, or an error message on failure. A
-  /// successful import that found zero new dives (all duplicates of what's already logged)
-  /// still returns null with an ImportResult the caller can inspect for the "N new, M
-  /// already logged" toast — see DiveLogListPage.
+  /// A successful import with zero new dives (all duplicates) still returns null with an ImportResult the caller can inspect for the "N new, M already logged" toast.
   Future<DiveLogImportResult?> importDiveLog(String filePath) async {
     _isSubmittingDiveLog = true;
     notifyListeners();
@@ -373,9 +359,7 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  /// Bulk delete for multi-select — best-effort per entry (one failing mid-batch doesn't
-  /// abandon the rest), returns the ids that actually got deleted so the caller can report
-  /// a partial failure if fewer came back than were asked for.
+  /// Best-effort per entry — one failing mid-batch doesn't abandon the rest; returns the ids actually deleted so the caller can report a partial failure.
   Future<List<String>> deleteDiveLogEntries(List<String> ids) async {
     final deleted = <String>[];
     for (final id in ids) {

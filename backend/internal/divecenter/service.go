@@ -41,8 +41,7 @@ func (s *Service) IsMember(ctx context.Context, diveCenterID, userID uuid.UUID) 
 	return s.Repo.IsMember(ctx, diveCenterID, userID)
 }
 
-// ListMemberUserIDs is un-gated (no callerID) — for internal/system callers like push
-// fan-out, not an HTTP-exposed listing (see ListMembers for the member-gated roster view).
+// ListMemberUserIDs is un-gated (no callerID) for internal/system callers like push fan-out, not an HTTP-exposed listing (see ListMembers for the gated roster view).
 func (s *Service) ListMemberUserIDs(ctx context.Context, diveCenterID uuid.UUID) ([]uuid.UUID, error) {
 	return s.Repo.ListMemberUserIDs(ctx, diveCenterID)
 }
@@ -63,10 +62,7 @@ func (s *Service) SetLogoURL(ctx context.Context, id, callerID uuid.UUID, url st
 	return s.Repo.SetLogoURL(ctx, id, url)
 }
 
-// Update is owner-only — same ownership posture as SetLogoURL, since both are edits to the
-// business's own public profile. Name is trimmed/validated same as Create when present,
-// since an empty *string* would otherwise slip through Repository.Update's
-// COALESCE(nil-is-untouched) semantics and blank out a required field.
+// Update is owner-only like SetLogoURL, and trims/validates Name same as Create when present since an empty string would otherwise slip through Repository.Update's COALESCE semantics and blank out a required field.
 func (s *Service) Update(ctx context.Context, id, callerID uuid.UUID, p UpdateParams) (DiveCenter, error) {
 	isOwner, err := s.Repo.IsOwner(ctx, id, callerID)
 	if err != nil {
@@ -97,9 +93,7 @@ func (s *Service) ListMembers(ctx context.Context, diveCenterID, callerID uuid.U
 	return s.Repo.ListMembers(ctx, diveCenterID)
 }
 
-// AddMember is owner-only. role is forced to "staff" unless explicitly "owner" — anything
-// else invalid silently downgrades rather than erroring, since the DB CHECK constraint
-// would reject bad values anyway and this is a friendlier failure mode for the common case.
+// AddMember is owner-only and silently downgrades any role besides "owner" to "staff" rather than erroring, since the DB CHECK constraint would reject bad values anyway.
 func (s *Service) AddMember(ctx context.Context, diveCenterID, callerID, targetUserID uuid.UUID, role string) (Member, error) {
 	isOwner, err := s.Repo.IsOwner(ctx, diveCenterID, callerID)
 	if err != nil {
@@ -114,8 +108,7 @@ func (s *Service) AddMember(ctx context.Context, diveCenterID, callerID, targetU
 	return s.Repo.AddMember(ctx, diveCenterID, targetUserID, role)
 }
 
-// RemoveMember is owner-only, and refuses to remove the last remaining owner — a dive
-// center with zero owners would have no one left who could add another.
+// RemoveMember is owner-only and refuses to remove the last remaining owner, since a dive center with zero owners would have no one left who could add another.
 func (s *Service) RemoveMember(ctx context.Context, diveCenterID, callerID, targetUserID uuid.UUID) error {
 	isOwner, err := s.Repo.IsOwner(ctx, diveCenterID, callerID)
 	if err != nil {
@@ -149,9 +142,7 @@ func (s *Service) RemoveMember(ctx context.Context, diveCenterID, callerID, targ
 	return nil
 }
 
-// InviteMember is owner-only, same role-defaulting rule as AddMember. Unlike AddMember (which
-// targets an existing account by id), this targets an email that — as far as the caller
-// knows — has no DiveBubble account yet; see Service.AcceptInvitations for how it's redeemed.
+// InviteMember is owner-only with the same role-defaulting as AddMember, but targets an email with no known DiveBubble account yet rather than an existing account by id; see Service.AcceptInvitations for redemption.
 func (s *Service) InviteMember(ctx context.Context, diveCenterID, callerID uuid.UUID, email, role string) (Invitation, error) {
 	isOwner, err := s.Repo.IsOwner(ctx, diveCenterID, callerID)
 	if err != nil {
@@ -170,10 +161,7 @@ func (s *Service) InviteMember(ctx context.Context, diveCenterID, callerID uuid.
 	return s.Repo.CreateOrRefreshInvitation(ctx, diveCenterID, email, role, callerID)
 }
 
-// AcceptInvitations auto-joins userID to every dive center with a pending invitation for
-// email — called after every successful sign-in (any provider, new or returning user), since
-// an invite has no token of its own: a verified sign-in with the matching email is the proof.
-// A no-op if email is empty (e.g. an Apple sign-in that never shared one).
+// AcceptInvitations auto-joins userID to every dive center with a pending invitation for email, called after every sign-in since a verified sign-in with the matching email is the invite's own proof; a no-op if email is empty.
 func (s *Service) AcceptInvitations(ctx context.Context, userID uuid.UUID, email string) error {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if email == "" {

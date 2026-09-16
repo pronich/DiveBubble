@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../domain/entities/dive_log_entry.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// Two stacked charts (depth, then temperature) sharing one time axis, with a drag-to-inspect
-/// crosshair — dragging a finger along either chart snaps to the nearest sample and shows its
-/// exact time/depth/temp plus the running average depth up to that point. No charting package
-/// pulled in for this — same dependency-free posture as core/formatting/date_format.dart's own
-/// hand-rolled formatters.
+/// No charting package pulled in — same dependency-free posture as core/formatting/date_format.dart's hand-rolled formatters.
 class DiveProfileChart extends StatefulWidget {
   const DiveProfileChart({super.key, required this.samples});
 
@@ -164,9 +160,7 @@ String _formatOffset(int seconds) {
   return '$minutes:${secs.toString().padLeft(2, '0')}';
 }
 
-/// Shared axis-drawing helpers for both painters below — kept as free functions rather than
-/// a common base class since the two painters otherwise have nothing else in common (depth
-/// is inverted/filled, temperature is a plain line).
+/// Kept as free functions rather than a common base class, since the two painters otherwise have nothing else in common.
 void _drawYLabel(Canvas canvas, String text, double x, double y, TextStyle? style, Color color) {
   final painter = TextPainter(
     text: TextSpan(
@@ -345,13 +339,11 @@ class _TempChartPainter extends CustomPainter {
     if (maxTime <= 0) return;
     final plotWidth = size.width - leftAxisWidth - rightPad;
     final plotHeight = size.height - _topPad - _bottomPad;
-    // A near-flat temperature reading (common on a shallow/short dive) would otherwise
-    // divide by a ~0 range and blow the line up to fill the whole chart height.
+    // A near-flat temperature reading would otherwise divide by a ~0 range and blow the line up to fill the whole chart height.
     final range = (maxTemp - minTemp).abs() < 0.5 ? 1.0 : (maxTemp - minTemp);
 
     double xOf(int offsetSeconds) => leftAxisWidth + (offsetSeconds / maxTime) * plotWidth;
-    // Normal cartesian orientation (higher temperature = higher on the chart) — unlike
-    // depth, there's no "down means more" convention to mirror here.
+    // Normal cartesian orientation, unlike depth's "down means more" convention.
     double yOf(double temp) => _topPad + (1 - (temp - minTemp) / range) * plotHeight;
 
     final withTemp = samples.where((s) => s.temperatureC != null).toList();

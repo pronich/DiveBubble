@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../domain/languages.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// Search + multi-select list of languages, replacing free-text entry (which we couldn't
-/// reliably parse or compare later — "Russian" vs "russian" vs "Rus.").
+/// Replaces free-text entry, which we couldn't reliably parse or compare later ("Russian" vs "russian" vs "Rus.").
 class LanguagePickerPage extends StatefulWidget {
   const LanguagePickerPage({super.key, required this.initialSelection});
 

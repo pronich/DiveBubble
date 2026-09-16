@@ -10,8 +10,7 @@ class CreateTripViewModel extends ChangeNotifier {
 
   final TripRepository _repository;
 
-  // Non-null means this form is editing an existing trip rather than creating one — same
-  // form, same submit() call site, just routed to a different repository call (see below).
+  // Non-null means this form is editing an existing trip, routed to a different repository call in submit() below.
   final String? existingTripId;
   bool get isEditing => existingTripId != null;
 
@@ -88,9 +87,7 @@ class CreateTripViewModel extends ChangeNotifier {
     }
   }
 
-  /// Best-effort — the trip itself already exists by the time this is called, so a failed
-  /// photo upload shouldn't block navigating to it; the organizer can retry from Trip
-  /// Page's own hero-image camera button.
+  /// Best-effort — a failed photo upload shouldn't block navigating to the already-created trip; the organizer can retry from Trip Page's own camera button.
   Future<void> uploadPhoto(String tripId, String filePath) async {
     try {
       await _repository.addTripPhoto(tripId, filePath);

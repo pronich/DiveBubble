@@ -14,9 +14,7 @@ String formatShortDate(DateTime dateTime) {
   return '${_weekdays[local.weekday - 1]}, ${_months[local.month - 1]} ${local.day}';
 }
 
-/// e.g. "Sat, Jul 18, 2026" — same as [formatShortDate] plus the year, for contexts (like
-/// Dive Log, which can span many years) where "which year was this" isn't obvious from
-/// context the way it is for a trip you just created.
+/// e.g. "Sat, Jul 18, 2026" — for contexts like Dive Log, which can span many years, where the year isn't obvious from context.
 String formatShortDateWithYear(DateTime dateTime) {
   final local = dateTime.toLocal();
   return '${formatShortDate(local)}, ${local.year}';
@@ -28,9 +26,7 @@ String formatTime(DateTime dateTime) {
   return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
 }
 
-/// e.g. "July 15" (same year as now) or "December 27, 2025" (a different year) — the
-/// chat's date-separator label, deliberately no "Today"/"Yesterday" special-casing since
-/// the reference chat UI this is matching always shows the real date.
+/// e.g. "July 15" or "December 27, 2025" — deliberately no "Today"/"Yesterday" special-casing since the reference chat UI this matches always shows the real date.
 String formatChatDateSeparator(DateTime dateTime) {
   final local = dateTime.toLocal();
   final now = DateTime.now();

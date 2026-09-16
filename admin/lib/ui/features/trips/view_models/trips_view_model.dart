@@ -18,9 +18,7 @@ class TripsViewModel extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
-  // GET /trips/mine returns every trip this user has access to, personal or business — see
-  // TripApiService's own comment. Filtered here to this dive center specifically, since a
-  // future multi-center owner/staff member could have trips from more than one.
+  // GET /trips/mine returns every trip this user has access to — filtered here to this dive center since a future multi-center owner/staff member could have trips from more than one.
   Future<void> load() async {
     _isLoading = true;
     _error = null;

@@ -25,11 +25,7 @@ class RealtimeService {
     return client;
   }
 
-  // Multiple screens can now want the same trip channel at once (e.g. the Bubbles list
-  // and an open chat both watching trip:$id) — centrifuge's client throws if you try to
-  // create a second Subscription for a channel it already has one for, so callers share
-  // one Subscription per channel here, ref-counted. PublicationEvent's stream is broadcast
-  // internally, so every caller can safely .listen() on the same shared Subscription.
+  // Ref-counted and shared per channel because centrifuge throws if you create a second Subscription for a channel it already has one for.
   Future<centrifuge.Subscription> subscribe(String channel) async {
     final existing = _subscriptions[channel];
     if (existing != null) {
@@ -37,13 +33,7 @@ class RealtimeService {
       return existing;
     }
 
-    // Two overlapping callers for the same not-yet-subscribed channel (e.g. MyTripsViewModel
-    // getting load() called twice back to back — initState plus an auth-change listener
-    // firing right after) would otherwise both race past the check above and each call
-    // client.newSubscription() themselves, which centrifuge rejects the second time with
-    // "Subscription to a channel already exists". Everything above is synchronous (no
-    // await before this point), so by the time a second caller actually runs, the first
-    // caller has already recorded its in-flight future here for the second to await instead.
+    // Tracks in-flight subscribes so two overlapping callers for the same not-yet-subscribed channel don't both call client.newSubscription(), which centrifuge rejects the second time.
     final pending = _pendingSubscribes[channel];
     if (pending != null) {
       final sub = await pending;

@@ -15,10 +15,7 @@ class OnboardingViewModel extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
-  /// Returns the created dive center on success, or null with [error] set. The logo
-  /// upload (if any) is best-effort *after* creation — see uploadLogo's own contract,
-  /// the dive center needs to exist first — so a failed logo upload doesn't block
-  /// finishing onboarding; it can be added later from the dashboard.
+  /// The logo upload (if any) is best-effort after creation — since the dive center must exist first, a failed upload doesn't block finishing onboarding; it can be added later from the dashboard.
   Future<DiveCenter?> submit({
     required String name,
     String? location,

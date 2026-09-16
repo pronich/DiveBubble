@@ -5,10 +5,7 @@ import '../../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import 'dive_log_card.dart';
 
-/// Same peeking-stack look as SpecialtiesSection's collapsed deck, but purely a static
-/// teaser here — there's no in-place expand, tapping always pushes DiveLogListPage's own
-/// full vertical list. A dedicated list page reads better for entries a diver might have
-/// dozens of (an import can add many at once), unlike Specialties' typically-small count.
+/// Purely a static teaser, unlike SpecialtiesSection's in-place expand — tapping always pushes DiveLogListPage's list, since an import can add dozens of entries at once.
 class DiveLogDeck extends StatelessWidget {
   const DiveLogDeck({super.key, required this.entries, required this.onTap});
 
@@ -37,10 +34,7 @@ class DiveLogDeck extends StatelessWidget {
 
         return GestureDetector(
           onTap: onTap,
-          // Without this, only the area actually painted by a descendant (the front card,
-          // the count badge) registers a hit — GestureDetector's default deferToChild
-          // behavior means empty space anywhere else in this box (around the peeking cards,
-          // to their sides) silently swallows the tap instead of opening the list.
+          // Without this, GestureDetector's default deferToChild behavior means empty space around the peeking cards silently swallows the tap instead of opening the list.
           behavior: HitTestBehavior.opaque,
           child: SizedBox(
             width: constraints.maxWidth,
@@ -54,9 +48,7 @@ class DiveLogDeck extends StatelessWidget {
                     left: centerOffset + i * _peekOffset,
                     top: 0,
                     child: IgnorePointer(
-                      // Only the front card's own InkWell would be reachable anyway (it's
-                      // painted last/topmost) — this just makes that explicit and avoids
-                      // relying on paint order for hit-testing.
+                      // Makes explicit that only the front card's InkWell is reachable, rather than relying on paint order for hit-testing.
                       child: SizedBox(
                         width: kDiveLogCardWidth,
                         height: _cardHeight,

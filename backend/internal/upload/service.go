@@ -20,16 +20,12 @@ var allowedExtensions = map[string]string{
 	"image/webp": ".webp",
 }
 
-// Chat attachments allow a wider (image + PDF + video) type list and a larger size cap than the
-// avatar/trip-photo/etc. uploads above — kept as a separate constant/map/error set rather than
-// parameterizing Save, so the 5 existing image-only call sites are untouched by this feature.
+// Chat attachments get their own constant/map/error set, wider than avatar/trip-photo uploads, so the existing image-only call sites are untouched by this feature.
 var ErrInvalidAttachment = errors.New("file must be a JPEG, PNG, WebP image, PDF, or MP4 video")
 var ErrAttachmentTooLarge = errors.New("file exceeds the size limit")
 
 const MaxAttachmentSize = 10 << 20 // 10MB — images, PDFs
-// MaxVideoAttachmentSize is headroom, not a target — the app compresses to ~720p client-side
-// before ever uploading (see CLAUDE.md's chat video section), so a real upload should land well
-// under this; it exists to reject something pathological, not to encourage large uploads.
+// MaxVideoAttachmentSize is headroom to reject something pathological, not a target: the app already compresses video to ~720p client-side before upload.
 const MaxVideoAttachmentSize = 50 << 20 // 50MB
 
 var allowedAttachmentExtensions = map[string]string{
@@ -40,10 +36,7 @@ var allowedAttachmentExtensions = map[string]string{
 	"video/mp4":       ".mp4",
 }
 
-// Backend is where validated file bytes actually get stored — one subfolder ("category")
-// per kind of upload (avatars/trips/specialties/...). LocalBackend (dev) and SpacesBackend
-// (prod, DigitalOcean Spaces) are the two implementations; Service.Save's callers never see
-// which one is in play, only the URL that comes back.
+// Backend is where validated file bytes actually get stored; Service.Save's callers never see which implementation is in play, only the URL that comes back.
 type Backend interface {
 	store(category, name, contentType string, data io.Reader) (url string, err error)
 }
@@ -56,10 +49,7 @@ func NewService(backend Backend) *Service {
 	return &Service{backend: backend}
 }
 
-// Save validates an uploaded image (size cap, real content-type sniffed from the bytes
-// rather than trusting the client-supplied header, which costs nothing to spoof) and hands
-// it to the configured Backend, returning the full public URL to persist as the caller's
-// photo/avatar field.
+// Save sniffs the real content-type from the bytes rather than trusting the client-supplied header, which costs nothing to spoof.
 func (s *Service) Save(category string, file multipart.File, header *multipart.FileHeader) (string, error) {
 	if header.Size > MaxFileSize {
 		return "", ErrTooLarge
@@ -83,14 +73,9 @@ func (s *Service) Save(category string, file multipart.File, header *multipart.F
 	return s.backend.store(category, name, contentType, file)
 }
 
-// SaveAttachment is Save's chat-attachment counterpart: same real-content-type sniffing, wider
-// allow-list (image + PDF + video), a size cap that depends on the sniffed type (video gets the
-// larger MaxVideoAttachmentSize, everything else the smaller MaxAttachmentSize). Returns the
-// sniffed content-type alongside the URL so callers can derive "image"/"video"/"pdf" without
-// re-sniffing the file themselves.
+// SaveAttachment returns the sniffed content-type alongside the URL so callers can derive "image"/"video"/"pdf" without re-sniffing the file themselves.
 func (s *Service) SaveAttachment(category string, file multipart.File, header *multipart.FileHeader) (url, contentType string, err error) {
-	// Cheapest reject first, before reading anything — the exact cap depends on content type
-	// (checked again below, once sniffed), so this is only the upper bound of the two caps.
+	// Cheapest reject first, before reading anything; this is only the upper bound of the two caps, checked precisely below once the type is sniffed.
 	if header.Size > MaxVideoAttachmentSize {
 		return "", "", ErrAttachmentTooLarge
 	}

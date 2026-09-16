@@ -33,10 +33,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _initGoogle() async {
     try {
-      // Timeout, not just try/catch: Google Identity Services' own script load has been
-      // observed to simply never resolve for some accounts/browser states — without this,
-      // the Google button slot would spin forever. The email fallback below is never
-      // gated on this at all, so a slow/broken Google init can't block it either way.
+      // Timeout, not just try/catch: GIS's script load has been observed to never resolve for some accounts/browser states, which would spin the Google button slot forever.
       await widget.authRepository.ensureGoogleReady().timeout(const Duration(seconds: 8));
       if (mounted) setState(() => _isGoogleReady = true);
     } catch (e) {
@@ -117,9 +114,7 @@ class _LoginPageState extends State<LoginPage> {
 
   List<Widget> _buildProviderButtons(ThemeData theme) {
     return [
-      // This slot's own state (loading/ready/failed) is independent of the email button
-      // below, which is *always* interactive immediately — a slow or broken Google init
-      // must never block the one sign-in method that never touches Google at all.
+      // This slot's state is independent of the email button below, which stays interactive immediately regardless of Google init.
       if (_googleError != null)
         const SizedBox.shrink()
       else if (!_isGoogleReady || _isCompletingGoogleSignIn)

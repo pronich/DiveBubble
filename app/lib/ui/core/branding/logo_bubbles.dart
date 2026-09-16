@@ -35,7 +35,6 @@ const List<LogoBubble> kLogoBubbles = [
   LogoBubble(354 / 1024, 608 / 1024, 80 / 1024),
 ];
 
-/// The two light-blue highlight arcs on the two largest bubbles, transcribed from the brand SVG.
 /// Coordinates are in the same 1024x1024 source space as [kLogoBubbles] (divide by 1024 to normalize).
 const List<String> kLogoHighlightPaths = [
   'M567.768 166.196C568.333 165.426 569.155 164.893 570.104 164.78C574.955 164.2 591.309 163.455 610 176C629.045 188.783 631.86 205.722 632.276 210.45C632.349 211.281 632.082 212.085 631.588 212.758C629.588 215.486 625.031 214.645 623.823 211.486C620.833 203.665 614.943 191.986 604.5 184C593.782 175.804 579.977 173.596 571.237 173.083C567.915 172.888 565.8 168.88 567.768 166.196Z',

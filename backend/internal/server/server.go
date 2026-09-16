@@ -89,9 +89,7 @@ func New(cfg config.Config, db *sql.DB) http.Handler {
 	registerWaitlistRoutes(mux, waitlistSvc)
 	registerAccountRoutes(mux, accountSvc, authIssuer)
 	registerPushRoutes(mux, pushSvc, authIssuer)
-	// Uploaded images are served back unauthenticated, same as any other image URL
-	// referenced from a profile/trip card — dev-only local disk today, swappable for
-	// object storage (DigitalOcean Spaces) later without callers noticing.
+	// Dev-only local disk today, swappable for object storage (DigitalOcean Spaces) later without callers noticing.
 	mux.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadDir))))
 	return withCORS(cfg.CORSAllowedOrigins, mux)
 }

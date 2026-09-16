@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-// Header's own nav links are hidden below sm: (no room for text links next to the logo and
-// the Dive-in slot on a phone width). A hamburger + dropdown, not a full-screen drawer, since
-// a couple of short links don't need one.
+// Hamburger + dropdown, not a full-screen drawer, since there's only ever a couple of short links.
 export function MobileNav() {
   const [open, setOpen] = useState(false);
 

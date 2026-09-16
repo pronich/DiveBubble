@@ -5,9 +5,7 @@ import '../../../data/repositories/profile_repository.dart';
 import '../../../data/repositories/push_repository.dart';
 import '../../features/onboarding/views/login_sheet.dart';
 
-/// Ensures the user is authenticated before a gated action (Join, Create trip, etc.), prompting
-/// login via [LoginSheet] if not already signed in. Returns the current user's id on success
-/// (already signed in, or just completed sign-in), or null if they dismissed the prompt.
+/// Returns the current user's id on success (already signed in, or just completed sign-in), or null if they dismissed the [LoginSheet] prompt.
 Future<String?> ensureSignedIn(
   BuildContext context,
   AuthRepository authRepository,

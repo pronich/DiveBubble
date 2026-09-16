@@ -18,10 +18,7 @@ class EditProfilePage extends StatefulWidget {
   final ProfileViewModel viewModel;
   final Profile profile;
 
-  /// True only for the brand-new-account flow pushed from LoginSheet (after Location and
-  /// Push permission) — chains straight into CertificationsOnboardingPage after saving, so
-  /// a new diver sets their certification level as part of the same onboarding pass
-  /// instead of having to find Certifications later.
+  /// True only for the brand-new-account flow — chains straight into CertificationsOnboardingPage after saving instead of leaving a new diver to find it later.
   final bool isOnboarding;
 
   @override
@@ -33,12 +30,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late final _locationController = TextEditingController(text: widget.profile.location);
   late final _bioController = TextEditingController(text: widget.profile.bio);
   late final _diveCountController = TextEditingController(text: widget.profile.diveCount.toString());
-  // Toggled on means "I don't need to track this separately, my Dive Log covers everything"
-  // — there's no separate stored field for this, it's derived from the count already being
-  // 0 *and* the diver actually having logged something (so a diver who turned it on, saved,
-  // and comes back later sees it still on, rather than the toggle silently resetting to off
-  // every time this page reopens) — a brand-new diver who just hasn't dived yet also has a
-  // count of 0 but no log entries, and shouldn't see the field pre-disabled for that reason.
+  // No separate stored field: derived from the count being 0 *and* the diver having logged something, so the toggle doesn't reset on reopen, but a brand-new diver with 0 dives and no log isn't shown as pre-disabled.
   late bool _allDivesLogged = widget.profile.diveCount == 0 && widget.viewModel.diveLog.isNotEmpty;
   late List<String> _languages = widget.profile.languages.isEmpty
       ? []
@@ -51,12 +43,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
-    // Best-effort auto-fill on first open, for anyone who never set a location — never
-    // overwrites a value the diver already typed. This is the only place location is ever
-    // requested now (no separate onboarding "why we want location" screen — see
-    // LocationPermissionPage, unwired but kept for easy reactivation), so it runs during
-    // onboarding too; the manual "detect" button below covers anyone who dismissed the OS
-    // prompt and wants to try again.
+    // Best-effort auto-fill on first open, never overwriting a value the diver already typed — this is the only place location is ever requested now (LocationPermissionPage is unwired).
     if (_locationController.text.isEmpty) {
       _detectLocation();
     }

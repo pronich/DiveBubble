@@ -6,10 +6,7 @@ import '../../../core/formatting/date_format.dart';
 import '../../../core/widgets/calendar_picker_sheet.dart';
 import '../view_models/profile_view_model.dart';
 
-/// One page for add and edit, mirroring AddEditExpensePage's shape. For an imported entry
-/// (widget.existing.isImported), the measured fields (date/time, depth, duration, min temp)
-/// came from the diver's dive computer and are shown read-only — only site name and notes,
-/// the two fields a UDDF export might genuinely be missing or wrong about, are editable.
+/// For an imported entry, the measured fields came from the diver's dive computer and are read-only — only site name and notes, which a UDDF export might be missing, are editable.
 class AddEditDiveLogEntryPage extends StatefulWidget {
   const AddEditDiveLogEntryPage({super.key, required this.viewModel, this.existing});
 

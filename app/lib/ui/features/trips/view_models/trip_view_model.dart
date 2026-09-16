@@ -46,9 +46,7 @@ class TripViewModel extends ChangeNotifier {
 
   bool _isDiveCenterStaff = false;
 
-  /// True for the trip's literal creator *or* any member of the dive center running it —
-  /// matches the backend's own trip.Service.isOrganizer exactly (see CLAUDE.md's
-  /// Business/dive centers section). Gates Cancel/photo-upload/Join visibility below.
+  /// True for the trip's literal creator *or* any member of the dive center running it, matching the backend's trip.Service.isOrganizer exactly.
   bool get isOrganizer => (_trip?.creatorUserId == currentUserId) || _isDiveCenterStaff;
 
   bool _isLoading = false;
@@ -84,10 +82,7 @@ class TripViewModel extends ChangeNotifier {
       }
       final creatorId = _trip?.creatorUserId;
       final diveCenterId = _trip?.diveCenterId;
-      // Best-effort — an organizer profile/dive-center fetch failing shouldn't block
-      // viewing the trip. Both are fetched when present (not mutually exclusive) — the UI
-      // decides which one to actually display (see TripPage's _OrganizerCard: dive center
-      // takes priority when the trip is business-organized).
+      // Best-effort — both are fetched when present (not mutually exclusive); TripPage's _OrganizerCard decides which one to display.
       if (creatorId != null) {
         try {
           _organizerProfile = await profileRepository.getPublicProfile(creatorId);
@@ -123,8 +118,7 @@ class TripViewModel extends ChangeNotifier {
     }
   }
 
-  /// Optimistic, no dedicated loading flag — a mute toggle isn't worth a spinner. Rolls
-  /// back on failure.
+  /// Optimistic, no dedicated loading flag — a mute toggle isn't worth a spinner; rolls back on failure.
   Future<void> toggleMute() async {
     final next = !_isMuted;
     _isMuted = next;
@@ -156,9 +150,7 @@ class TripViewModel extends ChangeNotifier {
     }
   }
 
-  /// Used when this page was reached via an invite link (see TripPage's entryCode) — the
-  /// code already resolved this exact trip, so Join goes straight through JoinByCode instead
-  /// of the plain per-trip-type button, regardless of whether it's public/private/business.
+  /// Used when this page was reached via an invite link: the code already resolved this exact trip, so Join goes straight through JoinByCode regardless of trip type.
   Future<void> joinByCode(String code) async {
     _isJoining = true;
     notifyListeners();
@@ -173,9 +165,7 @@ class TripViewModel extends ChangeNotifier {
     }
   }
 
-  /// Returns null on success, or an error message on failure (e.g. the organizer trying
-  /// to leave their own trip) — scoped to the confirmation dialog rather than the shared
-  /// [error] field, since a rejected leave shouldn't blow away the whole page.
+  /// Returns an error message scoped to the confirmation dialog rather than the shared [error] field, so a rejected leave doesn't blow away the whole page.
   Future<String?> leave() async {
     _isLeaving = true;
     notifyListeners();
@@ -191,9 +181,7 @@ class TripViewModel extends ChangeNotifier {
     }
   }
 
-  /// Returns null on success, or an error message on failure (e.g. a non-organizer
-  /// somehow reaching this) — same scoped pattern as [leave]. Reloads the trip on success
-  /// so [trip.bookingStatus] flips to "cancelled" and the pill/action area update in place.
+  /// Same scoped-error pattern as [leave]; reloads the trip on success so [trip.bookingStatus] flips to "cancelled" and the pill/action area update in place.
   Future<String?> cancel() async {
     _isCancelling = true;
     notifyListeners();
@@ -210,10 +198,7 @@ class TripViewModel extends ChangeNotifier {
     }
   }
 
-  /// Returns null on success, or an error message on failure — organizer-only and capped at
-  /// trip.MaxPhotosPerTrip server-side (see trip.ErrOnlyOrganizerCanEditTrip/ErrTooManyPhotos);
-  /// the UI only ever surfaces the "+" tile to the organizer and hides it once already at the
-  /// cap, so a rejection here would mean something's out of sync rather than an expected path.
+  /// Organizer-only and capped at trip.MaxPhotosPerTrip server-side; the UI only surfaces the "+" tile to the organizer and hides it at the cap, so a rejection here means something's out of sync.
   Future<String?> addPhoto(String filePath) async {
     try {
       final photo = await _repository.addTripPhoto(_tripId, filePath);
@@ -228,8 +213,7 @@ class TripViewModel extends ChangeNotifier {
   final Set<String> _removingPhotoIds = {};
   bool isRemovingPhoto(String photoId) => _removingPhotoIds.contains(photoId);
 
-  /// Returns null on success, or an error message on failure — same organizer-only posture
-  /// as [addPhoto].
+  /// Same organizer-only posture as [addPhoto].
   Future<String?> removePhoto(String photoId) async {
     _removingPhotoIds.add(photoId);
     notifyListeners();

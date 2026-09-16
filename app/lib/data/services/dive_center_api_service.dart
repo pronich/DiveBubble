@@ -7,9 +7,7 @@ import 'access_token_provider.dart';
 import 'auth_required_exception.dart';
 import 'error_codes.dart';
 
-/// app/'s trimmed counterpart to admin/'s DiveCenterApiService — divers only ever need to
-/// *view* a dive center's public profile (organizer attribution on a business trip), never
-/// create/manage one from here.
+/// Trimmed counterpart to admin/'s DiveCenterApiService — divers only ever *view* a dive center's public profile here, never create/manage one.
 class DiveCenterApiService {
   DiveCenterApiService({required this.baseUrl, required this.getAccessToken, http.Client? client})
       : _client = client ?? http.Client();
@@ -24,8 +22,7 @@ class DiveCenterApiService {
     return {'Authorization': 'Bearer $token'};
   }
 
-  // Server errors come back as {"error": "<code>"} — describeErrorCode maps the code to a
-  // message to show, or passes it through unchanged if it's not one this file knows about yet.
+  // Server errors come back as {"error": "<code>"}; describeErrorCode maps it to a message or passes it through unchanged if unrecognized.
   String? _extractError(String body) {
     try {
       final decoded = jsonDecode(body);
@@ -46,9 +43,7 @@ class DiveCenterApiService {
     return DiveCenterApiModel.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  // Caller-scoped: whether *I* am staff of this dive center — GET /dive-centers/{id} itself
-  // is public now, so a successful fetch no longer implies membership (see backend's own
-  // comment on handleGetDiveCenterMembership).
+  // GET /dive-centers/{id} itself is public now, so a successful fetchById no longer implies membership; this checks it explicitly.
   Future<bool> fetchIsMember(String id) async {
     final res = await _client.get(Uri.parse('$baseUrl/dive-centers/$id/membership'), headers: await _authHeaders());
     if (res.statusCode != 200) {

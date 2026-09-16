@@ -1,4 +1,2 @@
-/// Canonical list, same reasoning as app/'s kCertificationLevels — free text can't be
-/// compared/filtered later ("PADI" vs "padi" vs "P.A.D.I."), so this stays a fixed list
-/// validated client-side, not a DB enum (see migration 000024's own comment).
+/// A fixed, client-validated list rather than free text, so values can't drift ("PADI" vs "padi" vs "P.A.D.I.") and break later comparisons/filters.
 const kDiveCenterAgencies = ['PADI', 'SSI', 'NAUI', 'CMAS', 'Other'];

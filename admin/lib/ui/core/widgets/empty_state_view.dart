@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Shared icon + title + subtitle + optional CTA layout for empty list screens — same shape
-/// as app/'s own EmptyStateView, kept as a separate copy per the usual no-shared-code-between-
-/// clients precedent.
+/// Mirrors app/'s own EmptyStateView, kept as a separate copy since admin/ and app/ don't share code.
 class EmptyStateView extends StatelessWidget {
   const EmptyStateView({
     super.key,

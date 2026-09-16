@@ -1,5 +1,4 @@
-/// Same list as app/'s kSpecialtyTypes — kept in sync manually, same duplication
-/// precedent as certification_level.dart/certification_agency.dart.
+/// Mirrors app/'s kSpecialtyTypes, kept in sync manually since admin/ and app/ don't share code yet.
 const List<String> kSpecialtyTypes = [
   'Enriched Air (Nitrox)',
   'Deep Diver',

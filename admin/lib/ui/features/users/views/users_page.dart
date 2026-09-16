@@ -6,9 +6,7 @@ import '../../../../domain/entities/dive_center_member.dart';
 import '../view_models/users_view_model.dart';
 import 'add_member_dialog.dart';
 
-/// Body-only (embedded in AdminShell). No "Invited/pending" status exists yet — adding a
-/// member is search-then-add against an existing account (see AddMemberDialog's own
-/// comment), so every row here is, truthfully, already active.
+/// No "Invited/pending" status — an invite only creates a member row once the invitee signs in and auto-joins, so every row here is truthfully already active.
 class UsersPage extends StatefulWidget {
   const UsersPage({super.key, required this.diveCenterRepository, required this.diveCenterId});
 
@@ -210,9 +208,7 @@ class _MembersTable extends StatelessWidget {
                   ),
                   Expanded(
                     flex: 2,
-                    // Align — without it, Container stretches to fill the whole flex:2
-                    // column width (Expanded gives it tight width constraints), turning
-                    // the pill into a wide bar instead of a compact chip hugging its text.
+                    // Without Align, Container stretches to fill the whole flex:2 width, turning the pill into a wide bar instead of a compact chip.
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Container(

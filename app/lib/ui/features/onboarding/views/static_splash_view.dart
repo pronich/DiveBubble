@@ -5,8 +5,7 @@ import '../../../core/branding/logo_layout.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_gradients.dart';
 
-/// Fast, static "B" splash for returning users who've already seen the animated intro —
-/// just a branded loading beat before entering the app, no bubbles rising.
+/// For returning users who've already seen the animated intro — just a branded loading beat, no bubbles rising.
 class StaticSplashView extends StatefulWidget {
   const StaticSplashView({super.key, required this.onDone});
 

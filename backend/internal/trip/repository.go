@@ -22,10 +22,7 @@ var tripColumnNames = []string{
 	"latitude", "longitude", "is_private",
 }
 
-// coverPhotoExpr is the trip's first photo (trip_photos, position 0) — photo_url isn't a
-// real trips column anymore (see migration 000027), just a value derived at read time. Kept
-// as the last column (not interleaved back at its old spot) so it can be appended once here
-// rather than threaded through every column-order computation.
+// coverPhotoExpr is the trip's first photo, derived at read time since photo_url isn't a real trips column anymore; appended as the last column rather than threaded through every column-order computation.
 func coverPhotoExpr(alias string) string {
 	return "(SELECT tp.url FROM trip_photos tp WHERE tp.trip_id = " + alias + ".id ORDER BY tp.position LIMIT 1)"
 }
@@ -102,11 +99,7 @@ type CreateParams struct {
 	BookingCode      *string
 	MaxParticipants  *int
 
-	// Business fields — nil DiveCenterID means an individual-organizer trip (the common
-	// case). PriceMinor is minor currency units (øre); currency isn't yet settable per
-	// trip (always defaults to DKK at the DB level — see migration 000023). BookingCode is
-	// server-generated for business trips (see trip.Service.CreateTrip), never client-set;
-	// BookingURL is the trip's own external checkout page.
+	// Business fields — nil DiveCenterID means an individual-organizer trip; BookingCode is always server-generated for business trips, never client-set.
 	DiveCenterID *uuid.UUID
 	PriceMinor   *int
 	BookingURL   *string
@@ -115,8 +108,7 @@ type CreateParams struct {
 	Latitude  *float64
 	Longitude *float64
 
-	// IsPrivate — individual trips only (never set for a business trip, which is always a
-	// public marketplace listing). See model.go's own doc comment.
+	// IsPrivate is individual-trips-only; a business trip is always a public marketplace listing.
 	IsPrivate bool
 }
 
@@ -141,14 +133,7 @@ func (r *Repository) Create(ctx context.Context, p CreateParams) (Trip, error) {
 	))
 }
 
-// List excludes cancelled trips — Explore is a marketplace of things you could join, and a
-// cancelled trip no longer qualifies. Full trips stay listed (capacity isn't dead, just
-// full); only the Join action itself is what's actually blocked for those.
-// UpdateParams uses pointers so a nil field is left unchanged rather than cleared — same
-// convention (and same can't-null-an-optional-field-back-out limitation) as profile.UpdateParams.
-// Deliberately excludes booking_status (Cancel is its own flow), dive_center_id/
-// creator_user_id (ownership doesn't change via an edit), and currency (not yet settable
-// per trip — see migration 000023's own comment).
+// UpdateParams uses pointers so a nil field is left unchanged rather than cleared, and deliberately excludes booking_status, dive_center_id/creator_user_id, and currency, none of which change via an edit.
 type UpdateParams struct {
 	Title            *string
 	Location         *string
@@ -165,8 +150,7 @@ type UpdateParams struct {
 	PriceMinor       *int
 	BookingURL       *string
 
-	// Latitude/Longitude — see CreateParams' own doc comment. Nil means "location text didn't
-	// change" (left as-is); when the app resends an edited location, it resends both together.
+	// Latitude/Longitude nil means "location text didn't change"; the app resends both together whenever location is edited.
 	Latitude  *float64
 	Longitude *float64
 }
@@ -199,16 +183,7 @@ func (r *Repository) Update(ctx context.Context, id uuid.UUID, p UpdateParams) (
 	))
 }
 
-// List optionally filters by a free-text query matched against title, location, the
-// creator's display name, and the dive center's name (organizer/dive-center name aren't
-// on the trips table itself, hence the two LEFT JOINs — an empty query skips the match
-// entirely rather than joining for nothing). Sort stays date order here; distance-based
-// "Nearest" sort is computed client-side (see CLAUDE.md's Search & Filters sheet section).
-// Private trips are excluded outright — they're only reachable via booking code/invite link,
-// never through Explore (see Service.Join's gate).
-// includeTestCenters lets users.is_owner accounts see test dive centers' trips too — everyone
-// else has them excluded from Explore. Also excludes trips whose dive date has already
-// passed — Explore is upcoming trips to join, not history (that's My Trips/ListJoinedByUser).
+// List excludes cancelled, private, and already-past trips from Explore; full trips stay listed since only Join itself is blocked, and includeTestCenters lets is_owner accounts see test dive centers' trips too.
 func (r *Repository) List(ctx context.Context, query string, includeTestCenters bool) ([]Trip, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT `+tripColumnsPrefixed("t")+`
@@ -288,9 +263,7 @@ func (r *Repository) ListPhotos(ctx context.Context, tripID uuid.UUID) ([]Photo,
 	return photos, rows.Err()
 }
 
-// AddPhoto appends at the end (position = current count) — the max-10 cap is enforced by
-// Service.AddPhoto via CountPhotos above, not here, same "repository does data ops, service
-// enforces the business rule" split as transport's one-booking-per-trip check.
+// AddPhoto appends at the end (position = current count); the max-10 cap is enforced by Service.AddPhoto, not here.
 func (r *Repository) AddPhoto(ctx context.Context, tripID uuid.UUID, url string) (Photo, error) {
 	var p Photo
 	err := r.DB.QueryRowContext(ctx, `
@@ -301,9 +274,7 @@ func (r *Repository) AddPhoto(ctx context.Context, tripID uuid.UUID, url string)
 	return p, err
 }
 
-// RemovePhoto also closes the position gap it leaves — positions stay dense from 0 (no
-// reordering feature in this round), since AddPhoto's "next position = current count" relies
-// on that invariant holding.
+// RemovePhoto also closes the position gap it leaves, since AddPhoto's "next position = current count" relies on positions staying dense from 0.
 func (r *Repository) RemovePhoto(ctx context.Context, tripID, photoID uuid.UUID) error {
 	tx, err := r.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -359,25 +330,7 @@ func (r *Repository) IsJoined(ctx context.Context, tripID, userID uuid.UUID) (bo
 	return exists, err
 }
 
-// ListJoinedByUser orders by most-recent chat activity (last message, or joined_at/
-// created_at for a trip with no messages yet) — WhatsApp/Telegram-style, not join order.
-// UnreadCount excludes the caller's own messages (sending isn't "unread" for the sender)
-// and counts everything sent after this participant's last_read_at.
-//
-// Also includes trips organized by any dive center this user is a *member* of, even
-// without a trip_participants row — staff never get one (see trip.Service.CreateTrip),
-// access is membership-based instead. tp is LEFT JOINed (not INNER) so those rows still
-// come back; joined_at falls back to created_at when tp is absent, so an unvisited business
-// trip sorts sensibly rather than erroring on a null join column. last_read_at falls back to
-// trip_read_state (trs) before '-infinity' — staff have no trip_participants row for
-// MarkRead's UPDATE to touch, so trs is the only place their read marker actually lands.
-// HasUnreadMention reuses the exact same read-marker COALESCE — a mention is just an unread
-// message with mentions_dive_center set, not a separately tracked read state.
-// archived selects which side of the Bubbles/Archive split to return — false (the normal
-// Bubbles list) excludes anything the user archived, true (backing GET /trips/mine?archived=
-// true) returns only those. Same LEFT JOIN either way; the boolean param just flips which
-// side of the "is there an archive row" check matches, so there's one query to keep in sync
-// instead of two near-duplicates.
+// ListJoinedByUser orders by most-recent chat activity like WhatsApp/Telegram, and also includes trips via dive-center staff membership (no trip_participants row), falling back to trip_read_state for their read marker; archived just flips which side of the same "is there an archive row" check matches.
 func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID, archived bool) ([]Trip, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT `+tripColumnsPrefixed("t")+`,
@@ -445,10 +398,7 @@ func (r *Repository) ListJoinedByUser(ctx context.Context, userID uuid.UUID, arc
 	return trips, rows.Err()
 }
 
-// Writes to both trip_participants (used by ListJoinedByUser whenever a participant row
-// exists) and trip_read_state (the only place a dive-center staff member's read marker can
-// land, since they have no trip_participants row at all) — cheaper than checking which one
-// applies first, and a redundant write to the unused one is harmless.
+// MarkRead writes to both trip_participants and trip_read_state rather than checking which one applies first, since a redundant write to the unused one is harmless.
 func (r *Repository) MarkRead(ctx context.Context, tripID, userID uuid.UUID) error {
 	if _, err := r.DB.ExecContext(ctx, `
 		UPDATE trip_participants SET last_read_at = now() WHERE trip_id = $1 AND user_id = $2
@@ -484,8 +434,7 @@ func (r *Repository) IsMuted(ctx context.Context, tripID, userID uuid.UUID) (boo
 	return exists, err
 }
 
-// ListMutedUserIDs backs notifyNewMessage's mute filter — everyone who's muted this trip,
-// regardless of how they have access to it (participant or dive-center staff).
+// ListMutedUserIDs returns everyone who's muted this trip, regardless of how they have access to it.
 func (r *Repository) ListMutedUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := r.DB.QueryContext(ctx, `SELECT user_id FROM trip_mutes WHERE trip_id = $1`, tripID)
 	if err != nil {
@@ -525,9 +474,7 @@ func (r *Repository) IsArchived(ctx context.Context, tripID, userID uuid.UUID) (
 	return exists, err
 }
 
-// ListArchivedUserIDs backs notifyNewMessage's archive filter — an archived trip still counts
-// unread messages (see ListJoinedByUser's archived param) but never pushes, same posture as a
-// muted trip.
+// ListArchivedUserIDs backs notifyNewMessage's archive filter: an archived trip still counts unread messages but never pushes, same posture as a muted trip.
 func (r *Repository) ListArchivedUserIDs(ctx context.Context, tripID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := r.DB.QueryContext(ctx, `SELECT user_id FROM trip_archives WHERE trip_id = $1`, tripID)
 	if err != nil {
@@ -554,9 +501,7 @@ func (r *Repository) CountParticipants(ctx context.Context, tripID uuid.UUID) (i
 	return count, err
 }
 
-// SubmitFeedback records one participant's post-trip feedback. Resubmitting is a silent
-// no-op — there's no edit flow, first submission wins. helpedWith is a comma-joined free
-// string from a fixed client-side checklist, same convention as users.languages.
+// SubmitFeedback silently no-ops on resubmission: there's no edit flow, first submission wins.
 func (r *Repository) SubmitFeedback(ctx context.Context, tripID, userID uuid.UUID, rating int, helpedWith string, comment sql.NullString, contactOk bool) error {
 	_, err := r.DB.ExecContext(ctx, `
 		INSERT INTO trip_feedback (trip_id, user_id, rating, helped_with, comment, contact_ok)
@@ -574,9 +519,7 @@ func (r *Repository) HasFeedback(ctx context.Context, tripID, userID uuid.UUID) 
 	return exists, err
 }
 
-// ListTripIDsAwaitingFeedbackPrompt backs the periodic scan job — trips whose last day (end_date
-// if set, else start_time's calendar day) has fully ended, weren't cancelled, and haven't had a
-// feedback-prompt system message sent yet.
+// ListTripIDsAwaitingFeedbackPrompt backs the periodic scan job: trips whose last day has fully ended, weren't cancelled, and haven't had a feedback-prompt message sent yet.
 func (r *Repository) ListTripIDsAwaitingFeedbackPrompt(ctx context.Context) ([]uuid.UUID, error) {
 	rows, err := r.DB.QueryContext(ctx, `
 		SELECT t.id FROM trips t

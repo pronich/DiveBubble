@@ -158,11 +158,7 @@ func handleListMyDiveCenters(svc *divecenter.Service) func(http.ResponseWriter, 
 	}
 }
 
-// handleGetDiveCenter is deliberately not member-gated (unlike ListMembers) — every field
-// a dive center's profile carries (name, location, agency, logo, contacts) was collected
-// specifically to be shown to divers considering a trip (see CLAUDE.md's onboarding-fields
-// note), so this is the same "any signed-in user" posture as GET /users/{id}'s public
-// profile projection, not membership-gated the way roster/management endpoints are.
+// handleGetDiveCenter is deliberately not member-gated, unlike ListMembers, since its fields exist to be shown to divers considering a trip.
 func handleGetDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
@@ -189,13 +185,7 @@ type membershipResponse struct {
 	Role     string `json:"role,omitempty"`
 }
 
-// handleGetDiveCenterMembership is the caller-scoped counterpart to the now-public
-// GET /dive-centers/{id}: since that endpoint stopped implying membership (see its own
-// comment), any client that needs to know "am I actually staff here" — e.g. app/'s Trip
-// Page deciding whether to show organizer-only actions to a dive-center employee who
-// didn't personally create the trip — needs an explicit check instead of inferring it.
-// Scoped to the caller only, not a member-lookup-by-id, so it can't be used to probe
-// anyone else's membership.
+// handleGetDiveCenterMembership is scoped to the caller only, not a member-lookup-by-id, so it can't be used to probe anyone else's membership.
 func handleGetDiveCenterMembership(svc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
@@ -239,10 +229,7 @@ type updateDiveCenterRequest struct {
 	Email        *string `json:"email"`
 }
 
-// handleUpdateDiveCenter is owner-only (enforced inside svc.Update) — every field optional,
-// a nil pointer leaves that column untouched (see divecenter.UpdateParams). Logo has its
-// own dedicated upload endpoint (POST /dive-centers/{id}/logo) rather than a field here,
-// same split as trip photo vs. trip field edits.
+// handleUpdateDiveCenter is owner-only; every field is optional and a nil pointer leaves that column untouched.
 func handleUpdateDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
@@ -285,8 +272,7 @@ func handleUpdateDiveCenter(svc *divecenter.Service) func(http.ResponseWriter, *
 	}
 }
 
-// handleListDiveCenterMembers is member-gated (any role) — staff can see their own
-// roster, not just owners (enforced inside svc.ListMembers).
+// handleListDiveCenterMembers is member-gated for any role: staff can see their own roster, not just owners.
 func handleListDiveCenterMembers(svc *divecenter.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
@@ -318,10 +304,7 @@ type memberPreviewResponse struct {
 	AvatarURL   *string   `json:"avatarUrl,omitempty"`
 }
 
-// handleSearchDiveCenterMember is a deliberately narrow prefix-email lookup (see
-// auth.IdentityRepository.FindUserIDByEmail), not a user directory — owner-only, and returns
-// just enough (name/avatar) to confirm "is this the right person" before actually adding
-// them via handleAddDiveCenterMember.
+// handleSearchDiveCenterMember is a deliberately narrow prefix-email lookup, not a user directory, returning just enough to confirm identity before adding via handleAddDiveCenterMember.
 func handleSearchDiveCenterMember(svc *divecenter.Service, identityRepo *auth.IdentityRepository, profileSvc *profile.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))
@@ -408,9 +391,7 @@ func handleAddDiveCenterMember(svc *divecenter.Service) func(http.ResponseWriter
 			writeError(w, http.StatusInternalServerError, ErrCodeGeneric)
 			return
 		}
-		// Bare Member, not the enriched MemberView ListMembers returns — admin/ reloads the
-		// full roster right after a successful add anyway, so this response doesn't need to
-		// carry name/avatar/email itself.
+		// Bare Member, not the enriched MemberView: admin/ reloads the full roster right after a successful add anyway.
 		writeJSON(w, http.StatusCreated, toMemberResponse(divecenter.MemberView{Member: m}))
 	}
 }
@@ -460,12 +441,7 @@ type invitationResponse struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-// handleInviteDiveCenterMember is the counterpart to handleAddDiveCenterMember for an email
-// with no DiveBubble account yet — admin/'s AddMemberDialog calls this when
-// handleSearchDiveCenterMember 404s. Unlike most side-effect emails elsewhere in this
-// codebase, the send failure here is NOT best-effort: it's the entire point of the request,
-// and v1 has no pending-invitations UI that would otherwise let an owner notice a silently
-// -dropped send (see CLAUDE.md).
+// handleInviteDiveCenterMember treats the send failure as a hard error, unlike most side-effect emails elsewhere, since v1 has no pending-invitations UI to let an owner notice a silently dropped send.
 func handleInviteDiveCenterMember(svc *divecenter.Service, emailSvc *email.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id, err := uuid.Parse(r.PathValue("id"))

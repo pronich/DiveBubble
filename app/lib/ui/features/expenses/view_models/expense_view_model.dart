@@ -32,12 +32,9 @@ class ExpenseViewModel extends ChangeNotifier {
   ExpenseBalanceSummary get balance => _balance;
 
   Map<String, Profile> _participants = {};
-  // Every current trip participant, keyed by id — used for the payer picker, split
-  // checklist, and every name shown throughout this tab.
   List<Profile> get participants => _participants.values.toList();
 
-  // Callers pass in the already-localized fallback words (see AppLocalizations.you/.diver) —
-  // this ViewModel stays free of any UI/l10n import, matching the rest of the app's layering.
+  // Callers pass in the already-localized fallback words so this ViewModel stays free of any UI/l10n import.
   String displayName(String userId, {required String youLabel, required String diverLabel}) {
     if (userId == currentUserId) return youLabel;
     return _participants[userId]?.displayName ?? diverLabel;
@@ -60,8 +57,7 @@ class ExpenseViewModel extends ChangeNotifier {
     return 0;
   }
 
-  /// The simplified transfers that involve me, either direction — what the balance card's
-  /// "tap for details" sheet shows.
+  /// What the balance card's "tap for details" sheet shows.
   List<ExpenseSettlement> get mySettlements => _balance.settlements
       .where((s) => s.fromUserId == currentUserId || s.toUserId == currentUserId)
       .toList();
@@ -97,9 +93,7 @@ class ExpenseViewModel extends ChangeNotifier {
     _balance = await _repository.getBalance(tripId);
   }
 
-  /// Returns null on success, or an error message on failure — same reasoning as
-  /// TransportViewModel.submit: a failed create shouldn't blow away the whole list, just
-  /// the still-open form.
+  /// Returns an error message rather than using the shared error field, so a failed create doesn't blow away the whole list, just the still-open form.
   Future<String?> createExpense({
     required String payerUserId,
     required String title,
@@ -162,8 +156,7 @@ class ExpenseViewModel extends ChangeNotifier {
     }
   }
 
-  /// Creator-only server-side (expense.Service.Delete) — anyone else gets a 403 surfaced as
-  /// this error string.
+  /// Creator-only server-side — anyone else gets a 403 surfaced as this error string.
   Future<String?> deleteExpense(String expenseId) async {
     try {
       await _repository.deleteExpense(tripId, expenseId);
@@ -175,8 +168,7 @@ class ExpenseViewModel extends ChangeNotifier {
     }
   }
 
-  /// Records one suggested transfer as paid — any participant may do this (not just the
-  /// debtor), per the product decision that settling has no stricter permission than editing.
+  /// Any participant may do this, not just the debtor — settling has no stricter permission than editing.
   Future<String?> settle(ExpenseSettlement suggestion) async {
     try {
       await _repository.createSettlement(

@@ -6,10 +6,7 @@ import '../../../core/theme/app_colors.dart';
 
 const double kDiveLogCardWidth = 220;
 
-/// One dive's mini-card, peeking in the profile's DiveLogDeck teaser — mirrors SpecialtyCard's
-/// shape (fixed width, rounded border, a couple of stat lines). The full DiveLogListPage uses
-/// a plain ListTile instead of this — a fixed-width card reads oddly stretched across a full
-/// vertical list.
+/// The full DiveLogListPage uses a plain ListTile instead, since a fixed-width card reads oddly stretched across a full vertical list.
 class DiveLogCard extends StatelessWidget {
   const DiveLogCard({super.key, required this.entry, this.onTap});
 

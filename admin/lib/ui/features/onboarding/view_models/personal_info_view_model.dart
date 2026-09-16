@@ -25,17 +25,14 @@ class PersonalInfoViewModel extends ChangeNotifier {
     try {
       _initial = await _repository.getMe();
     } catch (_) {
-      // Best-effort prefill (name/avatar already seeded from Google on account creation) —
-      // an empty form still works fine if this fails.
+      // Best-effort prefill — an empty form still works fine if this fails.
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Avatar upload (if any) happens first — it's a standalone endpoint that already
-  /// persists avatar_url server-side, so the rest of the PATCH afterwards never needs to
-  /// carry it too.
+  /// Avatar upload (if any) happens first via its own standalone endpoint, which already persists avatar_url server-side, so the PATCH afterwards never needs to carry it too.
   Future<bool> submit({
     required String displayName,
     String? location,

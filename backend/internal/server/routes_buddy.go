@@ -46,8 +46,7 @@ func registerBuddyRoutes(
 	mux.HandleFunc("POST /trips/{id}/buddy/{requestId}/read", withAuth(authIssuer, handleMarkBuddyRequestRead(svc, tripSvc)))
 }
 
-// requireBuddyRequestAccess is requireParticipant (trip-level) plus a request-level check:
-// only the request's creator or someone who's joined it may read/post in its chat or manage it.
+// requireBuddyRequestAccess is requireParticipant plus a request-level check: only the creator or someone who's joined may read/post/manage it.
 func requireBuddyRequestAccess(w http.ResponseWriter, r *http.Request, buddySvc *buddy.Service, tripSvc *trip.Service, tripIDStr, requestIDStr string, userID uuid.UUID) (buddy.Request, bool) {
 	tripID, ok := requireParticipant(w, r, tripSvc, tripIDStr, userID)
 	if !ok {
@@ -123,10 +122,7 @@ func toBuddyRequestResponse(req buddy.Request, creator profile.Profile) buddyReq
 	}
 }
 
-// handleListBuddyRequests enriches each row with the creator's name/level/dive-count
-// server-side (one profileSvc.Get per row — same acceptable-N-is-small pattern
-// newDiveCenterStaffChecker uses for transport's isDiveCenterStaff) so the list is scannable
-// at a glance with no per-row client-side profile-fetch flicker.
+// handleListBuddyRequests enriches each row with the creator's profile server-side (one Get per row, acceptable at this scale) to avoid per-row client-side fetch flicker.
 func handleListBuddyRequests(svc *buddy.Service, tripSvc *trip.Service, profileSvc *profile.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
@@ -188,8 +184,7 @@ func handleJoinBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, profileSv
 		if !ok {
 			return
 		}
-		// Joining an existing request is blocked too, not just creating new ones — the trip
-		// is dead, so committing to a buddy group for it doesn't make sense either.
+		// Joining is blocked too, not just creating, since the trip is dead either way.
 		if err := tripSvc.EnsureNotCancelled(r.Context(), tripID); err != nil {
 			if errors.Is(err, trip.ErrTripCancelled) {
 				writeError(w, http.StatusConflict, ErrCodeTripCancelled)
@@ -236,8 +231,7 @@ func handleJoinBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, profileSv
 					Data:     map[string]string{"tripId": t.ID.String(), "type": "buddy_joined", "chatScope": "buddy"},
 				})
 
-				// One system message per join event — not idempotent like SendSystem, since
-				// every new joiner should get their own announcement in the group's chat.
+				// Not idempotent like SendSystem, since every new joiner needs their own announcement.
 				msg, sysErr := messageSvc.PostSystemEvent(r.Context(), tripID, message.Scope{BuddyRequestID: uuid.NullUUID{UUID: requestID, Valid: true}}, message.KindBuddyJoined, joinerName+" joined your buddy group")
 				if sysErr != nil {
 					log.Printf("buddy chat: could not post join system message for request:%s: %v", requestID, sysErr)
@@ -246,9 +240,7 @@ func handleJoinBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, profileSv
 				}
 			}
 
-			// The system join message is attributed to message.SystemUserID, not the joiner,
-			// so ListByTrip's unread check (cm.user_id != caller) can't tell it was their own
-			// action — without this, the joiner would see their own join flagged as unread.
+			// Marked read explicitly because the system join message is attributed to message.SystemUserID, so the unread check can't tell it was the joiner's own action.
 			if err := svc.MarkRead(r.Context(), requestID, userID); err != nil {
 				log.Printf("buddy chat: could not mark request read for joiner:%s request:%s: %v", userID, requestID, err)
 			}
@@ -258,8 +250,7 @@ func handleJoinBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, profileSv
 	}
 }
 
-// handleGetBuddyAlert both reads and clears — viewing the Buddy tab is what acknowledges the
-// "something changed" ping (buddy_alerts), same as opening a chat marks it read.
+// handleGetBuddyAlert both reads and clears the alert, since viewing the Buddy tab is what acknowledges it.
 func handleGetBuddyAlert(svc *buddy.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, tripSvc, r.PathValue("id"), userID)
@@ -358,8 +349,7 @@ func handleListBuddyMessages(buddySvc *buddy.Service, tripSvc *trip.Service, div
 		checker := newDiveCenterStaffChecker(diveCenterSvc, t.DiveCenterID)
 		out := make([]messageResponse, 0, len(messages))
 		for _, m := range messages {
-			// feedbackProvided is always false here — a buddy chat never carries a
-			// feedback_prompt message, that kind only ever appears in the main trip chat.
+			// feedbackProvided is always false: a buddy chat never carries a feedback_prompt message.
 			out = append(out, toMessageResponse(m, checker.isStaff(r.Context(), m.UserID), false, reactionsByMessage[m.ID]))
 		}
 		writeJSON(w, http.StatusOK, out)
@@ -414,8 +404,7 @@ func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, dive
 		if pubErr := publisher.Publish(r.Context(), "buddy_request:"+req.ID.String(), resp); pubErr != nil {
 			log.Printf("realtime publish failed for buddy_request:%s: %v", req.ID, pubErr)
 		}
-		// Also pinged on the trip channel — see the identical comment in
-		// handleSendOfferMessage (routes_transport.go) for why.
+		// Also pinged on the trip channel so trip-level listeners see sub-chat activity (see handleSendOfferMessage).
 		if pubErr := publisher.Publish(r.Context(), "trip:"+req.TripID.String(), map[string]string{
 			"event": "sub_chat_activity", "scope": "buddy", "userId": userID.String(),
 		}); pubErr != nil {
@@ -428,8 +417,7 @@ func handleSendBuddyMessage(buddySvc *buddy.Service, tripSvc *trip.Service, dive
 	}
 }
 
-// handleLeaveBuddyRequest is for a joiner stepping out of a group they don't own — the
-// creator has no "leave" (dissolving is the equivalent, see handleDissolveBuddyRequest).
+// handleLeaveBuddyRequest is for a joiner only; the creator's equivalent is handleDissolveBuddyRequest.
 func handleLeaveBuddyRequest(svc *buddy.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		req, ok := requireBuddyRequestAccess(w, r, svc, tripSvc, r.PathValue("id"), r.PathValue("requestId"), userID)
@@ -448,10 +436,7 @@ func handleLeaveBuddyRequest(svc *buddy.Service, tripSvc *trip.Service) func(htt
 	}
 }
 
-// handleDissolveBuddyRequest cancels the buddy group outright — only the creator may do this
-// (buddy.Service.Dissolve enforces it). The realtime "dissolved" sentinel is published only
-// after the delete succeeds, so a rejected/failed attempt never falsely signals dissolution
-// to anyone still viewing the chat.
+// handleDissolveBuddyRequest publishes the "dissolved" event only after the delete succeeds, so a rejected/failed attempt never falsely signals dissolution.
 func handleDissolveBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		req, ok := requireBuddyRequestAccess(w, r, svc, tripSvc, r.PathValue("id"), r.PathValue("requestId"), userID)
@@ -473,9 +458,7 @@ func handleDissolveBuddyRequest(svc *buddy.Service, tripSvc *trip.Service, publi
 	}
 }
 
-// notifyNewBuddyMessage pushes a group chat message to the request's own members only
-// (creator + joiners) — narrower than notifyNewMessage's whole-trip-roster reach, since the
-// rest of the trip has no visibility into a buddy group they haven't joined.
+// notifyNewBuddyMessage notifies only the request's own members, narrower than notifyNewMessage's whole-trip reach, since the rest of the trip can't see a buddy group they haven't joined.
 func notifyNewBuddyMessage(ctx context.Context, pushSvc *push.Service, profileSvc *profile.Service, buddySvc *buddy.Service, t trip.Trip, req buddy.Request, m message.Message, senderID uuid.UUID) {
 	joinedIDs, err := buddySvc.ListJoins(ctx, req.ID)
 	if err != nil {
@@ -491,8 +474,7 @@ func notifyNewBuddyMessage(ctx context.Context, pushSvc *push.Service, profileSv
 	if sender, err := profileSvc.Get(ctx, senderID); err == nil && sender.DisplayName.Valid && sender.DisplayName.String != "" {
 		senderName = sender.DisplayName.String
 	}
-	// Same three-tier Title/Subtitle/Body shape as notifyNewMessage — Subtitle/chatScope are
-	// what let the diver (and the tap handler) tell this apart from the trip's main chat.
+	// Subtitle/chatScope let the diver (and the tap handler) tell this apart from the trip's main chat.
 	pushSvc.SendToUsers(ctx, recipients, push.Notification{
 		Title:    t.Title,
 		Subtitle: "Buddy chat",
@@ -501,9 +483,7 @@ func notifyNewBuddyMessage(ctx context.Context, pushSvc *push.Service, profileSv
 	})
 }
 
-// handleMarkBuddyRequestRead marks this one group's chat read up to now — called when the
-// diver actually opens it, same "viewing acknowledges it" idea as trip.MarkRead, but scoped
-// to a single request instead of clearing the whole Buddy tab's dissolved-alert dot.
+// handleMarkBuddyRequestRead marks only this one group's chat read, unlike trip.MarkRead which clears the whole Buddy tab's alert dot.
 func handleMarkBuddyRequestRead(svc *buddy.Service, tripSvc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		req, ok := requireBuddyRequestAccess(w, r, svc, tripSvc, r.PathValue("id"), r.PathValue("requestId"), userID)

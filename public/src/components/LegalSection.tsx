@@ -1,6 +1,4 @@
-// Shared section renderer for /privacy and /terms — a title, one or more paragraphs, and an
-// optional bullet list per paragraph. Kept generic rather than one component per page since
-// both pages have the exact same "heading + prose + occasional list" shape.
+// Shared by /privacy and /terms since both pages are the exact same heading+prose+list shape.
 type Paragraph = { text?: string; items?: string[] };
 
 export function LegalSection({ title, paragraphs }: { title: string; paragraphs: Paragraph[] }) {

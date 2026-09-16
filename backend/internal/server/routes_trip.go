@@ -43,10 +43,7 @@ func registerTripRoutes(
 	mux.HandleFunc("GET /trips/mine", withAuth(authIssuer, handleListMyTrips(svc)))
 	// Detail stays browsable without an account — "joined" is just false for anonymous viewers.
 	mux.HandleFunc("GET /trips/{id}", optionalAuth(authIssuer, handleGetTrip(svc)))
-	// Same anonymous-browsable posture — resolves an invite link's code to a trip preview
-	// without joining. Deliberately outside the /trips/ namespace: Go's ServeMux treats any
-	// same-length /trips/{literal}/{wildcard} pattern as ambiguous with the several existing
-	// /trips/{id}/... routes (e.g. /trips/{id}/participants) and panics at startup.
+	// Deliberately outside the /trips/ namespace: Go's ServeMux treats a same-length /trips/{literal}/{wildcard} pattern as ambiguous with existing /trips/{id}/... routes and panics at startup.
 	mux.HandleFunc("GET /invite/{code}", optionalAuth(authIssuer, handleResolveTripByCode(svc)))
 	mux.HandleFunc("POST /trips/{id}/join", withAuth(authIssuer, handleJoinTrip(svc, diveCenterSvc, profileSvc, pushSvc, messageSvc, publisher)))
 	mux.HandleFunc("POST /trips/join-by-code", withAuth(authIssuer, handleJoinTripByCode(svc, diveCenterSvc, profileSvc, pushSvc, messageSvc, publisher)))
@@ -62,9 +59,7 @@ func registerTripRoutes(
 	mux.HandleFunc("POST /trips/{id}/archive", withAuth(authIssuer, handleArchiveTrip(svc)))
 	mux.HandleFunc("DELETE /trips/{id}/archive", withAuth(authIssuer, handleUnarchiveTrip(svc)))
 	mux.HandleFunc("POST /trips/{id}/feedback", withAuth(authIssuer, handleSubmitFeedback(svc)))
-	// Same "browsable without an account" posture as GET /trips/{id} — the gallery is part
-	// of the trip's own public detail, not gated behind participation. Adding a photo (POST)
-	// is a multipart upload, so it's registered in routes_upload.go alongside the others.
+	// Adding a photo (POST) is a multipart upload, so it's registered in routes_upload.go instead.
 	mux.HandleFunc("GET /trips/{id}/photos", optionalAuth(authIssuer, handleListTripPhotos(svc)))
 	mux.HandleFunc("DELETE /trips/{id}/photos/{photoId}", withAuth(authIssuer, handleDeleteTripPhoto(svc)))
 }
@@ -207,11 +202,7 @@ type createTripRequest struct {
 	BookingCode      *string    `json:"bookingCode"`
 	MaxParticipants  *int       `json:"maxParticipants"`
 
-	// DiveCenterID set means this is a business trip — the caller must be a member of that
-	// dive center (checked in trip.Service.CreateTrip), and the creator doesn't get
-	// auto-joined the way an individual organizer does (see CreateTrip's own comment).
-	// BookingCode above is ignored for business trips either way — trip.Service.CreateTrip
-	// always overwrites it with a fresh server-generated code (see booking_code.go).
+	// DiveCenterID set means a business trip: the creator isn't auto-joined, and BookingCode above is always overwritten with a fresh server-generated code regardless of what's sent.
 	DiveCenterID *uuid.UUID `json:"diveCenterId"`
 	PriceMinor   *int       `json:"priceMinor"`
 	BookingURL   *string    `json:"bookingUrl"`
@@ -220,8 +211,7 @@ type createTripRequest struct {
 	Latitude  *float64 `json:"latitude"`
 	Longitude *float64 `json:"longitude"`
 
-	// Individual trips only — fixed at creation, no edit path (see trip.CreateParams).
-	// Ignored (forced false) for business trips, see trip.Service.CreateTrip.
+	// Individual trips only: fixed at creation with no edit path, and forced false for business trips.
 	IsPrivate bool `json:"isPrivate"`
 }
 
@@ -277,9 +267,7 @@ func handleCreateTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request
 			return
 		}
 
-		// A business trip has no trip_participants row for its creator (see CreateTrip),
-		// so `joined` here would be misleading either way — the client doesn't currently
-		// branch on it for the just-created-trip response, only true participantCount matters.
+		// A business trip has no trip_participants row for its creator, so `joined` here would be misleading either way.
 		writeJSON(w, http.StatusCreated, toTripResponse(t, req.DiveCenterID == nil, 1))
 	}
 }
@@ -317,10 +305,7 @@ func handleGetTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, u
 	}
 }
 
-// handleResolveTripByCode backs GET /invite/{code} — the read-only half of an invite link
-// (divebubble.io/join/{code}), same optionalAuth/anonymous-browsable posture as handleGetTrip
-// so the app can show a trip preview before the diver has signed in. Never joins; see
-// handleJoinTripByCode for that.
+// handleResolveTripByCode is the read-only half of an invite link; it never joins, see handleJoinTripByCode for that.
 func handleResolveTripByCode(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		code := r.PathValue("code")
@@ -387,9 +372,7 @@ func handleJoinTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, profil
 	}
 }
 
-// notifyIfObserverJoined posts the one-time "Product Observer" system message when the
-// joining account is flagged is_product_observer — see users.is_product_observer (migration
-// 000049). SendSystem is idempotent per trip+kind, so a leave-then-rejoin never re-announces.
+// notifyIfObserverJoined posts a one-time system message for is_product_observer accounts; SendSystem is idempotent per trip+kind, so a leave-then-rejoin never re-announces.
 func notifyIfObserverJoined(ctx context.Context, messageSvc *message.Service, publisher *realtime.Publisher, profileSvc *profile.Service, tripID, joinedUserID uuid.UUID) {
 	p, err := profileSvc.Get(ctx, joinedUserID)
 	if err != nil || !p.IsProductObserver {
@@ -404,8 +387,7 @@ func notifyIfObserverJoined(ctx context.Context, messageSvc *message.Service, pu
 	if !sent {
 		return
 	}
-	// Field names kept in sync with messageResponse in routes_message.go, same as the
-	// feedback-prompt scan's payload in main.go.
+	// Field names kept in sync with messageResponse in routes_message.go.
 	payload := map[string]any{
 		"id":                 msg.ID,
 		"tripId":             msg.TripID,
@@ -422,10 +404,7 @@ func notifyIfObserverJoined(ctx context.Context, messageSvc *message.Service, pu
 	}
 }
 
-// notifyOrganizerOfNewParticipant covers the individual-trip case only — Join (above) is the
-// individual-organizer join path; a business trip's roster notification lives in
-// notifyStaffOfBookingCodeJoin instead, since staff means everyone in the dive center,
-// not one organizer.
+// notifyOrganizerOfNewParticipant covers the individual-trip case only; a business trip's roster notification lives in notifyStaffOfBookingCodeJoin instead.
 func notifyOrganizerOfNewParticipant(ctx context.Context, pushSvc *push.Service, profileSvc *profile.Service, t trip.Trip, joinedUserID uuid.UUID) {
 	if !t.CreatorUserID.Valid || t.CreatorUserID.UUID == joinedUserID {
 		return
@@ -445,9 +424,7 @@ type joinByCodeRequest struct {
 	Code string `json:"code"`
 }
 
-// handleJoinTripByCode is the marketplace redemption path for business trips (see
-// trip.Service.JoinByCode) — no trip id in the URL, since the code alone is what the diver
-// actually has after paying on the dive center's own site.
+// handleJoinTripByCode takes no trip id in the URL, since the code alone is what the diver has after paying on the dive center's own site.
 func handleJoinTripByCode(svc *trip.Service, diveCenterSvc *divecenter.Service, profileSvc *profile.Service, pushSvc *push.Service, messageSvc *message.Service, publisher *realtime.Publisher) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		var req joinByCodeRequest
@@ -487,9 +464,7 @@ func handleJoinTripByCode(svc *trip.Service, diveCenterSvc *divecenter.Service, 
 	}
 }
 
-// notifyStaffOfBookingCodeJoin is the business-trip roster-change notification — every
-// staff member of the dive center, not just whoever created the trip (see CLAUDE.md's
-// Business/dive-center section: the organization is the organizer, not one employee).
+// notifyStaffOfBookingCodeJoin notifies every staff member of the dive center, not just whoever created the trip, since the organization is the organizer.
 func notifyStaffOfBookingCodeJoin(ctx context.Context, pushSvc *push.Service, profileSvc *profile.Service, diveCenterSvc *divecenter.Service, t trip.Trip, joinedUserID uuid.UUID) {
 	if !t.DiveCenterID.Valid {
 		return
@@ -515,11 +490,7 @@ func notifyStaffOfBookingCodeJoin(ctx context.Context, pushSvc *push.Service, pr
 	})
 }
 
-// handleCancelTrip is organizer-only (enforced inside svc.Cancel) and final — booking_status
-// flips to "cancelled", which is what everything downstream keys off: Explore's List query
-// excludes it, the Join handler above rejects new joins, and message/transport handlers call
-// EnsureNotCancelled to freeze new activity while read access (history, participants,
-// existing transport) stays untouched.
+// handleCancelTrip is final: booking_status flips to "cancelled", which everything downstream (Explore's list, join, message/transport activity) keys off, while read access stays untouched.
 func handleCancelTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id := r.PathValue("id")
@@ -540,8 +511,7 @@ func handleCancelTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 			return
 		}
 
-		// Best-effort — the cancellation itself already succeeded above; a failed re-fetch
-		// here just means this notification is skipped, not that cancellation failed.
+		// Best-effort: the cancellation already succeeded above, so a failed re-fetch just skips this notification.
 		if t, err := svc.GetTrip(r.Context(), id); err == nil {
 			recipients := excludeUser(TripRecipientIDs(r.Context(), svc, diveCenterSvc, t), userID)
 			if len(recipients) > 0 {
@@ -576,9 +546,7 @@ type updateTripRequest struct {
 	Longitude        *float64   `json:"longitude"`
 }
 
-// handleUpdateTrip is organizer-only (enforced inside svc.Update, same isOrganizer check as
-// Cancel/SetPhotoURL). Every field is optional — a nil pointer leaves that column untouched
-// (see trip.UpdateParams), so callers only send the fields they actually changed.
+// handleUpdateTrip treats every field as optional; a nil pointer leaves that column untouched, so callers only send what actually changed.
 func handleUpdateTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id := r.PathValue("id")
@@ -589,9 +557,7 @@ func handleUpdateTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 			return
 		}
 
-		// Snapshotted before the update — the client (admin/'s edit form) resends every
-		// field on every save, not just what actually changed, so the only reliable way to
-		// tell "did the time or meeting point actually change" is to diff before vs after.
+		// Snapshotted before the update since admin/'s edit form resends every field on every save, so diffing before vs after is the only way to tell what actually changed.
 		before, beforeErr := svc.GetTrip(r.Context(), id)
 
 		t, err := svc.Update(r.Context(), id, userID, trip.UpdateParams{
@@ -661,10 +627,7 @@ func handleUpdateTrip(svc *trip.Service, diveCenterSvc *divecenter.Service, push
 	}
 }
 
-// handleLeaveTrip orchestrates across both trip and transport: dropping trip.Leave's
-// business rule (organizer can't leave) plus transport's cascade (their own joins freed,
-// any offer *they* created dissolved with an alert for whoever had joined it — see
-// transport.Service.HandleUserLeavingTrip).
+// handleLeaveTrip orchestrates trip.Leave's organizer-can't-leave rule together with transport's cascade (their joins freed, offers they created dissolved and alerted).
 func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service, buddySvc *buddy.Service, pushSvc *push.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id := r.PathValue("id")
@@ -674,8 +637,7 @@ func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service, buddySv
 			return
 		}
 
-		// Organizer check (inside svc.Leave) runs first and blocks entirely on failure —
-		// the transport cascade below must never fire for a rejected leave attempt.
+		// Organizer check (inside svc.Leave) runs first, since the transport cascade below must never fire for a rejected leave attempt.
 		if err := svc.Leave(r.Context(), id, userID); err != nil {
 			if errors.Is(err, trip.ErrInvalidArgument) {
 				writeError(w, http.StatusBadRequest, ErrCodeGeneric)
@@ -704,8 +666,7 @@ func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service, buddySv
 			return
 		}
 		if len(alertedUserIDs) > 0 || len(buddyAlertedUserIDs) > 0 {
-			// Best-effort — the leave itself already succeeded; a failed re-fetch here just
-			// means this notification is skipped.
+			// Best-effort: the leave already succeeded, so a failed re-fetch just skips this notification.
 			if t, err := svc.GetTrip(r.Context(), id); err == nil {
 				if len(alertedUserIDs) > 0 {
 					pushSvc.SendToUsers(r.Context(), dedupeUsers(alertedUserIDs), push.Notification{
@@ -728,8 +689,7 @@ func handleLeaveTrip(svc *trip.Service, transportSvc *transport.Service, buddySv
 	}
 }
 
-// Gated to participants only (requireParticipant, same guard as messages/transport) — who
-// joined a trip isn't public information, just like the trip's chat isn't.
+// handleListParticipants is gated to participants only, since who joined a trip isn't public information any more than the trip's chat is.
 func handleListParticipants(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripIDStr := r.PathValue("id")
@@ -776,9 +736,7 @@ func handleGetTripMute(svc *trip.Service) func(http.ResponseWriter, *http.Reques
 	}
 }
 
-// handleMuteTrip/handleUnmuteTrip are deliberately un-gated by requireParticipant — muting
-// a trip you've since left (or a business trip's staff role) is harmless either way, and
-// this stays consistent with MarkRead above, which has the same posture.
+// handleMuteTrip/handleUnmuteTrip are deliberately un-gated by requireParticipant, since muting a trip you've since left is harmless either way.
 func handleMuteTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id := r.PathValue("id")
@@ -825,8 +783,7 @@ func handleGetTripArchive(svc *trip.Service) func(http.ResponseWriter, *http.Req
 	}
 }
 
-// handleArchiveTrip/handleUnarchiveTrip — same un-gated posture as handleMuteTrip/
-// handleUnmuteTrip above (archiving a trip you've since left is harmless).
+// handleArchiveTrip/handleUnarchiveTrip share handleMuteTrip's un-gated posture, since archiving a trip you've since left is harmless.
 func handleArchiveTrip(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		id := r.PathValue("id")
@@ -864,8 +821,7 @@ type submitFeedbackRequest struct {
 	ContactOk  bool     `json:"contactOk"`
 }
 
-// handleSubmitFeedback is gated by requireParticipant, unlike mute — feedback only makes
-// sense from someone who was actually on the trip.
+// handleSubmitFeedback is gated by requireParticipant, unlike mute, since feedback only makes sense from someone who was actually on the trip.
 func handleSubmitFeedback(svc *trip.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		tripID, ok := requireParticipant(w, r, svc, r.PathValue("id"), userID)
@@ -915,8 +871,7 @@ func handleListMyTrips(svc *trip.Service) func(http.ResponseWriter, *http.Reques
 	}
 }
 
-// Stays browsable anonymously (optionalAuth) — userID is uuid.Nil for anonymous callers,
-// which IsOwner treats the same as any non-owner account.
+// handleListTrips stays browsable anonymously; userID is uuid.Nil for anonymous callers, which IsOwner treats the same as any non-owner account.
 func handleListTrips(svc *trip.Service, accountSvc *account.Service) func(http.ResponseWriter, *http.Request, uuid.UUID) {
 	return func(w http.ResponseWriter, r *http.Request, userID uuid.UUID) {
 		viewerIsOwner, err := accountSvc.IsOwner(r.Context(), userID)
