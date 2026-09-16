@@ -90,6 +90,10 @@ class _DiveLogListPageState extends State<DiveLogListPage> {
                     return _DiveLogRow(
                       key: ValueKey(entry.id),
                       entry: entry,
+                      // entries is sorted newest-first (see ProfileViewModel._diveLog), so the
+                      // top row is the diver's most recent — and therefore highest-numbered —
+                      // dive, counting back down to 1 for the oldest at the bottom.
+                      diveNumber: entries.length - index,
                       multiSelect: _multiSelect,
                       selected: _selectedIds.contains(entry.id),
                       onTap: () {
@@ -317,6 +321,7 @@ class _DiveLogRow extends StatelessWidget {
   const _DiveLogRow({
     super.key,
     required this.entry,
+    required this.diveNumber,
     required this.multiSelect,
     required this.selected,
     required this.onTap,
@@ -326,6 +331,7 @@ class _DiveLogRow extends StatelessWidget {
   });
 
   final DiveLogEntry entry;
+  final int diveNumber;
   final bool multiSelect;
   final bool selected;
   final VoidCallback onTap;
@@ -354,9 +360,16 @@ class _DiveLogRow extends StatelessWidget {
             : InkWell(
                 borderRadius: BorderRadius.circular(20),
                 onTap: onIconTap,
-                child: const Padding(
-                  padding: EdgeInsets.all(4),
-                  child: Icon(Icons.scuba_diving_outlined),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: theme.colorScheme.secondaryContainer,
+                  child: Text(
+                    '$diveNumber',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
         title: Text(formatShortDateWithYear(entry.divedAt)),
