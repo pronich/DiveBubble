@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -71,6 +72,18 @@ func (r *Repository) Create(ctx context.Context, e Entry, onConflictSkip bool) (
 		return Entry{}, false, err
 	}
 	return out, true, nil
+}
+
+// ExistsNear reports whether this diver already has an entry within tolerance of divedAt — a re-export of the same dive from a different tool (or a different precision, e.g. CSV's minute-only vs UDDF's seconds+offset) rarely lands on the exact same timestamp, so the exact (user_id, dived_at) unique index alone misses these as duplicates.
+func (r *Repository) ExistsNear(ctx context.Context, userID uuid.UUID, divedAt time.Time, tolerance time.Duration) (bool, error) {
+	var exists bool
+	err := r.DB.QueryRowContext(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM dive_log_entries
+			WHERE user_id = $1 AND dived_at BETWEEN $2 AND $3
+		)
+	`, userID, divedAt.Add(-tolerance), divedAt.Add(tolerance)).Scan(&exists)
+	return exists, err
 }
 
 // Update replaces every editable field but never source, avg_depth_m, or profile_samples, which are fixed at creation since avg_depth_m is only ever known by an importer with no manual-entry UI for it.
