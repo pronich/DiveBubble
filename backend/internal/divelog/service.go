@@ -80,7 +80,10 @@ type ImportResult struct {
 	Skipped  int
 }
 
-// Import sniffs the file's actual content (not its filename/extension, since Diving Log 6's SQLite export is literally named ".sql") to pick a parser, then silently skips any dive whose dived_at exactly matches one this diver already has so re-exporting "everything" doesn't create duplicates.
+// importDedupTolerance covers the sub-minute drift between a dive's timestamp as recorded by different export tools/formats (e.g. CSV's minute-only precision vs UDDF's seconds-plus-offset), so the same real dive re-exported elsewhere still dedupes instead of landing as a near-duplicate.
+const importDedupTolerance = 3 * time.Minute
+
+// Import sniffs the file's actual content (not its filename/extension, since Diving Log 6's SQLite export is literally named ".sql") to pick a parser, then silently skips any dive within importDedupTolerance of one this diver already has so re-exporting "everything" (even from a different tool) doesn't create duplicates.
 func (s *Service) Import(ctx context.Context, userID uuid.UUID, data []byte) (ImportResult, error) {
 	entries, err := parseImportFile(data)
 	if err != nil {
@@ -93,6 +96,16 @@ func (s *Service) Import(ctx context.Context, userID uuid.UUID, data []byte) (Im
 		e.Source = SourceImported
 		e.SiteName = cleanText(e.SiteName)
 		e.Country = cleanText(e.Country)
+
+		near, err := s.Repo.ExistsNear(ctx, userID, e.DivedAt, importDedupTolerance)
+		if err != nil {
+			return result, err
+		}
+		if near {
+			result.Skipped++
+			continue
+		}
+
 		_, inserted, err := s.Repo.Create(ctx, e, true)
 		if err != nil {
 			return result, err
