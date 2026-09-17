@@ -39,6 +39,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Matches AppLocalizations.supportedLocales; also trims unused translated resources from dependencies.
+        resConfigs("en", "ru", "es", "de", "fr", "da", "sv")
     }
 
     signingConfigs {
