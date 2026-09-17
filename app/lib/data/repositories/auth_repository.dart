@@ -141,6 +141,9 @@ class AuthRepository extends ChangeNotifier {
     return SignInResult(userId: result.userId, isNewUser: result.isNewUser);
   }
 
+  // Every API service shares this same getAccessToken callback, so a burst of concurrent calls around the token's expiry must not each fire their own refresh — the backend's refresh token is single-use, and a second concurrent use would look like theft and reject the request.
+  Future<String?>? _refreshFuture;
+
   /// Returns null both when the refresh token is genuinely rejected (tokens cleared, caller should prompt login) and when the refresh request merely fails to go through (tokens left alone so the next call retries).
   Future<String?> getValidAccessToken() async {
     final stored = await _tokens.read();
@@ -151,6 +154,10 @@ class AuthRepository extends ChangeNotifier {
       return stored.accessToken;
     }
 
+    return _refreshFuture ??= _refresh(stored).whenComplete(() => _refreshFuture = null);
+  }
+
+  Future<String?> _refresh(StoredAuthTokens stored) async {
     try {
       final result = await _api.refresh(stored.refreshToken);
       await _tokens.save(

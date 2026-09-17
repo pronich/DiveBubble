@@ -70,6 +70,12 @@ class _AppEntryGateState extends State<AppEntryGate> {
   }
 
   Future<void> _enterApp() async {
+    // Bounded, best-effort: refreshes the session once here so RootShell's own parallel tab loads start with a fresh token instead of each racing their own refresh; a slow/failed network just falls through to the per-call lazy check already in getValidAccessToken.
+    try {
+      await widget.authRepository.getValidAccessToken().timeout(const Duration(seconds: 8));
+    } catch (_) {
+      // best-effort — see above
+    }
     final userId = await widget.authRepository.currentUserId() ?? '';
     if (!mounted) return;
     setState(() {
