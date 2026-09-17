@@ -90,8 +90,11 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
                 child: InkWell(
                   onTap: locked ? null : _pickDate,
                   child: InputDecorator(
-                    decoration: InputDecoration(labelText: l10n.dateLabel),
-                    child: Text(formatShortDateWithYear(_date)),
+                    decoration: InputDecoration(labelText: l10n.dateLabel, enabled: !locked),
+                    child: Text(
+                      formatShortDateWithYear(_date),
+                      style: locked ? TextStyle(color: theme.disabledColor) : null,
+                    ),
                   ),
                 ),
               ),
@@ -100,8 +103,11 @@ class _AddEditDiveLogEntryPageState extends State<AddEditDiveLogEntryPage> {
                 child: InkWell(
                   onTap: locked ? null : _pickTime,
                   child: InputDecorator(
-                    decoration: InputDecoration(labelText: l10n.timeLabel),
-                    child: Text(_time.format(context)),
+                    decoration: InputDecoration(labelText: l10n.timeLabel, enabled: !locked),
+                    child: Text(
+                      _time.format(context),
+                      style: locked ? TextStyle(color: theme.disabledColor) : null,
+                    ),
                   ),
                 ),
               ),
