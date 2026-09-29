@@ -23,6 +23,21 @@ export const metadata: Metadata = {
   },
   description:
     "DiveBubble is the simplest way to organize dive trips, find your buddy, coordinate every detail, and split the costs.",
+  // og:image/twitter:image come from opengraph-image.tsx; these supply the rest of the link-preview card.
+  openGraph: {
+    type: "website",
+    siteName: "DiveBubble",
+    title: "DiveBubble: every dive is better with a buddy",
+    description:
+      "The simplest way to organize dive trips, find your buddy, coordinate every detail, and split the costs.",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DiveBubble: every dive is better with a buddy",
+    description:
+      "The simplest way to organize dive trips, find your buddy, coordinate every detail, and split the costs.",
+  },
 };
 
 export default function RootLayout({
