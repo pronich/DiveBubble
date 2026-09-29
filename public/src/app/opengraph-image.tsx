@@ -4,7 +4,8 @@ import { join } from "node:path";
 
 // Link-preview card for LinkedIn/Slack/iMessage etc. — root segment, so every page inherits it.
 export const alt = "DiveBubble: every dive is better with a buddy";
-export const size = { width: 1200, height: 630 };
+// Rendered at 2x: LinkedIn blurs a 1200x630 source badly when it recompresses the thumbnail.
+export const size = { width: 2400, height: 1260 };
 export const contentType = "image/png";
 
 export default async function Image() {
@@ -24,21 +25,21 @@ export default async function Image() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          padding: "80px 96px",
+          padding: "160px 192px",
           background: "linear-gradient(135deg, #0b3d91 0%, #0a2e6e 100%)",
           color: "white",
           fontFamily: "Inter",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 56 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logoSrc} width={112} height={112} style={{ borderRadius: 26 }} alt="" />
-          <span style={{ fontFamily: "Fraunces", fontSize: 64 }}>DiveBubble</span>
+          <img src={logoSrc} width={224} height={224} style={{ borderRadius: 52 }} alt="" />
+          <span style={{ fontFamily: "Fraunces", fontSize: 128 }}>DiveBubble</span>
         </div>
-        <div style={{ marginTop: 56, fontFamily: "Fraunces", fontSize: 76, lineHeight: 1.1 }}>
+        <div style={{ marginTop: 112, fontFamily: "Fraunces", fontSize: 152, lineHeight: 1.1 }}>
           Every dive is better with a buddy.
         </div>
-        <div style={{ marginTop: 28, fontSize: 32, color: "rgba(255,255,255,0.75)" }}>
+        <div style={{ marginTop: 56, fontSize: 64, color: "rgba(255,255,255,0.75)" }}>
           Organize dive trips, find your buddy, and split the costs.
         </div>
       </div>
